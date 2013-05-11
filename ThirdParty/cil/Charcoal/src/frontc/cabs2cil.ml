@@ -4602,6 +4602,8 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
 
     | A.EXPR_PATTERN _ -> E.s (E.bug "EXPR_PATTERN in cabs2cil input")
 
+    | A.ACTIVATE _ -> E.s (E.bug "EXPR_PATTERN in cabs2cil input")
+
   with e when continueOnError -> begin
     (*ignore (E.log "error in doExp (%s)" (Printexc.to_string e));*)
     E.hadErrors := true;

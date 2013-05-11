@@ -285,7 +285,7 @@ let transformOffsetOf (speclist, dtype) member =
 %token<Cabs.cabsloc> SEMICOLON
 %token COMMA ELLIPSIS QUEST
 
-%token<Cabs.cabsloc> BREAK CONTINUE GOTO RETURN
+%token<Cabs.cabsloc> BREAK CONTINUE GOTO RETURN ACTIVATE
 %token<Cabs.cabsloc> SWITCH CASE DEFAULT
 %token<Cabs.cabsloc> WHILE DO FOR
 %token<Cabs.cabsloc> IF TRY EXCEPT FINALLY
@@ -544,7 +544,19 @@ unary_expression:   /*(* 6.5.3 *)*/
 |		TILDE cast_expression
 		        {UNARY (BNOT, fst $2), $1}
 |               AND_AND IDENT  { LABELADDR (fst $2), $1 }
+|               ACTIVATE var_list_opt comma_expression
+                        {ACTIVATE ($2, RETURN (smooth_expression (fst $3), snd $3)), $1}
+|               ACTIVATE var_list_opt statement {ACTIVATE ($2, $3), $1}
 ;
+
+var_list_opt:
+| { [] }
+| LPAREN RPAREN { [] }
+| LPAREN IDENT var_list RPAREN { (fst $2)::$3 }
+
+var_list:
+| { [] }
+| COMMA IDENT var_list { (fst $2)::$3 }
 
 cast_expression:   /*(* 6.5.4 *)*/
 |              unary_expression 

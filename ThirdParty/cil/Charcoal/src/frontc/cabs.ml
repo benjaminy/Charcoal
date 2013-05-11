@@ -274,6 +274,7 @@ and expression =
   | MEMBEROFPTR of expression * string
   | GNU_BODY of block
   | EXPR_PATTERN of string     (* pattern variable, and name *)
+  | ACTIVATE of string list * statement
 
 and constant =
   | CONST_INT of string   (* the textual representation *)
