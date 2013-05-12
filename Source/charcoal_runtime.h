@@ -23,6 +23,23 @@ typedef struct
     /* The size of the return_value depends on the activity */
 } __charcoal_activity_t;
 
+
+/* OS-X doesn't support anonymous semaphores.  Annoying. */
+typedef struct
+{
+    unsigned value, waiters;
+    pthread_mutex_t m;
+    pthread_cond_t c;
+}__charcoal_sem_t;
+
+int __charcoal_sem_init    ( __charcoal_sem_t *s, int pshared, unsigned int value );
+int __charcoal_sem_destroy ( __charcoal_sem_t *s );
+int __charcoal_sem_getvalue( __charcoal_sem_t * __restrict s, int * __restrict vp );
+int __charcoal_sem_post    ( __charcoal_sem_t *s );
+int __charcoal_sem_trywait ( __charcoal_sem_t *s );
+int __charcoal_sem_wait    ( __charcoal_sem_t *s );
+
+
 /*
  * TetraStak Concurrency Library
  */

@@ -1,4 +1,86 @@
 
+int __charcoal_sem_init( __charcoal_sem_t *s, int pshared, unsigned int value )
+{
+    /* assert( 0 == pshared ) */
+    pthread_mutex_init( &s->m, NULL );
+    pthread_cond_init ( &s->c, NULL );
+}
+
+int __charcoal_sem_destroy(  __charcoal_sem_t *s )
+{
+}
+
+int __charcoal_sem_getvalue( __charcoal_sem_t * __restrict s, int * __restrict vp )
+{
+    if( !s || !vp )
+    {
+        /* error handling */
+    }
+    pthread_mutex_lock( &s->m );
+    *vp = s->value;
+    pthread_mutex_unlock( &s->m );
+    return 0;
+}
+
+int __charcoal_sem_post( __charcoal_sem_t *s )
+{
+    unsigned waiters = 0;
+    if( !s )
+    {
+        /* XXX error handling */
+    }
+    pthread_mutex_lock( &s->m );
+    /* XXX overflow */
+    waiters = s->waiters;
+    ++s->value;
+    pthread_mutex_unlock( &s->m );
+    if( s->waiters > 0 )
+    {
+        pthread_cond_signal( &s->c );
+    }
+    return 0;
+}
+
+int __charcoal_sem_trywait( __charcoal_sem_t *s )
+{
+    in rv;
+    if( !s )
+    {
+        /* XXX error handling */
+    }
+    pthread_mutex_lock( &s->m );
+    if( s->value > 0 )
+    {
+        --s->value;
+        rv = 0;
+    }
+    else
+    {
+        rv = -1;
+        errno = EAGAIN;
+    }
+    pthread_mutex_unlock( &s->m );
+    return rv;
+}
+
+int __charcoal_sem_wait( __charcoal_sem_t *s )
+{
+    if( !s )
+    {
+        /* XXX error handling */
+    }
+    pthread_mutex_lock( &s->m );
+    while( s->value < 1 )
+    {
+        ++s->waiters;
+        int pthread_cond_wait( &s->c, &s->m );
+        --s->waiters;
+    }
+    --s->value;
+    pthread_mutex_unlock( &s->m );
+    return 0;
+}
+
 void __charcoal_yield()
 {
     /* examine some stuff. */
@@ -25,6 +107,12 @@ void *__charcoal_start_activity( void *activity_stuff )
 
 /* static assert PTHREAD_STACK_MIN > sizeof activity */
 
+void __charcoal_switch_to( __charcoal_activity *act )
+{
+    sem_post( &act->sem );
+    sem_wait();
+    /* check if anybody should be deallocated (int sem_destroy(sem_t *);) */
+}
 
 /* I think the Charcoal type for activities and the C type need to be
  * different.  The Charcoal type should have the return type as a
@@ -53,6 +141,5 @@ __charcoal_activity_t *__charcoal_activate( void (*f)( void *args ), void *args 
 
     int rc = pthread_create( &act_info->_self, &attr, __charcoal_start_activity, act_info );
     int rc = pthread_attr_destroy( &attr );
-    sem_post( &act_info->sem );
-    sem_wait();
+    __charcoal_switch_to( act_info );
 }
