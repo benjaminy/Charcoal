@@ -5,10 +5,9 @@
 pre { display:inline }
 </style>
 </head>
-<body>
+<body style="background-color:darkgray">
 
-<div style="background-color:darkgray">
-<div style="background-color:seashell;:3em;width:35em;margin-left:auto;margin-right:auto">
+<div style="background-color:seashell;width:40em;margin-left:auto;margin-right:auto;padding:2em">
 
 <h1>Charcoal</h1>
 <p>Charcoal is a programming language project.  Charcoal's most
@@ -248,24 +247,57 @@ There are a few pieces to the Charcoal implementation:
 <h3>Activate</h3>
 
 <p>The core piece of new syntax added in Charcoal is the activate
-statement.  It looks like:</p>
+expression.  It looks like:</p>
 
-<pre>activate (x,y,z) <stmt_act></pre>
+<pre>activate (x,y,z) <statement or expression></pre>
 
-<p>When this statement executes it starts a new activity to evaluate
-"stmt_act", which can be an arbitrary statement.  If you want to get a
-handle on the new activity, you can use this alternate form:</p>
+<p>When this expression executes it starts a new activity to evaluate
+its body, which can be an arbitrary statement or expression.  The
+activate expression evaluates to a pointer to the new activity.</p>
 
-<pre>activate <lval_act> = (x,y,z) <stmt_act></pre>
-
-The list of variables has to do with how the new activity treats
+<p>The list of variables has to do with how the new activity treats
 variables local to whatever context the activation appears in.  By
 default the new activity gets references to such variables, which means
 that modifications made by one acitivity are visible to others.
 Sometimes this is not desireable.  For the variables explicitly listed
-in the activation statement, the activity gets its own copy whose
+in the activation expression, the activity gets its own copy whose
 initial value is whatever the value of the variable was at the time the
-activation statement is executed.
+activation expression is executed.</p>
+
+<table border=1><tbody>
+<tr><td valign="top">This</td><td valign="top">Translates to this</td></tr>
+<tr>
+<td width="50%" valign="top"><span style="font-family:monospace">activate (x,...,z) &lt;expression&gt;</span></td>
+<td width="50%" valign="top"><span style="font-family:monospace">activate (x,...,z) return &lt;expression&gt;</span></td>
+</tr>
+<tr>
+<td colspan="2"><em>Explanation</em>: Activating an expression is
+defined to be the same as activating a statement that returns that
+expression.</td>
+</tr>
+<tr>
+<td valign="top">Within an activity ...<br>
+    <span style="font-family:monospace">return &lt;expression&gt;</span></td>
+<td valign="top"><span style="font-family:monospace">{ self->rv = &lt;expression&gt;;<br>
+return; }</span></td>
+</tr>
+<tr>
+<td colspan="2"><em>Explanation</em>: The activated code gets "lifted"
+into its own implicitly defined function.  The return value from an
+activity needs to get saved in the activity data structure so that other
+activities can query it later.  The implicit function always returns
+void.</td>
+</tr>
+<tr>
+<td valign="top"><span style="font-family:monospace">activate (x,...,z) &lt;stmt&gt;</span></td>
+<td valign="top"><span style="font-family:monospace">args.a = &a; ... args.c = &c;<br>
+args.x = x; ... args.z = z;<br>
+activate {<br>
+&nbsp;&nbsp;x = args.x; ... z = args.z;<br>
+&nbsp;&nbsp;aptr = args.a; ... cptr = args.c;<br>
+&nbsp;&nbsp;&lt;stmt&gt;[*aptr/a,...,*cptr/c]<br>}</span></td>
+</tr>
+</tbody></table>
 
 <h3>Yield Insertion</h3>
 
@@ -375,7 +407,6 @@ threads meant for running syscalls.  When Pin intercepts a syscall, it
 "moves" the call over to one of the idle threads and lets the scheduler
 switch over to another activity on the calling thread.
 
-</div>
 </div>
 
 </body>
