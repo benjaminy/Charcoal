@@ -1,265 +1,58 @@
-/*
- * TetraStak
- */
 
-struct _TET_MACHINE
+void __charcoal_yield()
 {
-};
-
-struct _TET_PROCESS
-{
-    TET_MACHINE container;
-};
-
-struct _TET_THREAD
-{
-    TET_PROCESS container;
-};
-
-struct _TET_TASK
-{
-    TET_THREAD container;
-};
-
-typedef enum
-{
-    TET_CHANNEL_UNI,
-    TET_CHANNEL_BI,
-} TET_CHANNEL_KIND;
-
-struct _TET_CH_PORT
-{
-    /* NULL=unattached */
-    TET_TASK task;
-    size_t buffer_capacity, currently_buffered;
-}
-
-struct _TET_CHANNEL
-{
-    TET_CHANNEL_KIND kind;
-    /* For uni-directional channels: left=sender; right=receiver */
-    _TET_CH_PORT left, right;
-};
-
-static int pseudo_multithreaded_check(
-    OPA_int_t *iptr, OPA_ptr_t *ptr, void *thread )
-{
-    int ifoo = OPA_fetch_and_incr_int( iptr );
-    void *foo = OPA_cas_ptr( ptr, thread, self->thread );
-    if( foo != self->thread )
+    /* examine some stuff. */
+    if( 0 )
     {
+        /* invoke the scheduler */
     }
 }
 
-void send( channel c, void *data )
-{
-    int foo = OPA_fetch_and_incr_int( &c->working_int );
-    void *foo = OPA_cas_ptr( &c->cas_ptr, c->thread, self->thread );
-    {
-        /* multithreaded channel!!! */
-    }
-    else
-    {
-    }
-    if( c->buffered && !c->full )
-    {
-    }
-    else if( c->partner_waiting )
-    {
-        switch_to();
-    }
-    else
-    {
-        c->partner_waiting = true;
-        if( c->single_receiver )
-        {
-            switch_to( c->receiver );
-        }
-        block_self();
-        invoke_scheduler();
-    }
-}
-
-void receive( channel c )
+void __charcoal_activity_set_return_value( void *ret_val_ptr )
 {
 }
 
-/* activity version */
-int acquire( mutex m )
-{
-    /* XXX add thread stuff */
-    if( m->held > 0 )
-    {
-        if( m->owner == self )
-        {
-            ++m->held;
-            return;
-        }
-        else
-        {
-            char buffer;
-            buffered_channel ch, *next;
-            channel_init( ch, &buffer );
-            next = m->waiter;
-            m->waiter = &ch;
-            recv( &ch );
-            m->waiter = next;
-        }
-    }
-    m->held = 1;
-    m->owner = self;
-    return OK;
-}
-
-int release( mutex m )
-{
-    if( m->held < 1 || m->owner != self )
-    {
-        /* ERROR */
-    }
-    else
-    {
-        --m->held;
-        if( m->held < 1 )
-        {
-            if( m->waiter )
-            {
-                send( m->waiter, () );
-            }
-        }
-    }
-}
-
-void sem_inc( semaphore *s )
-{
-    if( pseudo_multithreaded_check(
-            OPA_int_t *iptr, OPA_ptr_t *ptr, void *thread ) )
-    {
-        system_semaphore_inc();
-    }
-    else
-    {
-        ++s->count;
-        if( s->waiters )
-        {
-            /* XXX */
-        }
-    }
-}
-
-void sem_dec()
-{
-    if( pseudo_multithreaded_check(
-            OPA_int_t *iptr, OPA_ptr_t *ptr, void *thread ) )
-    {
-        system_semaphore_inc();
-    }
-    else
-    {
-        if( s->count > 0 )
-        {
-            --s->count;
-        }
-        else
-        {
-            if( s->front )
-        }
-    }
-}
-
-void yield_debug( current_time )
-{
-    yield_delta = current_time - last_yield_time_stamp;
-    if( yield_delta < epsilon )
-    {
-        ++short_yield_deltas;
-    }
-    else if( yield_delta > time_resolution )
-    {
-        ++long_yield_deltas;
-    }
-    else
-    {
-        ++good_yield_deltas;
-    }
-    last_yield_time_stamp = current_time;
-}
-
-inline void yield( void )
-{
-    current_time = magic_machine_specific_thing;
-    if( debug )
-    {
-        yield_debug( current_time )
-    }
-    time_slice_not_expired = current_time < end_of_time_slice;
-    if( ( no_yield_depth > 0 )
-        || ( no_external_interrupt_pending
-             && time_slice_not_expired ) )
-    {
-        /* This path should be followed on the vast majority of yield
-         * invocations in most programs. */
-        return;
-    }
-    activity_scheduler();
-}
-
-void wait( event ev )
+void __charcoal_activity_get_return_value( __charcoal_activity_t *act, void *ret_val_ptr )
 {
 }
 
-void try_wait( event ev )
+void *__charcoal_start_activity( void *activity_stuff )
 {
+    __charcoal_activity_t _self;
+    activity_stuff->f( activity_stuff->args );
+    /* wait around until the activity should deallocate itself */
 }
 
-typedef struct
-{
-    enum{ ONCE_NOT_STARTED, ONCE_IN_PROGRESS, ONCE_DONE } status;
-    void *condition;
-    void *res;
-} once_t;
+/* static assert PTHREAD_STACK_MIN > sizeof activity */
 
-/* unnecessarily complicated */
-void *once_activity( once_t *o, void *(*proc)( void * ), void *arg )
+
+/* I think the Charcoal type for activities and the C type need to be
+ * different.  The Charcoal type should have the return type as a
+ * parameter. */
+__charcoal_activity_t *__charcoal_activate( void (*f)( void *args ), void *args )
 {
-    if( o->status == ONCE_NOT_STARTED )
+    size_t stack_size = ( 1000000 / PTHREAD_STACK_MIN ) * PTHREAD_STACK_MIN;
+    void *new_stack = malloc( stack_size );
+    if( NULL == new_stack )
     {
-        o->status = ONCE_IN_PROGRESS;
-        o->res = proc( arg );
-        o->status = ONCE_DONE;
-        send( done_channel, NULL );
+        exit( 1 );
     }
-    else if( o->status == ONCE_IN_PROGRESS )
-    {
-        send
-        wait( o->condition );
-    }
-    return o->res;
-}
+    __charcoal_activity_info_t *act_info = (__charcoal_activity_info_t *)new_stack;
+    act_info->f = f;
+    act_info->args = args;
+    sem_init( &act_info->sem, 0 );
+    new_stack += PTHREAD_STACK_MIN /* effective base of stack */;
+    pthread_attr_t attr;
+    int rc = pthread_attr_init( &attr );
+    int rc = pthread_attr_setstack( &attr, new_stack, stack_size - PTHREAD_STACK_MIN );
+    // int pthread_attr_setdetachstate ( &attr, int detachstate );
+    // int pthread_attr_setinheritsched( &attr, int inheritsched);
+    // int pthread_attr_setschedparam  ( &attr, const struct sched_param *restrict param);
+    // int pthread_attr_setschedpolicy ( &attr, int policy);
+    // int pthread_attr_setscope       ( &attr, int contentionscope);
 
-void *once( once_t *o, void *(*proc)( void ) )
-{
-    acquire( o->m );
-    if( o->inited )
-        return o->val;
-    o->val = proc();
-    o->inited = true;
-    release( o->m );
-    return o->val;
+    int rc = pthread_create( &act_info->_self, &attr, __charcoal_start_activity, act_info );
+    int rc = pthread_attr_destroy( &attr );
+    sem_post( &act_info->sem );
+    sem_wait();
 }
-
-/* If you _really_ don't want to acq/rel */
-void *once( once_t *o, void *(*proc)( void ) )
-{
-    if( o->inited )
-        return o->val;
-    acquire( o->m );
-    if( o->inited )
-        return o->val;
-    o->val = proc();
-    yield;
-    o->inited = true;
-    release( o->m );
-    return o->val;
-}
-

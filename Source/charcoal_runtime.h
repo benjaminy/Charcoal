@@ -1,3 +1,28 @@
+
+/* Exactly one of the following should be defined */
+#define __CHARCOAL_ACTIVITY_IMPL_PTHREAD
+#undef __CHARCOAL_ACTIVITY_IMPL_GCC_SPLIT_STACK
+#undef __CHARCOAL_ACTIVITY_IMPL_GCC_SPLIT_STACK
+
+/* when activities are implemented with threads, a charcoal thread is
+ * just a unique id */
+
+typedef struct
+{
+    pthread_mutex_t active;
+} __charcoal_thread_t;
+
+typedef struct
+{
+    void (*f)( void * );
+    void *args;
+    pthread_t _self;
+    __charcoal_thread_t *container;
+    sem_t sem;
+    char return_value[1];
+    /* The size of the return_value depends on the activity */
+} __charcoal_activity_t;
+
 /*
  * TetraStak Concurrency Library
  */

@@ -76,7 +76,21 @@ typedef struct _TET_MUTEX_PROCESS _TET_MUTEX_PROCESS, *TET_MUTEX_PROCESS;
 typedef struct _TET_MUTEX_THREAD  _TET_MUTEX_THREAD,  *TET_MUTEX_THREAD;
 typedef struct _TET_MUTEX_TASK    _TET_MUTEX_TASK,    *TET_MUTEX_TASK;
 
-typedef struct
+/* Charcoal primitives like mutexes, semaphores, barriers work with
+ * activities and threads, not processes or machines */
+
+/* These structs should be treated as opaque.  They're defined here so
+ * that user code can see what size they are. */
+struct mutex_t
+{
+    int x;
+};
+
+struct semaphore_t
 {
     channel
-} semaphore;
+};
+
+struct barrier_t
+{
+};
