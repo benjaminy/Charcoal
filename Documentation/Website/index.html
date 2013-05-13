@@ -264,51 +264,85 @@ in the activation expression, the activity gets its own copy whose
 initial value is whatever the value of the variable was at the time the
 activation expression is executed.</p>
 
-<table border=1><tbody>
-<tr><td valign="top">This</td><td valign="top">Translates to this</td></tr>
-<tr>
-<td width="50%" valign="top"><span style="font-family:monospace">activate (x,...,z) &lt;expression&gt;</span></td>
-<td width="50%" valign="top"><span style="font-family:monospace">activate (x,...,z) return &lt;expression&gt;</span></td>
-</tr>
-<tr>
-<td colspan="2"><em>Explanation</em>: Activating an expression is
-defined to be the same as activating a statement that returns that
-expression.</td>
-</tr>
-<tr>
-<td valign="top">Within an activity ...<br>
-    <span style="font-family:monospace">return &lt;expression&gt;</span></td>
-<td valign="top"><span style="font-family:monospace">{ self->rv = &lt;expression&gt;;<br>
-return; }</span></td>
-</tr>
-<tr>
-<td colspan="2"><em>Explanation</em>: The activated code gets "lifted"
-into its own implicitly defined function.  The return value from an
-activity needs to get saved in the activity data structure so that other
-activities can query it later.  The implicit function always returns
-void.</td>
-</tr>
-<tr>
-<td valign="top"><span style="font-family:monospace">activate (x,...,z) &lt;stmt&gt;</span></td>
-<td valign="top"><span style="font-family:monospace">args.a = &a; ... args.c = &c;<br>
+<p>Here are the steps used to translate activate expressions to plain
+C.</p>
+
+<h4>Expression to Statement</h4>
+
+<p>Activating an expression is defined to be the same as activating a
+statement that returns that expression.  After performing this
+transformation, all activate bodies are statements.</p>
+
+<div style="background-color:white;padding:0.3em;margin:0.3em">
+<span style="font-family:monospace">activate (x,...,z) &lt;expression&gt;</span>
+<br/><hr/>
+<span style="font-family:monospace">activate (x,...,z) return &lt;expression&gt;</span>
+</div>
+
+<h4>"Returning" from an Activity</h4>
+
+<p>A return statement in an activity is different from a "normal" return
+statement.  Returning from an activity has 2 effects: (1) the returned
+value is saved in the activity's backing memory; (2) the activity stops
+executing.  The returned value can then be accessed later by other
+activities.  This is especially common when using the "future" pattern.
+Exactly when an activity's backing memory gets deallocated is discussed
+elsewhere.</p>
+
+<p>(This translation only happens
+within <span style="font-family:monospace">activate</span> bodies.)</p>
+
+<div style="background-color:white;padding:0.3em;margin:0.3em">
+<span style="font-family:monospace">return &lt;expression&gt;</span>
+<br/><hr/>
+<span style="font-family:monospace">{ self->rv = &lt;expression&gt;;<br>
+&nbsp;&nbsp;exit_activity; }</span>
+</div>
+
+<h4>Variable Binding</h4>
+
+<div style="background-color:white;padding:0.3em;margin:0.3em">
+<span style="font-family:monospace">activate (x,...,z) &lt;stmt&gt;</span>
+<br/><hr/>
+<span style="font-family:monospace">args.a = &a; ... args.c = &c;<br>
 args.x = x; ... args.z = z;<br>
 activate {<br>
 &nbsp;&nbsp;x = args.x; ... z = args.z;<br>
 &nbsp;&nbsp;aptr = args.a; ... cptr = args.c;<br>
-&nbsp;&nbsp;&lt;stmt&gt;[*aptr/a,...,*cptr/c]<br>}</span></td>
-</tr>
-</tbody></table>
+&nbsp;&nbsp;&lt;stmt&gt;[*aptr/a,...,*cptr/c]<br>}</span>
+</div>
+
+<h4>Activate Body Extraction</h4>
+
+<p>In order to get to plain C, we extract the body of an activate
+statement out into a function.</p>
+
+<div style="background-color:white;padding:0.3em;margin:0.3em">
+<span style="font-family:monospace">activate &lt;statement&gt;</span>
+<br/><hr/>
+<span style="font-family:monospace">void __charcoal_activity_NNN( args )<br/>
+...<br/>
+&nbsp;&nbsp;__charcoal_activate( __charcoal_activity_NNN, args )</span>
+</div>
 
 <h3>Yield Insertion</h3>
 
 <p>The most novel part of Charcoal is that the language has implicit
-yield invocations scattered about hither and yon.  This is what gives
-Charcoal a nice hybrid between preemptive scheduling and cooperative
-scheduling.  The intention is that most of the time you just don't have
-to worry too much about either accidentally starving other activities
-(which can be a problem with pure coorperative models) or data being
-corrupted by other activities (which can be a problem with pure
-preemptive models).</p>
+yield invocations scattered about hither and yon.  This is what makes
+the scheduling of Charcoal's activities a hybrid of preemptive and
+cooperative.  They are cooperative in the sense that an activity must
+yield in order for control to transfer to another activity (and it's
+always possible to avoid/suppress yielding).  They are preemptive in the
+sense that <em>by default</em> yield is implicitly invoked before
+certain control flow transfers.  This gives activites a kind of "chunky"
+preemptiveness that we hope will be easier for application programmers
+to work with than conventional preemptive threads.</p>
+
+<p>The intention is that most of the time you just don't have to worry
+too much about either accidentally starving other activities (which can
+be a problem with pure coorperative models) or invariants being violated
+by another activity/thread interrupting at just the wrong time (which
+can be a problem with pure preemptive models).</p>
 
 <p>To be a little more precise, Charcoal has a yield on every
 "backwards" control flow transition.  Important side note: this is
@@ -320,6 +354,14 @@ call and return.</p>
 <p>Indirect calls (e.g. through a function pointer) are a somewhat
 tricky subject.  The easiest thing for the programmer is to assume that
 all indirect calls have yields on call and return by default.</p>
+
+<p>One huge difference between activities and conventional preemptive
+threads is that data races
+(<a href="http://blog.regehr.org/archives/490">ref 1</a>,
+<a href="http://static.usenix.org/event/hotpar11/tech/final_files/Boehm.pdf">ref
+2</a>) between activities simply do not exist.  Higher-level race
+conditions are still possible, of course, but not having to worry about
+low-level data races is a pretty big win.</p>
 
 <h3>Unyielding</h3>
 
@@ -344,6 +386,46 @@ the <span style="font-family:monospace">unyielding</span> modifier.
 It's easy to starve other activities by entering an unyielding
 statement, then executing a long-running loop or making a blocking
 syscall.</p>
+
+<div style="background-color:white;padding:0.3em;margin:0.3em">
+<span style="font-family:monospace">unyielding &lt;expression&gt;</span>
+<br/><hr/>
+<span style="font-family:monospace">
+(&nbsp;unyielding_enter,<br/>
+&nbsp;&nbsp;__charcoal_v_NNN = &lt;expression&gt;,<br/>
+&nbsp;&nbsp;unyielding_exit,<br/>
+&nbsp;&nbsp;__charcoal_v_NNN&nbsp;)</span>
+</div>
+
+<div style="background-color:white;padding:0.3em;margin:0.3em">
+<span style="font-family:monospace">unyielding &lt;statement&gt;</span>
+<br/><hr/>
+<span style="font-family:monospace">
+{&nbsp;unyielding_enter;<br/>
+&nbsp;&nbsp;&lt;statement&gt;;<br/>
+&nbsp;&nbsp;unyielding_exit&nbsp;}</span>
+</div>
+
+<div style="background-color:white;padding:0.3em;margin:0.3em">
+<span style="font-family:monospace">unyielding &lt;fun decl&gt; &lt;fun body&gt;</span>
+<br/><hr/>
+<span style="font-family:monospace">
+&lt;fun decl&gt;<br/>
+{&nbsp;unyielding_enter;
+&nbsp;&nbsp;&lt;fun body&gt;;<br/>
+&nbsp;&nbsp;unyielding_exit&nbsp;}</span>
+</div>
+
+In all three cases, the "body" of
+the <span style="font-family:monospace">unyielding</span> annotation
+must be scanned for control transfers that might escape the body
+(<span style="font-family:monospace">return</span>,
+<span style="font-family:monospace">break</span>,
+<span style="font-family:monospace">goto</span>, ...).
+An <span style="font-family:monospace">unyielding_exit</span> is
+inserted directly before such transfers.
+
+<h4>When Should Unyielding Be Used</h4>
 
 <h2>Charcoal Runtime Library</h2>
 
