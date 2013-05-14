@@ -3,45 +3,123 @@
 <title>Charcoal: System-level Reactive and Interaction Programming for the Masses</title>
 <style media="screen" type="text/css">
 pre { display:inline }
+.highlight {
+  background-color:white;
+  padding:0.3em;
+  margin:0.3em;
+}
 </style>
 </head>
 <body style="background-color:darkgray">
 
-<div style="background-color:seashell;width:40em;margin-left:auto;margin-right:auto;padding:2em">
+<div style="background-color:seashell;width:36em;margin-left:auto;margin-right:auto;padding:2em">
 
-<h1>Charcoal</h1>
+<h1>(1/XXX) Charcoal</h1>
 <p>Charcoal is a programming language project.  Charcoal's most
 prominent features are:</p>
 <ul>
-<li>Charcoal is a C dialect.
-  <ul>
-  <li>Mostly source-compatible with C
-  <li>Calling C from Charcoal and vice-versa works with minimal fuss
-  <li>Follows the "C philosophy"
-  </ul>
-<li>Charcoal has a new concurrency primitive called <em>activities</em>
-that are intended to support reactive and interactive programming better
-than the existing alternatives.
+  <li>Charcoal is a C dialect.
+    <ul>
+    <li>Mostly source-compatible with C
+    <li>Calling C from Charcoal and vice-versa works with minimal fuss
+    <li>Follows the "C philosophy"
+    </ul>
+  <li>Charcoal is designed to support concurrent/reactive/interactive
+  programming better than the existing alternatives.
 </ul>
-<p>Charcoal is currently in the very early research and development
-stages.  As of this writing there is no Charcoal implementation, though
-work has begun.</p>
+<p>Charcoal is currently in a very early stage of development.  As of
+this writing there is no Charcoal implementation, though work on one has
+begun.</p>
 
-<h1>First Example</h1>
+<p>Here is the short version of what makes Charcoal different and
+interesting:</p>
+
+<ol>
+  <li>Charcoal has a thread-like primitive called an <em>activity</em>.
+  Why a new concurreny primitive?  Let's look at what programmers use
+  today.
+  <li><em>Event handlers</em>
+  (<a href="http://en.wikipedia.org/wiki/Event_loop">1</a>,)
+  are very popular for user interface programming and are relatively
+  easy to understand, debug, etc., because each handler runs from start
+  to finish without interference from other handlers.  The big problem
+  with event handlers is that complex and/or long-running tasks have to
+  be manually broken up into lots of little separate handlers.  This is
+  a maintenance nightmare.  This problem is sometimes called "control
+  flow inversion" or "stack ripping".
+  <li><em>(Preemptive) Threads</em>
+  (<a href="https://computing.llnl.gov/tutorials/pthreads/">1</a>,
+   <a href="http://msdn.microsoft.com/en-us/library/windows/desktop/ms684847(v=vs.85).aspx">2</a>,
+   <a href="http://www.boost.org/doc/libs/1_53_0/doc/html/thread.html">3</a>,
+   <a href="http://en.cppreference.com/w/cpp/thread">4</a>,
+   <a href="http://www.javaworld.com/jw-04-1996/jw-04-threads.html">5</a>,
+   <a href="http://cml.cs.uchicago.edu/pages/cml.html">6</a>)
+  don't have the control flow inversion problem, but writing
+  robust/reliable multithreaded code is <em>extremely</em> hard.  There
+  is a whole cottage industry around trying to make it easier to
+  implement reliable multithreaded programs.  The core of why
+  multithreaded programming is hard is the combination of shared memory
+  and preemption.  It's way too easy for one thread to interrupt another
+  in the middle of a tricky sequence of operations and corrupt the state
+  of the program.
+  <li><em>Cooperative threads</em>
+  (<a href="http://msdn.microsoft.com/en-us/library/windows/desktop/ms682661(v=vs.85).aspx">1</a>,
+   <a href="http://dekorte.com/projects/opensource/libcoroutine/">2</a>,
+   <a href="https://code.google.com/p/libtask/">3</a>,
+   <a href="http://software.schmorp.de/pkg/libcoro.html">4</a>,
+   <a href="http://lua-users.org/wiki/MultiTasking">5</a>,
+   <a href="http://hackage.haskell.org/packages/archive/monad-coroutine/0.7.1/doc/html/Control-Monad-Coroutine.html">6</a>)
+  are a kind of hybrid between event handlers and threads.  Like event
+  handlers, only one cooperative thread can be running at a time.  The
+  running cooperative thread must invoke a <em>yield</em> primitive to
+  allow another to run.  This makes avoiding concurrency bugs easier.
+  Like (conventional) threads, multiple cooperative threads can exist
+  simultaneously, avoiding the control flow inversion problem of event
+  handlers.  The problem with cooperative threads is that getting the
+  yield invocations in just the right places is a tricky problem: too
+  many leads to concurrency bugs and too few leads to one cooperative
+  thread hogging the processor.
+  <li>Charcoal introduces a new concurrency framework called
+  an <em>activities</em> that is a hybrid between cooperative and
+  preemptive threads.  The basic idea is to start with cooperative
+  threads, but implicitly insert yield invocations relatively
+  frequently.  The result is a kind of "chunky" preemption that we
+  believe combines most of the software engineering benefits of the two
+  multithreading models.  Charcoal programmers should think of
+  activities as being mostly like preemptive threads, except getting
+  synchronization right is a lot easier.
+</ol>
+
+<p>Note: For the time being, the designers of Charcoal are not
+interested in processor parallelism at all.  Concurrency and parallelism
+are different, and Charcoal is about concurrency.</p>
+
+<h1>(2/XXX)First Example</h1>
 
 The first example is a multi-DNS lookup procedure.  This example is
 shamelessly stolen from the
 paper <a href="http://static.usenix.org/event/usenix07/tech/krohn.html">Events
-Can Make Sense</a> by Krohn, Kohler, and Kaashoek.
-<br>
-<pre>void multi_dns_seq( size_t N, char **names, struct addrinfo **infos )
-{
-    size_t i;
-    for( i = 0; i < N; ++i )
-    {
-        assert( 0 == getaddrinfo( names[i], NULL, NULL, &infos[i] ) );
-    }
-}</pre>
+Can Make Sense</a> by Krohn, Kohler, and Kaashoek.  The first version is
+plain C.<br/>
+<div class="highlight" style="font-family:monospace">
+<table><tbody><tr>
+<td align="right" valign="top">
+1:<br/>2:<br/>3:<br/>4:<br/>5:<br/>6:<br/>7:<br/>8:<br/>9:<br/>10:<br/></td>
+<td>&nbsp;</td>
+<td valign="top">
+<i>void</i> <b>multi_dns_seq</b>(<br/>
+<pre>    </pre><i>size_t</i> <b>N</b>, <i>char **</i><b>names</b>,
+ <b><u>struct</u></b> <i>addrinfo **</i><b>infos</b> )<br/>
+{<br/>
+<pre>    </pre><i>size_t</i> <b>i</b>;<br/>
+<pre>    </pre><b><u>for</u></b>( i = 0; i &lt; N; ++i )<br/>
+<pre>    </pre>{<br/>
+<pre>        </pre>assert( 0 == getaddrinfo(<br/>
+<pre>            </pre>names[i], NULL, NULL, &infos[i] ) );<br/>
+<pre>    </pre>}<br/>
+}
+</tr></tbody></table>
+</div>
 
 <p>In <span style="font-family:monospace">multi_dns_seq</span>, we
 sequentially perform <span style="font-family:monospace">N</span> DNS
@@ -52,43 +130,41 @@ past that.  If we have a non-trivial number of names to look up, we
 might be able to get through them faster by putting out several requests
 simultaneously.  Here's how we can do that in Charcoal.</p>
 
-<div style="font-family:monospace">
-<table>
-<tr>
+<div class="highlight" style="font-family:monospace">
+<table><tbody><tr>
 <td align="right" valign="top">
-1:<br>2:<br>3:<br>4:<br>5:<br>6:<br>7:<br>8:<br>9:<br>10:<br>
-11:<br>12:<br>13:<br>14:<br>15:<br>16:<br>17:</td>
+1:<br/>2:<br/>3:<br/>4:<br/>5:<br/>6:<br/>7:<br/>8:<br/>9:<br/>10:<br/>
+11:<br/>12:<br/>13:<br/>14:<br/>15:<br/>16:<br/>17:<br/>18:</td>
 <td>&nbsp;</td>
 <td valign="top">
-<i>void</i> <b>multi_dns_conc</b>(<br>
-<pre>    </pre><i>size_t</i> n, <i>char</i> **names, <b><u>struct</u></b> <i>addrinfo</i> **infos )<br>
-{<br>
-<pre>    </pre><i>size_t</i> <b>i</b>, <b>done</b> = 0;<br>
-<pre>    </pre><i>semaphore_t</i> <b>done_sem</b>;<br>
-<pre>    </pre>sem_init( &amp;done_sem, 0 );<br>
-<pre>    </pre><b><u>for</u></b>( i = 0; i &lt; n; ++i )<br>
-<pre>    </pre>{<br>
-<pre>        </pre><b><u>activate</u></b> ( i )<br>
-<pre>        </pre>{<br>
-<pre>            </pre>assert( 0 == getaddrinfo(<br>
-<pre>                </pre>names[i], NULL, NULL, &amp;infos[i] ) );<br>
-<pre>            </pre>++done;<br>
-<pre>            </pre><b><u>if</u></b>( done == n )<br>
-<pre>                </pre>sem_inc( &amp;done_sem );<br>
-<pre>        </pre>}<br>
-<pre>    </pre>}<br>
-<pre>    </pre>sem_dec( &amp;done_sem );<br>
+<i>void</i> <b>multi_dns_conc</b>(<br/>
+<pre>    </pre><i>size_t</i> <b>N</b>, <i>char</i> **<b>names</b>, <b><u>struct</u></b> <i>addrinfo</i> **<b>infos</b> )<br/>
+{<br/>
+<pre>    </pre><i>size_t</i> <b>i</b>, <b>done</b> = 0;<br/>
+<pre>    </pre><i>semaphore_t</i> <b>done_sem</b>;<br/>
+<pre>    </pre>sem_init( &amp;done_sem, 0 );<br/>
+<pre>    </pre><b><u>for</u></b>( i = 0; i &lt; N; ++i )<br/>
+<pre>    </pre>{<br/>
+<pre>        </pre><b><u>activate</u></b> ( i )<br/>
+<pre>        </pre>{<br/>
+<pre>            </pre>assert( 0 == getaddrinfo(<br/>
+<pre>                </pre>names[i], NULL, NULL, &amp;infos[i] ) );<br/>
+<pre>            </pre><b><u>if</u></b>( ( ++done ) == N )<br/>
+<pre>                </pre>sem_inc( &amp;done_sem );<br/>
+<pre>        </pre>}<br/>
+<pre>    </pre>}<br/>
+<pre>    </pre>sem_dec( &amp;done_sem );<br/>
 }
 </td>
-</tr>
-</table>
+</tr></tbody></table>
 </div>
 
 <p>The most significant change here is
-the <span style="font-family:monospace">activate</span> statement on
-line 7.  The <span style="font-family:monospace">activate</span>
-statement <em>activates</em> another statement (in this example, the
-block from line 8 to 13).  The activated statement runs in a
+the <span style="font-family:monospace">activate</span> expression that
+starts on line 9.
+The <span style="font-family:monospace">activate</span>
+expression <em>activates</em> another statement (in this example, the
+block from line 10 to 15).  The activated statement runs in a
 new <em>activity</em>, concurrently with the activating code.
 Activities are cooperative in the sense that at most one activity can be
 executing at a given time, and activities are never preempted to run
@@ -114,42 +190,41 @@ long, this might overwhelm the operating system or network.  We can
 limit the number of outstanding look ups with a few modest changes to
 the code:</p>
 
-<div style="font-family:monospace">
-<table>
-<tr>
+<div class="highlight" style="font-family:monospace">
+<table><tbody><tr>
 <td align="right" valign="top">
-1:<br>2:<br>3:<br>4:<br>5:<br>6:<br>7:<br>8:<br>9:<br>10:<br>
-11:<br>12:<br>13:<br>14:<br>15:<br>16:<br>17:</td>
+1:<br/>2:<br/>3:<br/>4:<br/>5:<br/>6:<br/>7:<br/>8:<br/>9:<br/>10:<br/>
+11:<br/>12:<br/>13:<br/>14:<br/>15:<br/>16:<br/>17:<br/>18:<br/>19:<br/>20:<br/>
+21:<br/>22:<br/>23:<br/>24:<br/>25:</td>
 <td>&nbsp;</td>
 <td valign="top">
-<b><u>#define</u></b> <b>DEFAULT_MULTI_DNS_LIMIT</b> 10<br>
-<br>
-<i>void</i> <b>multi_dns_conc</b>(<br>
-<pre>    </pre><i>size_t</i> n, <i>size_t</i> lim, <i>char</i> **names, <b><u>struct</u></b> <i>addrinfo</i> **infos )<br>
-{<br>
-<pre>    </pre><i>size_t</i> <b>i</b>, <b>done</b> = 0;<br>
-<pre>    </pre><i>semaphore_t</i> <b>done_sem</b>, <b>lim_sem</b>;<br>
-<pre>    </pre>sem_init( &amp;done_sem, 0 );<br>
-<pre>    </pre>sem_init( &amp;done_sem,<br>
-<pre>        </pre>lim &lt; 1 ? DEFAULT_MULTI_DNS_LIMIT : lim );<br>
-<pre>    </pre><b><u>for</u></b>( i = 0; i &lt; n; ++i )<br>
-<pre>    </pre>{<br>
-<pre>        </pre>sem_dec( &amp;lim_sem );<br>
-<pre>        </pre><b><u>activate</u></b> ( i )<br>
-<pre>        </pre>{<br>
-<pre>            </pre>assert( 0 == getaddrinfo(<br>
-<pre>                </pre>names[i], NULL, NULL, &amp;infos[i] ) );<br>
-<pre>            </pre>sem_inc( &amp;lim_sem );<br>
-<pre>            </pre>++done;<br>
-<pre>            </pre><b><u>if</u></b>( done == n )<br>
-<pre>                </pre>sem_inc( &amp;done_sem );<br>
-<pre>        </pre>}<br>
-<pre>    </pre>}<br>
-<pre>    </pre>sem_dec( &amp;done_sem );<br>
+<b><u>#define</u></b> <b>DEFAULT_MULTI_DNS_LIMIT</b> 10<br/>
+<br/>
+<i>void</i> <b>multi_dns_conc</b>(<br/>
+<pre>    </pre><i>size_t</i> <b>N</b>, <i>size_t</i> <b>lim</b>,<br/>
+<pre>    </pre><i>char</i> **<b>names</b>, <b><u>struct</u></b> <i>addrinfo</i> **<b>infos</b> )<br/>
+{<br/>
+<pre>    </pre><i>size_t</i> <b>i</b>, <b>done</b> = 0;<br/>
+<pre>    </pre><i>semaphore_t</i> <b>done_sem</b>, <b>lim_sem</b>;<br/>
+<pre>    </pre>sem_init( &amp;done_sem, 0 );<br/>
+<pre>    </pre>sem_init( &amp;lim_sem,<br/>
+<pre>        </pre>lim &lt; 1 ? DEFAULT_MULTI_DNS_LIMIT : lim );<br/>
+<pre>    </pre><b><u>for</u></b>( i = 0; i &lt; n; ++i )<br/>
+<pre>    </pre>{<br/>
+<pre>        </pre>sem_dec( &amp;lim_sem );<br/>
+<pre>        </pre><b><u>activate</u></b> ( i )<br/>
+<pre>        </pre>{<br/>
+<pre>            </pre>assert( 0 == getaddrinfo(<br/>
+<pre>                </pre>names[i], NULL, NULL, &amp;infos[i] ) );<br/>
+<pre>            </pre>sem_inc( &amp;lim_sem );<br/>
+<pre>            </pre><b><u>if</u></b>( ( ++done ) == n )<br/>
+<pre>                </pre>sem_inc( &amp;done_sem );<br/>
+<pre>        </pre>}<br/>
+<pre>    </pre>}<br/>
+<pre>    </pre>sem_dec( &amp;done_sem );<br/>
 }
 </td>
-</tr>
-</table>
+</tr></tbody></table>
 </div>
 
 <p>Here we added a new semaphore
@@ -164,11 +239,11 @@ using processes or threads is for the main code to create a pool of
 processes/threads/activities that would then carefully work their way
 through the list of names.  This worker pool pattern is less clear for
 applications like this, and is only prefereable if creating new activies
-is expensive.  In Charcoal, activating a statement is very cheap &emdash
+is expensive.  In Charcoal, activating a statement is very cheap &mdash;
 much closer to the cost of a procedure call than the cost of process
 creation.</p>
 
-<h1>Concurrency</h1>
+<h1>(3/XXX) Concurrency</h1>
 
 <p>Concurrency is a big topic.  In the most zoomed-out view concurrenct
 software has multiple "active" components &mdash; often
@@ -181,7 +256,7 @@ processor.</p>
 <p><a href="concurrency.html">Here</a> is my take on the next level of
 detail behind the concept of concurrency in software.</p>
 
-<h1>Reactive and Interactive Programming</h1>
+<h1>(4/XXX) Reactive and Interactive Programming</h1>
 
 <p>Often programmers and computer scientists think of programs as just
 big functions/procedures: There is a pile of input; the program runs; it
@@ -199,12 +274,12 @@ can be in progress simultaneously.  Tasks may react to external events,
 or may run on their own for a long time.  Tasks may share access to
 resources and/or pass messages to each other.)</p>
 
-<h2>Existing Approaches to Interactive Programming</h2>
+<h2>4.(1/2) Existing Approaches to Interactive Programming</h2>
 
 <a href="./big_four.html">My thoughts</a>.
 
 
-<h2>New in Charcoal: Activities</h2>
+<h2>4.(2/2) New in Charcoal: Activities</h2>
 
 <p>Charcoal introduces a new interactive programming primitive called
 activities.  Like cooperative threads are a kind of compromise between
@@ -215,11 +290,11 @@ reintroducing all the concurrency bug problems that come with true
 preemptive threads.</p>
 
 
-<h3>Activities Compared to Threads</h3>
+<h3>4.2.(1/3) Activities Compared to Threads</h3>
 
-<h3>Activities Compared to Cooperative Threads</h3>
+<h3>4.2.(2/3) Activities Compared to Cooperative Threads</h3>
 
-<h3>Activities Compared to Concurrency Primitive X</h3>
+<h3>4.2.(3/3) Activities Compared to Concurrency Primitive X</h3>
 
 Lots of variations on the "Big Four" (processes, events, threads,
 cooperative threads) have been proposed over the years.  If you would
@@ -273,10 +348,10 @@ C.</p>
 statement that returns that expression.  After performing this
 transformation, all activate bodies are statements.</p>
 
-<div style="background-color:white;padding:0.3em;margin:0.3em">
-<span style="font-family:monospace">activate (x,...,z) &lt;expression&gt;</span>
+<div class="highlight" style="font-family:monospace">
+<b><u>activate</b></u> (<b>x</b>,...,<b>z</b>) <i>&lt;expression&gt;</i>
 <br/><hr/>
-<span style="font-family:monospace">activate (x,...,z) return &lt;expression&gt;</span>
+<b><u>activate</b></u> (<b>x</b>,...,<b>z</b>) <b><u>return</b></u> <i>&lt;expression&gt;</i>
 </div>
 
 <h4>"Returning" from an Activity</h4>
@@ -292,24 +367,24 @@ elsewhere.</p>
 <p>(This translation only happens
 within <span style="font-family:monospace">activate</span> bodies.)</p>
 
-<div style="background-color:white;padding:0.3em;margin:0.3em">
-<span style="font-family:monospace">return &lt;expression&gt;</span>
+<div class="highlight" style="font-family:monospace">
+<b><u>return</b></u> <i>&lt;expression&gt;</i>
 <br/><hr/>
-<span style="font-family:monospace">{ self->rv = &lt;expression&gt;;<br>
-&nbsp;&nbsp;exit_activity; }</span>
+{&nbsp;self->rv = <i>&lt;expression&gt;</i>;<br/>
+&nbsp;&nbsp;exit_activity; }
 </div>
 
 <h4>Variable Binding</h4>
 
-<div style="background-color:white;padding:0.3em;margin:0.3em">
-<span style="font-family:monospace">activate (x,...,z) &lt;stmt&gt;</span>
+<div class="highlight" style="font-family:monospace">
+<b><u>activate</u></b> (<b>x</b>,...,<b>z</b>) <i>&lt;statement&gt;</i>
 <br/><hr/>
-<span style="font-family:monospace">args.a = &a; ... args.c = &c;<br>
-args.x = x; ... args.z = z;<br>
-activate {<br>
-&nbsp;&nbsp;x = args.x; ... z = args.z;<br>
-&nbsp;&nbsp;aptr = args.a; ... cptr = args.c;<br>
-&nbsp;&nbsp;&lt;stmt&gt;[*aptr/a,...,*cptr/c]<br>}</span>
+args.a = &a; ... args.c = &c;<br/>
+args.x = x; ... args.z = z;<br/>
+<b><u>activate</b></u> {<br/>
+&nbsp;&nbsp;x = args.x; ... z = args.z;<br/>
+&nbsp;&nbsp;aptr = args.a; ... cptr = args.c;<br/>
+&nbsp;&nbsp;<i>&lt;statement&gt;</i>[*aptr/a,...,*cptr/c]<br/>}
 </div>
 
 <h4>Activate Body Extraction</h4>
@@ -317,10 +392,11 @@ activate {<br>
 <p>In order to get to plain C, we extract the body of an activate
 statement out into a function.</p>
 
-<div style="background-color:white;padding:0.3em;margin:0.3em">
-<span style="font-family:monospace">activate &lt;statement&gt;</span>
+<div class="highlight" style="font-family:monospace">
+<b><u>activate</b></u> <i>&lt;statement&gt;</i>
 <br/><hr/>
-<span style="font-family:monospace">void __charcoal_activity_NNN( args )<br/>
+void __charcoal_activity_NNN( args )<br/>
+{ <i>&lt;statement&gt;</i> }<br/>
 ...<br/>
 &nbsp;&nbsp;__charcoal_activate( __charcoal_activity_NNN, args )</span>
 </div>
@@ -381,38 +457,29 @@ cases the effect is similar: the relevant statement/expression/procedure
 will execute without yielding control to another activity, even if it
 executes a yield statement.</p>
 
-<p>You need to be a little careful with
-the <span style="font-family:monospace">unyielding</span> modifier.
-It's easy to starve other activities by entering an unyielding
-statement, then executing a long-running loop or making a blocking
-syscall.</p>
-
-<div style="background-color:white;padding:0.3em;margin:0.3em">
-<span style="font-family:monospace">unyielding &lt;expression&gt;</span>
+<div class="highlight" style="font-family:monospace">
+<b><u>unyielding</u></b> <i>&lt;expression&gt;</i>
 <br/><hr/>
-<span style="font-family:monospace">
 (&nbsp;unyielding_enter,<br/>
-&nbsp;&nbsp;__charcoal_v_NNN = &lt;expression&gt;,<br/>
+&nbsp;&nbsp;__charcoal_v_NNN = <i>&lt;expression&gt;</i>,<br/>
 &nbsp;&nbsp;unyielding_exit,<br/>
-&nbsp;&nbsp;__charcoal_v_NNN&nbsp;)</span>
+&nbsp;&nbsp;__charcoal_v_NNN&nbsp;)
 </div>
 
-<div style="background-color:white;padding:0.3em;margin:0.3em">
-<span style="font-family:monospace">unyielding &lt;statement&gt;</span>
+<div class="highlight" style="font-family:monospace">
+<b><u>unyielding</b></u> <i>&lt;statement&gt;</i>
 <br/><hr/>
-<span style="font-family:monospace">
 {&nbsp;unyielding_enter;<br/>
-&nbsp;&nbsp;&lt;statement&gt;;<br/>
-&nbsp;&nbsp;unyielding_exit&nbsp;}</span>
+&nbsp;&nbsp;<i>&lt;statement&gt;</i>;<br/>
+&nbsp;&nbsp;unyielding_exit&nbsp;}
 </div>
 
-<div style="background-color:white;padding:0.3em;margin:0.3em">
-<span style="font-family:monospace">unyielding &lt;fun decl&gt; &lt;fun body&gt;</span>
+<div class="highlight" style="font-family:monospace">
+<b><u>unyielding</u></b> <i>&lt;fun decl&gt;</i> <i>&lt;fun body&gt;</i>
 <br/><hr/>
-<span style="font-family:monospace">
-&lt;fun decl&gt;<br/>
-{&nbsp;unyielding_enter;
-&nbsp;&nbsp;&lt;fun body&gt;;<br/>
+<i>&lt;fun decl&gt;</i><br/>
+{&nbsp;unyielding_enter;<br/>
+&nbsp;&nbsp;<i>&lt;fun body&gt;</i>;<br/>
 &nbsp;&nbsp;unyielding_exit&nbsp;}</span>
 </div>
 
@@ -425,7 +492,27 @@ must be scanned for control transfers that might escape the body
 An <span style="font-family:monospace">unyielding_exit</span> is
 inserted directly before such transfers.
 
-<h4>When Should Unyielding Be Used</h4>
+<h4>When Should Unyielding Be Used?</h4>
+
+<p>Unyielding can be used to make arbitrary chunks of code
+"activity-safe", but some care needs to be taken in its use.  A good
+example of its use is in a binary tree library.  Procedures that modify
+a tree can/should be marked unyielding.</p>
+
+<p>Probably most simple leaf procedures should be marked unyielding.<p>
+
+<p>You need to be a little careful with
+the <span style="font-family:monospace">unyielding</span> annotation.
+It's easy to starve other activities by entering an unyielding
+statement, then executing a long-running loop or making a blocking
+syscall.  The situation to be especially vigilant about is using
+unyielding on a block that usually executes reasonably quickly, but has
+a path that is both infrequently executed and long-running/blocking.</p>
+
+<p>Marking an expression/statement/procedure unyielding is very cheap.
+In the worst case you add an increment and decrement of a thread-local
+variable.  If the compiler can see nested unyielding statements, it can
+optimize them out pretty easily, too.</p>
 
 <h2>Charcoal Runtime Library</h2>
 
