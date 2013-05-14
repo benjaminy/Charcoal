@@ -12,7 +12,7 @@ pre { display:inline }
 </head>
 <body style="background-color:darkgray">
 
-<div style="background-color:seashell;width:36em;margin-left:auto;margin-right:auto;padding:2em">
+<div style="background-color:seashell;width:35em;margin-left:auto;margin-right:auto;padding:2em">
 
 <h1>(1/5) Charcoal</h1>
 <p>Charcoal is a programming language project.  Charcoal's most
@@ -94,7 +94,7 @@ interesting:</p>
 interested in processor parallelism at all.  Concurrency and parallelism
 are different, and Charcoal is about concurrency.</p>
 
-<h1>(2/5)First Example</h1>
+<h1>(2/5) First Example</h1>
 
 The first example is a multi-DNS lookup procedure.  This example is
 shamelessly stolen from the
@@ -257,16 +257,14 @@ creation.</p>
 
 <h1>(3/5) Concurrency</h1>
 
-<p>Concurrency is a big topic.  In the most zoomed-out view concurrent
-software has multiple "active" components &mdash; often
+<p>Concurrency is a big topic.  In the most zoomed-out view, concurrent
+software has multiple "active" components &mdash; sometimes
 called <em>processes</em> or <em>tasks</em> &mdash; that can make
 progress simultaneously.  The simultaneity can be physical (different
-tasks literally being executed simultaneously on separate processors) or
+tasks literally executing simultaneously on separate processors) or
 simulated by interleaving the execution of multiple tasks on a single
-processor.</p>
-
-<p><a href="concurrency.html">Here</a> is my take on the next level of
-detail behind the concept of concurrency in software.</p>
+processor.  <a href="concurrency.html">Here</a> is my take on some of
+the most important concepts that fit under the concurreny umbrella.</p>
 
 <h1>(4/5) Reactive and Interactive Programming</h1>
 
@@ -323,7 +321,7 @@ There are a few pieces to the Charcoal implementation:
 <li>System call interception
 </ul>
 
-<h2>Charcoal to C Translation</h2>
+<h2>5.(1/3) Charcoal to C Translation</h2>
 
 <ul>
 <li>activate extraction
@@ -331,7 +329,7 @@ There are a few pieces to the Charcoal implementation:
 <li>unyielding translation
 </ul>
 
-<h3>Activate</h3>
+<h3>5.1.(1/3) Activate</h3>
 
 <p>The core piece of new syntax added in Charcoal is the activate
 expression.  It looks like:</p>
@@ -413,7 +411,7 @@ void __charcoal_activity_NNN( args )<br/>
 &nbsp;&nbsp;__charcoal_activate( __charcoal_activity_NNN, args )</span>
 </div>
 
-<h3>Yield Insertion</h3>
+<h3>5.1.(2/3) Yield Insertion</h3>
 
 <p>The most novel part of Charcoal is that the language has implicit
 yield invocations scattered about hither and yon.  This is what makes
@@ -451,7 +449,7 @@ threads is that data races
 conditions are still possible, of course, but not having to worry about
 low-level data races is a pretty big win.</p>
 
-<h3>Unyielding</h3>
+<h3>5.1.(3/3) Unyielding</h3>
 
 <p>Charcoal comes with the usual set of synchronization primitives
 (mutexes, condition variables, semaphores, barriers), also a nice set of
@@ -526,7 +524,7 @@ In the worst case you add an increment and decrement of a thread-local
 variable.  If the compiler can see nested unyielding statements, it can
 optimize them out pretty easily, too.</p>
 
-<h2>Charcoal Runtime Library</h2>
+<h2>5.(2/3) Charcoal Runtime Library</h2>
 
 <ul>
 <li>yield
@@ -534,7 +532,7 @@ optimize them out pretty easily, too.</p>
 <li>stacks
 </ul>
 
-<h3>yield</h3>
+<h3>5.2.(1/3) yield</h3>
 
 Well-behaved Charcoal programs invoke yield quite often (just for a
 rough sense of scale, maybe a few times per microsecond on modern
@@ -556,13 +554,13 @@ direct cost (smaller than threads, but still not zero).  More
 importantly, context switching can have high indirect costs if different
 activities evict each others' working data from the caches.
 
-<h3>Scheduler</h3>
+<h3>5.2.(2/3) Scheduler</h3>
 
 Under programmer control?
 
 Interesting things about determinism?
 
-<h3>Stacks</h3>
+<h3>5.2.(3/3) Stacks</h3>
 
 One of the reasons threads are relatively expensive in most
 implementations is that a large amount of memory has to be pre-allocated
@@ -574,7 +572,7 @@ stacks</a>.  One could go really extreme and heap allocate every
 procedure call record individually.  I'm not aware of an easy way to do
 that today, so that's future work.
 
-<h2>System Call Interception</h2>
+<h2>5.(3/3) System Call Interception</h2>
 
 Charcoal programs cannot be allowed to directly make syscalls that might
 block for a long time, because multiple activities reside in a single
