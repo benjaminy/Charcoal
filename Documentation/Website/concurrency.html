@@ -2,26 +2,38 @@
 <head>
 <title>Concurrency</title>
 </head>
-<body>
+<body style="background-color:darkgray">
+
+<div style="background-color:seashell;width:35em;margin-left:auto;margin-right:auto;padding:2em">
+
+<h1>Concurrency</h1>
+
+<p>Concurrent software can be lumped into two main categories: software
+that uses concurrency for performance and software that uses concurrency
+for expressiveness.</p>
+
+<ul>
+<li><em>Performance</em> - There are multiple hardware resources of some
+sort (processors, network interfaces, machines, ...) and we want our
+program to have higher throughput and/or lower latency by using multiple
+resources simultaneously.
+<li><em>Expressiveness</em> - Some program patterns are intrisically
+concurrent (interactive programming <em>is</em> concurrenct
+programming), and some programs can be more elegantly expressed by using
+the right concurrency framework.
+</ul>
+
+<p>Of course a single application might use concurrency for both
+reasons, but I think it's important to keep in mind that these are two
+totally separate things.  The Charcoal project is principally focused on
+the expressiveness part of the picture.</p>
+
+
 
 <img src="./concurrency_concept_map.svg">
 
-<p>The two reasons to use concurrency in software are performance and
-expressiveness.</p>
 
-<ul>
-<li>Performance - There are multiple hardware resources of some sort
-(processors, network interfaces, machines, ...) and we want our program
-to have higher throughput and/or lower latency by using multiple
-resources simultaneously.
-<li>Expressiveness - Some program patterns are intrisically concurrent
-(interactive programming <em>is</em> concurrenct programming), and some
-programs can be more elegantly expressed by using the right concurrency
-framework.
-</ul>
 
-<p>The Charcoal project is principally about the expressiveness part of
-concurrency.</p>
 
 <h3>Events</h3>
 
@@ -189,5 +201,6 @@ Harder to manage shared resources.
 High overhead.
 
 
+</div>
 </body>
 </html>
