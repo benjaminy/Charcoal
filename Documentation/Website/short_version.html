@@ -1,0 +1,88 @@
+<html>
+<head>
+<title>Short Version</title>
+<style media="screen" type="text/css">
+pre { display:inline }
+.highlight {
+  background-color:white;
+  padding:0.3em;
+  margin:0.3em;
+}
+</style>
+</head>
+<body style="background-color:darkgray">
+
+<div style="background-color:seashell;width:35em;margin-left:auto;margin-right:auto;padding:2em">
+
+<h1>Short Version</h1>
+
+<ol>
+  <li>Charcoal has a thread-like primitive called an <em>activity</em>.
+  Why a new concurrency primitive?  Let's look at what programmers use
+  today.
+  <li><em>Event handlers</em>
+  (<a href="http://en.wikipedia.org/wiki/Event_loop">1</a>,)
+  are very popular for user interface programming and are relatively
+  easy to understand, debug, etc., because each handler runs from start
+  to finish without interference from other handlers.  The big problem
+  with event handlers is that complex and/or long-running tasks have to
+  be manually broken up into lots of little separate handlers.  This is
+  a maintenance nightmare.  This problem is sometimes called "control
+  flow inversion" or "stack ripping".
+  <li><em>(Preemptive) Threads</em>
+  (<a href="https://computing.llnl.gov/tutorials/pthreads/">1</a>,
+   <a href="http://msdn.microsoft.com/en-us/library/windows/desktop/ms684847(v=vs.85).aspx">2</a>,
+   <a href="http://www.boost.org/doc/libs/1_53_0/doc/html/thread.html">3</a>,
+   <a href="http://en.cppreference.com/w/cpp/thread">4</a>,
+   <a href="http://www.javaworld.com/jw-04-1996/jw-04-threads.html">5</a>,
+   <a href="http://cml.cs.uchicago.edu/pages/cml.html">6</a>)
+  don't have the control flow inversion problem, but writing
+  robust/reliable multithreaded code is <em>extremely</em> hard.  There
+  is a whole cottage industry around trying to make it easier to
+  implement reliable multithreaded programs.  The core of why
+  multithreaded programming is hard is the combination of shared memory
+  and preemption.  It's way too easy for one thread to interrupt another
+  in the middle of a tricky sequence of operations and corrupt the state
+  of the program.
+  <li><em>Cooperative threads</em>
+  (<a href="http://msdn.microsoft.com/en-us/library/windows/desktop/ms682661(v=vs.85).aspx">1</a>,
+   <a href="http://dekorte.com/projects/opensource/libcoroutine/">2</a>,
+   <a href="https://code.google.com/p/libtask/">3</a>,
+   <a href="http://software.schmorp.de/pkg/libcoro.html">4</a>,
+   <a href="http://lua-users.org/wiki/MultiTasking">5</a>,
+   <a href="http://hackage.haskell.org/packages/archive/monad-coroutine/0.7.1/doc/html/Control-Monad-Coroutine.html">6</a>)
+  are a kind of hybrid between event handlers and threads.  Like event
+  handlers, only one cooperative thread can be running at a time.  The
+  running cooperative thread must invoke a <em>yield</em> primitive to
+  allow another to run.  This makes avoiding concurrency bugs easier.
+  Like (conventional) threads, multiple cooperative threads can exist
+  simultaneously, avoiding the control flow inversion problem of event
+  handlers.  The problem with cooperative threads is that getting the
+  yield invocations in just the right places is a tricky problem: too
+  many leads to concurrency bugs and too few leads to one cooperative
+  thread hogging the processor.
+  <li>Charcoal introduces a new concurrency framework called
+  <em>activities</em> that is a hybrid between cooperative and
+  preemptive threads.  From an implementer's perspective the idea is to
+  start with cooperative threads, but implicitly insert yield
+  invocations relatively frequently.  The result is a kind of "chunky"
+  preemption that we believe combines most of the software engineering
+  benefits of the two multithreading models.  From a programmer's
+  perspective activities behave mostly like preemptive threads, except
+  getting the synchronization right is a lot easier.
+  <li>Q: Why a new language?  Can't activities be implemented as a
+  library?<br/>
+  A: Implementing activities requires subtly redefining basic control
+  flow mechanisms like loops and procedure calls.  This means activities
+  cannot be implemented just as a library.  Since a new language is
+  needed anyway, I took the opportunity to add some nice syntactic sugar
+  for writing concurrent software.
+</ol>
+
+<p>Note: For the time being, the designers of Charcoal are not
+interested in processor parallelism at all.  Concurrency and parallelism
+are different, and Charcoal is about concurrency.</p>
+
+</div>
+</body>
+</html>
