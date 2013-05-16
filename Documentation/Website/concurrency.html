@@ -1,213 +1,170 @@
 <html>
 <head>
 <title>Concurrency</title>
+<style media="screen" type="text/css">
+pre { display:inline }
+.highlight {
+  background-color:white;
+  padding:0.3em;
+  margin:0.3em;
+}
+</style>
 </head>
 <body style="background-color:darkgray">
 
 <div style="background-color:seashell;width:35em;margin-left:auto;margin-right:auto;padding:2em">
 
-<h1>Concurrency</h1>
+<p>Concurrency is a big topic.  In the most zoomed-out view, concurrent
+software has multiple "active" components &mdash; sometimes
+called <em>processes</em> or <em>tasks</em> &mdash; that can make
+progress simultaneously.  The simultaneity can be physical (different
+tasks literally executing simultaneously on separate processors) or
+simulated by interleaving the execution of multiple tasks on a single
+processor.  <a href="concurrency.html">Here</a> is my take on some of
+the most important concepts that fit under the concurreny umbrella.</p>
 
-<p>Concurrent software can be lumped into two main categories: software
-that uses concurrency for performance and software that uses concurrency
-for expressiveness.</p>
+<h1>(1/3) Concurrency</h1>
+
+<p>The reasons for making concurrent software can be lumped into two
+main categories: performance and expressiveness.</p>
 
 <ul>
 <li><em>Performance</em> - There are multiple hardware resources of some
 sort (processors, network interfaces, machines, ...) and we want our
-program to have higher throughput and/or lower latency by using multiple
-resources simultaneously.
+software to use them simultaneously to improve some performance metric
+(total run time, throughput, latency, whatever).
 <li><em>Expressiveness</em> - Some program patterns are intrisically
 concurrent (interactive programming <em>is</em> concurrenct
 programming), and some programs can be more elegantly expressed by using
 the right concurrency framework.
 </ul>
 
-<p>Of course a single application might use concurrency for both
+<p>Of course a single application might use concurrency for many
 reasons, but I think it's important to keep in mind that these are two
 totally separate things.  The Charcoal project is principally focused on
 the expressiveness part of the picture.</p>
 
-
+<div class="highlight">
 <table>
-<caption align="bottom">caption text</caption>
+<caption align="bottom"><hr/>Figure 1: A map of the primary reasons for
+using concurrency in software.  The check marks indicate the concepts
+that the Charcoal project most directly addresses.</caption>
 <tbody><tr><td>
-<embed src="./concurrency_concept_map.svg"/>
+<object data="./concurrency_concept_map.svg" type="image/svg+xml"></object>
 </td></tr></tbody>
 </table>
+</div>
 
+<a id="expressiveness"/>
+<h1>(2/3) Expressiveness</h1>
 
+The Charcoal project is primarily about the expressiveness side of the
+concurrency concept map.  These concepts are about using concurrency in
+software design not for performance benefits, but because it just makes
+more sense that way.
 
+<a id="reactive"/>
+<h2>2.(1/3) Reactive/Interactive</h2>
 
+<p>All software interacts with the real world in some way.  Some
+applications have a relatively simple interactions pattern: read some
+input, compute for a while, write some output.  Compilers are a good
+example of software that is quite complex, but mostly adheres to this
+simple interaction with the outside world.</p>
 
-<h3>Events</h3>
+<p>Many applications, including most that people directly use on a
+regular basis, have more complex interactions with the world.  Take a
+spreadsheet as an example.  The application must be ready to react to
+keyboard and mouse input from the user at any time.  Recalculating the
+spreadsheet values may take a relatively long time for large documents,
+and this process should be interruptable.  Also various background tasks
+are probably happening periodically, like auto-saving backup copies and
+checking formulas for possible errors.</p>
 
-<p>In the event model, application code registers event handlers with an
-event dispatcher.  Event handlers are composed of a procedure (function,
-method, subroutine, whatever) plus some condition under which that
-procedure should be run.  The event dispatcher monitors the environment
-for events and runs handlers as appropriate.</p>
+<p>Building reactive/interactive software is different.</p>
 
-<h4>Strengths of Events</h4>
+<a id="realtime"/>
+<h3>2.1.(1/2) Real-time</h3>
 
-<p>The primary strength of the event model is that coordination between
-tasks (i.e. event handlers) is simple.  Each handler runs to completion
-before the next handler can run.  The programmer does not need to worry
-about a handler being interrupted in the middle of some tricky
-operation.  This makes the management of shared resources much easier
-than with other concurrency models.</p>
+<p>A special case of interactive software is those that have real-time
+constraints (hard or soft).  This category includes multimedia software,
+games, embedded systems controllers.</p>
 
-<p>The event model is very widely used.  All popular GUI frameworks use
-the event model for defining the behavior of mouse clicks and key
-presses.  Many networking frameworks use the event model for handling
-incoming messages.  I believe that the popularity of the event model is
-primarily a result of the (relative) ease with which shared resources
-can be managemed.</p>
+<a id="disk"/>
+<h3>2.1.(2/2) Disk/Network/UI</h3>
 
-<p>Implementations of the event model tend to have very low overhead in
-terms of memory wasted in the representation of task state and time
-wasted in scheduling tasks.</p>
+<p>One common and simple concurrency pattern in GUI applications is
+starting long-running I/O operations, like disk or network reads,
+while remaining responsive to user input.</p>
 
-<p>Event dispatchers can be implemented in user code in any general
-purpose programming language.  There are very few tricky implementation
-issues to worry about.</p>
+<p>This category is also connected to the concurrency part of the map,
+because some software has high disk or network requirements and needs to
+overlap many accesses in order to perform well.</p>
 
-<h4>Weaknesses of Events</h4>
+<a id="algorithmic"/>
+<h2>2.(2/3) Algorithmic</h2>
 
-<p>The event model works best for simple tasks that do a small amount of
-computational work in response to a single event.  A good example is the
-handling of a key press in a text editor.  The event handler just has to
-add the character to the document data structure and maybe indicate that
-the screen should be redrawn.</p>
+<p>Some algorithms look "procedural/functional" from the outside, but
+can still use concurrency to good effect internally.  A classic example
+is programming language parsing.  Scanner; parser.</p>
 
-<p>Not all tasks are so simple, though.  If a task needs to make several
-interactions with the environment in sequence or perform a long-running
-computation, things get messy with the event model.  If a handler does
-not return to the dispatcher quickly, the application will become
-unresponsive, which is generally unacceptable.</p>
+<a id="isolation"/>
+<h2>2.(3/3) Isolation</h2>
 
-<p>Consequently, the application programmer must manually break complex
-and long-running tasks up into a sequence of "smaller" event handlers.
-This process makes the control flow of the application hard to follow.
-Even worse, it forces the programmer to explicitly encode control flow
-information as data that can be passed from one handler to the next.
-This process of breaking up tasks into pieces is called control flow
-inversion or stack ripping.  As the violent terminology suggests, stack
-ripping makes code comprehension and maintenance much harder.</p>
+<p>Sometimes we want software components to be isolated from each other
+in one way or another.  A couple of classic examples:</p>
 
-<p>Event handlers cannot be run in parallel on multiple processors.  I
-do not consider this to be a significant issue, because
-reactive/interactive programming and parallel programming are two
-entirely different topics.  I think it is unfortunate that they get
-mushed together so often.</p>
+<ul>
+<li><em>Plugins</em>.  Many applications have plugins.  Often we want
+the core application to be isolated from the plugins, in case the plugin
+does something bad.
+<li><em>Long-running Tasks</em>.  Often in GUI applications, many tasks
+can be taken care of very quickly, but a few might run for a long time.
+We need to isolate the long-running tasks in some way to ensure that the
+application remains responsive.
+</ul>
 
-<h3>Threads (Preemptive)</h3>
+<a id="performance"/>
+<h1>(3/3) Performance</h1>
 
-<p>Threads are tasks that share memory (i.e. exist within a single
-process) and can be run simultaneously (i.e. in parallel).  If the
-number of processors available is smaller than the number of threads
-that want to run, the system is responsible for interleaving the
-execution of the threads.  In order to accomplish this interleaving, the
-system reserves the right to interrupt (or preempt) a thread at any
-time.
+Some applications 
 
-<p>A couple of popular multithreading interfaces are
-<a href="http://en.wikipedia.org/wiki/POSIX_Threads">Posix</a> and 
-<a href="http://msdn.microsoft.com/en-us/library/windows/desktop/ms684847(v=vs.85).aspx">Windows
-(win32)</a>.</p>
+<a id="processor"/>
+<h2>3.(1/3) Processor Parallelism</h2>
 
-<h4>Strengths of Threads</h4>
+For CPU-bound tasks.
 
-<p>In contract to event handlers, threads that run for a long time or
-wait for some input from the environment do not block the progress of
-other threads.  This is huge, because it avoids the stack ripping
-nonsense that is necessary in the event model.  Tasks can be written
-with normal control flow (loops, calls, exceptions, etc).</p>
+<a id="multi"/>
+<h3>3.1.(1/3) Multi-processors</h3>
 
-<p>As I have mentioned, I am not terribly concerned with processor
-parallelism, but threads can be run in parallel.</p>
+Multi-cores and such.
 
-<h4>Weaknesses of Threads</h4>
+<a id="gpu"/>
+<h3>3.1.(2/3) Accelerators (GPU/FPGA)</h3>
 
-<p>By far the most important weakness of threads is that they make it
-very easy to introduce concurrency bugs like race conditions and
-deadlocks.  Specifically the combination of by-default shared memory and
-preemption makes it extremely hard to guarantee that threads do not step
-on each others' toes through reads and writes to shared memory.</p>
+Turbo boost.
 
-<p>Most thread model implementations introduce a huge source of
-nondeterminism in the form of the thread scheduler.  This tends to make
-it extra hard to debug concurrency problems with threads.  This topic
-has been the subject of intense research over the decades and I am not
-aware of any really satisfactory solutions yet.</p>
+<h3>3.1.(3/3) Distributed</h3>
 
-<p>Threads tend to have relatively high memory overhead.  Most popular
-threading implementations force application code to pre-allocate a large
-amount of stack space for each thread.  Context switching between
-threads typically requires some interaction with the operating system
-which adds some time overhead.</p>
+<a href="#distributed">Here</a>
 
-<h3>Cooperative Threads</h3>
+<a id="system"/>
+<h2>3.(2/3) System Parallelism</h2>
 
-<p>Cooperative threads are a kind of compromise between events and
-(preemptive) threads.  Like threads, multiple cooperative threads can be
-in progress simultaneously.  Like events, only one cooperative thread
-can be running at any particular time.  Cooperative threads run until
-they invoke a special <em>yield</em> primitive.  Within a collection of
-cooperating threads, one cannot be interrupted to run another.</p>
+For I/O-bound tasks.
 
-<p>Cooperative threads (or slight variations on the theme) go by lots of
-different names, including
-<a href="http://en.wikipedia.org/wiki/Coroutine">coroutines</a> and
-<a href="http://msdn.microsoft.com/en-us/library/windows/desktop/ms682661(v=vs.85).aspx">fibers</a>.</p>
+<h3>3.2.(1/2) Disk/Network/UI</h3>
 
-<h4>Strengths of Cooperative Threads</h4>
+<a href="#disk">Here</a>
 
-<p>It is generally much easier to avoid concurrency bugs with
-cooperative threads than preemptive threads because between yield
-invocations, cooperative threads do not need to worry about other
-threads interfering with their work.</p>
+<a id="distributed"/>
+<h3>3.2.(2/2) Distributed</h3>
 
-<p>Good implementations of cooperative threads solve the problem in the
-event model of one task waiting for some external action and blocking
-the progress of other tasks.  What I mean by good implementations is
-that some care needs to be taken with system primitives like "read", so
-that only the calling thread is blocked, not all threads.  This is
-doable, but requires a bit of fancy engineering.</p>
+Clusters.  Could be CPU-bound or IO/bound.
 
-<h4>Weaknesses of Cooperative Threads</h4>
+<h3>3.(3/3) Real-time</h3>
 
-<p>The most important weakness of cooperative threads has to do with
-long-running tasks.  With cooperative threads it is easy for such a task
-to starve other running tasks.  The main way to combat this problem is
-to add more yield invocations to give other threads a chance to run.
-However this leads to a subtle problem.  Yield is both a synchronization
-primitive and a scheduling primitive and these two things are in
-conflict.  Getting a "just right" balance of yield frequency can be
-tricky, esecially in the context of long-term code mantenance.</p>
-
-<p>Also cooperative threads cannot be run in parallel.  Like I said
-before, don't care much about this one.  There are a couple of research
-projects aimed at running cooperative threads in parallel.  Seems like a
-sort of strange goal to me.</p>
-
-<h3>Processes</h3>
-
-I'll throw processes in here, just because 
-
-<h4>Strengths of Processes</h4>
-
-Isolation.
-
-<h4>Weaknesses of Processes</h4>
-
-Harder to manage shared resources.
-
-High overhead.
-
-<a id="performance">
-
-FOOFOFO
+<a href="#realtime">Here</a>
 
 </div>
 </body>

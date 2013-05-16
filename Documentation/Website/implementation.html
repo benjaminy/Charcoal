@@ -14,7 +14,7 @@ pre { display:inline }
 
 <div style="background-color:seashell;width:35em;margin-left:auto;margin-right:auto;padding:2em">
 
-<h1>(5/5) Charcoal Implementation</h1>
+<h1>Charcoal Implementation</h1>
 
 There are a few pieces to the Charcoal implementation:
 
@@ -37,20 +37,30 @@ There are a few pieces to the Charcoal implementation:
 <p>The core piece of new syntax added in Charcoal is the activate
 expression.  It looks like:</p>
 
-<pre>activate (x,y,z) <statement or expression></pre>
+<div class="highlight" style="font-family:monospace">
+<b><u>activate</b></u> (<b>x</b>,...,<b>z</b>) <i>[&lt;expression&gt;|&lt;statement&gt;]</i>
+</div>
 
 <p>When this expression executes it starts a new activity to evaluate
-its body, which can be an arbitrary statement or expression.  The
-activate expression evaluates to a pointer to the new activity.</p>
+its body, which can be an arbitrary statement or expression.  The whole
+expression evaluates to a pointer to the new activity (which is an
+opaque type).</p>
 
-<p>The list of variables has to do with how the new activity treats
-variables local to whatever context the activation appears in.  By
-default the new activity gets references to such variables, which means
-that modifications made by one activity are visible to others.
-Sometimes this is not desirable.  For the variables explicitly listed
-in the activation expression, the activity gets its own copy whose
-initial value is whatever the value of the variable was at the time the
-activation expression is executed.</p>
+<p>The body of an activate expression is free to refer to local
+variables that are in scope wherever the expression appears.  The
+programmer has to choose whether the new activity gets these variables
+by-reference or by-value.  The default is by-reference; in this case,
+changes to the variable in either the "main" code or the activated code
+will be observed by the other.  The new activity gets its own private
+copy of the variables that appear in the list directly following the
+activate keyword.  The initial value of these by-value variables is
+whatever the corresponding variable's value was at the point when the
+activity was created.</p>
+
+<p>(In general, Charcoal programmers need to be very careful about
+accessing local variables from the enclosing scope in activities.  These
+variables are stack-allocated, so they'll go away as soon at the
+procedure call that created the activity returns.)</p>
 
 <p>Here are the steps used to translate activate expressions to plain
 C.</p>

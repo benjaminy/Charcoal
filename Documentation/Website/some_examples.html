@@ -14,13 +14,17 @@ pre { display:inline }
 
 <div style="background-color:seashell;width:35em;margin-left:auto;margin-right:auto;padding:2em">
 
-<h1>(2/5) First Example</h1>
+<h1>Some Examples</h1>
+
+<h2>Multi-DNS Lookup</h2>
 
 The first example is a multi-DNS lookup procedure.  This example is
 shamelessly stolen from the
 paper <a href="http://static.usenix.org/event/usenix07/tech/krohn.html">Events
-Can Make Sense</a> by Krohn, Kohler, and Kaashoek.  The first version is
-plain C.<br/>
+Can Make Sense</a> by Krohn, Kohler, and Kaashoek.
+
+<h3>Sequential Version</h3>
+
 <div class="highlight" style="font-family:monospace">
 <table><tbody><tr>
 <td align="right" valign="top">
@@ -46,7 +50,11 @@ sequentially perform <span style="font-family:monospace">N</span> DNS
 lookups and return the results
 in <span style="font-family:monospace">infos</span>.  Obviously the
 error handling is pretty bare-bones here; I encourage to try to look
-past that.  If we have a non-trivial number of names to look up, we
+past that.</p>
+
+<h3>Concurrent Version</h3>
+
+<p>If we have a non-trivial number of names to look up, we
 might be able to get through them faster by putting out several requests
 simultaneously.  Here's how we can do that in Charcoal.</p>
 
@@ -116,6 +124,20 @@ time.  That is why we put it in the by-value variable list.  The newly
 created activity gets its own copy of each of the variables in this
 list.</p>
 
+<p><a href="some_examples_mistake1.html">What if we leave out the
+synchronization
+with <span style="font-family:monospace">done_sem</span>?</a></p>
+
+<p><a href="some_examples_mistake2.html">What if we
+leave <span style="font-family:monospace">i</span> off the by-value
+variables list?</a></p>
+
+<p><a href="some_examples_mistake3.html">What if we add something like
+<span style="font-family:monospace">done</span> to the by-value
+variables list?</a></p>
+
+<h3>Concurrent Version with Simultaneous Lookup Limit</h3>
+
 <p>One weakness of our first concurrent multi-DNS lookup is that it
 tries to look up all the names simultaneously.  If the list of names is
 long, this might overwhelm the operating system or network.  We can
@@ -174,6 +196,8 @@ applications like this, and is only preferable if creating new activities
 is expensive.  In Charcoal, activating a statement is very cheap &mdash;
 much closer to the cost of a procedure call than the cost of process
 creation.</p>
+
+<h2>More Example Applications ...</h2>
 
 </div>
 </body>

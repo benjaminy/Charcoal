@@ -1,10 +1,38 @@
 <html>
 <head>
-<title>The Big Four: Events, Threads, Cooperative Threads, Processes</title>
+<title>Implementing Concurrent Software</title>
+<style media="screen" type="text/css">
+pre { display:inline }
+.highlight {
+  background-color:white;
+  padding:0.3em;
+  margin:0.3em;
+}
+</style>
 </head>
-<body>
+<body style="background-color:darkgray">
 
-<h3>Events</h3>
+<div style="background-color:seashell;width:35em;margin-left:auto;margin-right:auto;padding:2em">
+
+<h1>Implementing Concurrent Software</h1>
+
+<p>Often programmers and computer scientists think of programs as just
+big functions/procedures: There is a pile of input; the program runs; it
+produces a pile of output.  However, all programs are also to some
+degree reactive and/or interactive.  Some programs (e.g. compilers)
+emphasize the function/procedure aspect and some programs
+(e.g. operating systems/GUI applications) emphasize the
+reactive/interactive aspect.  The Charcoal project was motivated by the
+observation that existing approaches to interactive programming leave
+something to be desired.  For the record, those approaches are:</p>
+
+<p>(Vocabulary: In these documents we will informally refer to
+interactive programs as being composed of multiple <em>tasks</em> that
+can be in progress simultaneously.  Tasks may react to external events,
+or may run on their own for a long time.  Tasks may share access to
+resources and/or pass messages to each other.)</p>
+
+<h1>1 Event Handlers</h1>
 
 <p>In the event model, application code registers event handlers with an
 event dispatcher.  Event handlers are composed of a procedure (function,
@@ -198,6 +226,75 @@ Harder to manage shared resources.
 
 High overhead.
 
+<h2>4.(2/2) New in Charcoal: Activities</h2>
 
+<p>Charcoal introduces a new interactive programming primitive called
+activities.  Like cooperative threads are a kind of compromise between
+events and threads, activities are a kind of compromise between
+preemptive and cooperative threads.  The goal is to avoid the awkward
+problem of needing to put yields in just the right place, while not
+reintroducing all the concurrency bug problems that come with true
+preemptive threads.</p>
+
+
+<h3>4.2.(1/3) Activities Compared to Threads</h3>
+
+<h3>4.2.(2/3) Activities Compared to Cooperative Threads</h3>
+
+<h3>4.2.(3/3) Activities Compared to Goroutines</h3>
+
+<p>Goroutines are the primary concurrency primitive in the language Go,
+designed and implemented by some folks at Google.  Out of all the dozens
+of concurrency primitives that have been proposed and implemented over
+the years, I decided to compare activities to goroutines first, because
+they are both interesting hybrids of preemptive and cooperative threads
+(and Go is getting a fair amount of attention these days).</p>
+
+<p>Naturally, I think activities have some advantages compared to
+goroutines.</p>
+
+<p>Because goroutines can run in parallel, Go is (in principle) just as
+exposed to data races as threads in C/C++.  I believe the main
+counterpoint Go enthusiasts would make to this is that Go has a snazzy
+message passing system and well-written Go programs <em>shouldn't</em>
+use shared memory much/at all.  I do not believe there is anything in
+the language that actually prevents memory from being shared between
+goroutines (I'll have to revise this argument heavily if I'm wrong about
+that).</p>
+
+<p>I don't find this line of thinking compelling for two reasons:</p>
+
+<ul>
+<li>Some applications really need shared memory.  Of course shared
+memory can be simulated by a "server goroutine" pattern, but that can
+have non-trivial overhead and it obscures the logic of the application.
+<li>In my experience the nastiest data race bugs are not on memory
+locations that were designed to be shared, but rather little bits of
+global or static memory in some odd corner of a library that don't get
+accessed very often.  Expunging all such little bits of shared memory
+from a large application is hard; nearly impossible if there is a lot of
+old legacy code to contend with.
+</ul>
+
+<p>So in my view, shared memory is a fact of life that has to be dealt
+with.  Activities have the following really nice properties:</p>
+
+<ul>
+<li>There are no data races, because memory reads and writes are not
+allowed to "cross yield boudaries".  This really limits the damage that
+some errant bit of shared memory can do.
+<li>Making more complex sequences of shared memory reads and writes
+atomic is easy.
+</ul>
+
+<h3>4.2.(3/3) Activities Compared to Concurrency Primitive X</h3>
+
+Lots of variations on the "Big Four" (processes, events, threads,
+cooperative threads) have been proposed over the years.  If you would
+like to see my take on how activities compare to any of these, let me
+know.  I'll do my best to write something and update here.
+
+
+</div>
 </body>
 </html>
