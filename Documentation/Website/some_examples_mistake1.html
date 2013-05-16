@@ -1,0 +1,53 @@
+<html>
+<head>
+<title>Some Examples</title>
+<style media="screen" type="text/css">
+pre { display:inline }
+.highlight {
+  background-color:white;
+  padding:0.3em;
+  margin:0.3em;
+}
+</style>
+</head>
+<body style="background-color:darkgray">
+
+<div style="background-color:seashell;width:35em;margin-left:auto;margin-right:auto;padding:2em">
+
+<p>What would happen if we just activate the DNS lookup without adding
+the extra synchronization?</p>
+
+<div class="highlight" style="font-family:monospace">
+<table><tbody><tr>
+<td align="right" valign="top">
+1:<br/>2:<br/>3:<br/>4:<br/>5:<br/>6:<br/>7:<br/>8:<br/>9:<br/>10:<br/>
+11:<br/>12:<br/>13:</td>
+<td>&nbsp;</td>
+<td valign="top">
+<i>void</i> <b>multi_dns_conc</b>(<br/>
+<pre>    </pre><i>size_t</i> <b>N</b>, <i>char</i> **<b>names</b>, <b><u>struct</u></b> <i>addrinfo</i> **<b>infos</b> )<br/>
+{<br/>
+<pre>    </pre><i>size_t</i> <b>i</b><br/>
+<pre>    </pre><b><u>for</u></b>( i = 0; i &lt; N; ++i )<br/>
+<pre>    </pre>{<br/>
+<pre>        </pre><b><u>activate</u></b> ( i )<br/>
+<pre>        </pre>{<br/>
+<pre>            </pre>assert( 0 == getaddrinfo(<br/>
+<pre>                </pre>names[i], NULL, NULL, &amp;infos[i] ) );<br/>
+<pre>        </pre>}<br/>
+<pre>    </pre>}<br/>
+}
+</td>
+</tr></tbody></table>
+</div>
+
+<p>In the above code there is no way to know when all the DNS lookups
+are done.  Using a semaphore is not the only way to do this
+synchronization.  Alternatively, the "main" activity could explicitly
+wait for all of the lookup activities to finish.  But this code is
+definitely buggy.  The application can never be sure that the lookups
+are done.</p>
+
+</div>
+</body>
+</html>
