@@ -47,7 +47,7 @@ tasks (i.e. event handlers) is simple.  Each handler runs to completion
 before the next handler can run.  The programmer does not need to worry
 about a handler being interrupted in the middle of some tricky
 operation.  This makes the management of shared resources much easier
-than with other concurrency models.</p>
+  than with other concurrency models.</p>
 
 <p>The event model is very widely used.  All popular GUI frameworks use
 the event model for defining the behavior of mouse clicks and key
@@ -239,7 +239,152 @@ preemptive threads.</p>
 
 <h3>4.2.(1/3) Activities Compared to Threads</h3>
 
+<p>Probably the most obvious difference between threads and activities
+is one that I don't think is all that important in the end.  Threads can
+be run in parallel; activities can't.  That seems like a hugely
+consequential difference; how can I say it isn't important?  It's
+because I don't think threads should be used to parallelize most
+applications anyway, so it's not a uesful feature.  Parallelization
+should be done with task-oriented frameworks like Cilk, Microsoft's PPL,
+Intel's TBB, Apple's GCD, etc.</p>
+
+<p>So if we set asside parallelization (for example, just pretend we're
+running everything on a single-processor machine), what's the difference
+between threads and activities?  Threads are fully preemptive, whereas
+activities are only preemptive at a coarser granularity and it's easy to
+temporarily "disable interrupts" in a safe way with activities.</p>
+
+<p>Full preemption is the source of much evil for threads.  Optimizing
+compilers and modern architectures like to rearrange memory accesses in
+all kinds of funky ways, which is why data races are such a thorny
+problem for high-level language memory models
+(<a href="http://www.cs.umd.edu/~pugh/java/memoryModel/">Java</a>,
+<a href="http://www.hpl.hp.com/personal/Hans_Boehm/c++mm/">C/C++</a>).
+Between activities <em>there are no data races</em>.  The language
+forbids the implementation from making it appear that memory accesses
+have crossed yield boundaries.</p>
+
+<p>It may seem like the prohibition against memory accesses crossing
+yield boundaries would be a big performance problem, but I don't think
+it will be.  (This is all very speculative at the moment.)  For example,
+consider loop invariant code motion:</p>
+
+<div class="highlight" style="font-family:monospace">
+<table><tbody><tr>
+<td align="right" valign="top">
+1:<br/>2:<br/>3:<br/>4:<br/>5:<br/>6:<br/>7:<br/>8:<br/></td>
+<td>&nbsp;</td>
+<td valign="top">
+<i>void</i> <b>function_with_loop</b>( <i>int *</i><b>p</b>, <i>int *</i><b>q</b> )<br/>
+{<br/>
+<pre>    </pre><i>size_t</i> <b>i</b>;<br/>
+<pre>    </pre><b><u>for</u></b>( i = 0; i &lt; ...; ++i )<br/>
+<pre>    </pre>{<br/>
+<pre>        </pre>... *p ... *q = ...<br/>
+<pre>    </pre>}<br/>
+}
+</tr></tbody></table>
+</div>
+
+<p>If a compiler can satisfy itself
+that <span style="font-family:monospace">p</span>
+and <span style="font-family:monospace">q</span> aren't aliases for
+anything else accessed by this code, it would love to transform it
+into:</p>
+
+<div class="highlight" style="font-family:monospace">
+<table><tbody><tr>
+<td align="right" valign="top">
+1:<br/>2:<br/>3:<br/>4:<br/>5:<br/>6:<br/>7:<br/>8:<br/>9:<br/>10:</td>
+<td>&nbsp;</td>
+<td valign="top">
+<i>void</i> <b>function_with_loop</b>( <i>int *</i><b>p</b>, <i>int *</i><b>q</b> )<br/>
+{<br/>
+<pre>    </pre><i>size_t</i> <b>i</b>;<br/>
+<pre>    </pre><i>int</i> <b>pval</b> = *p, <b>qval</b> = *q;<br/>
+<pre>    </pre><b><u>for</u></b>( i = 0; i &lt; ...; ++i )<br/>
+<pre>    </pre>{<br/>
+<pre>        </pre>... pval ... qval = ...<br/>
+<pre>    </pre>}<br/>
+<pre>    </pre>*q = qval<br/>
+}
+</tr></tbody></table>
+</div>
+
+<p>But in Charcoal a for loop really looks like this:</p>
+
+<div class="highlight" style="font-family:monospace">
+<table><tbody><tr>
+<td align="right" valign="top">
+1:<br/>2:<br/>3:<br/>4:<br/>5:<br/>6:<br/>7:<br/>8:<br/>9:<br/>10:<br/>
+11:</td>
+<td>&nbsp;</td>
+<td valign="top">
+<i>void</i> <b>function_with_loop</b>( <i>int *</i><b>p</b>, <i>int *</i><b>q</b> )<br/>
+{<br/>
+<pre>    </pre><i>size_t</i> <b>i</b>;<br/>
+<pre>    </pre><i>int</i> <b>pval</b> = *p, <b>qval</b> = *q;<br/>
+<pre>    </pre><b><u>for_no_yield</u></b>( i = 0; i &lt; ...; ++i )<br/>
+<pre>    </pre>{<br/>
+<pre>        </pre>... pval ... qval = ...<br/>
+<pre>        </pre>yield;<br/>
+<pre>    </pre>}<br/>
+<pre>    </pre>*q = qval<br/>
+}
+</tr></tbody></table>
+</div>
+
+<p>So it seems like the loop invariant code motion optimization might
+violate the rules by making accesses
+to <span style="font-family:monospace">*p</span>
+and <span style="font-family:monospace">*q</span> appear to cross yield
+boundaries.  My hope is that the compiler will be able to see into yield
+and insert fix-up code like this:</p>
+
+<div class="highlight" style="font-family:monospace">
+<table><tbody><tr>
+<td align="right" valign="top">
+1:<br/>2:<br/>3:<br/>4:<br/>5:<br/>6:<br/>7:<br/>8:<br/>9:<br/>10:<br/>
+11:<br/>12:<br/>13:<br/>14:<br/>15:<br/>16:<br/>17:</td>
+<td>&nbsp;</td>
+<td valign="top">
+<i>void</i> <b>function_with_loop</b>( <i>int *</i><b>p</b>, <i>int *</i><b>q</b> )<br/>
+{<br/>
+<pre>    </pre><i>size_t</i> <b>i</b>;<br/>
+<pre>    </pre><i>int</i> <b>pval</b> = *p, <b>qval</b> = *q;<br/>
+<pre>    </pre><b><u>for_no_yield</u></b>( i = 0; i &lt; ...; ++i )<br/>
+<pre>    </pre>{<br/>
+<pre>        </pre>... pval ... qval = ...<br/>
+<pre>        </pre>if( "actually yield (very unlikely)" )<br/>
+<pre>        </pre>{<br/>
+<pre>            </pre>*q = qval;<br/>
+<pre>            </pre>actually_yield;<br/>
+<pre>            </pre>pval = *p;<br/>
+<pre>            </pre>qval = *q;<br/>
+<pre>        </pre>}<br/>
+<pre>    </pre>}<br/>
+<pre>    </pre>*q = qval;<br/>
+}
+</tr></tbody></table>
+</div>
+
+<p>This does add complexity to the compiler and inflates code size
+somewhat, but I don't think either of those costs should be huge.  It
+should have very little impact on run time, because actually yielding
+should happen so infrequently.</p>
+
+<p>Interesting side note: Charcoal actually does have threads, though
+most application code shouldn't use them most of the time.  In Charcoal
+threads are containers for activities, similarly to how processes are
+containers for threads in most modern systems.  Most activities should
+be running in a single thread, but there are some reasons for using
+multiple threads.  You need to be super careful.  Kind of like signal
+handling in normal C/C++.</p>
+
 <h3>4.2.(2/3) Activities Compared to Cooperative Threads</h3>
+
+<p>In terms of implementation, activities are quite similar to
+cooperative threads.</p>
 
 <h3>4.2.(3/3) Activities Compared to Goroutines</h3>
 
