@@ -81,13 +81,18 @@ int __charcoal_sem_wait( __charcoal_sem_t *s )
     return 0;
 }
 
-void __charcoal_yield()
+pthread_key_t selfish;
+
+int __charcoal_yield()
 {
-    /* examine some stuff. */
-    if( 0 )
+    in rv = 0;
+    __charcoal_thread_t *foo = (__charcoal_activity_t *)pthread_getspecific( selfish );
+    int unyield_depth = OPA_load_int( &foo->_opa_const );
+    if( 0 == unyield_depth )
     {
-        /* invoke the scheduler */
+        /* rv = invoke the scheduler */
     }
+    return rv;
 }
 
 void __charcoal_activity_set_return_value( void *ret_val_ptr )
@@ -142,4 +147,20 @@ __charcoal_activity_t *__charcoal_activate( void (*f)( void *args ), void *args 
     int rc = pthread_create( &act_info->_self, &attr, __charcoal_start_activity, act_info );
     int rc = pthread_attr_destroy( &attr );
     __charcoal_switch_to( act_info );
+}
+
+static void __charcoal_timer_handler( int sig, siginfo_t *siginfo, void *context )
+{
+	printf ("Sending PID: %ld, UID: %ld\n",
+			(long)siginfo->si_pid, (long)siginfo->si_uid);
+}
+ 
+
+void __charcoal_main( void )
+{
+    sigaction sigact;
+    sigact.sa_sigaction = __charcoal_timer_handler;
+    sigact.sa_flags = SA_SIGINFO;
+    assert( 0 == sigemptyset( &sigact.sa_mask ) );
+    assert( 0 == sigaction( SIGALRM, &sigact, NULL );
 }

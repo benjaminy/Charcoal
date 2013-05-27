@@ -10,6 +10,7 @@
 typedef struct
 {
     pthread_mutex_t active;
+    OPA_int_t unyield_depth; 
 } __charcoal_thread_t;
 
 typedef struct
