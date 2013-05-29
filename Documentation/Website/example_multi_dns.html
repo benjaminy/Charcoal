@@ -71,15 +71,15 @@ simultaneously.  Here's how we can do that in Charcoal.</p>
 <pre>    </pre>sem_init( &amp;done_sem, 0 );<br/>
 <pre>    </pre><b><u>for</u></b>( i = 0; i &lt; N; ++i )<br/>
 <pre>    </pre>{<br/>
-<pre>        </pre><b><u>activate</u></b> ( i )<br/>
+<pre>        </pre><b><u><span title="The 'activate' keyword" style="background-color:yellow">activate</span></u></b> <span title="The by-value variable list" style="background-color:yellow">( i )</span><br/>
 <pre>        </pre>{<br/>
 <pre>            </pre>assert( 0 == getaddrinfo(<br/>
 <pre>                </pre>names[i], NULL, NULL, &amp;infos[i] ) );<br/>
-<pre>            </pre><b><u>if</u></b>( ( ++done ) == N )<br/>
+<pre>            </pre><b><u>if</u></b>( ( <span title="Shared variable access" style="background-color:yellow">++done</span> ) == N )<br/>
 <pre>                </pre>sem_inc( &amp;done_sem );<br/>
 <pre>        </pre>}<br/>
 <pre>    </pre>}<br/>
-<pre>    </pre>sem_dec( &amp;done_sem );<br/>
+<pre>    </pre><span title="Wait for the done signal" style="background-color:yellow">sem_dec( &amp;done_sem )</span>;<br/>
 }
 </td>
 </tr></tbody></table>

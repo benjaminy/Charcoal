@@ -1,6 +1,6 @@
 <html>
 <head>
-<title>Short Version</title>
+<title>Why Charcoal?</title>
 <style media="screen" type="text/css">
 pre { display:inline }
 .highlight {
@@ -14,22 +14,26 @@ pre { display:inline }
 
 <div style="background-color:seashell;width:35em;margin-left:auto;margin-right:auto;padding:2em">
 
-<h1>Short Version</h1>
+<h1>Why Charcoal?</h1>
+<h3>... in 100 lines or less</h3>
 
 <ul>
   <li>Charcoal has a thread-like primitive called an <em>activity</em>.
-  Why a new concurrency primitive?  Let's look at what programmers use
-  today.
+  We believe that it will be easier to build robust concurrent
+  applications with activities than existing alternatives.  Why a new
+  concurrency primitive?  Let's look at what programmers use today.
   <ul>
     <li><em>Event handlers</em>
-    (<a href="http://en.wikipedia.org/wiki/Event_loop">1</a>,) are very
+    (<a href="http://en.wikipedia.org/wiki/Event_loop">1</a>,
+     <a href="http://msdn.microsoft.com/en-us/library/windows/desktop/dd377532(v=vs.85).aspx">2</a>,
+     <a href="http://docs.wxwidgets.org/2.8/wx_eventhandlingoverview.html">3</a>, ) are very
     popular for user interface programming and are relatively easy to
     understand, debug, etc., because each handler runs from start to
     finish without interference from other handlers.  The big problem
     with event handlers is that complex and/or long-running tasks have
     to be manually broken up into lots of little separate handlers.
     This is a maintenance nightmare.  This problem is sometimes called
-    "control flow inversion" or "stack ripping".
+    "<a href="http://martinfowler.com/bliki/InversionOfControl.html">control flow inversion</a>" or "<a href="http://bryanpendleton.blogspot.com/2011/01/stack-ripping.html">stack ripping</a>".
     <li><em>(Preemptive) Threads</em>
     (<a href="https://computing.llnl.gov/tutorials/pthreads/">1</a>,
      <a href="http://msdn.microsoft.com/en-us/library/windows/desktop/ms684847(v=vs.85).aspx">2</a>,
@@ -73,7 +77,7 @@ pre { display:inline }
   preemption that we believe combines most of the software engineering
   benefits of the two multithreading models.  From a programmer's
   perspective activities behave mostly like preemptive threads, except
-  that getting the synchronization right is a lot easier.
+  that getting the synchronization "right" is easier.
   <li>Q: Why a new language?  Can't activities be implemented as a
   library?<br/>
   A: Implementing activities requires subtly redefining basic control
@@ -91,6 +95,8 @@ pre { display:inline }
 <p>Note: For the time being, the designers of Charcoal are not
 interested in processor parallelism at all.  Concurrency and parallelism
 are different, and Charcoal is about concurrency.</p>
+
+<div><hr/>&copy; Copyright 2013 <a href="mailto:benjaminy@alumni.cmu.edu">Benjamin Ylvisaker</a></div>
 
 </div>
 </body>
