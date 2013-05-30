@@ -66,7 +66,7 @@ simultaneously.  Here's how we can do that in Charcoal.</p>
 <i>void</i> <b>multi_dns_conc</b>(<br/>
 <pre>    </pre><i>size_t</i> <b>N</b>, <i>char</i> **<b>names</b>, <b><u>struct</u></b> <i>addrinfo</i> **<b>infos</b> )<br/>
 {<br/>
-<pre>    </pre><i>size_t</i> <b>i</b>, <b>done</b> = 0;<br/>
+<pre>    </pre><i>size_t</i> <b>i</b>, <span title="How many lookups have finished?" style="background-color:yellow"><b>done</b> = 0</span>;<br/>
 <pre>    </pre><i>semaphore_t</i> <b>done_sem</b>;<br/>
 <pre>    </pre>sem_init( &amp;done_sem, 0 );<br/>
 <pre>    </pre><b><u>for</u></b>( i = 0; i &lt; N; ++i )<br/>
@@ -163,12 +163,12 @@ the code:</p>
 <pre>        </pre>lim &lt; 1 ? DEFAULT_MULTI_DNS_LIMIT : lim );<br/>
 <pre>    </pre><b><u>for</u></b>( i = 0; i &lt; n; ++i )<br/>
 <pre>    </pre>{<br/>
-<pre>        </pre>sem_dec( &amp;lim_sem );<br/>
+<pre>        </pre><span title="Wait until fewer than 'lim' lookups are happening" style="background-color:yellow">sem_dec( &amp;lim_sem )</span>;<br/>
 <pre>        </pre><b><u>activate</u></b> ( i )<br/>
 <pre>        </pre>{<br/>
 <pre>            </pre>assert( 0 == getaddrinfo(<br/>
 <pre>                </pre>names[i], NULL, NULL, &amp;infos[i] ) );<br/>
-<pre>            </pre>sem_inc( &amp;lim_sem );<br/>
+<pre>            </pre><span title="Allow waiting lookups to proceed" style="background-color:yellow">sem_inc( &amp;lim_sem )</span>;<br/>
 <pre>            </pre><b><u>if</u></b>( ( ++done ) == n )<br/>
 <pre>                </pre>sem_inc( &amp;done_sem );<br/>
 <pre>        </pre>}<br/>
@@ -194,6 +194,46 @@ applications like this, and is only preferable if creating new activities
 is expensive.  In Charcoal, activating a statement is very cheap &mdash;
 much closer to the cost of a procedure call than the cost of process
 creation.</p>
+
+<div class="highlight" style="font-family:monospace">
+<table><tbody><tr>
+<td align="right" valign="top">
+1:<br/>2:<br/>3:<br/>4:<br/>5:<br/>6:<br/>7:<br/>8:<br/>9:<br/>10:<br/>
+11:<br/>12:<br/>13:<br/>14:<br/>15:<br/>16:<br/>17:<br/>18:<br/>19:<br/>20:<br/>
+21:<br/>22:<br/>23:<br/>24:<br/>25:</td>
+<td>&nbsp;</td>
+<td valign="top">
+<b><u>#define</u></b> <b>DEFAULT_MULTI_DNS_LIMIT</b> 10<br/>
+<br/>
+<i>void</i> <b>multi_dns_conc</b>(<br/>
+<pre>    </pre><i>size_t</i> <b>N</b>, <i>size_t</i> <b>lim</b>,<br/>
+<pre>    </pre><i>char</i> **<b>names</b>, <b><u>struct</u></b> <i>addrinfo</i> **<b>infos</b><br/>
+<pre>    </pre><i>semaphore_t *</i><b></b>, <b><u>struct</u></b> <i>addrinfo</i> **<b>infos</b> )<br/>
+{<br/>
+<pre>    </pre><i>size_t</i> <b>i</b>, <b>done</b> = 0;<br/>
+<pre>    </pre><i>semaphore_t</i> <b>done_sem</b>, <b>lim_sem</b>;<br/>
+<pre>    </pre>sem_init( &amp;done_sem, 0 );<br/>
+<pre>    </pre>sem_init( &amp;lim_sem,<br/>
+<pre>        </pre>lim &lt; 1 ? DEFAULT_MULTI_DNS_LIMIT : lim );<br/>
+<pre>    </pre><b><u>for</u></b>( i = 0; i &lt; n; ++i )<br/>
+<pre>    </pre>{<br/>
+<pre>        </pre><span title="Wait until fewer than 'lim' lookups are happening" style="background-color:yellow">sem_dec( &amp;lim_sem )</span>;<br/>
+<pre>        </pre><b><u>activate</u></b> ( i )<br/>
+<pre>        </pre>{<br/>
+<pre>            </pre>assert( 0 == getaddrinfo(<br/>
+<pre>                </pre>names[i], NULL, NULL, &amp;infos[i] ) );<br/>
+<pre>            </pre><span title="Allow waiting lookups to proceed" style="background-color:yellow">sem_inc( &amp;lim_sem )</span>;<br/>
+<pre>            </pre><b><u>if</u></b>( ( ++done ) == n )<br/>
+<pre>                </pre>sem_inc( &amp;done_sem );<br/>
+<pre>        </pre>}<br/>
+<pre>    </pre>}<br/>
+<pre>    </pre>sem_dec( &amp;done_sem );<br/>
+}
+</td>
+</tr></tbody></table>
+</div>
+
+<div><hr/>&copy; Copyright 2013 <a href="mailto:benjaminy@alumni.cmu.edu">Benjamin Ylvisaker</a></div>
 
 </div>
 </body>

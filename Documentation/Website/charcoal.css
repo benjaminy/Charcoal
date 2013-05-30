@@ -1,0 +1,31 @@
+pre { display:inline }
+
+.side_links {
+  background-color:seashell;
+  position:fixed;
+  width:10em;
+  top:0%;
+  left:0%;
+  padding:1em;
+  margin:0.5em;
+}
+
+.main_div {
+  background-color:seashell;
+  width:35em;
+  margin-left:13em;
+  margin-right:auto;
+  margin-top:0.5em;
+  margin-bottom:0.5em;
+  padding:2em;
+}
+
+.highlight {
+  background-color:white;
+  padding:0.3em;
+  margin:0.3em;
+}
+
+.mono {
+  font-family:monospace;
+}

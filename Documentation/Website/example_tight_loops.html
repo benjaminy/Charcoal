@@ -45,8 +45,36 @@ example:</p>
 <p>The inner loop here is probably well under a dozen instructions, so
 adding a yield on every iteration (which happens by default in Charcoal)
 more than doubles the run time.  If someone cares about the performance
-of this code at all, that's probably unacceptable.  Here's one trick we
-can use to reduce the overhead in cases like this:</p>
+of this code at all, that's probably unacceptable.  The simplest "fix"
+for this problem is to use the for loop variant that does not yield by
+default.</p>
+
+<div class="highlight" style="font-family:monospace">
+<table><tbody><tr>
+<td align="right" valign="top">
+1:<br/>2:<br/>3:<br/>4:<br/>5:<br/>6:<br/>7:<br/>8:<br/>9:<br/>10:</td>
+<td>&nbsp;</td>
+<td valign="top">
+<i>float</i> <b>dot_product</b>( <i>size_t</i> <b>N</b>, <i>float *</i><b>A</b>, <i>float *</i><b>B</b> )<br/>
+{<br/>
+<pre>    </pre><i>float</i> <b>rv</b> = 0.0;<br/>
+<pre>    </pre><i>size_t</i> <b>i</b>;<br/>
+<pre>    </pre><b><u><span title="Look ma, no yielding!" style="background-color:yellow">for_no_yield</span></u></b>( i = 0; i &lt; N; ++i )<br/>
+<pre>    </pre>{<br/>
+<pre>        </pre>rv += A[i] * b[i];<br/>
+<pre>    </pre>}<br/>
+<pre>    </pre><b><u>return</u></b> rv;<br/>
+}
+</tr></tbody></table>
+</div>
+
+<p>This version avoids yielding too frequently, but if it is ever called
+with a large input, it may very well yield too infrequently.
+Well-behaved Charcoal programs should aim to go no more than a few
+milliseconds between yields.</p>
+
+<p>Hitting a sweet spot in terms of yield frequency, while adding zero
+overhead to the inner loop requires somewhat more complex code.</p>
 
 <div class="highlight" style="font-family:monospace">
 <table><tbody><tr>
