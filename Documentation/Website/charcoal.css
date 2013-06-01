@@ -29,3 +29,7 @@ pre { display:inline }
 .mono {
   font-family:monospace;
 }
+
+.yellow {
+  background-color:yellow;
+}

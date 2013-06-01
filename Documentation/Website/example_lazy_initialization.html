@@ -80,7 +80,7 @@ initialization in Charcoal like so:</p>
 {<br/>
 <pre>    </pre><b><u>static</u></b> <i>special_object_t</i> <b>o</b>;<br/>
 <pre>    </pre><b><u>static</u></b> <i>int</i> <b>initialized</b> = 0;<br/>
-<pre>    </pre><span style="background-color:yellow"><b><u>unyielding</u></b></span><br/>
+<pre>    </pre><span class="yellow"><b><u>unyielding</u></b></span><br/>
 <pre>    </pre>{<br/>
 <pre>        </pre><b><u>if</u></b>( !initialized )<br/>
 <pre>        </pre>{<br/>
@@ -110,9 +110,9 @@ too.</p>
 <i>special_object_t *</i><b>get_special_object</b>( <i>void</i> )<br/>
 {<br/>
 <pre>    </pre><b><u>static</u></b> <i>special_object_t</i> <b>o</b>;<br/>
-<pre>    </pre><span style="background-color:yellow"><b><u>static</u></b> <i>mutex_t</i> <b>mtx</b> = STATIC_MUTEX_INIT;</span><br/>
+<pre>    </pre><span class="yellow"><b><u>static</u></b> <i>mutex_t</i> <b>mtx</b> = STATIC_MUTEX_INIT;</span><br/>
 <pre>    </pre><b><u>static</u></b> <i>int</i> <b>initialized</b> = 0;<br/>
-<pre>    </pre><span style="background-color:yellow"><b><u>synchronized</u></b>( &amp;mtx )</span><br/>
+<pre>    </pre><span class="yellow"><b><u>synchronized</u></b>( &amp;mtx )</span><br/>
 <pre>    </pre>{<br/>
 <pre>        </pre><b><u>if</u></b>( !initialized )<br/>
 <pre>        </pre>{<br/>
@@ -153,8 +153,8 @@ locking in Charcoal.</p>
 <pre>    </pre><b><u>static</u></b> <i>special_object_t</i> <b>o</b>;<br/>
 <pre>    </pre><b><u>static</u></b> <i>mutex_t</i> <b>mtx</b> = STATIC_MUTEX_INIT;<br/>
 <pre>    </pre><b><u>static</u></b> <i>int</i> <b>initialized</b> = 0;<br/>
-<pre>    </pre><span style="background-color:yellow"><b><u>if</u></b>( initialized )</span><br/>
-<pre>        </pre><span style="background-color:yellow"><b><u>return</u></b> &amp;o;</span><br/>
+<pre>    </pre><span class="yellow"><b><u>if</u></b>( initialized )</span><br/>
+<pre>        </pre><span class="yellow"><b><u>return</u></b> &amp;o;</span><br/>
 <pre>    </pre><b><u>synchronized</u></b>( &amp;mtx )<br/>
 <pre>    </pre>{<br/>
 <pre>        </pre><b><u>if</u></b>( !initialized )<br/>

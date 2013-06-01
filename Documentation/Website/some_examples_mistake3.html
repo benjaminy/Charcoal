@@ -35,7 +35,7 @@ by-value variables list?</p>
 <pre>    </pre>sem_init( &amp;done_sem, 0 );<br/>
 <pre>    </pre><b><u>for</u></b>( i = 0; i &lt; N; ++i )<br/>
 <pre>    </pre>{<br/>
-<pre>        </pre><b><u>activate</u></b> ( i, <span style="background-color:yellow">done</span> ) <br/>
+<pre>        </pre><b><u>activate</u></b> ( i, <span class="yellow">done</span> ) <br/>
 <pre>        </pre>{<br/>
 <pre>            </pre>assert( 0 == getaddrinfo(<br/>
 <pre>                </pre>names[i], NULL, NULL, &amp;infos[i] ) );<br/>
