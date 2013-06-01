@@ -1,23 +1,26 @@
 <html>
 <head>
 <title>Some Examples</title>
-<style media="screen" type="text/css">
-pre { display:inline }
-.highlight {
-  background-color:white;
-  padding:0.3em;
-  margin:0.3em;
-}
-</style>
+<link rel="stylesheet" media="screen" type="text/css" href="charcoal.css"/>
 </head>
 <body style="background-color:darkgray">
 
-<div style="background-color:seashell;width:35em;margin-left:auto;margin-right:auto;padding:2em">
+<div class="side_links">
+<a href="index.html">Charcoal</a><br/>
+- <a href="short_version.html">Why Charcoal?</a><br/>
+- <a href="some_examples.html">Examples</a><br/>
+- <a href="concurrency.html">Concurrency</a><br/>
+- <a href="big_four.html">vs. Threads, etc.</a><br/>
+- <a href="implementation.html">Implementation</a><br/>
+- <a href="faq.html">FAQ</a>
+</div>
 
-<p>What if we leave <span style="font-family:monospace">i</span> off the
-by-value variables list?</p>
+<div class="main_div">
 
-<div class="highlight" style="font-family:monospace">
+<p>What if we leave <span class="mono">i</span> off the by-value
+variables list?</p>
+
+<div class="highlight" class="mono">
 <table><tbody><tr>
 <td align="right" valign="top">
 1:<br/>2:<br/>3:<br/>4:<br/>5:<br/>6:<br/>7:<br/>8:<br/>9:<br/>10:<br/>
@@ -52,10 +55,9 @@ sequence:</p>
 
 <ol>
 <li>One of the lookup activities yields
-<li>The "main" activity
-increments <span style="font-family:monospace">i</span>
+<li>The "main" activity increments <span class="mono">i</span>
 <li>The lookup activity resumes and now has the wrong value
-for <span style="font-family:monospace">i</span>
+for <span class="mono">i</span>
 </ol>
 
 <p>This kind of bug deserves some more thinking.  Maybe some automatic

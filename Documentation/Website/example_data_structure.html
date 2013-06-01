@@ -1,18 +1,27 @@
 <html>
 <head>
 <title>Charcoal Example: Data Structure Libraries</title>
-<style media="screen" type="text/css">
-pre { display:inline }
-.highlight {
-  background-color:white;
-  padding:0.3em;
-  margin:0.3em;
-}
-</style>
+<link rel="stylesheet" media="screen" type="text/css" href="charcoal.css"/>
 </head>
 <body style="background-color:darkgray">
 
-<div style="background-color:seashell;width:35em;margin-left:auto;margin-right:auto;padding:2em">
+<div class="side_links">
+<a href="index.html">Charcoal</a><br/>
+- <a href="short_version.html">Why Charcoal?</a><br/>
+- <a href="some_examples.html">Examples</a><br/>
+&mdash; <a href="example_multi_dns.html">Multi-DNS</a><br/>
+&mdash; <a href="example_signal_handling.html">Signals</a><br/>
+&mdash; <a href="example_tight_loops.html">Loops</a><br/>
+&mdash; <a href="example_data_structure.html">Data structures</a><br/>
+&mdash; <a href="example_lazy_initialization.html">Singleton</a><br/>
+&mdash; <a href="example_asynch_exceptions.html">Asynchronous</a><br/>
+- <a href="concurrency.html">Concurrency</a><br/>
+- <a href="big_four.html">vs. Threads, etc.</a><br/>
+- <a href="implementation.html">Implementation</a><br/>
+- <a href="faq.html">FAQ</a>
+</div>
+
+<div class="main_div">
 
 <h1>Data Structure Libraries</h1>
 
@@ -25,7 +34,7 @@ work well enough for many different potential use cases.</p>
 <p>Operations that are guaranteed to run in a modest amount of time can
 simply be marked unyielding:</p>
 
-<div class="highlight" style="font-family:monospace">
+<div class="highlight mono">
 <b><u>unyielding</u></b> <i>tree_t *</i><b>tree_insert</b>( tree_t *, void *val );
 <b><u>unyielding</u></b> <i>tree_t *</i><b>tree_delete</b>( tree_t *, void *val );
 </div>
@@ -89,6 +98,33 @@ void *tree_fold( void *(*f)(tree_t *, void *), tree_t *t, void *val )
     size_t i = 0;
     return tree_fold_helper( f, t, val, &i );
 }
+
+
+
+for( i = 0; i < N; ++i )
+{
+    (*f)( ... );
+}
+
+for( i = 0; i < N; )
+{
+    for_no_yield( ; i < N && i % 32 != 0; ++i )
+    {
+        (*f)( ... );
+    }
+}
+
+void foo( void )
+{
+    yield;
+    for_no_yield( i = 0; i < 32; ++i )
+    {
+        (*f)( ... );
+    }
+    yield;
+}
+
+<div><hr/>&copy; Copyright 2013 <a href="mailto:benjaminy@alumni.cmu.edu">Benjamin Ylvisaker</a></div>
 
 </div>
 </body>

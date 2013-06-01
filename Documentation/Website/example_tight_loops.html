@@ -1,18 +1,27 @@
 <html>
 <head>
 <title>Tight Loop Examples</title>
-<style media="screen" type="text/css">
-pre { display:inline }
-.highlight {
-  background-color:white;
-  padding:0.3em;
-  margin:0.3em;
-}
-</style>
+<link rel="stylesheet" media="screen" type="text/css" href="charcoal.css"/>
 </head>
 <body style="background-color:darkgray">
 
-<div style="background-color:seashell;width:35em;margin-left:auto;margin-right:auto;padding:2em">
+<div class="side_links">
+<a href="index.html">Charcoal</a><br/>
+- <a href="short_version.html">Why Charcoal?</a><br/>
+- <a href="some_examples.html">Examples</a><br/>
+&mdash; <a href="example_multi_dns.html">Multi-DNS</a><br/>
+&mdash; <a href="example_signal_handling.html">Signals</a><br/>
+&mdash; <a href="example_tight_loops.html">Loops</a><br/>
+&mdash; <a href="example_data_structure.html">Data structures</a><br/>
+&mdash; <a href="example_lazy_initialization.html">Singleton</a><br/>
+&mdash; <a href="example_asynch_exceptions.html">Asynchronous</a><br/>
+- <a href="concurrency.html">Concurrency</a><br/>
+- <a href="big_four.html">vs. Threads, etc.</a><br/>
+- <a href="implementation.html">Implementation</a><br/>
+- <a href="faq.html">FAQ</a>
+</div>
+
+<div class="main_div">
 
 <h1>Tight Loop Examples</h1>
 
@@ -23,7 +32,7 @@ dozen instructions.  In most code this overhead shouldn't be worth
 thinking about, but in tight inner loops it can be painful.  For
 example:</p>
 
-<div class="highlight" style="font-family:monospace">
+<div class="highlight mono">
 <table><tbody><tr>
 <td align="right" valign="top">
 1:<br/>2:<br/>3:<br/>4:<br/>5:<br/>6:<br/>7:<br/>8:<br/>9:<br/>10:</td>
@@ -49,7 +58,7 @@ of this code at all, that's probably unacceptable.  The simplest "fix"
 for this problem is to use the for loop variant that does not yield by
 default.</p>
 
-<div class="highlight" style="font-family:monospace">
+<div class="highlight mono">
 <table><tbody><tr>
 <td align="right" valign="top">
 1:<br/>2:<br/>3:<br/>4:<br/>5:<br/>6:<br/>7:<br/>8:<br/>9:<br/>10:</td>
@@ -76,7 +85,7 @@ milliseconds between yields.</p>
 <p>Hitting a sweet spot in terms of yield frequency, while adding zero
 overhead to the inner loop requires somewhat more complex code.</p>
 
-<div class="highlight" style="font-family:monospace">
+<div class="highlight mono">
 <table><tbody><tr>
 <td align="right" valign="top">
 1:<br/>2:<br/>3:<br/>4:<br/>5:<br/>6:<br/>7:<br/>8:<br/>9:<br/>10:<br/>
@@ -109,15 +118,15 @@ overhead to the inner loop requires somewhat more complex code.</p>
 
 <p>(Bug hunter bonus points for anyone who noticed there is a (probably
 extremely rare) overflow bug when
-<span style="font-family:monospace">N</span> &gt;
-<span style="font-family:monospace">SIZE_MAX</span>
-- <span style="font-family:monospace">BLOCK_SIZE</span>.  This shouldn't
+<span class="mono">N</span> &gt;
+<span class="mono">SIZE_MAX</span>
+- <span class="mono">BLOCK_SIZE</span>.  This shouldn't
 be a complex bug to fix.)</p>
 
 <p>Things get a little trickier if the loop condition is
 data-dependent.</p>
 
-<div class="highlight" style="font-family:monospace">
+<div class="highlight mono">
 <table><tbody><tr>
 <td align="right" valign="top">
 1:<br/>2:<br/>3:<br/>4:<br/>5:<br/>6:<br/>7:<br/>8:<br/>9:<br/>10:</td>
@@ -145,17 +154,16 @@ it might be possible to sneak the periodic yield in to one of those with
 no performance ill effects.</p>
 
 <p>This example also nicely illustrates that
-the <span style="font-family:monospace">X_no_yield</span> statements
-(where <span style="font-family:monospace">X</span> could
-be <span style="font-family:monospace">for</span>,
-<span style="font-family:monospace">while</span>,
-<span style="font-family:monospace">goto</span>, ...) are distinct from
-the <span style="font-family:monospace">unyielding</span> keyword.  The
-"no yield" variants simply tell the compiler not to insert the implicit
-yields that it would for the "normal" variants.
-The <span style="font-family:monospace">while_no_yield</span> on line 6
-above does not interfere with the
-explcit <span style="font-family:monospace">yield</span> on line 8.</p>
+the <span class="mono">X_no_yield</span> statements
+(where <span class="mono">X</span> could
+be <span class="mono">for</span>, <span class="mono">while</span>,
+<span class="mono">goto</span>, ...) are distinct from
+the <span class="mono">unyielding</span> keyword.  The "no yield"
+variants simply tell the compiler not to insert the implicit yields that
+it would for the "normal" variants.
+The <span class="mono">while_no_yield</span> on line 6 above does not
+interfere with the explcit <span class="mono">yield</span> on line
+8.</p>
 
 <h2>Conclusion</h2>
 
@@ -166,6 +174,8 @@ impose a little code complexity penalty to make sure yields happen at a
 good rate.  However, the penalty is not terribly high.  The story is a
 little more complex for library code, and that is addressed in a
 different example.</p>
+
+<div><hr/>&copy; Copyright 2013 <a href="mailto:benjaminy@alumni.cmu.edu">Benjamin Ylvisaker</a></div>
 
 </div>
 </body>

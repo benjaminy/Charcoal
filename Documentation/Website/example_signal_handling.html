@@ -1,18 +1,27 @@
 <html>
 <head>
 <title>Charcoal Example: Signal Handling</title>
-<style media="screen" type="text/css">
-pre { display:inline }
-.highlight {
-  background-color:white;
-  padding:0.3em;
-  margin:0.3em;
-}
-</style>
+<link rel="stylesheet" media="screen" type="text/css" href="charcoal.css"/>
 </head>
 <body style="background-color:darkgray">
 
-<div style="background-color:seashell;width:35em;margin-left:auto;margin-right:auto;padding:2em">
+<div class="side_links">
+<a href="index.html">Charcoal</a><br/>
+- <a href="short_version.html">Why Charcoal?</a><br/>
+- <a href="some_examples.html">Examples</a><br/>
+&mdash; <a href="example_multi_dns.html">Multi-DNS</a><br/>
+&mdash; <a href="example_signal_handling.html">Signals</a><br/>
+&mdash; <a href="example_tight_loops.html">Loops</a><br/>
+&mdash; <a href="example_data_structure.html">Data structures</a><br/>
+&mdash; <a href="example_lazy_initialization.html">Singleton</a><br/>
+&mdash; <a href="example_asynch_exceptions.html">Asynchronous</a><br/>
+- <a href="concurrency.html">Concurrency</a><br/>
+- <a href="big_four.html">vs. Threads, etc.</a><br/>
+- <a href="implementation.html">Implementation</a><br/>
+- <a href="faq.html">FAQ</a>
+</div>
+
+<div class="main_div">
 
 <h1>Signal Handling</h1>
 
@@ -67,7 +76,7 @@ required some unpleasant contortions.</p>
 asynchronous signals, which is have some thread block waiting for a
 signal to arrive.  This looks like the following:</p>
 
-<div class="highlight" style="font-family:monospace">
+<div class="highlight mono">
 <table><tbody><tr>
 <td align="right" valign="top">
 1:<br/>2:<br/>3:<br/>4:<br/>5:<br/>6:<br/>7:<br/>8:<br/>9:<br/>10:<br/></td>
@@ -101,7 +110,7 @@ problem, but as I argue elsewhere in these pages I am not generally
 enthusiastic about using threads for much of anything.  You can
 implement the exact same pattern with activities:</p>
 
-<div class="highlight" style="font-family:monospace">
+<div class="highlight mono">
 <table><tbody><tr>
 <td align="right" valign="top">
 1:<br/>2:<br/>3:<br/>4:<br/>5:<br/>6:<br/>7:<br/>8:<br/>9:<br/>10:<br/></td>
@@ -130,9 +139,8 @@ implement the exact same pattern with activities:</p>
 between using threads and activites to implement the blocking signal
 handler pattern.  With threads, the delivery of a signal might interrupt
 whatever thread is running to context switch over to the thread that
-is <span style="font-family:monospace">sigwait</span>ing.  This kind of
-rude interruption is what makes multithreaded programming hard to get
-right.</p>
+is <span class="mono">sigwait</span>ing.  This kind of rude interruption
+is what makes multithreaded programming hard to get right.</p>
 
 <p>With activities the delivery of a signal that is being waited on
 causes a flag to be set such that the next time the running activity
@@ -145,6 +153,8 @@ should be yielding at least once every millisecond, so this latency
 shouldn't be a killer for most applications.  If you're doing something
 more real-time, a millisecond may be far too long to wait.  I'll address
 that situation in a different example.</p>
+
+<div><hr/>&copy; Copyright 2013 <a href="mailto:benjaminy@alumni.cmu.edu">Benjamin Ylvisaker</a></div>
 
 </div>
 </body>

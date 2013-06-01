@@ -1,18 +1,27 @@
 <html>
 <head>
 <title>Charcoal Example: Lazy Initialization</title>
-<style media="screen" type="text/css">
-pre { display:inline }
-.highlight {
-  background-color:white;
-  padding:0.3em;
-  margin:0.3em;
-}
-</style>
+<link rel="stylesheet" media="screen" type="text/css" href="charcoal.css"/>
 </head>
 <body style="background-color:darkgray">
 
-<div style="background-color:seashell;width:35em;margin-left:auto;margin-right:auto;padding:2em">
+<div class="side_links">
+<a href="index.html">Charcoal</a><br/>
+- <a href="short_version.html">Why Charcoal?</a><br/>
+- <a href="some_examples.html">Examples</a><br/>
+&mdash; <a href="example_multi_dns.html">Multi-DNS</a><br/>
+&mdash; <a href="example_signal_handling.html">Signals</a><br/>
+&mdash; <a href="example_tight_loops.html">Loops</a><br/>
+&mdash; <a href="example_data_structure.html">Data structures</a><br/>
+&mdash; <a href="example_lazy_initialization.html">Singleton</a><br/>
+&mdash; <a href="example_asynch_exceptions.html">Asynchronous</a><br/>
+- <a href="concurrency.html">Concurrency</a><br/>
+- <a href="big_four.html">vs. Threads, etc.</a><br/>
+- <a href="implementation.html">Implementation</a><br/>
+- <a href="faq.html">FAQ</a>
+</div>
+
+<div class="main_div">
 
 <h1>Singleton/Lazy Initialization</h1>
 
@@ -21,7 +30,7 @@ is often initialized lazily.  The idea is that there is some unique
 object that we don't want to initialize until (unless) it is needed.
 Here is an example:</p>
 
-<div class="highlight" style="font-family:monospace">
+<div class="highlight mono">
 <table><tbody><tr>
 <td align="right" valign="top">
 1:<br/>2:<br/>3:<br/>4:<br/>5:<br/>6:<br/>7:<br/>8:<br/>9:<br/>10:<br/>
@@ -46,21 +55,21 @@ Here is an example:</p>
 but <a href="http://www.cs.umd.edu/~pugh/java/memoryModel/DoubleCheckedLocking.html">fails
 badly in a multithreaded context</a>.  In the (very) special case that
 the call
-to <span style="font-family:monospace">init_special_object</span> is
+to <span class="mono">init_special_object</span> is
 guaranteed to not yield, this code is actually activity-safe, because
 there is nothing else to trigger a yield in this code, so the whole
 procedure will execute atomically.  If there is some chance
-that <span style="font-family:monospace">init_special_object</span> will
+that <span class="mono">init_special_object</span> will
 yield, we need something more to prevent the situation where multiple
 activities enter the conditional block and initialize the special object
 more than once.</p>
 
 <p>As long
-as <span style="font-family:monospace">init_special_object</span> is
+as <span class="mono">init_special_object</span> is
 guaranteed to run in a modest amount of time, you can implement lazy
 initialization in Charcoal like so:</p>
 
-<div class="highlight" style="font-family:monospace">
+<div class="highlight mono">
 <table><tbody><tr>
 <td align="right" valign="top">
 1:<br/>2:<br/>3:<br/>4:<br/>5:<br/>6:<br/>7:<br/>8:<br/>9:<br/>10:<br/>
@@ -84,14 +93,14 @@ initialization in Charcoal like so:</p>
 </tr></tbody></table>
 </div>
 
-<p>If <span style="font-family:monospace">init_special_object</span>
+<p>If <span class="mono">init_special_object</span>
 might run for a long time, or block indefinitely, this is not a good
 solution.  Our activities will be starved.  We want to block only
 activites that need the special object, instead of all activities.  We
 can use the standard implementation that works for multithreaded code,
 too.</p>
 
-<div class="highlight" style="font-family:monospace">
+<div class="highlight mono">
 <table><tbody><tr>
 <td align="right" valign="top">
 1:<br/>2:<br/>3:<br/>4:<br/>5:<br/>6:<br/>7:<br/>8:<br/>9:<br/>10:<br/>
@@ -132,7 +141,7 @@ handful of instructions for acquiring and releasing the mutex, you can
 actually implement some of the dodgier versions of double-checked
 locking in Charcoal.</p>
 
-<div class="highlight" style="font-family:monospace">
+<div class="highlight mono">
 <table><tbody><tr>
 <td align="right" valign="top">
 1:<br/>2:<br/>3:<br/>4:<br/>5:<br/>6:<br/>7:<br/>8:<br/>9:<br/>10:<br/>
@@ -162,6 +171,8 @@ locking in Charcoal.</p>
 <p>This version works, but is more complex than the previous one, and I
 cannot imagine that the performance difference is perceptible in any
 real application.</p>
+
+<div><hr/>&copy; Copyright 2013 <a href="mailto:benjaminy@alumni.cmu.edu">Benjamin Ylvisaker</a></div>
 
 </div>
 </body>

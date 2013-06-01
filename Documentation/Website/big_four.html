@@ -1,18 +1,21 @@
 <html>
 <head>
 <title>Implementing Concurrent Software</title>
-<style media="screen" type="text/css">
-pre { display:inline }
-.highlight {
-  background-color:white;
-  padding:0.3em;
-  margin:0.3em;
-}
-</style>
+<link rel="stylesheet" media="screen" type="text/css" href="charcoal.css"/>
 </head>
 <body style="background-color:darkgray">
 
-<div style="background-color:seashell;width:35em;margin-left:auto;margin-right:auto;padding:2em">
+<div class="side_links">
+<a href="index.html">Charcoal</a><br/>
+- <a href="short_version.html">Why Charcoal?</a><br/>
+- <a href="some_examples.html">Examples</a><br/>
+- <a href="concurrency.html">Concurrency</a><br/>
+- <a href="big_four.html">vs. Threads, etc.</a><br/>
+- <a href="implementation.html">Implementation</a><br/>
+- <a href="faq.html">FAQ</a>
+</div>
+
+<div class="main_div">
 
 <h1>Implementing Concurrent Software</h1>
 
@@ -269,7 +272,7 @@ yield boundaries would be a big performance problem, but I don't think
 it will be.  (This is all very speculative at the moment.)  For example,
 consider loop invariant code motion:</p>
 
-<div class="highlight" style="font-family:monospace">
+<div class="highlight mono">
 <table><tbody><tr>
 <td align="right" valign="top">
 1:<br/>2:<br/>3:<br/>4:<br/>5:<br/>6:<br/>7:<br/>8:<br/></td>
@@ -287,12 +290,12 @@ consider loop invariant code motion:</p>
 </div>
 
 <p>If a compiler can satisfy itself
-that <span style="font-family:monospace">p</span>
-and <span style="font-family:monospace">q</span> aren't aliases for
+that <span class="mono">p</span>
+and <span class="mono">q</span> aren't aliases for
 anything else accessed by this code, it would love to transform it
 into:</p>
 
-<div class="highlight" style="font-family:monospace">
+<div class="highlight mono">
 <table><tbody><tr>
 <td align="right" valign="top">
 1:<br/>2:<br/>3:<br/>4:<br/>5:<br/>6:<br/>7:<br/>8:<br/>9:<br/>10:</td>
@@ -313,7 +316,7 @@ into:</p>
 
 <p>But in Charcoal a for loop really looks like this:</p>
 
-<div class="highlight" style="font-family:monospace">
+<div class="highlight mono">
 <table><tbody><tr>
 <td align="right" valign="top">
 1:<br/>2:<br/>3:<br/>4:<br/>5:<br/>6:<br/>7:<br/>8:<br/>9:<br/>10:<br/>
@@ -336,12 +339,12 @@ into:</p>
 
 <p>So it seems like the loop invariant code motion optimization might
 violate the rules by making accesses
-to <span style="font-family:monospace">*p</span>
-and <span style="font-family:monospace">*q</span> appear to cross yield
+to <span class="mono">*p</span>
+and <span class="mono">*q</span> appear to cross yield
 boundaries.  My hope is that the compiler will be able to see into yield
 and insert fix-up code like this:</p>
 
-<div class="highlight" style="font-family:monospace">
+<div class="highlight mono">
 <table><tbody><tr>
 <td align="right" valign="top">
 1:<br/>2:<br/>3:<br/>4:<br/>5:<br/>6:<br/>7:<br/>8:<br/>9:<br/>10:<br/>
@@ -439,6 +442,7 @@ cooperative threads) have been proposed over the years.  If you would
 like to see my take on how activities compare to any of these, let me
 know.  I'll do my best to write something and update here.
 
+<div><hr/>&copy; Copyright 2013 <a href="mailto:benjaminy@alumni.cmu.edu">Benjamin Ylvisaker</a></div>
 
 </div>
 </body>
