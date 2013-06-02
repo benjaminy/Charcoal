@@ -2645,7 +2645,7 @@ and doAttr (a: A.attribute) : attribute list =
             | _ -> 
                 E.s (error "Invalid attribute constant: %s")
           end
-        | A.CALL(A.VARIABLE n, args) -> begin
+        | A.CALL(A.VARIABLE n, args, no_yield (* XXX *)) -> begin
             let n' = if strip then stripUnderscore n else n in
             let ae' = Util.list_map ae args in
             ACons(n', ae')
@@ -3683,7 +3683,7 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
                 
               doExp asconst
                 (A.CALL (A.VARIABLE "__builtin_next_arg", 
-                         [A.CONSTANT (A.CONST_INT "0")]))
+                         [A.CONSTANT (A.CONST_INT "0")], false (* XXX *) ))
                 what
             end
 
@@ -3970,7 +3970,7 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
               intType
     end
 
-    | A.CALL(f, args) -> 
+    | A.CALL(f, args, no_yield (* XXX *) ) -> 
         if asconst then
           ignore (warn "CALL in constant");
         let (sf, f', ft') = 
@@ -4602,7 +4602,9 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
 
     | A.EXPR_PATTERN _ -> E.s (E.bug "EXPR_PATTERN in cabs2cil input")
 
-    | A.ACTIVATE _ -> E.s (E.bug "EXPR_PATTERN in cabs2cil input")
+    | A.ACTIVATE _ -> E.s (E.bug "ACTIVATE in cabs2cil input")
+
+    | A.YIELD -> E.s (E.bug "YIELD in cabs2cil input")
 
   with e when continueOnError -> begin
     (*ignore (E.log "error in doExp (%s)" (Printexc.to_string e));*)
@@ -5562,7 +5564,7 @@ and doAliasFun vtype (thisname:string) (othername:string)
   let args = Util.list_map 
                (fun (n,_,_) -> A.VARIABLE n)
                (argsToList formals) in
-  let call = A.CALL (A.VARIABLE othername, args) in
+  let call = A.CALL (A.VARIABLE othername, args, false (* XXX *) ) in
   let stmt = if isVoidType rt then A.COMPUTATION(call, loc)
                               else A.RETURN(call, loc)
   in

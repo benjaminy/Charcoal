@@ -729,8 +729,8 @@ begin
       (mustEq ptype ttype);
       (unifySpecifiers pspec tspec) @
       (unifyInitExpr piexpr tiexpr)
-  | CALL(pfunc, pargs),
-    CALL(tfunc, targs) ->
+  | CALL(pfunc, pargs, pno_yield (* XXX *) ),
+    CALL(tfunc, targs, tno_yield (* XXX *) ) ->
       (ue pfunc tfunc) @
       (unifyExprs pargs targs)
   | COMMA(pexprs),

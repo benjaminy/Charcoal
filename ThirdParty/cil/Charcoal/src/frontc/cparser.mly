@@ -82,6 +82,18 @@ let smooth_expression lst =
   | [expr] -> expr
   | _ -> COMMA (lst)
 
+let add_yield before_not_after loc stmt =
+  let stmts =
+    if before_not_after then
+      [ COMPUTATION( YIELD, loc ); stmt ]
+    else
+      [ stmt; COMPUTATION( YIELD, loc ) ]
+  in
+  BLOCK(
+    { blabels=[];
+      battrs=[];
+      bstmts=stmts },
+    loc )
 
 let currentFunctionName = ref "<outside any function>"
     
@@ -285,9 +297,9 @@ let transformOffsetOf (speclist, dtype) member =
 %token<Cabs.cabsloc> SEMICOLON
 %token COMMA ELLIPSIS QUEST
 
-%token<Cabs.cabsloc> BREAK CONTINUE GOTO RETURN ACTIVATE
+%token<Cabs.cabsloc> BREAK CONTINUE GOTO GOTO_NY RETURN ACTIVATE YIELD UNYIELDING SYNCHRONIZED
 %token<Cabs.cabsloc> SWITCH CASE DEFAULT
-%token<Cabs.cabsloc> WHILE DO FOR
+%token<Cabs.cabsloc> WHILE WHILE_NY DO DO_NY FOR FOR_NY CALL_NY
 %token<Cabs.cabsloc> IF TRY EXCEPT FINALLY
 %token ELSE 
 
@@ -462,6 +474,8 @@ maybecomma:
 /* *** Expressions *** */
 
 primary_expression:                     /*(* 6.5.1. *)*/
+|		YIELD
+		        {YIELD, $1}
 |		IDENT
 		        {VARIABLE (fst $1), snd $1}
 |        	constant
@@ -481,17 +495,19 @@ postfix_expression:                     /*(* 6.5.2 *)*/
                         { $1 }
 |		postfix_expression bracket_comma_expression
 			{INDEX (fst $1, smooth_expression $2), snd $1}
+|		CALL_NY postfix_expression LPAREN arguments RPAREN
+			{CALL (fst $2, $4, true), $1}
 |		postfix_expression LPAREN arguments RPAREN
-			{CALL (fst $1, $3), snd $1}
+			{CALL (fst $1, $3, false), snd $1}
 |               BUILTIN_VA_ARG LPAREN expression COMMA type_name RPAREN
                         { let b, d = $5 in
                           CALL (VARIABLE "__builtin_va_arg", 
-                                [fst $3; TYPE_SIZEOF (b, d)]), $1 }
+                                [fst $3; TYPE_SIZEOF (b, d)], false), $1 }
 |               BUILTIN_TYPES_COMPAT LPAREN type_name COMMA type_name RPAREN
                         { let b1,d1 = $3 in
                           let b2,d2 = $5 in
                           CALL (VARIABLE "__builtin_types_compatible_p", 
-                                [TYPE_SIZEOF(b1,d1); TYPE_SIZEOF(b2,d2)]), $1 }
+                                [TYPE_SIZEOF(b1,d1); TYPE_SIZEOF(b2,d2)], false), $1 }
 |               BUILTIN_OFFSETOF LPAREN type_name COMMA offsetof_member_designator RPAREN
                         { transformOffsetOf $3 $5, $1 }
 |		postfix_expression DOT id_or_typename
@@ -547,6 +563,22 @@ unary_expression:   /*(* 6.5.3 *)*/
 |               ACTIVATE var_list_opt comma_expression
                         {ACTIVATE ($2, RETURN (smooth_expression (fst $3), snd $3)), $1}
 |               ACTIVATE var_list_opt statement {ACTIVATE ($2, $3), $1}
+|               SYNCHRONIZED paren_comma_expression statement { (* XXX I guess this has to be translated later because of escaping *)
+           GNU_BODY{ blabels=[]; battrs=[];
+                     bstmts=[
+                       DEFINITION( doDeclaration $1 [(*(specs: spec_elem list)   *)] [(*(nl: init_name list __charcoal_sync_mutex_XXX $2)*)] );
+                       COMPUTATION( QUESTION(
+                         CALL( VARIABLE "mutex_acquire", [VARIABLE "__charcoal_sync_mutex_XXX"], false ),
+                         CONSTANT (CONST_INT "1"),
+                         GNU_BODY( { blabels=[]; battrs=[]; bstmts=
+                           [$3;
+                            COMPUTATION( QUESTION(
+                              CALL( VARIABLE "mutex_release", [VARIABLE "__charcoal_sync_mutex_XXX"], false ),
+                              CONSTANT (CONST_INT "2"),
+                              CONSTANT (CONST_INT "0") ),
+                            $1 ) ] } ) ),
+                         $1 ) ] },
+           $1 }
 ;
 
 var_list_opt:
@@ -883,10 +915,17 @@ statement:
 |   SWITCH paren_comma_expression statement
                         {SWITCH (smooth_expression (fst $2), $3, (*handleLoc*) $1)}
 |   WHILE paren_comma_expression statement
+	        	{WHILE (smooth_expression (fst $2), add_yield false $1 $3, (*handleLoc*) $1)}
+|   WHILE_NY paren_comma_expression statement
 	        	{WHILE (smooth_expression (fst $2), $3, (*handleLoc*) $1)}
 |   DO statement WHILE paren_comma_expression SEMICOLON
+	        	         {DOWHILE (smooth_expression (fst $4), add_yield false $3 $2, (*handleLoc*) $1)}
+|   DO_NY statement WHILE paren_comma_expression SEMICOLON
 	        	         {DOWHILE (smooth_expression (fst $4), $2, (*handleLoc*) $1)}
 |   FOR LPAREN for_clause opt_expression
+	        SEMICOLON opt_expression RPAREN statement
+	                         {FOR ($3, $4, $6, add_yield false $1 $8, (*handleLoc*) $1)}
+|   FOR_NY LPAREN for_clause opt_expression
 	        SEMICOLON opt_expression RPAREN statement
 	                         {FOR ($3, $4, $6, $8, (*handleLoc*) $1)}
 |   IDENT COLON attribute_nocv_list statement
@@ -906,9 +945,11 @@ statement:
 	                         {RETURN (smooth_expression (fst $2), (*handleLoc*) $1)}
 |   BREAK SEMICOLON     {BREAK ((*handleLoc*) $1)}
 |   CONTINUE SEMICOLON	 {CONTINUE ((*handleLoc*) $1)}
-|   GOTO IDENT SEMICOLON
-		                 {GOTO (fst $2, (*handleLoc*) $1)}
+|   GOTO IDENT SEMICOLON         { add_yield true $1 (GOTO (fst $2, (*handleLoc*) $1)) }
 |   GOTO STAR comma_expression SEMICOLON 
+                                 { add_yield true $1 (COMPGOTO (smooth_expression (fst $3), (*handleLoc*) $1)) }
+|   GOTO_NY IDENT SEMICOLON         { GOTO (fst $2, (*handleLoc*) $1) }
+|   GOTO_NY STAR comma_expression SEMICOLON 
                                  { COMPGOTO (smooth_expression (fst $3), (*handleLoc*) $1) }
 |   ASM asmattr LPAREN asmtemplate asmoutputs RPAREN SEMICOLON
                         { ASM ($2, $4, $5, (*handleLoc*) $1) }
@@ -1370,7 +1411,7 @@ primary_attr:
     /*(* The NAMED_TYPE here creates conflicts with IDENT *)*/
 |   NAMED_TYPE				{ VARIABLE (fst $1) } 
 |   LPAREN attr RPAREN                  { $2 } 
-|   IDENT IDENT                          { CALL(VARIABLE (fst $1), [VARIABLE (fst $2)]) }
+|   IDENT IDENT                          { CALL(VARIABLE (fst $1), [VARIABLE (fst $2)], false) }
 |   CST_INT                              { CONSTANT(CONST_INT (fst $1)) }
 |   string_constant                      { CONSTANT(CONST_STRING (fst $1)) }
                                            /*(* Const when it appears in 
@@ -1396,8 +1437,8 @@ postfix_attr:
     primary_attr                         { $1 }
                                          /* (* use a VARIABLE "" so that the 
                                              * parentheses are printed *) */
-|   IDENT LPAREN  RPAREN             { CALL(VARIABLE (fst $1), [VARIABLE ""]) }
-|   IDENT paren_attr_list_ne         { CALL(VARIABLE (fst $1), $2) }
+|   IDENT LPAREN  RPAREN             { CALL(VARIABLE (fst $1), [VARIABLE ""], false) }
+|   IDENT paren_attr_list_ne         { CALL(VARIABLE (fst $1), $2, false) }
 
 |   postfix_attr ARROW id_or_typename    {MEMBEROFPTR ($1, $3)} 
 |   postfix_attr DOT id_or_typename      {MEMBEROF ($1, $3)}  

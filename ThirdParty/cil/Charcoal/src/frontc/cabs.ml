@@ -260,7 +260,7 @@ and expression =
     (* There is a special form of CALL in which the function called is
        __builtin_va_arg and the second argument is sizeof(T). This 
        should be printed as just T *)
-  | CALL of expression * expression list
+  | CALL of expression * expression list * bool
   | COMMA of expression list
   | CONSTANT of constant
   | PAREN of expression
@@ -275,6 +275,7 @@ and expression =
   | GNU_BODY of block
   | EXPR_PATTERN of string     (* pattern variable, and name *)
   | ACTIVATE of string list * statement
+  | YIELD
 
 and constant =
   | CONST_INT of string   (* the textual representation *)

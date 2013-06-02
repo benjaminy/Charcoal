@@ -489,10 +489,10 @@ and childrenExpression vis e =
       let dt' = visitCabsDeclType vis false dt in
       let ie' = visitCabsInitExpression vis ie in
       if s' != s || dt' != dt || ie' != ie then CAST ((s', dt'), ie') else e
-  | CALL (f, el) -> 
+  | CALL (f, el, no_yield) -> 
       let f' = ve f in
       let el' = mapNoCopy ve el in
-      if f' != f || el' != el then CALL (f', el') else e
+      if f' != f || el' != el then CALL (f', el', no_yield) else e
   | COMMA el -> 
       let el' = mapNoCopy ve el in
       if el' != el then COMMA (el') else e
@@ -531,7 +531,9 @@ and childrenExpression vis e =
       let b' = visitCabsBlock vis b in
       if b' != b then GNU_BODY b' else e
   | EXPR_PATTERN _ -> e
+    (* XXX *)
   | ACTIVATE _ -> e
+  | YIELD -> e
         
 and visitCabsInitExpression vis (ie: init_expression) : init_expression = 
   doVisit vis vis#vinitexpr childrenInitExpression ie

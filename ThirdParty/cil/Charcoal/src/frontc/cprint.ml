@@ -405,7 +405,9 @@ and get_operator exp =
   | MEMBEROFPTR (exp, fld) -> ("", 15)
   | GNU_BODY _ -> ("", 17)
   | EXPR_PATTERN _ -> ("", 16)     (* sm: not sure about this *)
+    (* XXX *)
   | ACTIVATE _ -> ("", 16)
+  | YIELD -> ("", 16)
 
 and print_comma_exps exps =
   print_commas false print_expression exps
@@ -486,19 +488,22 @@ and print_expression_level (lvl: int) (exp : expression) =
           (* ; print ")" *)
       | NO_INIT -> print "<NO_INIT in cast. Should never arise>")
 
-  | CALL (VARIABLE "__builtin_va_arg", [arg; TYPE_SIZEOF (bt, dt)]) -> 
+  | CALL (VARIABLE "__builtin_va_arg", [arg; TYPE_SIZEOF (bt, dt)], no_yield) -> 
       comprint "variable";
       print "__builtin_va_arg";
       print "(";
       print_expression_level 1 arg;
       print ",";
       print_onlytype (bt, dt);
+      print ", XXX no_yield???";
+      (*print_onlytype (bt, dt);*)
       print ")"
-  | CALL (exp, args) ->
+  | CALL (exp, args, no_yield) ->
       print_expression_level 16 exp;
       print "(";
       print_comma_exps args;
-      print ")"
+      print ")";
+      print "XXX no_yield???"
   | COMMA exps ->
       print_comma_exps exps
   | CONSTANT cst ->
@@ -544,7 +549,10 @@ and print_expression_level (lvl: int) (exp : expression) =
       print ")"
   | EXPR_PATTERN (name) ->
       printl ["@expr";"(";name;")"]
+  (* XXX *)
   | ACTIVATE _ ->
+      printl ["@expr";"()"]
+  | YIELD ->
       printl ["@expr";"()"]
   in
   ()
