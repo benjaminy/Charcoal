@@ -244,6 +244,19 @@ In the worst case you add an increment and decrement of a thread-local
 variable.  If the compiler can see nested unyielding statements, it can
 optimize them out pretty easily, too.</p>
 
+<h3>5.1.(4/3) Synchronized</h3>
+
+<div class="highlight mono">
+<b><u>synchronized</u></b> (<i>&lt;expression&gt;</i>) <i>&lt;statement&gt;</i>
+<br/><hr/>
+({<br/>
+<pre>    </pre>mutex_t *__charcoal_sync_mutex_ ## __COUNTER__ = <i>&lt;expression&gt;</i>;<br/>
+<pre>    </pre>mutex_acquire( __charcoal_sync_mutex_NNN ) ? 1 :<br/>
+<pre>        </pre>({ <i>&lt;statement&gt;</i>;<br/>
+<pre>           </pre>mutex_release( __charcoal_sync_mutex_NNN ) ? 2 : 0 })<br/>
+})
+</div>
+
 <a id="runtime"/>
 <h2>5.(2/3) Charcoal Runtime Library</h2>
 
