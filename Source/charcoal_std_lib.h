@@ -14,6 +14,10 @@ typedef struct _TET_CHANNEL _TET_CHANNEL, *TET_CHANNEL;
 typedef struct _TET_CH_PORT _TET_CH_PORT, *TET_CH_PORT;
 /* Channel types are an interesting area for further exploration */
 
+typedef struct
+
+activity_t activity_self( void );
+
 typedef enum
 {
     TETRC_SUCCESS,

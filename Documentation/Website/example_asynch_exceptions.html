@@ -48,17 +48,22 @@ handling with Java-ish syntax).</p>
 <td align="right" valign="top">
 1:<br/>2:<br/>3:<br/>4:<br/>5:<br/>6:<br/>7:<br/>8:<br/>9:<br/>10:<br/>
 11:<br/>12:<br/>13:<br/>14:<br/>15:<br/>16:<br/>17:<br/>18:<br/>19:<br/>20:<br/>
-21:<br/>22:<br/>23:<br/>24:<br/>25:<br/>26:</td>
+21:<br/>22:<br/>23:<br/>24:<br/>25:<br/>26:<br/>27:<br/>28:<br/>29:<br/>30:<br/>
+31:<br/>32:</td>
 <td>&nbsp;</td>
 <td valign="top">
-<i>void</i> <b>algo_X</b>( <b>input data</b> )<br/>
+<i>result_type</i> <b>algo_X</b>( <b>input data</b> )<br/>
 {<br/>
+<pre>    </pre><i>result_type</i> <b>rv</b>;<br/>
 <pre>    </pre><i>activity_t</i> <b>a1</b>, <b>a2</b>;<br/>
+<pre>    </pre><i>barrier_t</i> <b>b</b>;<br/>
+<pre>    </pre>barrier_init( &amp;b, 2 );<br/>
 <pre>    </pre>a1 = <b><u>activate</u></b><br/>
 <pre>    </pre>{<br/>
+<pre>        </pre><span title="Wait until all have started" class="yellow">barrier_wait( &amp;b )</span>;<br/>
 <pre>        </pre><b><u>try</u></b><br/>
 <pre>        </pre>{<br/>
-<pre>            </pre>algo_X_approach_1( input data );<br/>
+<pre>            </pre>rv = algo_X_approach_1( input data );<br/>
 <pre>            </pre><b><u>deliver</u></b> a2 terminate_thyself;<br/>
 <pre>        </pre>}<br/>
 <pre>        </pre><b><u>catch</u></b>( terminate_thyself ) { }<br/>
@@ -66,9 +71,10 @@ handling with Java-ish syntax).</p>
 <pre>    </pre>}<br/>
 <pre>    </pre>a2 = <b><u>activate</u></b><br/>
 <pre>    </pre>{<br/>
+<pre>        </pre><span title="Wait until all have started" class="yellow">barrier_wait( &amp;b )</span>;<br/>
 <pre>        </pre><b><u>try</u></b><br/>
 <pre>        </pre>{<br/>
-<pre>            </pre>algo_X_approach_2( input data );<br/>
+<pre>            </pre>rv = algo_X_approach_2( input data );<br/>
 <pre>            </pre><b><u>deliver</u></b> a1 terminate_thyself;<br/>
 <pre>        </pre>}<br/>
 <pre>        </pre><b><u>catch</u></b>( terminate_thyself ) { }<br/>
@@ -76,6 +82,7 @@ handling with Java-ish syntax).</p>
 <pre>    </pre>}<br/>
 <pre>    </pre>join( a1 );<br/>
 <pre>    </pre>join( a2 );<br/>
+<pre>    </pre><b><u>return</u></b> rv;<br/>
 }
 </tr></tbody></table>
 </div>
@@ -94,8 +101,9 @@ feature that many multithreading APIs include it in version 1.  However,
 it is sufficiently problematic to implement correctly that most API
 documentation strongly discourages its use, and many APIs/languages have
 explicitly deprecated it.  The one notable exception [sorry] I am aware
-of
-is <a href="http://dl.acm.org/citation.cfm?id=378858">Haskell</a>.</p>
+of is <a href="http://dl.acm.org/citation.cfm?id=378858">Haskell</a>
+(<a href="http://community.haskell.org/~simonmar/papers/async.pdf">authors'
+copy</a>).</p>
 
 <p>Why is the implementation of asynchronous exceptions so hairy?  I
 encourage you to look at the paper linked above; it's a good one.  The
@@ -111,7 +119,10 @@ arbitrarily long periods of time.</p>
 family), we can actually implement asynchronous exceptions sensibly.
 When one activity delivers an exception to another activity, the
 exception will appear to be raised by the next yield expression that the
-receiver activity evaluates.</p>
+receiver activity evaluates.  This pattern seems a little better-suited
+to activities than conventional cooperative threads because yields
+generally happen quite frequently, so there is a better chance of the
+exception being delivered in a timely manner.</p>
 
 <p>(By the way, I
 used <span class="mono">deliver</span> instead of
@@ -155,7 +166,7 @@ some huge win relative to alternative patterns.</p>
 doesn't have exception handling, but I am very interested in hearing
 other peoples' thoughts on the topic.</p>
 
-<div><hr/>&copy; Copyright 2013 <a href="mailto:benjaminy@alumni.cmu.edu">Benjamin Ylvisaker</a></div>
+<div><hr/>&copy; Copyright 2013 <a href="http://www.cs.cornell.edu/~biy3/">Benjamin Ylvisaker</a></div>
 
 </div>
 </body>

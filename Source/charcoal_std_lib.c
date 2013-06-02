@@ -21,6 +21,13 @@ struct _TET_TASK
     TET_THREAD container;
 };
 
+pthread_key_t __charcoal_current_activity;
+
+activity_t activity_self( void )
+{
+    (activity_t)pthread_getspecific( __charcoal_current_activity );
+}
+
 typedef enum
 {
     TET_CHANNEL_UNI,
