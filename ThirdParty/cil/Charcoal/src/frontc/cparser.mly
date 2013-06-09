@@ -44,6 +44,12 @@
 open Cabs
 open Cabshelper
 module E = Errormsg
+module V = Cabsvisit
+module SS = Set.Make( 
+  struct
+    let compare = String.compare
+    type t = string
+  end )
 
 let parse_error msg : unit =       (* sm: c++-mode highlight hack: -> ' <- *)
   E.parse_error msg
@@ -250,6 +256,83 @@ let transformOffsetOf (speclist, dtype) member =
   let sizeofType = [SpecType Tunsigned], JUSTBASE in
   let resultExpr = CAST (sizeofType, SINGLE_INIT addrExpr) in
   resultExpr
+
+(* Find all the labels in a phrase. Skip activate expressions, because
+   it doesn't make sense to 'goto' from outside an activity to
+   inside. *)
+class label_gather_class : V.cabsVisitor = object (self)
+  inherit V.nopCabsVisitor as super
+
+  val mutable labels = SS.empty
+
+  method vexpr e = match e with
+  | ACTIVATE _ -> V.SkipChildren
+  | _ -> V.DoChildren
+
+  method vblock b =
+    let () = labels <- List.fold_right SS.add b.blabels labels in
+    V.DoChildren
+
+  method vstmt s =
+    match s with
+        LABEL(label, _, _) ->
+          let () = labels <- SS.add label labels in
+          V.DoChildren
+      | _ -> V.DoChildren
+end (* label_gather_class *)
+
+(* Insert something before control transfers that might leave some
+   enclosing phrase. *)
+class insert_shit_class stmt_to_insert internal_labels : V.cabsVisitor =
+object (self)
+  inherit V.nopCabsVisitor as super
+
+  val mutable breakable_depth = 0
+  val mutable contable_depth = 0
+
+  method vexpr e = match e with
+  | ACTIVATE _ -> V.SkipChildren
+  | _ -> V.DoChildren
+
+  method vstmt s =
+    let cond_insert c = if c then V.ChangeDoChildrenPost ([stmt_to_insert;s], fun s -> s)
+      else V.DoChildren
+    in
+    match s with
+        RETURN _        -> cond_insert true
+      | BREAK _         -> cond_insert (breakable_depth <= 0)
+      | CONTINUE _      -> cond_insert (contable_depth <= 0)
+      | GOTO (label, _) -> cond_insert (not(SS.mem label internal_labels))
+      | COMPGOTO _ -> failwith "unimp"
+
+      | ASM _ -> failwith "unimp"
+
+      | TRY_EXCEPT _ -> failwith "unimp"
+      | TRY_FINALLY _ -> failwith "unimp"
+
+      | WHILE _ | DOWHILE _ | FOR _ ->
+        let () = breakable_depth <- 1 + breakable_depth in
+        let () = contable_depth <- 1 + contable_depth in
+        let after s_after =
+          let () = breakable_depth <- breakable_depth - 1 in
+          let () = contable_depth <- contable_depth - 1 in
+          s_after
+        in
+        V.ChangeDoChildrenPost ([s], after)
+
+      | SWITCH _ ->
+        let () = breakable_depth <- 1 + breakable_depth in
+        let after s_after =
+          let () = breakable_depth <- breakable_depth - 1 in
+          s_after
+        in
+        V.ChangeDoChildrenPost ([s], after)
+
+      | NOP _ | COMPUTATION _ | BLOCK _ | SEQUENCE _
+      | IF _ | CASE _ | CASERANGE _ | DEFAULT _ | LABEL _
+      | DEFINITION _ -> V.DoChildren
+
+end (* insert_shit_class *)
 
 %}
 
@@ -562,7 +645,12 @@ unary_expression:   /*(* 6.5.3 *)*/
 |               AND_AND IDENT  { LABELADDR (fst $2), $1 }
 |               ACTIVATE var_list_opt comma_expression
                         {ACTIVATE ($2, RETURN (smooth_expression (fst $3), snd $3)), $1}
-|               ACTIVATE var_list_opt statement {ACTIVATE ($2, $3), $1}
+|               ACTIVATE var_list_opt statement {ACTIVATE ($2, $3), $1
+
+
+(* |               UNYIELDING  *)
+
+}
 |               SYNCHRONIZED paren_comma_expression statement { (* XXX I guess this has to be translated later because of escaping *)
            GNU_BODY{ blabels=[]; battrs=[];
                      bstmts=[

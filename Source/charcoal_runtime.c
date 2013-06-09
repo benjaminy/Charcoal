@@ -1,4 +1,12 @@
 
+void __charcoal_unyielding_enter()
+{
+}
+
+void __charcoal_unyielding_exit()
+{
+}
+
 int __charcoal_sem_init( __charcoal_sem_t *s, int pshared, unsigned int value )
 {
     /* assert( 0 == pshared ) */

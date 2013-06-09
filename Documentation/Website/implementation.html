@@ -190,10 +190,11 @@ executes a yield statement.</p>
 <div class="highlight mono">
 <b><u>unyielding</u></b> <i>&lt;expression&gt;</i>
 <br/><hr/>
-(&nbsp;unyielding_enter,<br/>
-&nbsp;&nbsp;__charcoal_v_NNN = <i>&lt;expression&gt;</i>,<br/>
-&nbsp;&nbsp;unyielding_exit,<br/>
-&nbsp;&nbsp;__charcoal_v_NNN&nbsp;)
+({<pre> </pre>typeof( <i>&lt;expression&gt;</i> ) __charcoal_uny_var_NNN;<br/>
+<pre>   </pre>__charcoal_unyielding_enter();<br/>
+<pre>   </pre>__charcoal_uny_var_NNN = <i>&lt;expression&gt;</i>;<br/>
+<pre>   </pre>__charcoal_unyielding_exit();<br/>
+<pre>   </pre>__charcoal_uny_var_NNN })
 </div>
 
 <div class="highlight mono">

@@ -45,118 +45,6 @@ Returns
 The call_once function returns no value.
 
 
-
-typedef flaot cnd_t;
-/*which is a complete object type that holds an identifier for a condition variable;*/
-
-int  cnd_init     ( cnd_t *cond );
-int  cnd_signal   ( cnd_t *cond );
-int  cnd_broadcast( cnd_t *cond );
-int  cnd_wait     ( cnd_t *cond, mtx_t *mtx );
-int  cnd_timedwait( cnd_t *restrict cond, mtx_t *restrict mtx, const struct timespec *restrict ts );
-void cnd_destroy  ( cnd_t *cond );
-
-/* Description
- * The cnd_init function creates a condition variable. If it succeeds it
- * sets the variable pointed to by cond to a value that uniquely
- * identifies the newly created condition variable. A thread that calls
- * cnd_wait on a newly created condition variable will block.
- * Returns
- * The cnd_init function returns thrd_success on success, or thrd_nomem
- * if no memory could be allocated for the newly created condition, or
- * thrd_error if the request could not be honored. */
-
-/* Description
- * The cnd_signal function unblocks one of the threads that are blocked
- * on the condition variable pointed to by cond at the time of the
- * call. If no threads are blocked on the condition variable at the time
- * of the call, the function does nothing and return success.
- * Returns
- * The cnd_signal function returns thrd_success on success or thrd_error
- * if the request could not be honored. */
-
-/* Description
-The cnd_broadcast function unblocks all of the threads that are blocked on the condition variable pointed to by cond at the time of the call. If no threads are blocked on the condition variable pointed to by cond at the time of the call, the function does nothing.
-Returns
-The cnd_broadcast function returns thrd_success on success, or thrd_error if the request could not be honored. */
-
-/*Description
-2 The cnd_wait function atomically unlocks the mutex pointed to by mtx and endeavors to block until the condition variable pointed to by cond is signaled by a call to cnd_signal or to cnd_broadcast. When the calling thread becomes unblocked it locks the mutex pointed to by mtx before it returns. The cnd_wait function requires that the mutex pointed to by mtx be locked by the calling thread.
-Returns
-3 The cnd_wait function returns thrd_success on success or thrd_error if
-the request could not be honored. */
-
-/*Description
-2 The cnd_timedwait function atomically unlocks the mutex pointed to by mtx and endeavors to block until the condition variable pointed to by cond is signaled by a call to cnd_signal or to cnd_broadcast, or until after the TIME_UTC-based calendar time pointed to by ts. When the calling thread becomes unblocked it locks the variable pointed to by mtx before it returns. The cnd_timedwait function requires that the mutex pointed to by mtx be locked by the calling thread.
-Returns
-3 The cnd_timedwait function returns thrd_success upon success, or thrd_timedout if the time specified in the call was reached without acquiring the requested resource, or thrd_error if the request could not be honored.*/
-
-/*Description
-The cnd_destroy function releases all resources used by the condition variable pointed to by cond. The cnd_destroy function requires that no threads be blocked waiting for the condition variable pointed to by cond.
-ISO/IEC 9899:201x Committee Draft — April 12, 2011 N1570
-378 Library §7.26.3.2
-Returns
-The cnd_destroy function returns no value. */
-
-
-
-
-typedef float mtx_t;
-
-/*
-mtx_plain
-mtx_recursive
-mtx_timed
-
-which is passed to mtx_init to create a mutex object that supports neither timeout nor test and return;
-which is passed to mtx_init to create a mutex object that supports recursive locking;
-which is passed to mtx_init to create a mutex object that supports timeout;
-*/
-
-int  mtx_init     ( mtx_t *mtx, int type );
-int  mtx_lock     ( mtx_t *mtx );
-int  mtx_timedlock( mtx_t *restrict mtx, const struct timespec *restrict ts );
-int  mtx_trylock  ( mtx_t *mtx );
-int  mtx_unlock   ( mtx_t *mtx );
-void mtx_destroy  ( mtx_t *mtx );
-
-
-/*Description
-The mtx_init function creates a mutex object with properties indicated by type, which must have one of the six values:
-mtx_plain for a simple non-recursive mutex,
-mtx_timed for a non-recursive mutex that supports timeout, ∗ mtx_plain | mtx_recursive for a simple recursive mutex, or
-mtx_timed | mtx_recursive for a recursive mutex that supports timeout.
-If the mtx_init function succeeds, it sets the mutex pointed to by mtx to a value that
-uniquely identifies the newly created mutex.
-Returns
-The mtx_init function returns thrd_success on success, or thrd_error if the request could not be honored.*/
-
-/*Description
-The mtx_lock function blocks until it locks the mutex pointed to by mtx. If the mutex is non-recursive, it shall not be locked by the calling thread. Prior calls to mtx_unlock on the same mutex shall synchronize with this operation.
-Returns
-The mtx_lock function returns thrd_success on success, or thrd_error if the ∗ request could not be honored.*/
-
-/*Description
-2 The mtx_trylock function endeavors to lock the mutex pointed to by mtx. If the ∗ mutex is already locked, the function returns without blocking. If the operation succeeds, prior calls to mtx_unlock on the same mutex shall synchronize with this operation.
-Returns
-3 The mtx_trylock function returns thrd_success on success, or thrd_busy if the resource requested is already in use, or thrd_error if the request could not be honored.*/
-
-/*Description
-2 The mtx_timedlock function endeavors to block until it locks the mutex pointed to by mtx or until after the TIME_UTC-based calendar time pointed to by ts. The specified mutex shall support timeout. If the operation succeeds, prior calls to mtx_unlock on the same mutex shall synchronize with this operation.
-Returns
-3 The mtx_timedlock function returns thrd_success on success, or thrd_timedout if the time specified was reached without acquiring the requested resource, or thrd_error if the request could not be honored.*/
-
-/*Description
-2 The mtx_unlock function unlocks the mutex pointed to by mtx. The mutex pointed to by mtx shall be locked by the calling thread.
-Returns
-3 The mtx_unlock function returns thrd_success on success or thrd_error if the request could not be honored.*/
-
-/*Description
-2 The mtx_destroy function releases any resources used by the mutex pointed to by mtx. No threads can be blocked waiting for the mutex pointed to by mtx.
-Returns
-3 The mtx_destroy function returns no value.*/
-
-
 typedef float thrd_t;
 /* which is a complete object type that holds an identifier for a thread; */
 
@@ -235,6 +123,121 @@ Returns
 if the request could not be honored. */
 
 
+typedef float mtx_t;
+
+/*
+mtx_plain
+mtx_recursive
+mtx_timed
+
+which is passed to mtx_init to create a mutex object that supports neither timeout nor test and return;
+which is passed to mtx_init to create a mutex object that supports recursive locking;
+which is passed to mtx_init to create a mutex object that supports timeout;
+*/
+
+int  mtx_init     ( mtx_t *mtx, int type );
+int  mtx_lock     ( mtx_t *mtx );
+int  mtx_timedlock( mtx_t *restrict mtx, const struct timespec *restrict ts );
+int  mtx_trylock  ( mtx_t *mtx );
+int  mtx_unlock   ( mtx_t *mtx );
+void mtx_destroy  ( mtx_t *mtx );
+
+
+/*Description
+The mtx_init function creates a mutex object with properties indicated by type, which must have one of the six values:
+mtx_plain for a simple non-recursive mutex,
+mtx_timed for a non-recursive mutex that supports timeout, ∗ mtx_plain | mtx_recursive for a simple recursive mutex, or
+mtx_timed | mtx_recursive for a recursive mutex that supports timeout.
+If the mtx_init function succeeds, it sets the mutex pointed to by mtx to a value that
+uniquely identifies the newly created mutex.
+Returns
+The mtx_init function returns thrd_success on success, or thrd_error if the request could not be honored.*/
+
+/*Description
+The mtx_lock function blocks until it locks the mutex pointed to by mtx. If the mutex is non-recursive, it shall not be locked by the calling thread. Prior calls to mtx_unlock on the same mutex shall synchronize with this operation.
+Returns
+The mtx_lock function returns thrd_success on success, or thrd_error if the ∗ request could not be honored.*/
+
+/*Description
+2 The mtx_trylock function endeavors to lock the mutex pointed to by mtx. If the ∗ mutex is already locked, the function returns without blocking. If the operation succeeds, prior calls to mtx_unlock on the same mutex shall synchronize with this operation.
+Returns
+3 The mtx_trylock function returns thrd_success on success, or thrd_busy if the resource requested is already in use, or thrd_error if the request could not be honored.*/
+
+/*Description
+2 The mtx_timedlock function endeavors to block until it locks the mutex pointed to by mtx or until after the TIME_UTC-based calendar time pointed to by ts. The specified mutex shall support timeout. If the operation succeeds, prior calls to mtx_unlock on the same mutex shall synchronize with this operation.
+Returns
+3 The mtx_timedlock function returns thrd_success on success, or thrd_timedout if the time specified was reached without acquiring the requested resource, or thrd_error if the request could not be honored.*/
+
+/*Description
+2 The mtx_unlock function unlocks the mutex pointed to by mtx. The mutex pointed to by mtx shall be locked by the calling thread.
+Returns
+3 The mtx_unlock function returns thrd_success on success or thrd_error if the request could not be honored.*/
+
+/*Description
+2 The mtx_destroy function releases any resources used by the mutex pointed to by mtx. No threads can be blocked waiting for the mutex pointed to by mtx.
+Returns
+3 The mtx_destroy function returns no value.*/
+
+
+
+
+typedef flaot cnd_t;
+/*which is a complete object type that holds an identifier for a condition variable;*/
+
+int  cnd_init     ( cnd_t *cond );
+int  cnd_signal   ( cnd_t *cond );
+int  cnd_broadcast( cnd_t *cond );
+int  cnd_wait     ( cnd_t *cond, mtx_t *mtx );
+int  cnd_timedwait( cnd_t *restrict cond, mtx_t *restrict mtx, const struct timespec *restrict ts );
+void cnd_destroy  ( cnd_t *cond );
+
+/* Description
+ * The cnd_init function creates a condition variable. If it succeeds it
+ * sets the variable pointed to by cond to a value that uniquely
+ * identifies the newly created condition variable. A thread that calls
+ * cnd_wait on a newly created condition variable will block.
+ * Returns
+ * The cnd_init function returns thrd_success on success, or thrd_nomem
+ * if no memory could be allocated for the newly created condition, or
+ * thrd_error if the request could not be honored. */
+
+/* Description
+ * The cnd_signal function unblocks one of the threads that are blocked
+ * on the condition variable pointed to by cond at the time of the
+ * call. If no threads are blocked on the condition variable at the time
+ * of the call, the function does nothing and return success.
+ * Returns
+ * The cnd_signal function returns thrd_success on success or thrd_error
+ * if the request could not be honored. */
+
+/* Description
+The cnd_broadcast function unblocks all of the threads that are blocked on the condition variable pointed to by cond at the time of the call. If no threads are blocked on the condition variable pointed to by cond at the time of the call, the function does nothing.
+Returns
+The cnd_broadcast function returns thrd_success on success, or thrd_error if the request could not be honored. */
+
+/*Description
+2 The cnd_wait function atomically unlocks the mutex pointed to by mtx and endeavors to block until the condition variable pointed to by cond is signaled by a call to cnd_signal or to cnd_broadcast. When the calling thread becomes unblocked it locks the mutex pointed to by mtx before it returns. The cnd_wait function requires that the mutex pointed to by mtx be locked by the calling thread.
+Returns
+3 The cnd_wait function returns thrd_success on success or thrd_error if
+the request could not be honored. */
+
+/*Description
+2 The cnd_timedwait function atomically unlocks the mutex pointed to by mtx and endeavors to block until the condition variable pointed to by cond is signaled by a call to cnd_signal or to cnd_broadcast, or until after the TIME_UTC-based calendar time pointed to by ts. When the calling thread becomes unblocked it locks the variable pointed to by mtx before it returns. The cnd_timedwait function requires that the mutex pointed to by mtx be locked by the calling thread.
+Returns
+3 The cnd_timedwait function returns thrd_success upon success, or thrd_timedout if the time specified in the call was reached without acquiring the requested resource, or thrd_error if the request could not be honored.*/
+
+/*Description
+The cnd_destroy function releases all resources used by the condition variable pointed to by cond. The cnd_destroy function requires that no threads be blocked waiting for the condition variable pointed to by cond.
+ISO/IEC 9899:201x Committee Draft — April 12, 2011 N1570
+378 Library §7.26.3.2
+Returns
+The cnd_destroy function returns no value. */
+
+
+
+
+
+
 
 
 
@@ -262,11 +265,6 @@ Description
 The tss_get function returns the value for the current thread held in the thread-specific storage identified by key.
 Returns
 The tss_get function returns the value for the current thread if successful, or zero if unsuccessful.
-ISO/IEC 9899:201x Committee Draft — April 12, 2011 N1570
-386 Library §7.26.6.3
-1
-2
-3
 7.26.6.4 Thetss_setfunction Synopsis
      #include <threads.h>
      int tss_set(tss_t key, void *val);
