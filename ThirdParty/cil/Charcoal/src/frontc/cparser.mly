@@ -291,8 +291,8 @@ object (self)
   val mutable contable_depth = 0
 
   method vexpr e = match e with
-  | ACTIVATE _ -> V.SkipChildren
-  | _ -> V.DoChildren
+    | ACTIVATE _ -> V.SkipChildren
+    | _ -> V.DoChildren
 
   method vstmt s =
     let cond_insert c = if c then V.ChangeDoChildrenPost ([stmt_to_insert;s], fun s -> s)

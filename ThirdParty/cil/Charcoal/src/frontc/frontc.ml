@@ -110,7 +110,7 @@ exception ParseError of string
 exception CabsOnly
 
 (* parse, and apply patching *)
-let rec parse_to_cabs fname =
+let rec parse_to_cabs fname : (string * Cabs.definition list) =
 begin
   (* parse the patch file if it isn't parsed already *)
   if ((!patchFileName <> "") && (isNone !patchFile)) then (
@@ -256,6 +256,8 @@ let parse_helper fname =
   let cabs = parse_to_cabs fname in
   (* Now (return a function that will) convert to CIL *)
   fun _ ->
+    (trace "sm" (dprintf "extracting activity bodies in %s\n" fname));
+    (* ... *)
     (trace "sm" (dprintf "converting %s from Cabs to CIL\n" fname));
     let cil = Stats.time "convert to CIL" Cabs2cil.convFile cabs in
     if !doPrintProtos then (printPrototypes cabs);
