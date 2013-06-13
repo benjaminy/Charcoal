@@ -4,35 +4,15 @@
  * TetraStak Concurrency Library
  */
 
-The macros are
-thread_local
-which expands to _Thread_local;
 
 ONCE_FLAG_INIT
 which expands to a value that can be used to initialize an object of type once_flag;
-
-and
-TSS_DTOR_ITERATIONS
-which expands to an integer constant expression representing the maximum number of times that destructors will be called when a thread terminates.
-
-
-
-
-tss_t
-which is a complete object type that holds an identifier for a thread-specific storage pointer;
-
-
-/* destructor for athread-specific storage pointer */
-typedef void (*tss_dtor_t)( void* );
 
 
 
 
  once_flag
 which is a complete object type that holds a flag for use by call_once. 
-
-
-
 
 
 
@@ -181,7 +161,7 @@ Returns
 
 
 
-typedef flaot cnd_t;
+typedef float cnd_t;
 /*which is a complete object type that holds an identifier for a condition variable;*/
 
 int  cnd_init     ( cnd_t *cond );
@@ -244,34 +224,61 @@ The cnd_destroy function returns no value. */
 
 
 
+typedef float tss_t;
+/* which is a complete object type that holds an identifier for a
+ * thread-specific storage pointer; */
+
+/* destructor for athread-specific storage pointer */
+typedef void (*tss_dtor_t)( void* );
+
+
+The macros are
+thread_local
+which expands to _Thread_local;
+
+and
+TSS_DTOR_ITERATIONS
+which expands to an integer constant expression representing the maximum number of times that destructors will be called when a thread terminates.
 
 
 
-     int tss_create(tss_t *key, tss_dtor_t dtor);
-Description
+
+int   tss_create( tss_t *key, tss_dtor_t dtor );
+void *tss_get   ( tss_t  key );
+int   tss_set   ( tss_t  key, void *val );
+void  tss_delete( tss_t  key );
+
+/*Description
 The tss_create function creates a thread-specific storage pointer with destructor dtor, which may be null.
 Returns
-If the tss_create function is successful, it sets the thread-specific storage pointed to by key to a value that uniquely identifies the newly created pointer and returns thrd_success; otherwise, thrd_error is returned and the thread-specific storage pointed to by key is set to an undefined value.
-7.26.6.2 Thetss_deletefunction Synopsis
-     #include <threads.h>
-     void tss_delete(tss_t key);
-Description
-The tss_delete function releases any resources used by the thread-specific storage identified by key.
-Returns
-The tss_delete function returns no value. 7.26.6.3 Thetss_getfunction Synopsis
-     #include <threads.h>
-     void *tss_get(tss_t key);
-Description
+If the tss_create function is successful, it sets the thread-specific storage pointed to by key to a value that uniquely identifies the newly created pointer and returns thrd_success; otherwise, thrd_error is returned and the thread-specific storage pointed to by key is set to an undefined value.*/
+
+/*Description
 The tss_get function returns the value for the current thread held in the thread-specific storage identified by key.
 Returns
-The tss_get function returns the value for the current thread if successful, or zero if unsuccessful.
-7.26.6.4 Thetss_setfunction Synopsis
-     #include <threads.h>
-     int tss_set(tss_t key, void *val);
-Description
+The tss_get function returns the value for the current thread if successful, or zero if unsuccessful.*/
+
+/*Description
 The tss_set function sets the value for the current thread held in the thread-specific storage identified by key to val.
 Returns
-The tss_set function returns thrd_success on success or thrd_error if the request could not be honored. ∗
+The tss_set function returns thrd_success on success or thrd_error if the request could not be honored. */
+
+/*Description
+The tss_delete function releases any resources used by the thread-specific storage identified by key.
+Returns
+The tss_delete function returns no value. */
+
+
+
+
+/* Okay, filling in some holes in C11 */
+
+typedef float barrier_t;
+
+int barrier_init( barrier_t *restrict barrier, unsigned count); 
+int barrier_wait( barrier_t *restrict barrier );
+int barrier_destroy( barrier_t *barrier );
+
 
 
 typedef struct _TET_MACHINE _TET_MACHINE, *TET_MACHINE;
