@@ -19,16 +19,16 @@
 
 <div class="main_div">
 
+<h1>Concurrency</h1>
+
 <p>Concurrency is a big topic.  In the most zoomed-out view, concurrent
 software has multiple "active" components &mdash; sometimes
 called <em>processes</em> or <em>tasks</em> &mdash; that can make
 progress simultaneously.  The simultaneity can be physical (different
-tasks literally executing simultaneously on separate processors) or
-simulated by interleaving the execution of multiple tasks on a single
-processor.  <a href="concurrency.html">Here</a> is my take on some of
-the most important concepts that fit under the concurreny umbrella.</p>
-
-<h1>(1/3) Concurrency</h1>
+tasks executing on different processors) or simulated by interleaving
+the execution of multiple tasks on a single processor.  This page is my
+take on some of the most important concepts that fit under the
+concurrency umbrella.</p>
 
 <p>The reasons for making concurrent software can be lumped into two
 main categories: performance and expressiveness.</p>
@@ -44,10 +44,10 @@ programming), and some programs can be more elegantly expressed by using
 the right concurrency framework.
 </ul>
 
-<p>Of course a single application might use concurrency for many
-reasons, but I think it's important to keep in mind that these are two
-totally separate things.  The Charcoal project is principally focused on
-the expressiveness part of the picture.</p>
+<p>Of course a single application might use concurrency in multiple ways
+for different reasons, but I think it's important to keep in mind that
+these are two categories are quite distinct.  The Charcoal project is
+principally focused on the expressiveness part of the picture.</p>
 
 <div class="highlight">
 <table width="100%">
@@ -61,21 +61,27 @@ that the Charcoal project most directly addresses.</caption>
 </div>
 
 <a id="expressiveness"/>
-<h1>(2/3) Expressiveness</h1>
+<h2>Expressiveness</h2>
 
-The Charcoal project is primarily about the expressiveness side of the
-concurrency concept map.  These concepts are about using concurrency in
-software design not for performance benefits, but because it just makes
-more sense that way.
+<p>Expressiveness is something of a catch-all in the sense that we mean
+"all the reasons for using concurrency that aren't directly related to
+performance".  We put three primary concepts within the scope of
+expressiveness:</p>
+
+<ul>
+<li>Reactive/interactive
+<li>Algorithmic
+<li>Isolation/independence
+</ul>
 
 <a id="reactive"/>
-<h2>2.(1/3) Reactive/Interactive</h2>
+<h3>Reactive/Interactive</h3>
 
 <p>All software interacts with the real world in some way.  Some
 applications have a relatively simple interactions pattern: read some
 input, compute for a while, write some output.  Compilers are a good
-example of software that is quite complex, but mostly adheres to this
-simple interaction with the outside world.</p>
+example of software that is quite complex, but mostly fits this simple
+interaction pattern.</p>
 
 <p>Many applications, including most that people directly use on a
 regular basis, have more complex interactions with the world.  Take a
@@ -88,33 +94,15 @@ checking formulas for possible errors.</p>
 
 <p>Building reactive/interactive software is different.</p>
 
-<a id="realtime"/>
-<h3>2.1.(1/2) Real-time</h3>
-
-<p>A special case of interactive software is those that have real-time
-constraints (hard or soft).  This category includes multimedia software,
-games, embedded systems controllers.</p>
-
-<a id="disk"/>
-<h3>2.1.(2/2) Disk/Network/UI</h3>
-
-<p>One common and simple concurrency pattern in GUI applications is
-starting long-running I/O operations, like disk or network reads,
-while remaining responsive to user input.</p>
-
-<p>This category is also connected to the concurrency part of the map,
-because some software has high disk or network requirements and needs to
-overlap many accesses in order to perform well.</p>
-
 <a id="algorithmic"/>
-<h2>2.(2/3) Algorithmic</h2>
+<h3>Algorithmic</h3>
 
 <p>Some algorithms look "procedural/functional" from the outside, but
 can still use concurrency to good effect internally.  A classic example
 is programming language parsing.  Scanner; parser.</p>
 
 <a id="isolation"/>
-<h2>2.(3/3) Isolation</h2>
+<h3>Isolation</h3>
 
 <p>Sometimes we want software components to be isolated from each other
 in one way or another.  A couple of classic examples:</p>
@@ -130,46 +118,60 @@ application remains responsive.
 </ul>
 
 <a id="performance"/>
-<h1>(3/3) Performance</h1>
+<h2>Performance</h2>
 
 Some applications 
 
 <a id="processor"/>
-<h2>3.(1/3) Processor Parallelism</h2>
+<h3>Processor Parallelism</h3>
 
 For CPU-bound tasks.
 
+
+<a id="system"/>
+<h3>System Parallelism</h3>
+
+For I/O-bound tasks.
+
+
+<h2>Miscellaneous</h2>
+
+<p>Here we have a grab-bag of concepts that are either combinations of
+the ideas discussed above or more specitic instances of them.  They are
+kinda sorta in order starting with the most relevant to Charcoal.</p>
+
+<a id="disk"/>
+<h3>Disk/Network/UI</h3>
+
+<p>One common and simple concurrency pattern in GUI applications is
+starting long-running I/O operations, like disk or network reads,
+while remaining responsive to user input.</p>
+
+<p>This category is also connected to the concurrency part of the map,
+because some software has high disk or network requirements and needs to
+overlap many accesses in order to perform well.</p>
+
+<a id="distributed"/>
+<h3>Distributed</h3>
+
+Clusters.  Could be CPU-bound or IO/bound.
+
+<a id="realtime"/>
+<h3>Real-time</h3>
+
+<p>A special case of interactive software is those that have real-time
+constraints (hard or soft).  This category includes multimedia software,
+games, embedded systems controllers.</p>
+
 <a id="multi"/>
-<h3>3.1.(1/3) Multi-processors</h3>
+<h3>Multi-processors</h3>
 
 Multi-cores and such.
 
 <a id="gpu"/>
-<h3>3.1.(2/3) Accelerators (GPU/FPGA)</h3>
+<h3>Accelerators (GPU/FPGA)</h3>
 
 Turbo boost.
-
-<h3>3.1.(3/3) Distributed</h3>
-
-<a href="#distributed">Here</a>
-
-<a id="system"/>
-<h2>3.(2/3) System Parallelism</h2>
-
-For I/O-bound tasks.
-
-<h3>3.2.(1/2) Disk/Network/UI</h3>
-
-<a href="#disk">Here</a>
-
-<a id="distributed"/>
-<h3>3.2.(2/2) Distributed</h3>
-
-Clusters.  Could be CPU-bound or IO/bound.
-
-<h3>3.(3/3) Real-time</h3>
-
-<a href="#realtime">Here</a>
 
 <div><hr/>&copy; Copyright 2013 <a href="http://www.cs.cornell.edu/~biy3/">Benjamin Ylvisaker</a></div>
 
