@@ -83,7 +83,7 @@ discussions of existing approaches to concurrent programming, and
 information about implementing activities (and some day an actual
 working implementation).</p>
 
-<div><hr/>&copy; Copyright 2013 <a href="http://www.cs.cornell.edu/~biy3/">Benjamin Ylvisaker</a></div>
+<?php include 'copyright.html'; ?>
 
 </div>
 </body>

@@ -81,7 +81,7 @@ sense is that "regular joe" developers are coming face-to-face with
 concurrency issues much more than in the past.  I would love to know if
 anyone has actually studied these trends.</p>
 
-<div><hr/>&copy; Copyright 2013 <a href="http://www.cs.cornell.edu/~biy3/">Benjamin Ylvisaker</a></div>
+<?php include 'copyright.html'; ?>
 
 </div>
 </body>

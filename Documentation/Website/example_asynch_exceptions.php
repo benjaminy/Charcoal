@@ -166,7 +166,7 @@ some huge win relative to alternative patterns.</p>
 doesn't have exception handling, but I am very interested in hearing
 other peoples' thoughts on the topic.</p>
 
-<div><hr/>&copy; Copyright 2013 <a href="http://www.cs.cornell.edu/~biy3/">Benjamin Ylvisaker</a></div>
+<?php include 'copyright.html'; ?>
 
 </div>
 </body>

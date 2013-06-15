@@ -322,7 +322,7 @@ threads meant for running syscalls.  When Pin intercepts a syscall, it
 "moves" the call over to one of the idle threads and lets the scheduler
 switch over to another activity on the calling thread.
 
-<div><hr/>&copy; Copyright 2013 <a href="http://www.cs.cornell.edu/~biy3/">Benjamin Ylvisaker</a></div>
+<?php include 'copyright.html'; ?>
 
 </div>
 </body>

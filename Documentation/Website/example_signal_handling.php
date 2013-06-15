@@ -154,7 +154,7 @@ shouldn't be a killer for most applications.  If you're doing something
 more real-time, a millisecond may be far too long to wait.  I'll address
 that situation in a different example.</p>
 
-<div><hr/>&copy; Copyright 2013 <a href="http://www.cs.cornell.edu/~biy3/">Benjamin Ylvisaker</a></div>
+<?php include 'copyright.html'; ?>
 
 </div>
 </body>

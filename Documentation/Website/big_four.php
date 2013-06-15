@@ -555,8 +555,7 @@ achieve a much more intuitive concurrency model.
 interested in processor parallelism at all.  Concurrency and parallelism
 are different, and Charcoal is about concurrency.</p>
 
-
-<div><hr/>&copy; Copyright 2013 <a href="http://www.cs.cornell.edu/~biy3/">Benjamin Ylvisaker</a></div>
+<?php include 'copyright.html'; ?>
 
 </div>
 </body>

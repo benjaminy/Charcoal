@@ -233,7 +233,7 @@ a procedure call than the cost of process creation.</p>
 </tr></tbody></table>
 </div>
 
-<div><hr/>&copy; Copyright 2013 <a href="http://www.cs.cornell.edu/~biy3/">Benjamin Ylvisaker</a></div>
+<?php include 'copyright.html'; ?>
 
 </div>
 </body>

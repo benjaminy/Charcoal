@@ -175,7 +175,7 @@ good rate.  However, the penalty is not terribly high.  The story is a
 little more complex for library code, and that is addressed in a
 different example.</p>
 
-<div><hr/>&copy; Copyright 2013 <a href="http://www.cs.cornell.edu/~biy3/">Benjamin Ylvisaker</a></div>
+<?php include 'copyright.html'; ?>
 
 </div>
 </body>
