@@ -5,6 +5,8 @@
 </head>
 <body style="background-color:darkgray">
 
+<?php include 'code_examples.php'; ?>
+
 <div class="side_links">
 <a href="index.html">Charcoal</a><br/>
 - <a href="short_version.html">Why Charcoal?</a><br/>
@@ -43,49 +45,40 @@ concurrently.  When one of them finishes, it kills the other ones.
 Here's a sketch of how it would work in Charcoal (if it had exception
 handling with Java-ish syntax).</p>
 
-<div class="highlight mono">
-<table><tbody><tr>
-<td align="right" valign="top">
-1:<br/>2:<br/>3:<br/>4:<br/>5:<br/>6:<br/>7:<br/>8:<br/>9:<br/>10:<br/>
-11:<br/>12:<br/>13:<br/>14:<br/>15:<br/>16:<br/>17:<br/>18:<br/>19:<br/>20:<br/>
-21:<br/>22:<br/>23:<br/>24:<br/>25:<br/>26:<br/>27:<br/>28:<br/>29:<br/>30:<br/>
-31:<br/>32:</td>
-<td>&nbsp;</td>
-<td valign="top">
-<i>result_type</i> <b>algo_X</b>( <b>input data</b> )<br/>
-{<br/>
-<pre>    </pre><i>result_type</i> <b>rv</b>;<br/>
-<pre>    </pre><i>activity_t</i> <b>a1</b>, <b>a2</b>;<br/>
-<pre>    </pre><i>barrier_t</i> <b>b</b>;<br/>
-<pre>    </pre>barrier_init( &amp;b, 2 );<br/>
-<pre>    </pre>a1 = <b><u>activate</u></b><br/>
-<pre>    </pre>{<br/>
-<pre>        </pre><span title="Wait until all have started" class="yellow">barrier_wait( &amp;b )</span>;<br/>
-<pre>        </pre><b><u>try</u></b><br/>
-<pre>        </pre>{<br/>
-<pre>            </pre>rv = algo_X_approach_1( input data );<br/>
-<pre>            </pre><b><u>deliver</u></b> a2 terminate_thyself;<br/>
-<pre>        </pre>}<br/>
-<pre>        </pre><b><u>catch</u></b>( terminate_thyself ) { }<br/>
-<pre>        </pre>/* clean up approach 1 */<br/>
-<pre>    </pre>}<br/>
-<pre>    </pre>a2 = <b><u>activate</u></b><br/>
-<pre>    </pre>{<br/>
-<pre>        </pre><span title="Wait until all have started" class="yellow">barrier_wait( &amp;b )</span>;<br/>
-<pre>        </pre><b><u>try</u></b><br/>
-<pre>        </pre>{<br/>
-<pre>            </pre>rv = algo_X_approach_2( input data );<br/>
-<pre>            </pre><b><u>deliver</u></b> a1 terminate_thyself;<br/>
-<pre>        </pre>}<br/>
-<pre>        </pre><b><u>catch</u></b>( terminate_thyself ) { }<br/>
-<pre>        </pre>/* clean up approach 2 */<br/>
-<pre>    </pre>}<br/>
-<pre>    </pre>join( a1 );<br/>
-<pre>    </pre>join( a2 );<br/>
-<pre>    </pre><b><u>return</u></b> rv;<br/>
-}
-</tr></tbody></table>
-</div>
+
+<?php format_code(
+'<i>result_type</i> <b>algo_X</b>( <b>input data</b> )
+{
+    <i>result_type</i> <b>rv</b>;
+    <i>activity_t</i> <b>a1</b>, <b>a2</b>;
+    <i>barrier_t</i> <b>b</b>;
+    barrier_init( &amp;b, 2 );
+    a1 = <b><u>activate</u></b>
+    {
+        <span title="Wait until all have started" class="yellow">barrier_wait( &amp;b )</span>;
+        <b><u>try</u></b>
+        {
+            rv = algo_X_approach_1( input data );
+            <b><u>deliver</u></b> a2 terminate_thyself;
+        }
+        <b><u>catch</u></b>( terminate_thyself ) { }
+        /* clean up approach 1 */
+    }
+    a2 = <b><u>activate</u></b>
+    {
+        <span title="Wait until all have started" class="yellow">barrier_wait( &amp;b )</span>;
+        <b><u>try</u></b>
+        {
+            rv = algo_X_approach_2( input data );
+            <b><u>deliver</u></b> a1 terminate_thyself;
+        }
+        <b><u>catch</u></b>( terminate_thyself ) { }
+        /* clean up approach 2 */
+    }
+    join( a1 );
+    join( a2 );
+    <b><u>return</u></b> rv;
+}' ); ?>
 
 <p>Quick side note: Remember, activities do not run in parallel, so the
 goal here is not to benefit from processor parallelism.  Rather we

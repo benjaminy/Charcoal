@@ -1,10 +1,15 @@
 
-website_html := big_four.html concurrency.html example_asynch_exceptions.html example_data_structure.html example_lazy_initialization.html example_multi_dns.html example_signal_handling.html example_stream.html example_tight_loops.html faq.html implementation.html index.html related_work.html short_version.html some_examples.html some_examples_mistake1.html some_examples_mistake2.html some_examples_mistake3.html
+website_examples := example_asynch_exceptions example_data_structure example_lazy_initialization example_multi_dns example_signal_handling example_stream example_tight_loops some_examples_mistake1 some_examples_mistake2 some_examples_mistake3
 
-WebsiteDeploy/%.html: Website/%.php
-	php $< > $@
+website_html := $(website_examples) big_four concurrency faq implementation index related_work short_version some_examples 
 
-build: $(addprefix WebsiteDeploy/,$(website_html))
+website_other := Activated-carbon.jpg charcoal.css concurrency_concept_map.svg
+
+WebsiteDeploy/%.html: Website/%.php Website/copyright.html Website/code_examples.php
+	bash -c "cd Website; php ../$< > ../$@"
+
+build: $(addprefix WebsiteDeploy/,$(addsuffix .html, $(website_html)))
+	cp $(addprefix Website/,$(website_other)) WebsiteDeploy
 
 deploy:
-	scp Website/* "root@charcoal-lang.org:/var/www/nginx-charcoal/"
+	rsync -avz WebsiteDeploy/* "root@charcoal-lang.org:/var/www/nginx-charcoal/"

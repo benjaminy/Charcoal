@@ -5,21 +5,9 @@
 </head>
 <body style="background-color:darkgray">
 
-<div class="side_links">
-<a href="index.html">Charcoal</a><br/>
-- <a href="short_version.html">Why Charcoal?</a><br/>
-- <a href="some_examples.html">Examples</a><br/>
-&mdash; <a href="example_multi_dns.html">Multi-DNS</a><br/>
-&mdash; <a href="example_signal_handling.html">Signals</a><br/>
-&mdash; <a href="example_tight_loops.html">Loops</a><br/>
-&mdash; <a href="example_data_structure.html">Data structures</a><br/>
-&mdash; <a href="example_lazy_initialization.html">Singleton</a><br/>
-&mdash; <a href="example_asynch_exceptions.html">Asynchronous</a><br/>
-- <a href="concurrency.html">Concurrency</a><br/>
-- <a href="big_four.html">vs. Threads, etc.</a><br/>
-- <a href="implementation.html">Implementation</a><br/>
-- <a href="faq.html">FAQ</a>
-</div>
+<?php include 'code_examples.php'; ?>
+
+<?php include 'example_side_bar.html'; ?>
 
 <div class="main_div">
 
@@ -76,64 +64,51 @@ required some unpleasant contortions.</p>
 asynchronous signals, which is have some thread block waiting for a
 signal to arrive.  This looks like the following:</p>
 
-<div class="highlight mono">
-<table><tbody><tr>
-<td align="right" valign="top">
-1:<br/>2:<br/>3:<br/>4:<br/>5:<br/>6:<br/>7:<br/>8:<br/>9:<br/>10:<br/></td>
-<td>&nbsp;</td>
-<td valign="top">
-<i>int</i> <b>sig_hand_thread_entry</b>( <i>void *</i><b>args</b> )<br/>
-{<br/>
-<pre>    </pre><i>int</i> <b>sig</b>;<br/>
-<pre>    </pre><i>sigset_t</i> <b>sigset</b>;<br/>
-<pre>    </pre>/* initialize sigset */<br/>
-<pre>    </pre><b><u>while</u></b>( true )<br/>
-<pre>    </pre>{<br/>
-<pre>        </pre><b><u>if</u></b>( 0 != sigwait( &amp;sigset, &amp;sig ) )<br/>
-<pre>        </pre>{ /* handle error */ }<br/>
-<pre>        </pre><b><u>switch</u></b>( sig )<br/>
-<pre>        </pre>{ /* handle signal */ }<br/>
-<pre>    </pre>}<br/>
-}<br/>
-<br/>
-<i>void</i> <b>start_signal_handler</b>( <i>thrd_t *</i>thr )<br/>
-{<br/>
-<pre>    </pre>thrd_t _t;
-<pre>    </pre>if( !thr ) thr = &amp;_t;
-<pre>    </pre>int err_code = thrd_create( thr, sig_hand_thread_entry, NULL );
+<?php format_code(
+'<i>int</i> <b>sig_hand_thread_entry</b>( <i>void *</i><b>args</b> )
+{
+    <i>int</i> <b>sig</b>;
+    <i>sigset_t</i> <b>sigset</b>;
+    /* initialize sigset */
+    <b><u>while</u></b>( true )
+    {
+        <b><u>if</u></b>( 0 != sigwait( &amp;sigset, &amp;sig ) )
+        { /* handle error */ }
+        <b><u>switch</u></b>( sig )
+        { /* handle signal */ }
+    }
 }
-</tr></tbody></table>
-</div>
+
+<i>void</i> <b>start_signal_handler</b>( <i>thrd_t *</i>thr )
+{
+    thrd_t _t;
+    if( !thr ) thr = &amp;_t;
+    int err_code = thrd_create(
+        thr, sig_hand_thread_entry, NULL );
+}'); ?>
 
 <p>Using this pattern would have taken care of our deadlock in malloc
 problem, but as I argue elsewhere in these pages I am not generally
 enthusiastic about using threads for much of anything.  You can
 implement the exact same pattern with activities:</p>
 
-<div class="highlight mono">
-<table><tbody><tr>
-<td align="right" valign="top">
-1:<br/>2:<br/>3:<br/>4:<br/>5:<br/>6:<br/>7:<br/>8:<br/>9:<br/>10:<br/></td>
-<td>&nbsp;</td>
-<td valign="top">
-<i>activity_t</i> <b>start_signal_handler</b>( <i>void</i> )<br/>
-{<br/>
-<pre>    </pre><b><u>return</u></b> <b><u>activate</u></b><br/>
-<pre>    </pre>{<br/>
-<pre>        </pre><i>int</i> <b>sig</b>;<br/>
-<pre>        </pre><i>sigset_t</i> <b>sigset</b>;<br/>
-<pre>        </pre>/* initialize sigset */<br/>
-<pre>        </pre><b><u>while</u></b>( true )<br/>
-<pre>        </pre>{<br/>
-<pre>            </pre><b><u>if</u></b>( 0 != sigwait( &amp;sigset, &amp;sig ) )<br/>
-<pre>            </pre>{ /* handle error */ }<br/>
-<pre>            </pre><b><u>switch</u></b>( sig )<br/>
-<pre>            </pre>{ /* handle signal */ }<br/>
-<pre>        </pre>}<br/>
-<pre>    </pre>}<br/>
-}
-</tr></tbody></table>
-</div>
+<?php format_code(
+'<i>activity_t</i> <b>start_signal_handler</b>( <i>void</i> )
+{
+    <b><u>return</u></b> <b><u>activate</u></b>
+    {
+        <i>int</i> <b>sig</b>;
+        <i>sigset_t</i> <b>sigset</b>;
+        /* initialize sigset */
+        <b><u>while</u></b>( true )
+        {
+            <b><u>if</u></b>( 0 != sigwait( &amp;sigset, &amp;sig ) )
+            { /* handle error */ }
+            <b><u>switch</u></b>( sig )
+            { /* handle signal */ }
+        }
+    }
+}' ); ?>
 
 <p>Beyond the syntactic differences, there is one substantive difference
 between using threads and activites to implement the blocking signal

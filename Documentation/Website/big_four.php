@@ -5,6 +5,8 @@
 </head>
 <body style="background-color:darkgray">
 
+<?php include 'code_examples.php'; ?>
+
 <div class="side_links">
 <a href="index.html">Charcoal</a><br/>
 - <a href="short_version.html">Why Charcoal?</a><br/>
@@ -272,22 +274,16 @@ yield boundaries would be a big performance problem, but I don't think
 it will be.  (This is all very speculative at the moment.)  For example,
 consider loop invariant code motion:</p>
 
-<div class="highlight mono">
-<table><tbody><tr>
-<td align="right" valign="top">
-1:<br/>2:<br/>3:<br/>4:<br/>5:<br/>6:<br/>7:<br/>8:<br/></td>
-<td>&nbsp;</td>
-<td valign="top">
-<i>void</i> <b>function_with_loop</b>( <i>int *</i><b>p</b>, <i>int *</i><b>q</b> )<br/>
-{<br/>
-<pre>    </pre><i>size_t</i> <b>i</b>;<br/>
-<pre>    </pre><b><u>for</u></b>( i = 0; i &lt; ...; ++i )<br/>
-<pre>    </pre>{<br/>
-<pre>        </pre>... *p ... *q = ...<br/>
-<pre>    </pre>}<br/>
-}
-</tr></tbody></table>
-</div>
+
+<?php format_code(
+'<i>void</i> <b>function_with_loop</b>( <i>int *</i><b>p</b>, <i>int *</i><b>q</b> )
+{
+    <i>size_t</i> <b>i</b>;
+    <b><u>for</u></b>( i = 0; i &lt; ...; ++i )
+    {
+        ... *p ... *q = ...
+    }
+}' ); ?>
 
 <p>If a compiler can satisfy itself
 that <span class="mono">p</span>
@@ -295,47 +291,32 @@ and <span class="mono">q</span> aren't aliases for
 anything else accessed by this code, it would love to transform it
 into:</p>
 
-<div class="highlight mono">
-<table><tbody><tr>
-<td align="right" valign="top">
-1:<br/>2:<br/>3:<br/>4:<br/>5:<br/>6:<br/>7:<br/>8:<br/>9:<br/>10:</td>
-<td>&nbsp;</td>
-<td valign="top">
-<i>void</i> <b>function_with_loop</b>( <i>int *</i><b>p</b>, <i>int *</i><b>q</b> )<br/>
-{<br/>
-<pre>    </pre><i>size_t</i> <b>i</b>;<br/>
-<pre>    </pre><i>int</i> <b>pval</b> = *p, <b>qval</b> = *q;<br/>
-<pre>    </pre><b><u>for</u></b>( i = 0; i &lt; ...; ++i )<br/>
-<pre>    </pre>{<br/>
-<pre>        </pre>... pval ... qval = ...<br/>
-<pre>    </pre>}<br/>
-<pre>    </pre>*q = qval<br/>
-}
-</tr></tbody></table>
-</div>
+<?php format_code(
+'<i>void</i> <b>function_with_loop</b>( <i>int *</i><b>p</b>, <i>int *</i><b>q</b> )
+{
+    <i>size_t</i> <b>i</b>;
+    <i>int</i> <b>pval</b> = *p, <b>qval</b> = *q;
+    <b><u>for</u></b>( i = 0; i &lt; ...; ++i )
+    {
+        ... pval ... qval = ...
+    }
+    *q = qval
+}' ); ?>
 
 <p>But in Charcoal a for loop really looks like this:</p>
 
-<div class="highlight mono">
-<table><tbody><tr>
-<td align="right" valign="top">
-1:<br/>2:<br/>3:<br/>4:<br/>5:<br/>6:<br/>7:<br/>8:<br/>9:<br/>10:<br/>
-11:</td>
-<td>&nbsp;</td>
-<td valign="top">
-<i>void</i> <b>function_with_loop</b>( <i>int *</i><b>p</b>, <i>int *</i><b>q</b> )<br/>
-{<br/>
-<pre>    </pre><i>size_t</i> <b>i</b>;<br/>
-<pre>    </pre><i>int</i> <b>pval</b> = *p, <b>qval</b> = *q;<br/>
-<pre>    </pre><b><u>for_no_yield</u></b>( i = 0; i &lt; ...; ++i )<br/>
-<pre>    </pre>{<br/>
-<pre>        </pre>... pval ... qval = ...<br/>
-<pre>        </pre>yield;<br/>
-<pre>    </pre>}<br/>
-<pre>    </pre>*q = qval<br/>
-}
-</tr></tbody></table>
-</div>
+<?php format_code(
+'<i>void</i> <b>function_with_loop</b>( <i>int *</i><b>p</b>, <i>int *</i><b>q</b> )
+{
+    <i>size_t</i> <b>i</b>;
+    <i>int</i> <b>pval</b> = *p, <b>qval</b> = *q;
+    <b><u>for_no_yield</u></b>( i = 0; i &lt; ...; ++i )
+    {
+        ... pval ... qval = ...
+        yield;
+    }
+    *q = qval
+}' ); ?>
 
 <p>So it seems like the loop invariant code motion optimization might
 violate the rules by making accesses
@@ -344,32 +325,24 @@ and <span class="mono">*q</span> appear to cross yield
 boundaries.  My hope is that the compiler will be able to see into yield
 and insert fix-up code like this:</p>
 
-<div class="highlight mono">
-<table><tbody><tr>
-<td align="right" valign="top">
-1:<br/>2:<br/>3:<br/>4:<br/>5:<br/>6:<br/>7:<br/>8:<br/>9:<br/>10:<br/>
-11:<br/>12:<br/>13:<br/>14:<br/>15:<br/>16:<br/>17:</td>
-<td>&nbsp;</td>
-<td valign="top">
-<i>void</i> <b>function_with_loop</b>( <i>int *</i><b>p</b>, <i>int *</i><b>q</b> )<br/>
-{<br/>
-<pre>    </pre><i>size_t</i> <b>i</b>;<br/>
-<pre>    </pre><i>int</i> <b>pval</b> = *p, <b>qval</b> = *q;<br/>
-<pre>    </pre><b><u>for_no_yield</u></b>( i = 0; i &lt; ...; ++i )<br/>
-<pre>    </pre>{<br/>
-<pre>        </pre>... pval ... qval = ...<br/>
-<pre>        </pre>if( "actually yield (very unlikely)" )<br/>
-<pre>        </pre>{<br/>
-<pre>            </pre>*q = qval;<br/>
-<pre>            </pre>actually_yield;<br/>
-<pre>            </pre>pval = *p;<br/>
-<pre>            </pre>qval = *q;<br/>
-<pre>        </pre>}<br/>
-<pre>    </pre>}<br/>
-<pre>    </pre>*q = qval;<br/>
-}
-</tr></tbody></table>
-</div>
+<?php format_code(
+'<i>void</i> <b>function_with_loop</b>( <i>int *</i><b>p</b>, <i>int *</i><b>q</b> )
+{
+    <i>size_t</i> <b>i</b>;
+    <i>int</i> <b>pval</b> = *p, <b>qval</b> = *q;
+    <b><u>for_no_yield</u></b>( i = 0; i &lt; ...; ++i )
+    {
+        ... pval ... qval = ...
+        if( "actually yield (very unlikely)" )
+        {
+            *q = qval;
+            actually_yield;
+            pval = *p;
+            qval = *q;
+        }
+    }
+    *q = qval;
+}' ); ?>
 
 <p>This does add complexity to the compiler and inflates code size
 somewhat, but I don't think either of those costs should be huge.  It

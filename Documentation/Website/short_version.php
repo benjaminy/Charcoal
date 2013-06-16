@@ -22,9 +22,9 @@
 <h3>... in 100 lines or less ... or more</h3>
 </header>
 
-<p>Take a look at the processes running on your computer.  If you're
-running typical modern applications, many of them will have dozens of
-threads.  Why so many threads?  In a few cases, it may be that the
+<p>Take a look at the processes running on your computer.  Many widely
+used modern applications have dozens of threads active at any given
+time.  Why so many threads?  In a few cases, it may be that the
 application is actually taking advantage of the processor parallelism
 available in most systems today.  However, probably most of those
 threads spend the vast majority of their lives basically doing nothing,
@@ -59,13 +59,14 @@ call <em>activities</em>.</p>
 <p>The basic idea behind cooperative threads is that only one thread can
 run at a time and the active thread must explicitly invoke
 a <em>yield</em> primitive to allow control to transfer to another
-thread.  Cooperative threads are easier to manage than conventional
-(preemptive/parallel) threads, because it is impossible for them to
-interfere with each other between yield invocations.</p>
+thread.  Cooperative threads are more resistant to some important kinds
+of concurrency bugs than conventional (preemptive/parallel) threads,
+because it is impossible for cooperative threads to interfere with each
+other between yield invocations.</p>
 
 <p>Cooperative threads have existed on the fringes of software
 engineering practice for decades.  In the last few years they seem to
-have gained some popularity, especially in the "scripting" language
+have gained some popularity, especially in "scripting" language
 communities
 (<a href="http://code.activestate.com/recipes/466008-simple-cooperative-multitasking-using-generators/">Python</a>,
 <a href="http://lua-users.org/wiki/MultiTasking">Lua</a>,
@@ -77,7 +78,7 @@ software engineering problems of their own.</p>
 and preemptive threads.  They are implemented much like cooperative
 threads, but feel more like preemptive threads, because the compiler
 implicitly sprinkles yield invocations around here and there.  If this
-sounds intriguing, please explore the rest of this site, which includes
+sounds intriguing please explore the rest of this site, which includes
 several examples, ruminations on concurrency in general, detailed
 discussions of existing approaches to concurrent programming, and
 information about implementing activities (and some day an actual

@@ -5,6 +5,8 @@
 </head>
 <body style="background-color:darkgray">
 
+<?php include 'code_examples.php'; ?>
+
 <div class="side_links">
 <a href="index.html">Charcoal</a><br/>
 - <a href="short_version.html">Why Charcoal?</a><br/>
@@ -32,24 +34,17 @@ dozen instructions.  In most code this overhead shouldn't be worth
 thinking about, but in tight inner loops it can be painful.  For
 example:</p>
 
-<div class="highlight mono">
-<table><tbody><tr>
-<td align="right" valign="top">
-1:<br/>2:<br/>3:<br/>4:<br/>5:<br/>6:<br/>7:<br/>8:<br/>9:<br/>10:</td>
-<td>&nbsp;</td>
-<td valign="top">
-<i>float</i> <b>dot_product</b>( <i>size_t</i> <b>N</b>, <i>float *</i><b>A</b>, <i>float *</i><b>B</b> )<br/>
-{<br/>
-<pre>    </pre><i>float</i> <b>rv</b> = 0.0;<br/>
-<pre>    </pre><i>size_t</i> <b>i</b>;<br/>
-<pre>    </pre><b><u>for</u></b>( i = 0; i &lt; N; ++i )<br/>
-<pre>    </pre>{<br/>
-<pre>        </pre>rv += A[i] * b[i];<br/>
-<pre>    </pre>}<br/>
-<pre>    </pre><b><u>return</u></b> rv;<br/>
-}
-</tr></tbody></table>
-</div>
+<?php format_code(
+'<i>float</i> <b>dot_product</b>( <i>size_t</i> <b>N</b>, <i>float *</i><b>A</b>, <i>float *</i><b>B</b> )
+{
+    <i>float</i> <b>rv</b> = 0.0;
+    <i>size_t</i> <b>i</b>;
+    <b><u>for</u></b>( i = 0; i &lt; N; ++i )
+    {
+        rv += A[i] * b[i];
+    }
+    <b><u>return</u></b> rv;
+}' ); ?>
 
 <p>The inner loop here is probably well under a dozen instructions, so
 adding a yield on every iteration (which happens by default in Charcoal)
@@ -58,61 +53,46 @@ of this code at all, that's probably unacceptable.  The simplest "fix"
 for this problem is to use the for loop variant that does not yield by
 default.</p>
 
-<div class="highlight mono">
-<table><tbody><tr>
-<td align="right" valign="top">
-1:<br/>2:<br/>3:<br/>4:<br/>5:<br/>6:<br/>7:<br/>8:<br/>9:<br/>10:</td>
-<td>&nbsp;</td>
-<td valign="top">
-<i>float</i> <b>dot_product</b>( <i>size_t</i> <b>N</b>, <i>float *</i><b>A</b>, <i>float *</i><b>B</b> )<br/>
-{<br/>
-<pre>    </pre><i>float</i> <b>rv</b> = 0.0;<br/>
-<pre>    </pre><i>size_t</i> <b>i</b>;<br/>
-<pre>    </pre><b><u><span title="Look ma, no yielding!" class="yellow">for_no_yield</span></u></b>( i = 0; i &lt; N; ++i )<br/>
-<pre>    </pre>{<br/>
-<pre>        </pre>rv += A[i] * b[i];<br/>
-<pre>    </pre>}<br/>
-<pre>    </pre><b><u>return</u></b> rv;<br/>
-}
-</tr></tbody></table>
-</div>
+<?php format_code(
+'<i>float</i> <b>dot_product</b>( <i>size_t</i> <b>N</b>, <i>float *</i><b>A</b>, <i>float *</i><b>B</b> )
+{
+    <i>float</i> <b>rv</b> = 0.0;
+    <i>size_t</i> <b>i</b>;
+    <b><u><span title="Look ma, no yielding!" class="yellow">for_no_yield</span></u></b>( i = 0; i &lt; N; ++i )
+    {
+        rv += A[i] * b[i];
+    }
+    <b><u>return</u></b> rv;
+}' ); ?>
 
 <p>This version avoids yielding too frequently, but if it is ever called
 with a large input, it may very well yield too infrequently.
-Well-behaved Charcoal programs should aim to go no more than a few
-milliseconds between yields.</p>
+Well-behaved Charcoal programs should go no more than a few milliseconds
+between yields.</p>
 
 <p>Hitting a sweet spot in terms of yield frequency, while adding zero
 overhead to the inner loop requires somewhat more complex code.</p>
 
-<div class="highlight mono">
-<table><tbody><tr>
-<td align="right" valign="top">
-1:<br/>2:<br/>3:<br/>4:<br/>5:<br/>6:<br/>7:<br/>8:<br/>9:<br/>10:<br/>
-11:<br/>12:<br/>13:<br/>14:<br/>15:<br/>16:<br/>17:<br/>18:<br/>19:</td>
-<td>&nbsp;</td>
-<td valign="top">
-<b><u>#define</u></b> <b>BLOCK_SIZE</b> 32<br/>
-<br/>
-<i>float</i> <b>dot_product</b>( <i>size_t</i> <b>N</b>, <i>float *</i><b>A</b>, <i>float *</i><b>B</b> )<br/>
-{<br/>
-<pre>    </pre><i>float</i> <b>rv</b> = 0.0;<br/>
-<pre>    </pre><i>size_t</i> <b>i</b> = 0, <b>j</b>;<br/>
-<pre>    </pre><b><u>for</u></b>( j = BLOCK_SIZE; j &lt; N; j += BLOCK_SIZE )<br/>
-<pre>    </pre>{<br/>
-<pre>        </pre><b><u>for_no_yield</u></b>( ; i &lt; j; ++i )<br/>
-<pre>        </pre>{<br/>
-<pre>            </pre>rv += A[i] * b[i];<br/>
-<pre>        </pre>}<br/>
-<pre>    </pre>}<br/>
-<pre>    </pre><b><u>for_no_yield</u></b>( ; i &lt; N; ++i )<br/>
-<pre>    </pre>{<br/>
-<pre>        </pre>rv += A[i] * b[i];<br/>
-<pre>    </pre>}<br/>
-<pre>    </pre><b><u>return</u></b> rv;<br/>
-}
-</tr></tbody></table>
-</div>
+<?php format_code(
+'<b><u>#define</u></b> <b>BLOCK_SIZE</b> 32
+
+<i>float</i> <b>dot_product</b>( <i>size_t</i> <b>N</b>, <i>float *</i><b>A</b>, <i>float *</i><b>B</b> )
+{
+    <i>float</i> <b>rv</b> = 0.0;
+    <i>size_t</i> <b>i</b> = 0, <b>j</b>;
+    <b><u>for</u></b>( j = BLOCK_SIZE; j &lt; N; j += BLOCK_SIZE )
+    {
+        <b><u>for_no_yield</u></b>( ; i &lt; j; ++i )
+        {
+            rv += A[i] * b[i];
+        }
+    }
+    <b><u>for_no_yield</u></b>( ; i &lt; N; ++i )
+    {
+        rv += A[i] * b[i];
+    }
+    <b><u>return</u></b> rv;
+}' ); ?>
 
 <p>[Some explanatory text here]</p>
 
@@ -126,24 +106,17 @@ be a complex bug to fix.)</p>
 <p>Things get a little trickier if the loop condition is
 data-dependent.</p>
 
-<div class="highlight mono">
-<table><tbody><tr>
-<td align="right" valign="top">
-1:<br/>2:<br/>3:<br/>4:<br/>5:<br/>6:<br/>7:<br/>8:<br/>9:<br/>10:</td>
-<td>&nbsp;</td>
-<td valign="top">
-<b><u>#define</u></b> <b>BLOCK_SIZE</b> 32<br/>
-<br/>
-<i>char *</i><b>mystrcpy</b>( <i>char *</i><b>dest</b>, <i>const char *</i><b>src</b> )<br/>
-{<br/>
-<pre>    </pre><i>char *</i><b>rv</b> = dst;<br/>
-<pre>    </pre><b><u>while_no_yield</u></b>( *dst++ = *src++ )<br/>
-<pre>        </pre><b><u>if</u></b>( 0 == dst % BLOCK_SIZE )<br/>
-<pre>            </pre><b><u>yield</u></b>;<br/>
-<pre>    </pre><b><u>return</u></b> rv;<br/>
-}
-</tr></tbody></table>
-</div>
+<?php format_code(
+'<b><u>#define</u></b> <b>BLOCK_SIZE</b> 32
+
+<i>char *</i><b>mystrcpy</b>( <i>char *</i><b>dest</b>, <i>const char *</i><b>src</b> )
+{
+    <i>char *</i><b>rv</b> = dst;
+    <b><u>while_no_yield</u></b>( *dst++ = *src++ )
+        <b><u>if</u></b>( 0 == dst % BLOCK_SIZE )
+            <b><u>yield</u></b>;
+    <b><u>return</u></b> rv;
+}' ); ?>
 
 <p>This example is just slightly less satisfying than the previous one
 performance-wise, because we had to add an extra branch in the inner

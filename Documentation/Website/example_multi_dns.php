@@ -5,6 +5,8 @@
 </head>
 <body style="background-color:darkgray">
 
+<?php include 'code_examples.php'; ?>
+
 <div class="side_links">
 <a href="index.html">Charcoal</a><br/>
 - <a href="short_version.html">Why Charcoal?</a><br/>
@@ -32,25 +34,19 @@ Can Make Sense</a> by Krohn, Kohler, and Kaashoek.
 
 <h3>Sequential Version</h3>
 
-<div class="highlight mono">
-<table><tbody><tr>
-<td align="right" valign="top">
-1:<br/>2:<br/>3:<br/>4:<br/>5:<br/>6:<br/>7:<br/>8:<br/>9:<br/>10:</td>
-<td>&nbsp;</td>
-<td valign="top">
-<i>void</i> <b>multi_dns_seq</b>(<br/>
-<pre>    </pre><i>size_t</i> <b>N</b>, <i>char **</i><b>names</b>,
- <b><u>struct</u></b> <i>addrinfo **</i><b>infos</b> )<br/>
-{<br/>
-<pre>    </pre><i>size_t</i> <b>i</b>;<br/>
-<pre>    </pre><b><u>for</u></b>( i = 0; i &lt; N; ++i )<br/>
-<pre>    </pre>{<br/>
-<pre>        </pre>assert( 0 == getaddrinfo(<br/>
-<pre>            </pre>names[i], NULL, NULL, &infos[i] ) );<br/>
-<pre>    </pre>}<br/>
-}
-</tr></tbody></table>
-</div>
+
+<?php format_code(
+'<i>void</i> <b>multi_dns_seq</b>(
+    <i>size_t</i> <b>N</b>, <i>char **</i><b>names</b>,
+ <b><u>struct</u></b> <i>addrinfo **</i><b>infos</b> )
+{
+    <i>size_t</i> <b>i</b>;
+    <b><u>for</u></b>( i = 0; i &lt; N; ++i )
+    {
+        assert( 0 == getaddrinfo(
+            names[i], NULL, NULL, &infos[i] ) );
+    }
+}' ); ?>
 
 <p>In <span class="mono">multi_dns_seq</span>, we sequentially
 perform <span class="mono">N</span> DNS lookups and return the results
@@ -63,34 +59,25 @@ pretty bare-bones here; I encourage to try to look past that.</p>
 might be able to get through them faster by putting out several requests
 simultaneously.  Here's how we can do that in Charcoal.</p>
 
-<div class="highlight mono">
-<table><tbody><tr>
-<td align="right" valign="top">
-1:<br/>2:<br/>3:<br/>4:<br/>5:<br/>6:<br/>7:<br/>8:<br/>9:<br/>10:<br/>
-11:<br/>12:<br/>13:<br/>14:<br/>15:<br/>16:<br/>17:<br/>18:</td>
-<td>&nbsp;</td>
-<td valign="top">
-<i>void</i> <b>multi_dns_conc</b>(<br/>
-<pre>    </pre><i>size_t</i> <b>N</b>, <i>char</i> **<b>names</b>, <b><u>struct</u></b> <i>addrinfo</i> **<b>infos</b> )<br/>
-{<br/>
-<pre>    </pre><i>size_t</i> <b>i</b>, <span title="How many lookups have finished?" class="yellow"><b>done</b> = 0</span>;<br/>
-<pre>    </pre><i>semaphore_t</i> <b>done_sem</b>;<br/>
-<pre>    </pre>sem_init( &amp;done_sem, 0 );<br/>
-<pre>    </pre><b><u>for</u></b>( i = 0; i &lt; N; ++i )<br/>
-<pre>    </pre>{<br/>
-<pre>        </pre><b><u><span title="The 'activate' keyword" class="yellow">activate</span></u></b> <span title="The by-value variable list" class="yellow">( i )</span><br/>
-<pre>        </pre>{<br/>
-<pre>            </pre>assert( 0 == getaddrinfo(<br/>
-<pre>                </pre>names[i], NULL, NULL, &amp;infos[i] ) );<br/>
-<pre>            </pre><b><u>if</u></b>( ( <span title="Shared variable access" class="yellow">++done</span> ) == N )<br/>
-<pre>                </pre>sem_inc( &amp;done_sem );<br/>
-<pre>        </pre>}<br/>
-<pre>    </pre>}<br/>
-<pre>    </pre><span title="Wait for the done signal" class="yellow">sem_dec( &amp;done_sem )</span>;<br/>
-}
-</td>
-</tr></tbody></table>
-</div>
+<?php format_code(
+'<i>void</i> <b>multi_dns_conc</b>(
+    <i>size_t</i> <b>N</b>, <i>char</i> **<b>names</b>, <b><u>struct</u></b> <i>addrinfo</i> **<b>infos</b> )
+{
+    <i>size_t</i> <b>i</b>, <span title="How many lookups have finished?" class="yellow"><b>done</b> = 0</span>;
+    <i>semaphore_t</i> <b>done_sem</b>;
+    sem_init( &amp;done_sem, 0 );
+    <b><u>for</u></b>( i = 0; i &lt; N; ++i )
+    {
+        <b><u><span title="The \'activate\' keyword" class="yellow">activate</span></u></b> <span title="The by-value variable list" class="yellow">( i )</span>
+        {
+            assert( 0 == getaddrinfo(
+                names[i], NULL, NULL, &amp;infos[i] ) );
+            <b><u>if</u></b>( ( <span title="Shared variable access" class="yellow">++done</span> ) == N )
+                sem_inc( &amp;done_sem );
+        }
+    }
+    <span title="Wait for the done signal" class="yellow">sem_dec( &amp;done_sem )</span>;
+}' ); ?>
 
 <p>The most significant change here is
 the <span class="mono">activate</span> expression that starts on line 9.
@@ -144,42 +131,32 @@ long, this might overwhelm the operating system or network.  We can
 limit the number of outstanding look ups with a few modest changes to
 the code:</p>
 
-<div class="highlight mono">
-<table><tbody><tr>
-<td align="right" valign="top">
-1:<br/>2:<br/>3:<br/>4:<br/>5:<br/>6:<br/>7:<br/>8:<br/>9:<br/>10:<br/>
-11:<br/>12:<br/>13:<br/>14:<br/>15:<br/>16:<br/>17:<br/>18:<br/>19:<br/>20:<br/>
-21:<br/>22:<br/>23:<br/>24:<br/>25:</td>
-<td>&nbsp;</td>
-<td valign="top">
-<b><u>#define</u></b> <b>DEFAULT_MULTI_DNS_LIMIT</b> 10<br/>
-<br/>
-<i>void</i> <b>multi_dns_conc</b>(<br/>
-<pre>    </pre><i>size_t</i> <b>N</b>, <i>size_t</i> <b>lim</b>,<br/>
-<pre>    </pre><i>char</i> **<b>names</b>, <b><u>struct</u></b> <i>addrinfo</i> **<b>infos</b> )<br/>
-{<br/>
-<pre>    </pre><i>size_t</i> <b>i</b>, <b>done</b> = 0;<br/>
-<pre>    </pre><i>semaphore_t</i> <b>done_sem</b>, <b>lim_sem</b>;<br/>
-<pre>    </pre>sem_init( &amp;done_sem, 0 );<br/>
-<pre>    </pre>sem_init( &amp;lim_sem,<br/>
-<pre>        </pre>lim &lt; 1 ? DEFAULT_MULTI_DNS_LIMIT : lim );<br/>
-<pre>    </pre><b><u>for</u></b>( i = 0; i &lt; n; ++i )<br/>
-<pre>    </pre>{<br/>
-<pre>        </pre><span title="Wait until fewer than 'lim' lookups are happening" class="yellow">sem_dec( &amp;lim_sem )</span>;<br/>
-<pre>        </pre><b><u>activate</u></b> ( i )<br/>
-<pre>        </pre>{<br/>
-<pre>            </pre>assert( 0 == getaddrinfo(<br/>
-<pre>                </pre>names[i], NULL, NULL, &amp;infos[i] ) );<br/>
-<pre>            </pre><span title="Allow waiting lookups to proceed" class="yellow">sem_inc( &amp;lim_sem )</span>;<br/>
-<pre>            </pre><b><u>if</u></b>( ( ++done ) == n )<br/>
-<pre>                </pre>sem_inc( &amp;done_sem );<br/>
-<pre>        </pre>}<br/>
-<pre>    </pre>}<br/>
-<pre>    </pre>sem_dec( &amp;done_sem );<br/>
-}
-</td>
-</tr></tbody></table>
-</div>
+<?php format_code(
+'<b><u>#define</u></b> <b>DEFAULT_MULTI_DNS_LIMIT</b> 10
+
+<i>void</i> <b>multi_dns_conc</b>(
+    <i>size_t</i> <b>N</b>, <i>size_t</i> <b>lim</b>,
+    <i>char</i> **<b>names</b>, <b><u>struct</u></b> <i>addrinfo</i> **<b>infos</b> )
+{
+    <i>size_t</i> <b>i</b>, <b>done</b> = 0;
+    <i>semaphore_t</i> <b>done_sem</b>, <b>lim_sem</b>;
+    sem_init( &amp;done_sem, 0 );
+    sem_init( &amp;lim_sem,
+        lim &lt; 1 ? DEFAULT_MULTI_DNS_LIMIT : lim );
+    <b><u>for</u></b>( i = 0; i &lt; n; ++i )
+    {
+        <span title="Wait until fewer than \'lim\' lookups are happening" class="yellow">sem_dec( &amp;lim_sem )</span>;
+        <b><u>activate</u></b> ( i )
+        {
+            assert( 0 == getaddrinfo(
+                names[i], NULL, NULL, &amp;infos[i] ) );
+            <span title="Allow waiting lookups to proceed" class="yellow">sem_inc( &amp;lim_sem )</span>;
+            <b><u>if</u></b>( ( ++done ) == n )
+                sem_inc( &amp;done_sem );
+        }
+    }
+    sem_dec( &amp;done_sem );
+}' ); ?>
 
 <p>Here we added a new semaphore (<span class="mono">lim_sem</span>)
 that the main activity decrements before activating each look up.  The
@@ -195,43 +172,33 @@ preferable if creating new activities is expensive.  In Charcoal,
 activating a statement is very cheap &mdash; much closer to the cost of
 a procedure call than the cost of process creation.</p>
 
-<div class="highlight mono">
-<table><tbody><tr>
-<td align="right" valign="top">
-1:<br/>2:<br/>3:<br/>4:<br/>5:<br/>6:<br/>7:<br/>8:<br/>9:<br/>10:<br/>
-11:<br/>12:<br/>13:<br/>14:<br/>15:<br/>16:<br/>17:<br/>18:<br/>19:<br/>20:<br/>
-21:<br/>22:<br/>23:<br/>24:<br/>25:</td>
-<td>&nbsp;</td>
-<td valign="top">
-<b><u>#define</u></b> <b>DEFAULT_MULTI_DNS_LIMIT</b> 10<br/>
-<br/>
-<i>void</i> <b>multi_dns_conc</b>(<br/>
-<pre>    </pre><i>size_t</i> <b>N</b>, <i>size_t</i> <b>lim</b>,<br/>
-<pre>    </pre><i>char</i> **<b>names</b>, <b><u>struct</u></b> <i>addrinfo</i> **<b>infos</b><br/>
-<pre>    </pre><i>semaphore_t *</i><b></b>, <b><u>struct</u></b> <i>addrinfo</i> **<b>infos</b> )<br/>
-{<br/>
-<pre>    </pre><i>size_t</i> <b>i</b>, <b>done</b> = 0;<br/>
-<pre>    </pre><i>semaphore_t</i> <b>done_sem</b>, <b>lim_sem</b>;<br/>
-<pre>    </pre>sem_init( &amp;done_sem, 0 );<br/>
-<pre>    </pre>sem_init( &amp;lim_sem,<br/>
-<pre>        </pre>lim &lt; 1 ? DEFAULT_MULTI_DNS_LIMIT : lim );<br/>
-<pre>    </pre><b><u>for</u></b>( i = 0; i &lt; n; ++i )<br/>
-<pre>    </pre>{<br/>
-<pre>        </pre><span title="Wait until fewer than 'lim' lookups are happening" class="yellow">sem_dec( &amp;lim_sem )</span>;<br/>
-<pre>        </pre><b><u>activate</u></b> ( i )<br/>
-<pre>        </pre>{<br/>
-<pre>            </pre>assert( 0 == getaddrinfo(<br/>
-<pre>                </pre>names[i], NULL, NULL, &amp;infos[i] ) );<br/>
-<pre>            </pre><span title="Allow waiting lookups to proceed" class="yellow">sem_inc( &amp;lim_sem )</span>;<br/>
-<pre>            </pre><b><u>if</u></b>( ( ++done ) == n )<br/>
-<pre>                </pre>sem_inc( &amp;done_sem );<br/>
-<pre>        </pre>}<br/>
-<pre>    </pre>}<br/>
-<pre>    </pre>sem_dec( &amp;done_sem );<br/>
-}
-</td>
-</tr></tbody></table>
-</div>
+<?php format_code(
+'<b><u>#define</u></b> <b>DEFAULT_MULTI_DNS_LIMIT</b> 10
+
+<i>void</i> <b>multi_dns_conc</b>(
+    <i>size_t</i> <b>N</b>, <i>size_t</i> <b>lim</b>,
+    <i>char</i> **<b>names</b>, <b><u>struct</u></b> <i>addrinfo</i> **<b>infos</b>
+    <i>semaphore_t *</i><b></b>, <b><u>struct</u></b> <i>addrinfo</i> **<b>infos</b> )
+{
+    <i>size_t</i> <b>i</b>, <b>done</b> = 0;
+    <i>semaphore_t</i> <b>done_sem</b>, <b>lim_sem</b>;
+    sem_init( &amp;done_sem, 0 );
+    sem_init( &amp;lim_sem,
+        lim &lt; 1 ? DEFAULT_MULTI_DNS_LIMIT : lim );
+    <b><u>for</u></b>( i = 0; i &lt; n; ++i )
+    {
+        <span title="Wait until fewer than \'lim\' lookups are happening" class="yellow">sem_dec( &amp;lim_sem )</span>;
+        <b><u>activate</u></b> ( i )
+        {
+            assert( 0 == getaddrinfo(
+                names[i], NULL, NULL, &amp;infos[i] ) );
+            <span title="Allow waiting lookups to proceed" class="yellow">sem_inc( &amp;lim_sem )</span>;
+            <b><u>if</u></b>( ( ++done ) == n )
+                sem_inc( &amp;done_sem );
+        }
+    }
+    sem_dec( &amp;done_sem );
+}' ); ?>
 
 <?php include 'copyright.html'; ?>
 

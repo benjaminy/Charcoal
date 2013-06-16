@@ -5,6 +5,8 @@
 </head>
 <body style="background-color:darkgray">
 
+<?php include 'code_examples.php'; ?>
+
 <div class="side_links">
 <a href="index.html">Charcoal</a><br/>
 - <a href="short_version.html">Why Charcoal?</a><br/>
@@ -20,34 +22,25 @@
 <p>What if we add something like <span class="mono">done</span> to the
 by-value variables list?</p>
 
-<div class="highlight mono">
-<table><tbody><tr>
-<td align="right" valign="top">
-1:<br/>2:<br/>3:<br/>4:<br/>5:<br/>6:<br/>7:<br/>8:<br/>9:<br/>10:<br/>
-11:<br/>12:<br/>13:<br/>14:<br/>15:<br/>16:<br/>17:<br/>18:</td>
-<td>&nbsp;</td>
-<td valign="top">
-<i>void</i> <b>multi_dns_conc</b>(<br/>
-<pre>    </pre><i>size_t</i> <b>N</b>, <i>char</i> **<b>names</b>, <b><u>struct</u></b> <i>addrinfo</i> **<b>infos</b> )<br/>
-{<br/>
-<pre>    </pre><i>size_t</i> <b>i</b>, <b>done</b> = 0;<br/>
-<pre>    </pre><i>semaphore_t</i> <b>done_sem</b>;<br/>
-<pre>    </pre>sem_init( &amp;done_sem, 0 );<br/>
-<pre>    </pre><b><u>for</u></b>( i = 0; i &lt; N; ++i )<br/>
-<pre>    </pre>{<br/>
-<pre>        </pre><b><u>activate</u></b> ( i, <span class="yellow">done</span> ) <br/>
-<pre>        </pre>{<br/>
-<pre>            </pre>assert( 0 == getaddrinfo(<br/>
-<pre>                </pre>names[i], NULL, NULL, &amp;infos[i] ) );<br/>
-<pre>            </pre><b><u>if</u></b>( ( ++done ) == N )<br/>
-<pre>                </pre>sem_inc( &amp;done_sem );<br/>
-<pre>        </pre>}<br/>
-<pre>    </pre>}<br/>
-<pre>    </pre>sem_dec( &amp;done_sem );<br/>
-}
-</td>
-</tr></tbody></table>
-</div>
+<?php format_code(
+'<i>void</i> <b>multi_dns_conc</b>(
+    <i>size_t</i> <b>N</b>, <i>char</i> **<b>names</b>, <b><u>struct</u></b> <i>addrinfo</i> **<b>infos</b> )
+{
+    <i>size_t</i> <b>i</b>, <b>done</b> = 0;
+    <i>semaphore_t</i> <b>done_sem</b>;
+    sem_init( &amp;done_sem, 0 );
+    <b><u>for</u></b>( i = 0; i &lt; N; ++i )
+    {
+        <b><u>activate</u></b> ( i, <span class="yellow">done</span> ) 
+        {
+            assert( 0 == getaddrinfo(
+                names[i], NULL, NULL, &amp;infos[i] ) );
+            <b><u>if</u></b>( ( ++done ) == N )
+                sem_inc( &amp;done_sem );
+        }
+    }
+    sem_dec( &amp;done_sem );
+}' ); ?>
 
 <p>This should be a relatively easy bug to find and fix.  All of the
 lookup activities will get their own copy
