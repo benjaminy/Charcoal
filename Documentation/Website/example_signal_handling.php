@@ -7,7 +7,7 @@
 
 <?php include 'code_examples.php'; ?>
 
-<?php include 'example_side_bar.html'; ?>
+<?php include 'side_bar_examples.html'; ?>
 
 <div class="main_div">
 

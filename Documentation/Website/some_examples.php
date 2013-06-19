@@ -5,15 +5,7 @@
 </head>
 <body style="background-color:darkgray">
 
-<div class="side_links">
-<a href="index.html">Charcoal</a><br/>
-- <a href="short_version.html">Why Charcoal?</a><br/>
-- <a href="some_examples.html">Examples</a><br/>
-- <a href="concurrency.html">Concurrency</a><br/>
-- <a href="big_four.html">vs. Threads, etc.</a><br/>
-- <a href="implementation.html">Implementation</a><br/>
-- <a href="faq.html">FAQ</a>
-</div>
+<?php include 'side_bar_basic.html'; ?>
 
 <div class="main_div">
 
