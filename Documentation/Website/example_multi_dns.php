@@ -37,8 +37,7 @@ Can Make Sense</a> by Krohn, Kohler, and Kaashoek.
 
 <?php format_code(
 '<i>void</i> <b>multi_dns_seq</b>(
-    <i>size_t</i> <b>N</b>, <i>char **</i><b>names</b>,
- <b><u>struct</u></b> <i>addrinfo **</i><b>infos</b> )
+    <i>size_t</i> <b>N</b>, <i>char **</i><b>names</b>, <b><u>struct</u></b> <i>addrinfo **</i><b>infos</b> )
 {
     <i>size_t</i> <b>i</b>;
     <b><u>for</u></b>( i = 0; i &lt; N; ++i )
