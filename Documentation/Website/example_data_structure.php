@@ -5,21 +5,7 @@
 </head>
 <body style="background-color:darkgray">
 
-<div class="side_links">
-<a href="index.html">Charcoal</a><br/>
-- <a href="short_version.html">Why Charcoal?</a><br/>
-- <a href="some_examples.html">Examples</a><br/>
-&mdash; <a href="example_multi_dns.html">Multi-DNS</a><br/>
-&mdash; <a href="example_signal_handling.html">Signals</a><br/>
-&mdash; <a href="example_tight_loops.html">Loops</a><br/>
-&mdash; <a href="example_data_structure.html">Data structures</a><br/>
-&mdash; <a href="example_lazy_initialization.html">Singleton</a><br/>
-&mdash; <a href="example_asynch_exceptions.html">Asynchronous</a><br/>
-- <a href="concurrency.html">Concurrency</a><br/>
-- <a href="big_four.html">vs. Threads, etc.</a><br/>
-- <a href="implementation.html">Implementation</a><br/>
-- <a href="faq.html">FAQ</a>
-</div>
+<?php include 'side_bar_examples.html'; ?>
 
 <div class="main_div">
 

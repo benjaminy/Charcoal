@@ -24,12 +24,12 @@ characteristics are:</p>
     <li>Follows the "C philosophy"
   </ul>
   <li>Charcoal makes the design and implementation of
-  concurrent/reactive/interactive software more accessible to
+  asynchronous/&#8203;concurrent/&#8203;reactive/&#8203;interactive software more accessible to
   application programmers
 </ul>
 <p>Charcoal is currently in a very early stage of development.  As of
-this writing there is no Charcoal implementation, though work on one has
-begun.</p>
+this writing the Charcoal implementation is very incomplete, though
+progress is brisk.</p>
 
 <ul>
 <li><a href="short_version.html">The short version of why Charcoal is different and interesting</a>

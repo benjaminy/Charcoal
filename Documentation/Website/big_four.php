@@ -1,6 +1,6 @@
 <html>
 <head>
-<title>Implementing Concurrent Software</title>
+<title>Conventional Concurrency Primitives/Frameworks</title>
 <link rel="stylesheet" media="screen" type="text/css" href="charcoal.css"/>
 </head>
 <body style="background-color:darkgray">
@@ -11,9 +11,28 @@
 
 <div class="main_div">
 
-<h1>Implementing Concurrent Software</h1>
+<h1>Conventional Concurrency Primitives/Frameworks</h1>
 
-<p>Often programmers and computer scientists think of programs as just
+<p>The classical interaction model between software and its environment
+is that of mathematical functions: the environment provides an input,
+the software spends some time computing, then makes an output available
+to the environment.  Functions (and their programming cousins,
+procedures, subroutines, methods) are astoundingly useful, but they do
+not capture all of what software can do.  The (false) notion that
+functions are <em>the</em> universal model of software is called
+the <em>strong</em> Church-Turing thesis and is nicely critiqued by Dina
+Goldin and Peter Wegner
+(<a href="http://www.cse.uconn.edu/~dqg/papers/strong-cct.pdf">1</a>,
+<a href="http://cs.brown.edu/people/pw/strong-cct.pdf">2</a>,
+<a href="http://www.nachira.net/a/turing.pdf">3</a>).</p>
+
+<p>The functional model leaves out any notion of interaction between
+software and its environment as the software is running.  Some
+applications, like compilers, come close to the functional ideal, but
+all have some additional interactivity.</p>
+
+
+Often programmers and computer scientists think of programs as just
 big functions/procedures: There is a pile of input; the program runs; it
 produces a pile of output.  However, all programs are also to some
 degree reactive and/or interactive.  Some programs (e.g. compilers)
