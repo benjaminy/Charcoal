@@ -15,9 +15,10 @@
 
 <h1>Giving a Library a Streaming Interface</h1>
 
-<p>"Stream programming" means different things to different people.
-What I mean is the generalization of classic UNIX pipes to arbitrary
-stream graphs.  Each component receives from some channels and sends to
+<p>"Stream programming" means different things to different people.  For
+the purpose of this example, I mean the generalization of classic UNIX
+pipes to arbitrary stream graphs.  A larger computation is composed of
+components that receive input from some channels and send output to
 others.</p>
 
 <p>Simple example: Parsing a large file</p>

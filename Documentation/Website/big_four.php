@@ -44,6 +44,7 @@ can be in progress simultaneously.  Tasks may react to external events,
 or may run on their own for a long time.  Tasks may share access to
 resources like memory and/or pass messages to each other.)</p>
 
+<div class="hblock2">
 <h2>Event Handlers</h2>
 
 <p>In the event model, the application starts a task called the event
@@ -57,6 +58,7 @@ appropriate.</p>
 called, because the dispatcher "calls back" to the handler
 procedure.)</p>
 
+<div class="hblock3">
 <h3>Events: Strengths</h3>
 
 <p>The primary strength of the event model is that coordination between
@@ -80,7 +82,9 @@ wasted in scheduling tasks.</p>
 <p>Event dispatchers can be implemented in user code in any general
 purpose programming language.  There are relatively few tricky
 implementation issues to worry about.</p>
-
+</div>
+<br/>
+<div class="hblock3">
 <h3>Events: Weaknesses</h3>
 
 <p>The event model works best for simple tasks that do a small amount of
@@ -111,7 +115,9 @@ do not consider this to be a significant issue, because
 reactive/interactive programming and parallel programming are two
 entirely different topics.  I think it is unfortunate that they get
 mushed together so often.</p>
-
+</div>
+<br/>
+<div class="hblock3">
 <h3>Events: Summary</h3>
 
 <p>For applications that don't have much interaction complexity, the
@@ -121,7 +127,9 @@ handler-based implementations tend to scale poorly in terms of code
 complexity and maintainability.  Here is one more or less randomly
 chosen site devoted to this phenomenon, sometimes
 called <a href="http://callbackhell.com/">callback hell</a>.</p>
-
+</div>
+</div>
+<div class="hblock2">
 <h2>Threads (Preemptive)</h2>
 
 <p>Threads are tasks that can physically execute simultaneously.  When
@@ -141,6 +149,7 @@ is one of the trickiest issues with threads.</p>
 <a href="http://msdn.microsoft.com/en-us/library/windows/desktop/ms684847(v=vs.85).aspx">Windows
 (win32)</a>.</p>
 
+<div class="hblock3">
 <h3>Threads: Strengths</h3>
 
 <p>In contract to event handlers, threads that run for a long time or
@@ -152,7 +161,9 @@ exceptions, etc).</p>
 
 <p>As I have mentioned, I am not terribly concerned with processor
 parallelism, but threads can be run in parallel.</p>
-
+</div>
+<br/>
+<div class="hblock3">
 <h3>Threads: Weaknesses</h3>
 
 <p>By far the most important weakness of threads is that they make it
@@ -172,11 +183,16 @@ threading implementations force application code to pre-allocate a large
 amount of stack space for each thread.  Context switching between
 threads typically requires some interaction with the operating system
 which adds some time overhead.</p>
-
+</div>
+<br/>
+<div class="hblock3">
 <h3>Threads: Summary</h3>
 
 <p></p>
 
+</div>
+</div>
+<div class="hblock2">
 <h2>Cooperative Threads</h2>
 
 <p>Cooperative threads are a kind of compromise between events and
@@ -191,6 +207,7 @@ different names, including
 <a href="http://en.wikipedia.org/wiki/Coroutine">coroutines</a> and
 <a href="http://msdn.microsoft.com/en-us/library/windows/desktop/ms682661(v=vs.85).aspx">fibers</a>.</p>
 
+<div class="hblock3">
 <h3>Cooperative Threads: Strengths</h3>
 
 <p>It is generally much easier to avoid concurrency bugs with
@@ -204,7 +221,9 @@ the progress of other tasks.  What I mean by good implementations is
 that some care needs to be taken with system primitives like "read", so
 that only the calling thread is blocked, not all threads.  This is
 doable, but requires a bit of fancy engineering.</p>
-
+</div>
+<br/>
+<div class="hblock3">
 <h3>Cooperative Threads: Weaknesses</h3>
 
 <p>The most important weakness of cooperative threads has to do with
@@ -220,11 +239,15 @@ tricky, esecially in the context of long-term code mantenance.</p>
 before, don't care much about this one.  There are a couple of research
 projects aimed at running cooperative threads in parallel.  Seems like a
 sort of strange goal to me.</p>
-
+</div>
+<br/>
+<div class="hblock3">
 <h3>Cooperative Threads: Summary</h3>
 
 <p></p>
-
+</div>
+</div>
+<div class="hblock2">
 <h2>Coroutines</h2>
 
 <p>Some people use <em>coroutine</em> and <em>cooperative thread</em>
@@ -236,47 +259,65 @@ entry function".  This means that we only need one normal stack.  Each
 sure that a (shallow) coroutine will not yield to another coroutine
 while it is in the middle of some deeply nested call.</p>
 
+<div class="hblock3">
 <h3>(Shallow) Coroutines: Strengths</h3>
 
 <p>Simpler</p>
-
+</div>
+<br/>
+<div class="hblock3">
 <h3>(Shallow) Coroutines: Weaknesses</h3>
 
 <p>They're a bit more like event handlers in the sense that it's harder
 to avoid starvation.</p>
 
+</div>
+</div>
+<div class="hblock2">
 <h2>Generators</h2>
 
 <p>Generators are restricted (shallow) coroutines.  Coroutines can yield
 to any other coroutine.  Generators can only yield back to whoever
 created them.</p>
 
+<div class="hblock3">
 <h3>Generators: Strengths</h3>
 
 <p>Simpler</p>
-
+</div>
+<br/>
+<div class="hblock3">
 <h3>Generators: Weaknesses</h3>
 
 <p>Compared to coroutines, generators elegantly support yet fewer
 application patterns.</p>
 
+</div>
+</div>
+<div class="hblock2">
 <h2>Processes</h2>
 
 <p>I'll throw processes in here, just because.</p>
 
+<div class="hblock3">
 <h3>Processes: Strengths</h3>
 
-Isolation.
-
+<p>Isolation.</p>
+</div>
+<br/>
+<div class="hblock3">
 <h3>Processes: Weaknesses</h3>
 
-Harder to manage shared resources.
+<p>Harder to manage shared resources.</p>
 
-High overhead.
-
+<p>High overhead.</p>
+</div>
+</div>
+<div class="hblock2">
 <h2>Activities</h2>
 
 <a href="activities_compared.html">See here</a>.
+</div>
 
 <?php include 'copyright.html'; ?>
 

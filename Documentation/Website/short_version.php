@@ -33,7 +33,7 @@ pattern for asynchronous programming.</p>
 <p>Code written with event handlers tends to have more complex control
 flow than equivalent multithreaded code, because potentially
 long-running tasks need to be manually broken up into multiple handler
-invocations (and all intermediate state must be explicitly encoded).
+invocations (and all intermediate state must saved explicitly).
 Yet event handling remains extremely popular, especially for user
 interface programming.  A major factor behind this enduring popularity
 is that developers are <em>justifiably</em> afraid of the

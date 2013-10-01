@@ -17,7 +17,7 @@ pre { display:inline }
   margin-right:auto;
   margin-top:0.5em;
   margin-bottom:0.5em;
-  padding:2em;
+  padding:6px;
 }
 
 .highlight {
@@ -32,4 +32,42 @@ pre { display:inline }
 
 .yellow {
   background-color:yellow;
+}
+
+.hblock1, .hblock2, .hblock3, .hblock4, .hblock5, .hblock6  {
+  padding:4px;
+}
+
+.hblock1 {
+  background-color:#black;
+}
+
+.hblock2 {
+  background-color:#DFF5EE;
+}
+
+.hblock3 {
+  background-color:#DFD5EE;
+}
+
+.hblock4 {
+  background-color:#DFD5BE;
+}
+
+.hblock5 {
+  background-color:#BFD5BE;
+}
+
+.hblock6 {
+  background-color:#BFB5BE;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  display: inline;
+  font-variant:small-caps;
 }

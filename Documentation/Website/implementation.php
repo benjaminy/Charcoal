@@ -14,7 +14,7 @@
 - <a href="implementation.html">Implementation</a><br/>
 &mdash; <a href="implementation.html#translation">Translation to C</a><br/>
 &mdash; <a href="implementation.html#runtime">Runtime Library</a><br/>
-&mdash; <a href="implementation.html#syscalls">Syscalls</a><br/>
+&mdash; <a href="implementation.html#syscalls">Syscalls and Signals</a><br/>
 - <a href="faq.html">FAQ</a>
 </div>
 
@@ -22,16 +22,17 @@
 
 <h1>Charcoal Implementation</h1>
 
-There are a few pieces to the Charcoal implementation:
+<p>There are a few pieces to the Charcoal implementation:</p>
 
 <ul>
 <li>Charcoal to C translation
 <li>Charcoal runtime library
-<li>System call interception
+<li>Syscalls and signals
 </ul>
 
+<div class="hblock2">
 <a id="translation"/>
-<h2>5.(1/3) Charcoal to C Translation</h2>
+<h2 style="display:inline;">Charcoal to C Translation</h2>
 
 <ul>
 <li>activate extraction
@@ -39,7 +40,8 @@ There are a few pieces to the Charcoal implementation:
 <li>unyielding translation
 </ul>
 
-<h3>5.1.(1/3) Activate</h3>
+<div class="hblock3">
+<h3>Activate</h3>
 
 <p>The core piece of new syntax added in Charcoal is the activate
 expression.  It looks like:</p>
@@ -72,6 +74,8 @@ procedure call that created the activity returns.)</p>
 <p>Here are the steps used to translate activate expressions to plain
 C.</p>
 
+
+<div class="hblock4">
 <h4>Expression to Statement</h4>
 
 <p>Activating an expression is defined to be the same as activating a
@@ -83,12 +87,17 @@ transformation, all activate bodies are statements.</p>
 <br/><hr/>
 <b><u>activate</b></u> (<b>x</b>,...,<b>z</b>) <b><u>return</b></u> <i>&lt;expression&gt;</i>
 </div>
+</div>
 
+<br/>
+
+<div class="hblock4">
 <h4>"Returning" from an Activity</h4>
 
-<p>A return statement in an activity is different from a "normal" return
-statement.  Returning from an activity has 2 effects: (1) the returned
-value is saved in the activity's backing memory; (2) the activity stops
+<p>Return statements in the scope of an activated statement do not cause
+the enclosing function to return; it's not clear how that would even
+work.  Returning from an activity has 2 effects: (1) the returned value
+is saved in the activity's backing memory; (2) the activity stops
 executing.  The returned value can then be accessed later by other
 activities.  This is especially common when using the "future" pattern.
 Exactly when an activity's backing memory gets deallocated is discussed
@@ -103,7 +112,11 @@ within <span class="mono">activate</span> bodies.)</p>
 {&nbsp;self->rv = <i>&lt;expression&gt;</i>;<br/>
 &nbsp;&nbsp;exit_activity; }
 </div>
+</div>
 
+<br/>
+
+<div class="hblock4">
 <h4>Variable Binding</h4>
 
 <div class="highlight mono">
@@ -116,7 +129,11 @@ args.x = x; ... args.z = z;<br/>
 &nbsp;&nbsp;aptr = args.a; ... cptr = args.c;<br/>
 &nbsp;&nbsp;<i>&lt;statement&gt;</i>[*aptr/a,...,*cptr/c]<br/>}
 </div>
+</div>
 
+<br/>
+
+<div class="hblock4">
 <h4>Activate Body Extraction</h4>
 
 <p>In order to get to plain C, we extract the body of an activate
@@ -130,8 +147,11 @@ void __charcoal_activity_NNN( args )<br/>
 ...<br/>
 &nbsp;&nbsp;__charcoal_activate( __charcoal_activity_NNN, args )</span>
 </div>
+</div>
+</div>
 
-<h3>5.1.(2/3) Yield Insertion</h3>
+<div class="hblock3">
+<h3>Yield Insertion</h3>
 
 <p>The most novel part of Charcoal is that the language has implicit
 yield invocations scattered about hither and yon.  This is what makes
@@ -168,8 +188,12 @@ threads is that data races
 2</a>) between activities simply do not exist.  Higher-level race
 conditions are still possible, of course, but not having to worry about
 low-level data races is a pretty big win.</p>
+</div>
 
-<h3>5.1.(3/3) Unyielding</h3>
+<br/>
+
+<div class="hblock3">
+<h3>Unyielding</h3>
 
 <p>Charcoal comes with the usual set of synchronization primitives
 (mutexes, condition variables, semaphores, barriers), also a nice set of
@@ -214,15 +238,16 @@ executes a yield statement.</p>
 &nbsp;&nbsp;unyielding_exit&nbsp;}</span>
 </div>
 
-In all three cases, the "body" of
+<p>In all three cases, the "body" of
 the <span class="mono">unyielding</span> annotation
 must be scanned for control transfers that might escape the body
 (<span class="mono">return</span>,
 <span class="mono">break</span>,
 <span class="mono">goto</span>, ...).
 An <span class="mono">unyielding_exit</span> is
-inserted directly before such transfers.
+inserted directly before such transfers.</p>
 
+<div class="hblock4">
 <h4>When Should Unyielding Be Used?</h4>
 
 <p>Unyielding can be used to make arbitrary chunks of code
@@ -244,8 +269,11 @@ a path that is both infrequently executed and long-running/blocking.</p>
 In the worst case you add an increment and decrement of a thread-local
 variable.  If the compiler can see nested unyielding statements, it can
 optimize them out pretty easily, too.</p>
+</div>
+</div>
 
-<h3>5.1.(4/3) Synchronized</h3>
+<div class="hblock3">
+<h3>Synchronized</h3>
 
 <div class="highlight mono">
 <b><u>synchronized</u></b> (<i>&lt;expression&gt;</i>) <i>&lt;statement&gt;</i>
@@ -257,47 +285,59 @@ optimize them out pretty easily, too.</p>
 <pre>           </pre>mutex_release( __charcoal_sync_mutex_NNN ) ? 2 : 0 })<br/>
 })
 </div>
+</div>
+</div>
 
+<div class="hblock2">
 <a id="runtime"/>
-<h2>5.(2/3) Charcoal Runtime Library</h2>
+<h2>Charcoal Runtime Library</h2>
 
 <ul>
-<li>yield
-<li>scheduler
-<li>stacks
+<li>Yield (and other concurrency primitives)
+<li>Scheduler
+<li>Stacks
 </ul>
 
-<h3>5.2.(1/3) yield</h3>
+<div class="hblock3">
+<h3>yield</h3>
 
-Well-behaved Charcoal programs invoke yield quite often (just for a
+<p>Well-behaved Charcoal programs invoke yield quite often (just for a
 rough sense of scale, maybe a few times per microsecond on modern
 processors).  This high frequency means that yield must be engineered
-to:
+to:</p>
 
 <ul>
 <li>Execute extremely quickly in the common case.
 <li>Not cause a context switch most of the time.
 </ul>
 
-The first goal is important for based cycle counting reasons.  If yield
-takes more than 10 or 20 instructions in the common case, avoiding
-yields will become more of a performance tuning thing in Charcoal than I
-want it to be.  Need to do some testing here.
+<p>The first goal is important for basic cycle counting performance
+reasons.  If yield takes more than 10 or 20 instructions in the common
+case, avoiding yields will become more of a performance tuning thing in
+Charcoal than I want it to be.  Need to do some testing here.</p>
 
-The second goal is important because context switching has a non-trivial
+<p>The second goal is important because context switching has a non-trivial
 direct cost (smaller than threads, but still not zero).  More
 importantly, context switching can have high indirect costs if different
-activities evict each others' working data from the caches.
+activities evict each others' working data from the caches.</p>
+</div>
 
-<h3>5.2.(2/3) Scheduler</h3>
+<br/>
 
-Under programmer control?
+<div class="hblock3">
+<h3>Scheduler</h3>
 
-Interesting things about determinism?
+<p>Under programmer control?</p>
 
-<h3>5.2.(3/3) Stacks</h3>
+<p>Interesting things about determinism?</p>
+</div>
 
-One of the reasons threads are relatively expensive in most
+<br/>
+
+<div class="hblock3">
+<h3>Stacks</h3>
+
+<p>One of the reasons threads are relatively expensive in most
 implementations is that a large amount of memory has to be pre-allocated
 for each thread's stack.  I really wanted to avoid that, so for now
 we're using gcc's <a href="http://gcc.gnu.org/wiki/SplitStacks">split
@@ -305,22 +345,105 @@ stacks</a> and/or
 LLVM's <a href="http://lists.cs.uiuc.edu/pipermail/llvmdev/2011-April/039260.html">segmented
 stacks</a>.  One could go really extreme and heap allocate every
 procedure call record individually.  I'm not aware of an easy way to do
-that today, so that's future work.
+that today, so that's future work.</p>
+</div>
+</div>
 
+<div class="hblock2">
 <a id="syscalls"/>
-<h2>5.(3/3) System Call Interception</h2>
+<h2>Syscalls and Signals</h2>
 
-Charcoal programs cannot be allowed to directly make syscalls that might
-block for a long time, because multiple activities reside in a single
-thread and a blocking syscall would block the whole thread.  The current
-Charcoal implementation
-uses <a href="http://software.intel.com/en-us/articles/pin-a-dynamic-binary-instrumentation-tool">Pin</a>
-to intercept and translate syscalls.  (Other dynamic binary translation
-tools like <a href="http://valgrind.org/">Valgrind</a> would probably
-work just as well.)  The Charcoal runtime keeps a small pool of idle
-threads meant for running syscalls.  When Pin intercepts a syscall, it
-"moves" the call over to one of the idle threads and lets the scheduler
-switch over to another activity on the calling thread.
+<p>System calls and signals have to be handled with care in Charcoal.
+System calls can block for an arbitrarily long time, which could render
+a Charcoal application unresponsive if we are not careful.  Signal
+delivery can interrupt a Charcoal application at an inopportune time and
+violate its shared memory model if we are not careful.</p>
+
+<div class="hblock3">
+<h3>Syscalls</h3>
+
+<p>Charcoal programs cannot be allowed to directly make syscalls that
+might block for a long time, because multiple activities reside in a
+single thread and a blocking syscall would block the whole thread.  When
+an application makes a syscall, the Charcoal runtime system does the
+following:</p>
+
+<ol>
+<li>Record the details of the syscall.</li>
+<li>Arrange for the syscall to be made in a non-blocking fashion.</li>
+<li>Yield.</li>
+</ol>
+
+<p>When the syscall has completed, the runtime system records the
+returned value (if any) and marks the calling activity as ready to
+run.</p>
+
+<p>When application programmers really want a syscall to block all the
+activities in a thread (which I imagine would be an unusual case), they
+can simply wrap the call with <span class="mono">unyielding</span>.</p>
+
+<p>Possible ways to implement syscall interception:</p>
+
+<ul>
+<li>Whole-program dynamic translation, a
+la <a href="http://software.intel.com/en-us/articles/pin-a-dynamic-binary-instrumentation-tool">Pin</a>
+or <a href="http://valgrind.org/">Valgrind</a></li>
+<li>ptrace</li>
+</ul>
+
+<div class="hblock4">
+<p>Why not just statically translate syscalls (e.g. during
+compilation)?</p>
+
+<ul>
+<li>Charcoal code can call plain C functions, which the Charcoal
+compiler would not have the opportunity to translate.</li>
+<li>Syscalls can be made in embedded assembly, which might be annoying
+to identify consistently.</li>
+<li>And the really big hammer... As a C derivative, Charcoal is
+reasonably friendly to nonsense like self-modifying code and dynamically
+generated assembly.  No static solution will see syscalls in such
+code.</li>
+</ul>
+
+<p>As a performance optimization it might make sense to statically
+translate syscalls when possible and only dynamically translate in the
+weird cases.</p>
+
+</div>
+
+<p>Ideas related to doing syscalls in a non-blocking fashion:</p>
+
+<ul>
+<li>The most straight-forward idea is for the Charcoal runtime to keep a
+special OS thread (or a small pool of such threads) that are there just
+to perform blocking syscalls.</li>
+<li>It might be possible to leverage OS non-blocking I/O primitives to
+improve performance in some cases.</li>
+</ul>
+
+</div>
+
+<br/>
+
+<div class="hblock3">
+<h3>Signals</h3>
+
+<p>Conventional signal handlers are not treated differently in Charcoal
+than in C.  However, as discussed in one of the code examples, for
+asynchronous signal handling (i.e. input from the real world) it's
+better to have an activity that blocks on delivery with something
+like <span class="mono">sig_wait</span>.  The Charcoal runtime has to
+intercept the call to <span class="mono">sig_wait</span> and install its
+own signal handler.</p>
+
+<p>It's possible that the regular syscall interposition mechanism will
+just take care of this, but it seems likely that some special treatment
+will be required for signals.</p>
+
+</div>
+
+</div>
 
 <?php include 'copyright.html'; ?>
 
