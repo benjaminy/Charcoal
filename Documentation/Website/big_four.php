@@ -137,9 +137,9 @@ simultaneously reading and writing overlapping sets of memory addresses
 is one of the trickiest issues with threads.</p>
 
 <p>A couple of popular multithreading interfaces are
-<a href="http://en.wikipedia.org/wiki/POSIX_Threads">Posix</a> and 
+<a href="http://en.wikipedia.org/wiki/POSIX_Threads">POSIX</a> and 
 <a href="http://msdn.microsoft.com/en-us/library/windows/desktop/ms684847(v=vs.85).aspx">Windows
-(win32)</a>.</p>
+(win32)</a> (<a href="http://software.intel.com/en-us/blogs/2006/10/19/why-windows-threads-are-better-than-posix-threads">fight</a>).</p>
 
 <h3>Threads: Strengths</h3>
 
