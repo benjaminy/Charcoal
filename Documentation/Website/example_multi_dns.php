@@ -36,7 +36,7 @@ Can Make Sense</a> by Krohn, Kohler, and Kaashoek.
 <p>In <span class="mono">multi_dns_seq</span>, we sequentially
 perform <span class="mono">N</span> DNS lookups and return the results
 in <span class="mono">infos</span>.  Obviously the error handling is
-pretty bare-bones here; I encourage to try to look past that.</p>
+pretty bare-bones here; I encourage you try to look past that.</p>
 
 <h3>Concurrent Version</h3>
 
@@ -70,9 +70,9 @@ The expression or statement that follows
 the <span class="mono">activate</span> keyword (in this example, the
 block from line 10 to 15) is run concurrently with the activating code.
 The activated statement runs in a new <em>activity</em>.  Activities are
-cooperative in the sense that at most one activity can be executing at a
-given time, and activities are never preempted to run peer
-activities.</p>
+cooperative in the sense that at <u>most one activity can be executing
+at a given time</u> (in a given process/OS thread), and <u>activities
+are never preempted to run peer activities</u>.</p>
 
 <p>Activities are a kind of cooperative thread.</p>
 

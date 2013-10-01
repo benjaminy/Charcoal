@@ -60,6 +60,7 @@ that the Charcoal project most directly addresses.</caption>
 </table>
 </div>
 
+<div class="hblock2">
 <a id="expressiveness"/>
 <h2>Expressiveness</h2>
 
@@ -74,6 +75,7 @@ expressiveness:</p>
 <li>Isolation/independence
 </ul>
 
+<div class="hblock3">
 <a id="reactive"/>
 <h3>Reactive/Interactive</h3>
 
@@ -93,14 +95,18 @@ are probably happening periodically, like auto-saving backup copies and
 checking formulas for possible errors.</p>
 
 <p>Building reactive/interactive software is different.</p>
-
+</div>
+<br/>
+<div class="hblock3">
 <a id="algorithmic"/>
 <h3>Algorithmic</h3>
 
 <p>Some algorithms look "procedural/functional" from the outside, but
 can still use concurrency to good effect internally.  A classic example
 is programming language parsing.  Scanner; parser.</p>
-
+</div>
+<br/>
+<div class="hblock3">
 <a id="isolation"/>
 <h3>Isolation</h3>
 
@@ -116,30 +122,37 @@ can be taken care of very quickly, but a few might run for a long time.
 We need to isolate the long-running tasks in some way to ensure that the
 application remains responsive.
 </ul>
+</div>
+</div>
 
+<div class="hblock2">
 <a id="performance"/>
 <h2>Performance</h2>
 
-Some applications 
+<p>Some applications </p>
 
+<div class="hblock3">
 <a id="processor"/>
 <h3>Processor Parallelism</h3>
 
-For CPU-bound tasks.
-
-
+<p>For CPU-bound tasks.</p>
+</div>
+<br/>
+<div class="hblock3">
 <a id="system"/>
 <h3>System Parallelism</h3>
 
-For I/O-bound tasks.
-
-
+<p>For I/O-bound tasks.</p>
+</div>
+</div>
+<div class="hblock2">
 <h2>Miscellaneous</h2>
 
 <p>Here we have a grab-bag of concepts that are either combinations of
 the ideas discussed above or more specitic instances of them.  They are
 kinda sorta in order starting with the most relevant to Charcoal.</p>
 
+<div class="hblock3">
 <a id="disk"/>
 <h3>Disk/Network/UI</h3>
 
@@ -150,12 +163,16 @@ while remaining responsive to user input.</p>
 <p>This category is also connected to the concurrency part of the map,
 because some software has high disk or network requirements and needs to
 overlap many accesses in order to perform well.</p>
-
+</div>
+<br/>
+<div class="hblock3">
 <a id="distributed"/>
 <h3>Distributed</h3>
 
-Clusters.  Could be CPU-bound or IO/bound.
-
+<p>Clusters.  Could be CPU-bound or IO/bound.</p>
+</div>
+<br/>
+<div class="hblock3">
 <a id="realtime"/>
 <h3>Real-time</h3>
 
@@ -163,16 +180,23 @@ Clusters.  Could be CPU-bound or IO/bound.
 constraints (hard or soft).  This category includes multimedia software,
 games, embedded systems controllers.</p>
 
+</div>
+<br/>
+<div class="hblock3">
 <a id="multi"/>
 <h3>Multi-processors</h3>
 
-Multi-cores and such.
+<p>Multi-cores and such.</p>
 
+</div>
+<br/>
+<div class="hblock3">
 <a id="gpu"/>
 <h3>Accelerators (GPU/FPGA)</h3>
 
-Turbo boost.
-
+<p>Turbo boost.</p>
+</div>
+</div>
 <?php include 'copyright.html'; ?>
 
 </div>

@@ -52,7 +52,7 @@ default.</p>
 }' ); ?>
 
 <p>This version avoids yielding too frequently, but if it is ever called
-with a large input, it may very well yield too infrequently.
+with a large input, it may not yield frequently enough.
 Well-behaved Charcoal programs should go no more than a few milliseconds
 between yields.</p>
 
