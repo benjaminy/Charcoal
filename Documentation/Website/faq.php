@@ -19,6 +19,8 @@ h4.question {
 
 <h1>"Frequently" Asked Questions</h1>
 <h3>a.k.a. questions that the authors feel like answering</h3>
+<br/>
+<br/>
 
 <div class="qanda">
 <h4 class="question">Q01: Why design another programming language?</h4>

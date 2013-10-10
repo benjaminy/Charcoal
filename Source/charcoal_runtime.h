@@ -1,3 +1,12 @@
+#include<pthread.h>
+#include<semaphore.h>
+
+#define OPA_PRIMITIVES_H_INCLUDED
+#include "opa_config.h"
+#include "opa_util.h"
+#ifndef _opa_inline
+#define _opa_inline inline
+#endif
 
 /* Exactly one of the following should be defined */
 #define __CHARCOAL_ACTIVITY_IMPL_PTHREAD
@@ -10,7 +19,7 @@
 typedef struct
 {
     pthread_mutex_t active;
-    OPA_int_t unyield_depth; 
+    volatile int unyield_depth; 
 } __charcoal_thread_t;
 
 typedef struct
@@ -70,6 +79,9 @@ TET_RESULT_CODE tet_spawn_in_process(
 TET_RESULT_CODE tet_spawn_in_machine(
     void *(*f)(void *), void *param, TET_MACHINE machine );
 
+#if 0
+/* coroutine and channel stuff not implemented yet */
+
 TET_RESULT_CODE tet_coroutine_init(
     void *(*f)(void *),
     void *param,
@@ -123,3 +135,5 @@ typedef struct
 {
     channel
 } semaphore;
+
+#endif

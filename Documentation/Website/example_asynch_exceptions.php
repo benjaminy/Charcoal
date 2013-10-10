@@ -55,9 +55,9 @@ handling with Java-ish syntax).</p>
     barrier_init( &amp;b, 2 );
     a1 = <b><u>activate</u></b>
     {
-        <span title="Wait until all have started" class="yellow">barrier_wait( &amp;b )</span>;
         <b><u>try</u></b>
         {
+            <span title="Wait until all have started" class="yellow">barrier_wait( &amp;b )</span>;
             rv = algo_X_approach_1( input data );
             <b><u>deliver</u></b> a2 terminate_thyself;
         }
@@ -66,9 +66,9 @@ handling with Java-ish syntax).</p>
     }
     a2 = <b><u>activate</u></b>
     {
-        <span title="Wait until all have started" class="yellow">barrier_wait( &amp;b )</span>;
         <b><u>try</u></b>
         {
+            <span title="Wait until all have started" class="yellow">barrier_wait( &amp;b )</span>;
             rv = algo_X_approach_2( input data );
             <b><u>deliver</u></b> a1 terminate_thyself;
         }

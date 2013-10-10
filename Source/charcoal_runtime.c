@@ -1,3 +1,13 @@
+/*
+ * The Charcoal Runtime System
+ */
+
+#include<signal.h>
+#include<stdlib.h>
+#include<stdio.h>
+#include<errno.h>
+#include<limits.h>
+#include<charcoal_runtime.h>
 
 void __charcoal_unyielding_enter()
 {
@@ -51,7 +61,7 @@ int __charcoal_sem_post( __charcoal_sem_t *s )
 
 int __charcoal_sem_trywait( __charcoal_sem_t *s )
 {
-    in rv;
+    int rv;
     if( !s )
     {
         /* XXX error handling */
@@ -81,7 +91,7 @@ int __charcoal_sem_wait( __charcoal_sem_t *s )
     while( s->value < 1 )
     {
         ++s->waiters;
-        int pthread_cond_wait( &s->c, &s->m );
+        /* XXX err checking */ pthread_cond_wait( &s->c, &s->m );
         --s->waiters;
     }
     --s->value;
@@ -93,10 +103,10 @@ pthread_key_t selfish;
 
 int __charcoal_yield()
 {
-    in rv = 0;
-    __charcoal_thread_t *foo = (__charcoal_activity_t *)pthread_getspecific( selfish );
-    int unyield_depth = OPA_load_int( &foo->_opa_const );
-    if( 0 == unyield_depth )
+    int rv = 0;
+    __charcoal_activity_t *foo = (__charcoal_activity_t *)pthread_getspecific( selfish );
+    // int unyield_depth = OPA_load_int( &foo->_opa_const );
+    if( 0 /* == unyield_depth */ )
     {
         /* rv = invoke the scheduler */
     }
@@ -114,16 +124,16 @@ void __charcoal_activity_get_return_value( __charcoal_activity_t *act, void *ret
 void *__charcoal_start_activity( void *activity_stuff )
 {
     __charcoal_activity_t _self;
-    activity_stuff->f( activity_stuff->args );
+    // activity_stuff->f( activity_stuff->args );
     /* wait around until the activity should deallocate itself */
 }
 
 /* static assert PTHREAD_STACK_MIN > sizeof activity */
 
-void __charcoal_switch_to( __charcoal_activity *act )
+void __charcoal_switch_to( __charcoal_activity_t *act )
 {
     sem_post( &act->sem );
-    sem_wait();
+    // sem_wait();
     /* check if anybody should be deallocated (int sem_destroy(sem_t *);) */
 }
 
@@ -138,37 +148,37 @@ __charcoal_activity_t *__charcoal_activate( void (*f)( void *args ), void *args 
     {
         exit( 1 );
     }
-    __charcoal_activity_info_t *act_info = (__charcoal_activity_info_t *)new_stack;
+    __charcoal_activity_t *act_info = (__charcoal_activity_t *)new_stack;
     act_info->f = f;
     act_info->args = args;
-    sem_init( &act_info->sem, 0 );
+    sem_init( &act_info->sem, 0, 0 );
     new_stack += PTHREAD_STACK_MIN /* effective base of stack */;
     pthread_attr_t attr;
     int rc = pthread_attr_init( &attr );
-    int rc = pthread_attr_setstack( &attr, new_stack, stack_size - PTHREAD_STACK_MIN );
+    rc = pthread_attr_setstack( &attr, new_stack, stack_size - PTHREAD_STACK_MIN );
     // int pthread_attr_setdetachstate ( &attr, int detachstate );
     // int pthread_attr_setinheritsched( &attr, int inheritsched);
     // int pthread_attr_setschedparam  ( &attr, const struct sched_param *restrict param);
     // int pthread_attr_setschedpolicy ( &attr, int policy);
     // int pthread_attr_setscope       ( &attr, int contentionscope);
 
-    int rc = pthread_create( &act_info->_self, &attr, __charcoal_start_activity, act_info );
-    int rc = pthread_attr_destroy( &attr );
+    rc = pthread_create( &act_info->_self, &attr, __charcoal_start_activity, act_info );
+    rc = pthread_attr_destroy( &attr );
     __charcoal_switch_to( act_info );
 }
 
 static void __charcoal_timer_handler( int sig, siginfo_t *siginfo, void *context )
 {
-	printf ("Sending PID: %ld, UID: %ld\n",
-			(long)siginfo->si_pid, (long)siginfo->si_uid);
+    printf ("Sending PID: %ld, UID: %ld\n",
+            (long)siginfo->si_pid, (long)siginfo->si_uid);
 }
  
 
 void __charcoal_main( void )
 {
-    sigaction sigact;
-    sigact.sa_sigaction = __charcoal_timer_handler;
-    sigact.sa_flags = SA_SIGINFO;
-    assert( 0 == sigemptyset( &sigact.sa_mask ) );
-    assert( 0 == sigaction( SIGALRM, &sigact, NULL );
+    // sigaction sigact;
+    // sigact.sa_sigaction = __charcoal_timer_handler;
+    // sigact.sa_flags = SA_SIGINFO;
+    // assert( 0 == sigemptyset( &sigact.sa_mask ) );
+    // assert( 0 == sigaction( SIGALRM, &sigact, NULL );
 }
