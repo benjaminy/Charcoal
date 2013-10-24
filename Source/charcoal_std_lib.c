@@ -1,7 +1,7 @@
 /*
  * TetraStak
  */
-
+#if 0
 struct _TET_MACHINE
 {
 };
@@ -270,3 +270,4 @@ void *once( once_t *o, void *(*proc)( void ) )
     return o->val;
 }
 
+#endif

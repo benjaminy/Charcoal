@@ -33,6 +33,8 @@ typedef struct
     /* The size of the return_value depends on the activity */
 } __charcoal_activity_t;
 
+__charcoal_activity_t *__charcoal_activate( void (*f)( void *args ), void *args );
+
 
 /* OS-X doesn't support anonymous semaphores.  Annoying. */
 typedef struct

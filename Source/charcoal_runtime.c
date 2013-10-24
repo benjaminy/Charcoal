@@ -142,7 +142,18 @@ void __charcoal_switch_to( __charcoal_activity_t *act )
  * parameter. */
 __charcoal_activity_t *__charcoal_activate( void (*f)( void *args ), void *args )
 {
-    size_t stack_size = ( 1000000 / PTHREAD_STACK_MIN ) * PTHREAD_STACK_MIN;
+    pthread_attr_t attr;
+    if( pthread_attr_init( &attr ) )
+    {
+        /* XXX Improve error handling */
+        exit( 1 );
+    }
+    size_t stack_size;
+    if( pthread_attr_getstacksize( &attr, &stack_size ) )
+    {
+        /* XXX Improve error handling */
+        exit( 1 );
+    }
     void *new_stack = malloc( stack_size );
     if( NULL == new_stack )
     {
@@ -153,8 +164,6 @@ __charcoal_activity_t *__charcoal_activate( void (*f)( void *args ), void *args 
     act_info->args = args;
     sem_init( &act_info->sem, 0, 0 );
     new_stack += PTHREAD_STACK_MIN /* effective base of stack */;
-    pthread_attr_t attr;
-    int rc = pthread_attr_init( &attr );
     rc = pthread_attr_setstack( &attr, new_stack, stack_size - PTHREAD_STACK_MIN );
     // int pthread_attr_setdetachstate ( &attr, int detachstate );
     // int pthread_attr_setinheritsched( &attr, int inheritsched);
