@@ -22,20 +22,6 @@ typedef struct
     volatile int unyield_depth; 
 } __charcoal_thread_t;
 
-typedef struct
-{
-    void (*f)( void * );
-    void *args;
-    pthread_t _self;
-    __charcoal_thread_t *container;
-    sem_t sem;
-    char return_value[1];
-    /* The size of the return_value depends on the activity */
-} __charcoal_activity_t;
-
-__charcoal_activity_t *__charcoal_activate( void (*f)( void *args ), void *args );
-
-
 /* OS-X doesn't support anonymous semaphores.  Annoying. */
 typedef struct
 {
@@ -43,6 +29,20 @@ typedef struct
     pthread_mutex_t m;
     pthread_cond_t c;
 }__charcoal_sem_t;
+
+typedef struct
+{
+    void (*f)( void * );
+    void *args;
+    pthread_t self;
+    __charcoal_thread_t *container;
+    __charcoal_sem_t can_run;
+    char return_value[1];
+    /* The size of the return_value depends on the activity */
+} __charcoal_activity_t;
+
+__charcoal_activity_t *__charcoal_activate( void (*f)( void *args ), void *args );
+
 
 int __charcoal_sem_init    ( __charcoal_sem_t *s, int pshared, unsigned int value );
 int __charcoal_sem_destroy ( __charcoal_sem_t *s );

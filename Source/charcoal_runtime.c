@@ -20,12 +20,20 @@ void __charcoal_unyielding_exit()
 int __charcoal_sem_init( __charcoal_sem_t *s, int pshared, unsigned int value )
 {
     /* assert( 0 == pshared ) */
-    pthread_mutex_init( &s->m, NULL );
-    pthread_cond_init ( &s->c, NULL );
+    if( pthread_mutex_init( &s->m, NULL ) )
+    {
+        return 1;
+    }
+    if( pthread_cond_init( &s->c, NULL ) )
+    {
+        return 1;
+    }
+    return 0;
 }
 
 int __charcoal_sem_destroy(  __charcoal_sem_t *s )
 {
+    return 42; /* XXX */
 }
 
 int __charcoal_sem_getvalue( __charcoal_sem_t * __restrict s, int * __restrict vp )
@@ -121,18 +129,40 @@ void __charcoal_activity_get_return_value( __charcoal_activity_t *act, void *ret
 {
 }
 
-void *__charcoal_start_activity( void *activity_stuff )
+void *__charcoal_start_activity( void *p )
 {
-    __charcoal_activity_t _self;
-    // activity_stuff->f( activity_stuff->args );
+    __charcoal_activity_t *_self = (__charcoal_activity_t *)p;
+    if( pthread_setspecific( selfish, _self ) )
+    {
+        /* XXX Improve error handling */
+        exit( 1 );
+    }
+    _self->f( _self->args );
     /* wait around until the activity should deallocate itself */
+    return NULL; /* XXX */
 }
 
 /* static assert PTHREAD_STACK_MIN > sizeof activity */
 
+void __charcoal_switch_from_to( __charcoal_activity_t *from, __charcoal_activity_t *to )
+{
+    /* XXX assert from is the currently running activity */
+    if( __charcoal_sem_post( &to->can_run ) )
+    {
+        /* XXX Improve error handling */
+        exit( 1 );
+    }
+    if( __charcoal_sem_wait( &from->can_run ) )
+    {
+        /* XXX Improve error handling */
+        exit( 1 );
+    }
+    /* check if anybody should be deallocated (int sem_destroy(sem_t *);) */
+}
+
 void __charcoal_switch_to( __charcoal_activity_t *act )
 {
-    sem_post( &act->sem );
+    __charcoal_sem_post( &act->can_run );
     // sem_wait();
     /* check if anybody should be deallocated (int sem_destroy(sem_t *);) */
 }
@@ -154,26 +184,51 @@ __charcoal_activity_t *__charcoal_activate( void (*f)( void *args ), void *args 
         /* XXX Improve error handling */
         exit( 1 );
     }
+    /* TODO: provide some way for the user to pass in a stack */
     void *new_stack = malloc( stack_size );
     if( NULL == new_stack )
     {
+        /* XXX Improve error handling */
         exit( 1 );
     }
     __charcoal_activity_t *act_info = (__charcoal_activity_t *)new_stack;
     act_info->f = f;
     act_info->args = args;
-    sem_init( &act_info->sem, 0, 0 );
-    new_stack += PTHREAD_STACK_MIN /* effective base of stack */;
-    rc = pthread_attr_setstack( &attr, new_stack, stack_size - PTHREAD_STACK_MIN );
+    if( __charcoal_sem_init( &act_info->can_run, 0, 0 ) )
+    {
+        /* XXX Improve error handling */
+        exit( 1 );
+    }
+    /* effective base of stack  */
+    size_t actual_activity_sz = sizeof( act_info ) /* XXX: + return type size */;
+    new_stack += actual_activity_sz;
+    if( pthread_attr_setstack( &attr, new_stack, stack_size - actual_activity_sz ) )
+    {
+        /* XXX Improve error handling */
+        exit( 1 );
+    }
+
+    /* XXX: What do these do? */
     // int pthread_attr_setdetachstate ( &attr, int detachstate );
+    // int pthread_attr_setguardsize(pthread_attr_t *, size_t );
     // int pthread_attr_setinheritsched( &attr, int inheritsched);
     // int pthread_attr_setschedparam  ( &attr, const struct sched_param *restrict param);
     // int pthread_attr_setschedpolicy ( &attr, int policy);
     // int pthread_attr_setscope       ( &attr, int contentionscope);
 
-    rc = pthread_create( &act_info->_self, &attr, __charcoal_start_activity, act_info );
-    rc = pthread_attr_destroy( &attr );
+    if( pthread_create( &act_info->self, &attr, __charcoal_start_activity, act_info ) )
+    {
+        /* XXX Improve error handling */
+        exit( 1 );
+    }
+    if( pthread_attr_destroy( &attr ) )
+    {
+        /* XXX Improve error handling */
+        exit( 1 );
+    }
+
     __charcoal_switch_to( act_info );
+    return act_info;
 }
 
 static void __charcoal_timer_handler( int sig, siginfo_t *siginfo, void *context )
