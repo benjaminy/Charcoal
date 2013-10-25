@@ -20,47 +20,79 @@ void __charcoal_unyielding_exit()
 int __charcoal_sem_init( __charcoal_sem_t *s, int pshared, unsigned int value )
 {
     /* assert( 0 == pshared ) */
-    if( pthread_mutex_init( &s->m, NULL ) )
+    int rc;
+    if( ( rc = pthread_mutex_init( &s->m, NULL ) ) )
     {
-        return 1;
+        return rc;
     }
-    if( pthread_cond_init( &s->c, NULL ) )
+    if( ( rc = pthread_cond_init( &s->c, NULL ) ) )
     {
-        return 1;
+        return rc;
     }
     return 0;
 }
 
 int __charcoal_sem_destroy(  __charcoal_sem_t *s )
 {
-    return 42; /* XXX */
+    int rc;
+    if( ( rc = pthread_mutex_destroy( &s->m ) ) )
+    {
+        return rc;
+    }
+    if( ( rc = pthread_cond_destroy( &s->c ) ) )
+    {
+        return rc;
+    }
+    return 0;
 }
 
 int __charcoal_sem_getvalue( __charcoal_sem_t * __restrict s, int * __restrict vp )
 {
     if( !s || !vp )
     {
-        /* error handling */
+        return EINVAL;
     }
-    pthread_mutex_lock( &s->m );
+    int rc;
+    if( ( rc = pthread_mutex_lock( &s->m ) ) )
+    {
+        return rc;
+    }
     *vp = s->value;
-    pthread_mutex_unlock( &s->m );
+    if( ( rc = pthread_mutex_unlock( &s->m ) ) )
+    {
+        return rc;
+    }
     return 0;
 }
 
 int __charcoal_sem_post( __charcoal_sem_t *s )
 {
-    unsigned waiters = 0;
     if( !s )
     {
-        /* XXX error handling */
+        return EINVAL;
     }
-    pthread_mutex_lock( &s->m );
-    /* XXX overflow */
-    waiters = s->waiters;
+    unsigned waiters = 0;
+    int rc;
+    if ( ( rc = pthread_mutex_lock( &s->m ) ) )
+    {
+        return rc;
+    }
+    unsigned old_val = s->value;
     ++s->value;
-    pthread_mutex_unlock( &s->m );
-    if( s->waiters > 0 )
+    if( old_val >= s->value )
+    {
+        if ( ( rc = pthread_mutex_unlock( &s->m ) ) )
+        {
+            return rc;
+        }
+        return EOVERFLOW;
+    }
+    waiters = s->waiters;
+    if ( ( rc = pthread_mutex_unlock( &s->m ) ) )
+    {
+        return rc;
+    }
+    if( waiters > 0 )
     {
         pthread_cond_signal( &s->c );
     }
@@ -93,17 +125,26 @@ int __charcoal_sem_wait( __charcoal_sem_t *s )
 {
     if( !s )
     {
-        /* XXX error handling */
+        return EINVAL;
     }
-    pthread_mutex_lock( &s->m );
+    if( pthread_mutex_lock( &s->m ) )
+    {
+        return 1; /* XXX */
+    }
     while( s->value < 1 )
     {
         ++s->waiters;
-        /* XXX err checking */ pthread_cond_wait( &s->c, &s->m );
+        if( pthread_cond_wait( &s->c, &s->m ) )
+        {
+            return 1; /* XXX */
+        }
         --s->waiters;
     }
     --s->value;
-    pthread_mutex_unlock( &s->m );
+    if( pthread_mutex_unlock( &s->m ) )
+    {
+        return 1; /* XXX */
+    }
     return 0;
 }
 
