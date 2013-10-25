@@ -4,18 +4,11 @@
 
 #include<signal.h>
 #include<stdlib.h>
+#include<string.h>
 #include<stdio.h>
 #include<errno.h>
 #include<limits.h>
 #include<charcoal_runtime.h>
-
-void __charcoal_unyielding_enter()
-{
-}
-
-void __charcoal_unyielding_exit()
-{
-}
 
 int __charcoal_sem_init( __charcoal_sem_t *s, int pshared, unsigned int value )
 {
@@ -29,6 +22,8 @@ int __charcoal_sem_init( __charcoal_sem_t *s, int pshared, unsigned int value )
     {
         return rc;
     }
+    s->value = value;
+    s->waiters = 0;
     return 0;
 }
 
@@ -42,6 +37,11 @@ int __charcoal_sem_destroy(  __charcoal_sem_t *s )
     if( ( rc = pthread_cond_destroy( &s->c ) ) )
     {
         return rc;
+    }
+    if( s->waiters )
+    {
+        /* XXX Improve error handling */
+        exit( 1 );
     }
     return 0;
 }
@@ -81,14 +81,14 @@ int __charcoal_sem_post( __charcoal_sem_t *s )
     ++s->value;
     if( old_val >= s->value )
     {
-        if ( ( rc = pthread_mutex_unlock( &s->m ) ) )
+        if( ( rc = pthread_mutex_unlock( &s->m ) ) )
         {
             return rc;
         }
         return EOVERFLOW;
     }
     waiters = s->waiters;
-    if ( ( rc = pthread_mutex_unlock( &s->m ) ) )
+    if( ( rc = pthread_mutex_unlock( &s->m ) ) )
     {
         return rc;
     }
@@ -133,7 +133,7 @@ int __charcoal_sem_wait( __charcoal_sem_t *s )
     }
     while( s->value < 1 )
     {
-        ++s->waiters;
+        ++s->waiters; /* XXX OVERFLOW */
         if( pthread_cond_wait( &s->c, &s->m ) )
         {
             return 1; /* XXX */
@@ -148,12 +148,25 @@ int __charcoal_sem_wait( __charcoal_sem_t *s )
     return 0;
 }
 
-pthread_key_t selfish;
+static pthread_key_t __charcoal_self_key;
+
+__charcoal_activity_t *__charcoal_activity_self( void )
+{
+    return (__charcoal_activity_t *)pthread_getspecific( __charcoal_self_key );
+}
+
+void __charcoal_unyielding_enter()
+{
+}
+
+void __charcoal_unyielding_exit()
+{
+}
 
 int __charcoal_yield()
 {
     int rv = 0;
-    __charcoal_activity_t *foo = (__charcoal_activity_t *)pthread_getspecific( selfish );
+    __charcoal_activity_t *foo = __charcoal_activity_self();
     // int unyield_depth = OPA_load_int( &foo->_opa_const );
     if( 0 /* == unyield_depth */ )
     {
@@ -169,21 +182,6 @@ void __charcoal_activity_set_return_value( void *ret_val_ptr )
 void __charcoal_activity_get_return_value( __charcoal_activity_t *act, void *ret_val_ptr )
 {
 }
-
-void *__charcoal_start_activity( void *p )
-{
-    __charcoal_activity_t *_self = (__charcoal_activity_t *)p;
-    if( pthread_setspecific( selfish, _self ) )
-    {
-        /* XXX Improve error handling */
-        exit( 1 );
-    }
-    _self->f( _self->args );
-    /* wait around until the activity should deallocate itself */
-    return NULL; /* XXX */
-}
-
-/* static assert PTHREAD_STACK_MIN > sizeof activity */
 
 void __charcoal_switch_from_to( __charcoal_activity_t *from, __charcoal_activity_t *to )
 {
@@ -203,9 +201,32 @@ void __charcoal_switch_from_to( __charcoal_activity_t *from, __charcoal_activity
 
 void __charcoal_switch_to( __charcoal_activity_t *act )
 {
-    __charcoal_sem_post( &act->can_run );
-    // sem_wait();
-    /* check if anybody should be deallocated (int sem_destroy(sem_t *);) */
+    __charcoal_switch_from_to( __charcoal_activity_self(), act );
+}
+
+void schedule( void )
+{
+}
+
+void *__charcoal_start_activity( void *p )
+{
+    __charcoal_activity_t *_self = (__charcoal_activity_t *)p;
+    if( pthread_setspecific( __charcoal_self_key, _self ) )
+    {
+        /* XXX Improve error handling */
+        exit( 1 );
+    }
+    if( __charcoal_sem_wait( &_self->can_run ) )
+    {
+        /* XXX Improve error handling */
+        exit( 1 );
+    }
+    _self->f( _self->args );
+    /* if joinable
+     *     blah
+     * else
+     *     deallocate activity */
+    return NULL; /* XXX */
 }
 
 /* I think the Charcoal type for activities and the C type need to be
@@ -242,9 +263,16 @@ __charcoal_activity_t *__charcoal_activate( void (*f)( void *args ), void *args 
     }
     /* effective base of stack  */
     size_t actual_activity_sz = sizeof( act_info ) /* XXX: + return type size */;
+    /* round up to next multiple of PTHREAD_STACK_MIN */
+    actual_activity_sz -= 1;
+    actual_activity_sz /= PTHREAD_STACK_MIN;
+    actual_activity_sz += 1;
+    actual_activity_sz *= PTHREAD_STACK_MIN;
     new_stack += actual_activity_sz;
-    if( pthread_attr_setstack( &attr, new_stack, stack_size - actual_activity_sz ) )
+    int rc;
+    if( ( rc = pthread_attr_setstack( &attr, new_stack, stack_size - actual_activity_sz ) ) )
     {
+        printf( "pthread_attr_setstack failed! %i %s\n", rc, strerror( rc ) );
         /* XXX Improve error handling */
         exit( 1 );
     }
@@ -272,18 +300,61 @@ __charcoal_activity_t *__charcoal_activate( void (*f)( void *args ), void *args 
     return act_info;
 }
 
+int __charcoal_activity_join( __charcoal_activity_t *a )
+{
+    if( !a )
+    {
+        return EINVAL;
+    }
+    int rc;
+    if( ( rc = pthread_join( a->self, NULL ) ) )
+    {
+        return rc;
+    }
+    free( a );
+    return 0;
+}
+
 static void __charcoal_timer_handler( int sig, siginfo_t *siginfo, void *context )
 {
     printf ("Sending PID: %ld, UID: %ld\n",
             (long)siginfo->si_pid, (long)siginfo->si_uid);
 }
- 
 
-void __charcoal_main( void )
+int __charcoal_replace_main( int argc, char **argv );
+
+int main( int argc, char **argv )
 {
+    __charcoal_activity_t __charcoal_main_activity;
+    __charcoal_thread_t __charcoal_main_thread;
+    int rc;
+    if( ( rc = pthread_key_create( &__charcoal_self_key, NULL /* destructor */ ) ) )
+    {
+        exit( 1 );
+    }
+    __charcoal_main_activity.f = (void (*)( void * ))__charcoal_replace_main;
+    __charcoal_main_activity.args = argv;
+    __charcoal_main_activity.self = pthread_self();
+    __charcoal_main_activity.container = NULL; /* XXX */
+    if( __charcoal_sem_init( &__charcoal_main_activity.can_run, 0, 0 ) )
+    {
+        /* XXX Improve error handling */
+        exit( 1 );
+    }
+    if( pthread_setspecific( __charcoal_self_key, &__charcoal_main_activity ) )
+    {
+        /* XXX Improve error handling */
+        exit( 1 );
+    }
+
     // sigaction sigact;
     // sigact.sa_sigaction = __charcoal_timer_handler;
     // sigact.sa_flags = SA_SIGINFO;
     // assert( 0 == sigemptyset( &sigact.sa_mask ) );
     // assert( 0 == sigaction( SIGALRM, &sigact, NULL );
+    *((int *)(&__charcoal_main_activity.return_value)) =
+        __charcoal_replace_main( argc, argv );
+    /* XXX Wait until all activities are done? */
+
+    return *((int *)(&__charcoal_main_activity.return_value));
 }

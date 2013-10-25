@@ -5,5 +5,5 @@ checks:
 	./check
 
 all:
-	gcc -o activity_create -I../../Install/include -I../../ThirdParty/OpenPA/Releases/1.0.4/Install/include -L../../Install/lib -lcharcoal_sys activity_create.c
+	gcc -g -o activity_create -I../../Install/include -I../../ThirdParty/OpenPA/Releases/1.0.4/Install/include -L../../Install/lib -lcharcoal_sys activity_create.c
 	./activity_create

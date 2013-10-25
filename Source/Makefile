@@ -1,8 +1,8 @@
 # _very_ incomplete
 
 all:
-	gcc -Wall -c -o ../Build/charcoal_runtime.o -I. -I../ThirdParty/OpenPA/Releases/1.0.4/Install/include charcoal_runtime.c
-	gcc -Wall -c -o ../Build/charcoal_std_lib.o charcoal_std_lib.c
+	gcc -g -Wall -c -o ../Build/charcoal_runtime.o -I. -I../ThirdParty/OpenPA/Releases/1.0.4/Install/include charcoal_runtime.c
+	gcc -g -Wall -c -o ../Build/charcoal_std_lib.o charcoal_std_lib.c
 	mkdir -p ../Install/lib
 	ar rcs ../Install/lib/libcharcoal_sys.a ../Build/charcoal_runtime.o ../Build/charcoal_std_lib.o
 	mkdir -p ../Install/include

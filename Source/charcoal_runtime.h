@@ -13,15 +13,6 @@
 #undef __CHARCOAL_ACTIVITY_IMPL_GCC_SPLIT_STACK
 #undef __CHARCOAL_ACTIVITY_IMPL_GCC_SPLIT_STACK
 
-/* when activities are implemented with threads, a charcoal thread is
- * just a unique id */
-
-typedef struct
-{
-    pthread_mutex_t active;
-    volatile int unyield_depth; 
-} __charcoal_thread_t;
-
 /* OS-X doesn't support anonymous semaphores.  Annoying. */
 typedef struct
 {
@@ -30,20 +21,7 @@ typedef struct
     pthread_cond_t c;
 }__charcoal_sem_t;
 
-typedef struct
-{
-    void (*f)( void * );
-    void *args;
-    pthread_t self;
-    __charcoal_thread_t *container;
-    __charcoal_sem_t can_run;
-    char return_value[1];
-    /* The size of the return_value depends on the activity */
-} __charcoal_activity_t;
-
-__charcoal_activity_t *__charcoal_activate( void (*f)( void *args ), void *args );
-
-
+/* This is basically a copy of the POSIX semaphore API. */
 int __charcoal_sem_init    ( __charcoal_sem_t *s, int pshared, unsigned int value );
 int __charcoal_sem_destroy ( __charcoal_sem_t *s );
 int __charcoal_sem_getvalue( __charcoal_sem_t * __restrict s, int * __restrict vp );
@@ -51,6 +29,34 @@ int __charcoal_sem_post    ( __charcoal_sem_t *s );
 int __charcoal_sem_trywait ( __charcoal_sem_t *s );
 int __charcoal_sem_wait    ( __charcoal_sem_t *s );
 
+
+/* when activities are implemented with threads, a charcoal thread is
+ * just a unique id */
+
+typedef struct __charcoal_activity_t __charcoal_activity_t;
+
+typedef struct
+{
+    volatile int unyield_depth; /* XXX should be atomic, not volatile */
+    unsigned activities_sz, activities_cap;
+    __charcoal_activity_t *activities;
+} __charcoal_thread_t;
+
+struct __charcoal_activity_t
+{
+    void (*f)( void * );
+    void *args;
+    pthread_t self;
+    __charcoal_thread_t *container;
+    __charcoal_sem_t can_run;
+    char return_value[ sizeof( int ) ];
+    /* The size of the return_value depends on the activity */
+};
+
+__charcoal_activity_t *__charcoal_activate( void (*f)( void *args ), void *args );
+
+__charcoal_activity_t *__charcoal_activity_self( void );
+int __charcoal_activity_join( __charcoal_activity_t * );
 
 /*
  * TetraStak Concurrency Library
