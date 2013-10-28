@@ -4,8 +4,8 @@
 
 #include<signal.h>
 #include<stdlib.h>
-#include<string.h>
-#include<stdio.h>
+#include<string.h> /* XXX remove dep eventually */
+#include<stdio.h> /* XXX remove dep eventually */
 #include<errno.h>
 #include<limits.h>
 #include<charcoal_runtime.h>
@@ -148,6 +148,58 @@ int __charcoal_sem_wait( __charcoal_sem_t *s )
     return 0;
 }
 
+/* Scheduler stuff */
+
+/* If the size of t's activities store is either greater than or less
+ * than 1/4 its capacity, make the appropriate adjustment. */
+int __charcoal_adjust_activity_cap( __charcoal_thread_t *t )
+{
+    /* Begin weird edge case handling */
+    if( !t->activities_sz )
+        return 0;
+    if( !t->activities_cap )
+    {
+        if( t->activities )
+        {
+            return EINVAL;
+        }
+        t->activities = malloc( t->activities_sz * sizeof( t->activities[0] ) );
+        if( !t->activities )
+        {
+            return ENOMEM;
+        }
+        t->activities_cap = t->activities_sz;
+        return 0;
+    }
+    /* End weird edge case handling */
+
+    while( t->activities_sz > t->activities_cap )
+    {
+        t->activities_cap *= 2;
+        void *tmp = realloc( t->activities, t->activities_cap * sizeof( t->activities[0] ) );
+        if( !tmp )
+        {
+            /* XXX memory leak? */
+            return ENOMEM;
+        }
+        t->activities = tmp;
+    }
+    while( ( t->activities_cap / 4 ) > t->activities_sz )
+    {
+        t->activities_cap /= 2;
+        void *tmp = realloc( t->activities, t->activities_cap * sizeof( t->activities[0] ) );
+        if( !tmp )
+        {
+            /* XXX memory leak? */
+            return ENOMEM;
+        }
+        t->activities = tmp;
+    }
+    return 0;
+}
+
+/* */
+
 static pthread_key_t __charcoal_self_key;
 
 __charcoal_activity_t *__charcoal_activity_self( void )
@@ -208,6 +260,7 @@ void schedule( void )
 {
 }
 
+/* This is the entry procedure for new activities */
 void *__charcoal_start_activity( void *p )
 {
     __charcoal_activity_t *_self = (__charcoal_activity_t *)p;
@@ -235,31 +288,35 @@ void *__charcoal_start_activity( void *p )
 __charcoal_activity_t *__charcoal_activate( void (*f)( void *args ), void *args )
 {
     pthread_attr_t attr;
-    if( pthread_attr_init( &attr ) )
+    int rc;
+    if( ( rc = pthread_attr_init( &attr ) ) )
     {
-        /* XXX Improve error handling */
-        exit( 1 );
+        exit( rc );
     }
     size_t stack_size;
-    if( pthread_attr_getstacksize( &attr, &stack_size ) )
+    if( ( rc = pthread_attr_getstacksize( &attr, &stack_size ) ) )
     {
-        /* XXX Improve error handling */
-        exit( 1 );
+        exit( rc );
     }
     /* TODO: provide some way for the user to pass in a stack */
     void *new_stack = malloc( stack_size );
-    if( NULL == new_stack )
+    if( !new_stack )
     {
-        /* XXX Improve error handling */
-        exit( 1 );
+        exit( ENOMEM );
     }
     __charcoal_activity_t *act_info = (__charcoal_activity_t *)new_stack;
     act_info->f = f;
     act_info->args = args;
-    if( __charcoal_sem_init( &act_info->can_run, 0, 0 ) )
+    act_info->container = __charcoal_activity_self()->container;
+    ++act_info->container->activities_sz;
+    if( ( rc = __charcoal_adjust_activity_cap( act_info->container ) ) )
     {
-        /* XXX Improve error handling */
-        exit( 1 );
+        exit( rc );
+    }
+    act_info->container->activities[ act_info->container->activities_sz - 1 ] = act_info;
+    if( ( rc = __charcoal_sem_init( &act_info->can_run, 0, 0 ) ) )
+    {
+        exit( rc );
     }
     /* effective base of stack  */
     size_t actual_activity_sz = sizeof( act_info ) /* XXX: + return type size */;
@@ -269,33 +326,31 @@ __charcoal_activity_t *__charcoal_activate( void (*f)( void *args ), void *args 
     actual_activity_sz += 1;
     actual_activity_sz *= PTHREAD_STACK_MIN;
     new_stack += actual_activity_sz;
-    int rc;
     if( ( rc = pthread_attr_setstack( &attr, new_stack, stack_size - actual_activity_sz ) ) )
     {
         printf( "pthread_attr_setstack failed! %i %s\n", rc, strerror( rc ) );
-        /* XXX Improve error handling */
-        exit( 1 );
+        exit( rc );
     }
 
     /* XXX: What do these do? */
     // int pthread_attr_setdetachstate ( &attr, int detachstate );
-    // int pthread_attr_setguardsize(pthread_attr_t *, size_t );
+    // int pthread_attr_setguardsize   ( &attr, size_t );
     // int pthread_attr_setinheritsched( &attr, int inheritsched);
     // int pthread_attr_setschedparam  ( &attr, const struct sched_param *restrict param);
     // int pthread_attr_setschedpolicy ( &attr, int policy);
     // int pthread_attr_setscope       ( &attr, int contentionscope);
 
-    if( pthread_create( &act_info->self, &attr, __charcoal_start_activity, act_info ) )
+    if( ( rc = pthread_create( &act_info->self, &attr, __charcoal_start_activity, act_info ) ) )
     {
-        /* XXX Improve error handling */
-        exit( 1 );
+        exit( rc );
     }
-    if( pthread_attr_destroy( &attr ) )
+    if( ( rc = pthread_attr_destroy( &attr ) ) )
     {
-        /* XXX Improve error handling */
-        exit( 1 );
+        exit( rc );
     }
 
+    /* Whether the newly created activities goes first should probably
+     * be controllable. */
     __charcoal_switch_to( act_info );
     return act_info;
 }
@@ -307,11 +362,26 @@ int __charcoal_activity_join( __charcoal_activity_t *a )
         return EINVAL;
     }
     int rc;
+    /* XXX Really we need to register interest and wait */
     if( ( rc = pthread_join( a->self, NULL ) ) )
     {
         return rc;
     }
     free( a );
+    return 0;
+}
+
+int __charcoal_activity_detach( __charcoal_activity_t *a )
+{
+    if( !a )
+    {
+        return EINVAL;
+    }
+    if( a->flags & __CRCL_ACTF_DETACHED )
+    {
+        /* XXX error? */
+    }
+    a->flags |= __CRCL_ACTF_DETACHED;
     return 0;
 }
 
@@ -321,39 +391,56 @@ static void __charcoal_timer_handler( int sig, siginfo_t *siginfo, void *context
             (long)siginfo->si_pid, (long)siginfo->si_uid);
 }
 
+/* The Charcoal preprocessor will replace all instances of "main" in
+ * Charcoal code with "__charcoal_replace_main".  The "real" main is
+ * provided by the runtime library below.
+ *
+ * "main" might actually be something else (like "WinMain"), depending
+ * on the platform. */
+
 int __charcoal_replace_main( int argc, char **argv );
 
 int main( int argc, char **argv )
 {
     __charcoal_activity_t __charcoal_main_activity;
-    __charcoal_thread_t __charcoal_main_thread;
+    __charcoal_thread_t   __charcoal_main_thread;
     int rc;
     if( ( rc = pthread_key_create( &__charcoal_self_key, NULL /* destructor */ ) ) )
     {
-        exit( 1 );
+        exit( rc );
     }
-    __charcoal_main_activity.f = (void (*)( void * ))__charcoal_replace_main;
-    __charcoal_main_activity.args = argv;
-    __charcoal_main_activity.self = pthread_self();
-    __charcoal_main_activity.container = NULL; /* XXX */
-    if( __charcoal_sem_init( &__charcoal_main_activity.can_run, 0, 0 ) )
+    __charcoal_main_activity.f         = (void (*)( void * ))__charcoal_replace_main;
+    __charcoal_main_activity.args      = NULL;
+    __charcoal_main_activity.self      = pthread_self();
+    __charcoal_main_activity.container = &__charcoal_main_thread;
+    if( ( rc = __charcoal_sem_init( &__charcoal_main_activity.can_run, 0, 0 ) ) )
     {
-        /* XXX Improve error handling */
-        exit( 1 );
+        exit( rc );
     }
-    if( pthread_setspecific( __charcoal_self_key, &__charcoal_main_activity ) )
+    if( ( rc = pthread_setspecific( __charcoal_self_key, &__charcoal_main_activity ) ) )
     {
-        /* XXX Improve error handling */
-        exit( 1 );
+        exit( rc );
     }
+    __charcoal_main_thread.unyield_depth  = 1;
+    __charcoal_main_thread.activities_sz  = 1;
+    __charcoal_main_thread.activities_cap = 1;
+    __charcoal_main_thread.activities = malloc( sizeof( __charcoal_main_thread.activities[0] ) );
+    if( !__charcoal_main_thread.activities )
+    {
+        exit( ENOMEM );
+    }
+    __charcoal_main_thread.activities[0] = &__charcoal_main_activity;
 
     // sigaction sigact;
     // sigact.sa_sigaction = __charcoal_timer_handler;
     // sigact.sa_flags = SA_SIGINFO;
     // assert( 0 == sigemptyset( &sigact.sa_mask ) );
     // assert( 0 == sigaction( SIGALRM, &sigact, NULL );
+
+    /* Call the "real" main */
     *((int *)(&__charcoal_main_activity.return_value)) =
         __charcoal_replace_main( argc, argv );
+
     /* XXX Wait until all activities are done? */
 
     return *((int *)(&__charcoal_main_activity.return_value));

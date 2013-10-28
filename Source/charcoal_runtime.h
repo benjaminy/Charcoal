@@ -1,5 +1,4 @@
 #include<pthread.h>
-#include<semaphore.h>
 
 #define OPA_PRIMITIVES_H_INCLUDED
 #include "opa_config.h"
@@ -39,16 +38,19 @@ typedef struct
 {
     volatile int unyield_depth; /* XXX should be atomic, not volatile */
     unsigned activities_sz, activities_cap;
-    __charcoal_activity_t *activities;
+    __charcoal_activity_t **activities;
 } __charcoal_thread_t;
+
+#define __CRCL_ACTF_DETACHED 1
 
 struct __charcoal_activity_t
 {
     void (*f)( void * );
-    void *args;
     pthread_t self;
     __charcoal_thread_t *container;
     __charcoal_sem_t can_run;
+    unsigned flags;
+    void *args;
     char return_value[ sizeof( int ) ];
     /* The size of the return_value depends on the activity */
 };
@@ -57,6 +59,8 @@ __charcoal_activity_t *__charcoal_activate( void (*f)( void *args ), void *args 
 
 __charcoal_activity_t *__charcoal_activity_self( void );
 int __charcoal_activity_join( __charcoal_activity_t * );
+int __charcoal_activity_detach( __charcoal_activity_t * );
+
 
 /*
  * TetraStak Concurrency Library
