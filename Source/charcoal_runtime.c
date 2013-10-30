@@ -385,6 +385,8 @@ int __charcoal_activity_detach( __charcoal_activity_t *a )
     return 0;
 }
 
+//timer that delivers to program periodically
+//Signal handler should deliver this to yield
 static void __charcoal_timer_handler( int sig, siginfo_t *siginfo, void *context )
 {
     printf ("Sending PID: %ld, UID: %ld\n",
