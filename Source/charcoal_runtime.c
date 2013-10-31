@@ -150,8 +150,8 @@ int __charcoal_sem_wait( __charcoal_sem_t *s )
 
 /* Scheduler stuff */
 
-/* If the size of t's activities store is either greater than or less
- * than 1/4 its capacity, make the appropriate adjustment. */
+/* If the size of t's activities store is either greater than its
+ * capacity or less than 1/4, make the appropriate adjustment. */
 int __charcoal_adjust_activity_cap( __charcoal_thread_t *t )
 {
     /* Begin weird edge case handling */
@@ -176,7 +176,8 @@ int __charcoal_adjust_activity_cap( __charcoal_thread_t *t )
     while( t->activities_sz > t->activities_cap )
     {
         t->activities_cap *= 2;
-        void *tmp = realloc( t->activities, t->activities_cap * sizeof( t->activities[0] ) );
+        void *tmp = realloc(
+            t->activities, t->activities_cap * sizeof( t->activities[0] ) );
         if( !tmp )
         {
             /* XXX memory leak? */
@@ -187,13 +188,50 @@ int __charcoal_adjust_activity_cap( __charcoal_thread_t *t )
     while( ( t->activities_cap / 4 ) > t->activities_sz )
     {
         t->activities_cap /= 2;
-        void *tmp = realloc( t->activities, t->activities_cap * sizeof( t->activities[0] ) );
+        void *tmp = realloc(
+            t->activities, t->activities_cap * sizeof( t->activities[0] ) );
         if( !tmp )
         {
             /* XXX memory leak? */
             return ENOMEM;
         }
         t->activities = tmp;
+    }
+    return 0;
+}
+
+int __charcoal_start_avail_activity( __charcoal_activity_t **p )
+{
+    unsigned i;
+    __charcoal_activity_t *to_run = NULL, *self = __charcoal_activity_self();
+    __charcoal_thread_t *thd = self->container;
+    for( i = 0; i < thd->activities_sz; ++i )
+    {
+        to_run = thd->activities[ i ];
+        if( !( to_run->flags & __CRCL_ACTF_BLOCKED )
+            && ( to_run != self ) )
+        {
+            break;
+        }
+        to_run = NULL;
+    }
+    int sv = -1, rv = -1;
+    __charcoal_sem_getvalue( &self->can_run, &sv );
+    if( to_run )
+        __charcoal_sem_getvalue( &to_run->can_run, &rv );
+    printf( "SWITCH from: %p(%i)  to: %p(%i)\n",
+            self, sv, to_run, rv );
+    if( to_run )
+    {
+        int rc;
+        if( ( rc = __charcoal_sem_post( &to_run->can_run ) ) )
+        {
+            return rc;
+        }
+        if( p )
+        {
+            *p = to_run;
+        }
     }
     return 0;
 }
@@ -220,9 +258,15 @@ int __charcoal_yield()
     int rv = 0;
     __charcoal_activity_t *foo = __charcoal_activity_self();
     // int unyield_depth = OPA_load_int( &foo->_opa_const );
-    if( 0 /* == unyield_depth */ )
+    if( 1 /* == unyield_depth */ )
     {
-        /* rv = invoke the scheduler */
+        __charcoal_activity_t *to;
+        /* XXX error check */
+        __charcoal_start_avail_activity( &to );
+        if( to )
+            return __charcoal_sem_wait( &foo->can_run );
+        else
+            return 0;
     }
     return rv;
 }
@@ -256,14 +300,11 @@ void __charcoal_switch_to( __charcoal_activity_t *act )
     __charcoal_switch_from_to( __charcoal_activity_self(), act );
 }
 
-void schedule( void )
-{
-}
-
 /* This is the entry procedure for new activities */
-void *__charcoal_start_activity( void *p )
+static void *__charcoal_activity_entry_point( void *p )
 {
     __charcoal_activity_t *_self = (__charcoal_activity_t *)p;
+    printf( "Starting activity %p\n", _self );
     if( pthread_setspecific( __charcoal_self_key, _self ) )
     {
         /* XXX Improve error handling */
@@ -275,10 +316,19 @@ void *__charcoal_start_activity( void *p )
         exit( 1 );
     }
     _self->f( _self->args );
-    /* if joinable
-     *     blah
-     * else
-     *     deallocate activity */
+    printf( "Finishing activity %p\n", _self );
+    if( _self->flags & __CRCL_ACTF_DETACHED )
+    {
+        /* deallocate activity */
+    }
+    else
+    {
+        /* blah */
+    }
+    _self->flags |= __CRCL_ACTF_BLOCKED;
+    /* Who knows if another activity is joining? */
+    __charcoal_start_avail_activity( NULL );
+    /* XXX error check */
     return NULL; /* XXX */
 }
 
@@ -340,7 +390,8 @@ __charcoal_activity_t *__charcoal_activate( void (*f)( void *args ), void *args 
     // int pthread_attr_setschedpolicy ( &attr, int policy);
     // int pthread_attr_setscope       ( &attr, int contentionscope);
 
-    if( ( rc = pthread_create( &act_info->self, &attr, __charcoal_start_activity, act_info ) ) )
+    if( ( rc = pthread_create(
+              &act_info->self, &attr, __charcoal_activity_entry_point, act_info ) ) )
     {
         exit( rc );
     }
@@ -362,12 +413,40 @@ int __charcoal_activity_join( __charcoal_activity_t *a )
         return EINVAL;
     }
     int rc;
-    /* XXX Really we need to register interest and wait */
+    __charcoal_activity_t *self = __charcoal_activity_self();
+    __charcoal_thread_t *thd = self->container;
+    self->flags |= __CRCL_ACTF_BLOCKED;
+    __charcoal_start_avail_activity( NULL );
+
     if( ( rc = pthread_join( a->self, NULL ) ) )
     {
         return rc;
     }
     free( a );
+    /* assert( thd->activities_sz > 0 ) */
+    unsigned i, shifting = 0;
+    for( i = 0; i < thd->activities_sz; ++i )
+    {
+        if( shifting )
+        {
+            thd->activities[ i - 1 ] = thd->activities[ i ];
+        }
+        if( thd->activities[ i ] == a )
+        {
+            shifting = 1;
+        }
+    }
+    --thd->activities_sz;
+    if( ( rc = __charcoal_adjust_activity_cap( thd ) ) )
+    {
+        exit( rc );
+    }
+    /* XXX ! go if noone is going.  Wait otherwise */
+    self->flags &= __CRCL_ACTF_BLOCKED;
+    if( ( rc = __charcoal_sem_wait( &self->can_run ) ) )
+    {
+        exit( rc );
+    }
     return 0;
 }
 

@@ -42,6 +42,7 @@ typedef struct
 } __charcoal_thread_t;
 
 #define __CRCL_ACTF_DETACHED 1
+#define __CRCL_ACTF_BLOCKED 2
 
 struct __charcoal_activity_t
 {
@@ -60,6 +61,9 @@ __charcoal_activity_t *__charcoal_activate( void (*f)( void *args ), void *args 
 __charcoal_activity_t *__charcoal_activity_self( void );
 int __charcoal_activity_join( __charcoal_activity_t * );
 int __charcoal_activity_detach( __charcoal_activity_t * );
+
+
+/* Ignore everything from here to the end */
 
 
 /*
