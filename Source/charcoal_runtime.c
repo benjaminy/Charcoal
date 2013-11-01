@@ -74,7 +74,6 @@ int __charcoal_choose_next_activity( __charcoal_activity_t **p )
     unsigned i;
     __charcoal_activity_t *to_run = NULL, *self = __charcoal_activity_self();
     __charcoal_thread_t *thd = self->container;
-    // printf( "ACQ 1\n" );
     ABORT_ON_FAIL( pthread_mutex_lock( &thd->thd_management_mtx ) );
     for( i = 0; i < thd->activities_sz; ++i )
     {
@@ -96,7 +95,6 @@ int __charcoal_choose_next_activity( __charcoal_activity_t **p )
     {
         *p = to_run;
     }
-    // printf( "REL 1\n" );
     ABORT_ON_FAIL( pthread_mutex_unlock( &thd->thd_management_mtx ) );
     return 0;
 }
@@ -174,7 +172,6 @@ static void *__charcoal_activity_entry_point( void *p )
     _self->f( _self->args );
     printf( "Finishing activity %p\n", _self );
     __charcoal_thread_t *thd = _self->container;
-    // printf( "ACQ 2\n" );
     ABORT_ON_FAIL( pthread_mutex_lock( &thd->thd_management_mtx ) );
     if( _self->flags & __CRCL_ACTF_DETACHED )
     {
@@ -194,10 +191,9 @@ static void *__charcoal_activity_entry_point( void *p )
     }
     else
     {
-        _self->container->flags &=
-            ~__CRCL_THDF_ANY_RUNNING;
+        // _self->container->flags &= ~__CRCL_THDF_ANY_RUNNING;
     }
-    // printf( "REL 2\n" );
+    --_self->container->runnable_activities;
     ABORT_ON_FAIL( pthread_mutex_unlock( &thd->thd_management_mtx ) );
     return NULL; /* XXX */
 }
@@ -223,7 +219,6 @@ __charcoal_activity_t *__charcoal_activate( void (*f)( void *args ), void *args 
     act_info->args = args;
     act_info->flags = 0;
     act_info->container = __charcoal_activity_self()->container;
-    // printf( "ACQ 3\n" );
     ABORT_ON_FAIL( pthread_mutex_lock( &act_info->container->thd_management_mtx ) );
     ++act_info->container->activities_sz;
     ABORT_ON_FAIL( __charcoal_adjust_activity_cap( act_info->container ) );
@@ -252,13 +247,14 @@ __charcoal_activity_t *__charcoal_activate( void (*f)( void *args ), void *args 
     // int pthread_attr_setschedpolicy ( &attr, int policy);
     // int pthread_attr_setscope       ( &attr, int contentionscope);
 
+    ++act_info->container->runnable_activities;
+
     ABORT_ON_FAIL( pthread_create(
         &act_info->self, &attr, __charcoal_activity_entry_point, act_info ) );
     ABORT_ON_FAIL( pthread_attr_destroy( &attr ) );
 
     /* Whether the newly created activities goes first should probably
      * be controllable. */
-    // printf( "REL 3\n" );
     ABORT_ON_FAIL( pthread_mutex_unlock( &act_info->container->thd_management_mtx ) );
     __charcoal_switch_to( act_info );
     return act_info;
@@ -281,11 +277,11 @@ int __charcoal_activity_join( __charcoal_activity_t *a )
         ABORT_ON_FAIL( __charcoal_sem_post( &to->can_run ) );
     }
 
+    --thd->runnable_activities;
     if( ( rc = pthread_join( a->self, NULL ) ) )
     {
         return rc;
     }
-    // printf( "ACQ 4\n" );
     ABORT_ON_FAIL( pthread_mutex_lock( &thd->thd_management_mtx ) );
     free( a );
     /* assert( thd->activities_sz > 0 ) */
@@ -305,9 +301,10 @@ int __charcoal_activity_join( __charcoal_activity_t *a )
     ABORT_ON_FAIL( __charcoal_adjust_activity_cap( thd ) );
     /* XXX ! go if noone is going.  Wait otherwise */
     self->flags &= ~__CRCL_ACTF_BLOCKED;
-    int wait = !!( thd->flags & __CRCL_THDF_ANY_RUNNING );
-    thd->flags |= __CRCL_THDF_ANY_RUNNING;
-    // printf( "REL 4\n" );
+    // int wait = !!( thd->flags & __CRCL_THDF_ANY_RUNNING );
+    int wait = thd->runnable_activities > 0;
+    ++thd->runnable_activities;
+    // thd->flags |= __CRCL_THDF_ANY_RUNNING;
     ABORT_ON_FAIL( pthread_mutex_unlock( &thd->thd_management_mtx ) );
     if( wait && ( rc = __charcoal_sem_wait( &self->can_run ) ) )
     {
@@ -372,7 +369,9 @@ int main( int argc, char **argv )
     ABORT_ON_FAIL( pthread_mutexattr_settype( &attr, PTHREAD_MUTEX_RECURSIVE ) );
     ABORT_ON_FAIL( pthread_mutex_init( &__charcoal_main_thread.thd_management_mtx, &attr ) );
     ABORT_ON_FAIL( pthread_mutexattr_destroy( &attr ) );
-    __charcoal_main_thread.flags = __CRCL_THDF_ANY_RUNNING;
+    // __charcoal_main_thread.flags = __CRCL_THDF_ANY_RUNNING;
+    __charcoal_main_thread.flags = 0;
+    __charcoal_main_thread.runnable_activities = 1;
 
     // sigaction sigact;
     // sigact.sa_sigaction = __charcoal_timer_handler;
@@ -385,6 +384,6 @@ int main( int argc, char **argv )
         __charcoal_replace_main( argc, argv );
 
     /* XXX Wait until all activities are done? */
-
+    free( __charcoal_main_thread.activities );
     return *((int *)(&__charcoal_main_activity.return_value));
 }

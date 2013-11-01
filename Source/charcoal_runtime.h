@@ -35,7 +35,7 @@ int __charcoal_sem_wait    ( __charcoal_sem_t *s );
 typedef struct __charcoal_activity_t __charcoal_activity_t;
 
 /* Thread flags */
-#define __CRCL_THDF_ANY_RUNNING 1
+// #define __CRCL_THDF_ANY_RUNNING 1
 
 typedef struct
 {
@@ -44,6 +44,7 @@ typedef struct
     __charcoal_activity_t **activities;
     pthread_mutex_t thd_management_mtx;
     unsigned flags;
+    unsigned runnable_activities;
 } __charcoal_thread_t;
 
 /* Activity flags */
