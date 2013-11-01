@@ -381,6 +381,7 @@ __charcoal_activity_t *__charcoal_activate( void (*f)( void *args ), void *args 
     __charcoal_activity_t *act_info = (__charcoal_activity_t *)new_stack;
     act_info->f = f;
     act_info->args = args;
+    act_info->flags = 0;
     act_info->container = __charcoal_activity_self()->container;
     if( ( rc = pthread_mutex_lock( &act_info->container->thd_management_mtx ) ) )
     {
@@ -544,6 +545,7 @@ int main( int argc, char **argv )
     }
     __charcoal_main_activity.f         = (void (*)( void * ))__charcoal_replace_main;
     __charcoal_main_activity.args      = NULL;
+    __charcoal_main_activity.flags     = 0;
     __charcoal_main_activity.self      = pthread_self();
     __charcoal_main_activity.container = &__charcoal_main_thread;
     if( ( rc = __charcoal_sem_init( &__charcoal_main_activity.can_run, 0, 0 ) ) )
