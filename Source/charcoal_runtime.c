@@ -200,7 +200,7 @@ int __charcoal_adjust_activity_cap( __charcoal_thread_t *t )
     return 0;
 }
 
-int __charcoal_start_avail_activity( __charcoal_activity_t **p )
+int __charcoal_choose_next_activity( __charcoal_activity_t **p )
 {
     unsigned i;
     __charcoal_activity_t *to_run = NULL, *self = __charcoal_activity_self();
@@ -221,17 +221,9 @@ int __charcoal_start_avail_activity( __charcoal_activity_t **p )
         __charcoal_sem_getvalue( &to_run->can_run, &rv );
     printf( "SWITCH from: %p(%i)  to: %p(%i)\n",
             self, sv, to_run, rv );
-    if( to_run )
+    if( p )
     {
-        int rc;
-        if( ( rc = __charcoal_sem_post( &to_run->can_run ) ) )
-        {
-            return rc;
-        }
-        if( p )
-        {
-            *p = to_run;
-        }
+        *p = to_run;
     }
     return 0;
 }
@@ -262,9 +254,16 @@ int __charcoal_yield()
     {
         __charcoal_activity_t *to;
         /* XXX error check */
-        __charcoal_start_avail_activity( &to );
+        __charcoal_choose_next_activity( &to );
         if( to )
+        {
+            int rc;
+            if( ( rc = __charcoal_sem_post( &to->can_run ) ) )
+            {
+                return rc;
+            }
             return __charcoal_sem_wait( &foo->can_run );
+        }
         else
             return 0;
     }
@@ -303,7 +302,7 @@ void __charcoal_switch_to( __charcoal_activity_t *act )
 /* This is the entry procedure for new activities */
 static void *__charcoal_activity_entry_point( void *p )
 {
-    __charcoal_activity_t *_self = (__charcoal_activity_t *)p;
+    __charcoal_activity_t *next, *_self = (__charcoal_activity_t *)p;
     printf( "Starting activity %p\n", _self );
     if( pthread_setspecific( __charcoal_self_key, _self ) )
     {
@@ -327,8 +326,24 @@ static void *__charcoal_activity_entry_point( void *p )
     }
     _self->flags |= __CRCL_ACTF_BLOCKED;
     /* Who knows if another activity is joining? */
-    __charcoal_start_avail_activity( NULL );
-    /* XXX error check */
+
+    if( __charcoal_choose_next_activity( &next ) )
+    {
+        exit( 1 );
+    }
+    if( next )
+    {
+        if( __charcoal_sem_post( &next->can_run ) )
+        {
+            /* XXX Improve error handling */
+            exit( 1 );
+        }
+    }
+    else
+    {
+        _self->container->flags &=
+            ~__CRCL_THDF_ANY_RUNNING;
+    }
     return NULL; /* XXX */
 }
 
@@ -378,7 +393,8 @@ __charcoal_activity_t *__charcoal_activate( void (*f)( void *args ), void *args 
     new_stack += actual_activity_sz;
     if( ( rc = pthread_attr_setstack( &attr, new_stack, stack_size - actual_activity_sz ) ) )
     {
-        printf( "pthread_attr_setstack failed! %i %s\n", rc, strerror( rc ) );
+        printf( "pthread_attr_setstack failed! code:%i  err:%s  stk:%p  sz:%i\n",
+                rc, strerror( rc ), new_stack, (int)(stack_size - actual_activity_sz) );
         exit( rc );
     }
 
@@ -416,11 +432,26 @@ int __charcoal_activity_join( __charcoal_activity_t *a )
     __charcoal_activity_t *self = __charcoal_activity_self();
     __charcoal_thread_t *thd = self->container;
     self->flags |= __CRCL_ACTF_BLOCKED;
-    __charcoal_start_avail_activity( NULL );
+    __charcoal_activity_t *to;
+    if( ( rc = __charcoal_choose_next_activity( &to ) ) )
+    {
+        exit( rc );
+    }
+    if( to )
+    {
+        if( ( rc = __charcoal_sem_post( &to->can_run ) ) )
+        {
+            exit( rc );
+        }
+    }
 
     if( ( rc = pthread_join( a->self, NULL ) ) )
     {
         return rc;
+    }
+    if( ( rc = pthread_mutex_lock( &thd->thd_management_mtx ) ) )
+    {
+        exit( rc );
     }
     free( a );
     /* assert( thd->activities_sz > 0 ) */
@@ -442,8 +473,14 @@ int __charcoal_activity_join( __charcoal_activity_t *a )
         exit( rc );
     }
     /* XXX ! go if noone is going.  Wait otherwise */
-    self->flags &= __CRCL_ACTF_BLOCKED;
-    if( ( rc = __charcoal_sem_wait( &self->can_run ) ) )
+    self->flags &= ~__CRCL_ACTF_BLOCKED;
+    int wait = !!( thd->flags & __CRCL_THDF_ANY_RUNNING );
+    thd->flags |= __CRCL_THDF_ANY_RUNNING;
+    if( ( rc = pthread_mutex_unlock( &thd->thd_management_mtx ) ) )
+    {
+        exit( rc );
+    }
+    if( wait && ( rc = __charcoal_sem_wait( &self->can_run ) ) )
     {
         exit( rc );
     }
@@ -509,6 +546,11 @@ int main( int argc, char **argv )
         exit( ENOMEM );
     }
     __charcoal_main_thread.activities[0] = &__charcoal_main_activity;
+    if( ( rc = pthread_mutex_init( &__charcoal_main_thread.thd_management_mtx, NULL ) ) )
+    {
+        exit( rc );
+    }
+    __charcoal_main_thread.flags = __CRCL_THDF_ANY_RUNNING;
 
     // sigaction sigact;
     // sigact.sa_sigaction = __charcoal_timer_handler;
