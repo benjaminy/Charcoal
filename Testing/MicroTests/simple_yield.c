@@ -10,7 +10,6 @@ void fa( void *a )
         printf( "%s %i\n", str, i );
         __charcoal_yield();
     }
-    printf( "DONE\n" );
 }
 
 int __charcoal_replace_main( int argc, char **argv )
@@ -19,7 +18,10 @@ int __charcoal_replace_main( int argc, char **argv )
     __charcoal_activity_t *b = __charcoal_activate( fa, "B" );
     __charcoal_activity_t *c = __charcoal_activate( fa, "C" );
     __charcoal_activity_join( a );
+    printf( "Joined A\n" );
     __charcoal_activity_join( b );
+    printf( "Joined B\n" );
     __charcoal_activity_join( c );
+    printf( "Joined C\n" );
     return 0;
 }

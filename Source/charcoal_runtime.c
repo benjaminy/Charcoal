@@ -205,6 +205,11 @@ int __charcoal_choose_next_activity( __charcoal_activity_t **p )
     unsigned i;
     __charcoal_activity_t *to_run = NULL, *self = __charcoal_activity_self();
     __charcoal_thread_t *thd = self->container;
+    int rc;
+    if( ( rc = pthread_mutex_lock( &thd->thd_management_mtx ) ) )
+    {
+        exit( rc );
+    }
     for( i = 0; i < thd->activities_sz; ++i )
     {
         to_run = thd->activities[ i ];
@@ -224,6 +229,10 @@ int __charcoal_choose_next_activity( __charcoal_activity_t **p )
     if( p )
     {
         *p = to_run;
+    }
+    if( ( rc = pthread_mutex_unlock( &thd->thd_management_mtx ) ) )
+    {
+        exit( rc );
     }
     return 0;
 }
@@ -280,7 +289,7 @@ void __charcoal_activity_get_return_value( __charcoal_activity_t *act, void *ret
 
 void __charcoal_switch_from_to( __charcoal_activity_t *from, __charcoal_activity_t *to )
 {
-    /* XXX assert from is the currently running activity */
+    /* XXX assert from is the currently running activity? */
     if( __charcoal_sem_post( &to->can_run ) )
     {
         /* XXX Improve error handling */
@@ -373,6 +382,10 @@ __charcoal_activity_t *__charcoal_activate( void (*f)( void *args ), void *args 
     act_info->f = f;
     act_info->args = args;
     act_info->container = __charcoal_activity_self()->container;
+    if( ( rc = pthread_mutex_lock( &act_info->container->thd_management_mtx ) ) )
+    {
+        exit( rc );
+    }
     ++act_info->container->activities_sz;
     if( ( rc = __charcoal_adjust_activity_cap( act_info->container ) ) )
     {
@@ -418,6 +431,10 @@ __charcoal_activity_t *__charcoal_activate( void (*f)( void *args ), void *args 
 
     /* Whether the newly created activities goes first should probably
      * be controllable. */
+    if( ( rc = pthread_mutex_unlock( &act_info->container->thd_management_mtx ) ) )
+    {
+        exit( rc );
+    }
     __charcoal_switch_to( act_info );
     return act_info;
 }
