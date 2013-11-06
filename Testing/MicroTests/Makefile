@@ -5,7 +5,7 @@ LIB_DIRS =  -L../../Install/lib
 FLAGS = $(INCLUDE_DIRS) $(LIB_DIRS) -lcharcoal_sys
 
 checks:
-	gcc -Wall -o check check_default_stack_size.c
+	gcc -Wall -o check check_default_stack_size.c -lpthread
 	./check
 
 simple_yield:
