@@ -116,12 +116,21 @@ void __charcoal_unyielding_exit()
 {
 }
 
+//TODO
+//Call yield
+//check if unyielding:
+//  return
+//else:
+//  have pointer to thread
+//  thread has pointers to other activities
+//  increment someone else's signal flag/semaphore
+//
 int __charcoal_yield()
 {
     int rv = 0;
     __charcoal_activity_t *foo = __charcoal_activity_self();
-    // int unyield_depth = OPA_load_int( &foo->_opa_const );
-    if( 1 /* == unyield_depth */ )
+    int unyield_depth = OPA_load_int( &foo->container->unyield_depth );
+    if( unyield_depth > 0 )
     {
         __charcoal_activity_t *to;
         /* XXX error check */
@@ -138,6 +147,7 @@ int __charcoal_yield()
         else
             return 0;
     }
+    OPA_decr_int(&foo->container->unyield_depth);
     return rv;
 }
 
@@ -356,7 +366,9 @@ int main( int argc, char **argv )
     __charcoal_main_activity.container = &__charcoal_main_thread;
     ABORT_ON_FAIL( __charcoal_sem_init( &__charcoal_main_activity.can_run, 0, 0 ) );
     ABORT_ON_FAIL( pthread_setspecific( __charcoal_self_key, &__charcoal_main_activity ) );
-    __charcoal_main_thread.unyield_depth  = 1;
+    
+    OPA_store_int(&(__charcoal_main_thread.unyield_depth), 1);
+    //__charcoal_main_thread.unyield_depth  = 1;
     __charcoal_main_thread.activities_sz  = 1;
     __charcoal_main_thread.activities_cap = 1;
     __charcoal_main_thread.activities = malloc( sizeof( __charcoal_main_thread.activities[0] ) );

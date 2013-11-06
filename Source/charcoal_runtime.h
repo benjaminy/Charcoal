@@ -1,6 +1,7 @@
 #include<pthread.h>
 
-#define OPA_PRIMITIVES_H_INCLUDED
+//#define OPA_PRIMITIVES_H_INCLUDED
+#include "opa_primitives.h"
 #include "opa_config.h"
 #include "opa_util.h"
 #ifndef _opa_inline
@@ -39,7 +40,8 @@ typedef struct __charcoal_activity_t __charcoal_activity_t;
 
 typedef struct
 {
-    volatile int unyield_depth; /* XXX should be atomic, not volatile */
+    //volatile int unyield_depth; /* XXX should be atomic, not volatile */
+    OPA_int_t unyield_depth;
     unsigned activities_sz, activities_cap;
     __charcoal_activity_t **activities;
     pthread_mutex_t thd_management_mtx;

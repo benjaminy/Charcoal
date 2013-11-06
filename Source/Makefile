@@ -1,7 +1,7 @@
 # _very_ incomplete
 
-# INCLUDE_DIRS = -I. -I../ThirdParty/OpenPA/Releases/1.0.4/Install/include
-INCLUDE_DIRS = -I.
+#INCLUDE_DIRS = -I. -I../ThirdParty/OpenPA/Releases/1.0.4/Install/include
+INCLUDE_DIRS = -I. -I /usr/local/stow/openpa-1.0.4/include
 
 all:
 	gcc -g -Wall -c -o ../Build/semaphore.o $(INCLUDE_DIRS) semaphore.c
