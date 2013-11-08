@@ -2,13 +2,14 @@
  * The Charcoal Runtime System
  */
 
-#include<signal.h>
-#include<stdlib.h>
-#include<string.h> /* XXX remove dep eventually */
-#include<stdio.h> /* XXX remove dep eventually */
-#include<errno.h>
-#include<limits.h>
-#include<charcoal_runtime.h>
+#include <assert.h>
+#include <signal.h>
+#include <stdlib.h>
+#include <string.h> /* XXX remove dep eventually */
+#include <stdio.h> /* XXX remove dep eventually */
+#include <errno.h>
+#include <limits.h>
+#include <charcoal_runtime.h>
 
 /* Scheduler stuff */
 
@@ -96,6 +97,7 @@ int __charcoal_choose_next_activity( __charcoal_activity_t **p )
         *p = to_run;
     }
     ABORT_ON_FAIL( pthread_mutex_unlock( &thd->thd_management_mtx ) );
+    thd->start_time = clock();
     return 0;
 }
 
@@ -129,8 +131,12 @@ int __charcoal_yield()
 {
     int rv = 0;
     __charcoal_activity_t *foo = __charcoal_activity_self();
-    int unyield_depth = OPA_load_int( &foo->container->unyield_depth );
-    if( unyield_depth > 0 )
+    int unyield_depth = OPA_load_int( &(foo->container->unyield_depth) );
+    assert(unyield_depth >= 0);
+    int timed_out = (double)(clock() - foo->container->start_time) / CLOCKS_PER_SEC >
+            foo->container->max_time;
+    int received_signal = 0; // TODO why exactly do we need signals?
+    if( (unyield_depth == 0) && (timed_out || received_signal) )
     {
         __charcoal_activity_t *to;
         /* XXX error check */
@@ -147,7 +153,10 @@ int __charcoal_yield()
         else
             return 0;
     }
-    OPA_decr_int(&foo->container->unyield_depth);
+    if (unyield_depth > 0)
+    {
+        OPA_decr_int(&foo->container->unyield_depth);
+    }
     return rv;
 }
 
@@ -164,6 +173,7 @@ void __charcoal_switch_from_to( __charcoal_activity_t *from, __charcoal_activity
     /* XXX assert from is the currently running activity? */
     ABORT_ON_FAIL( __charcoal_sem_post( &to->can_run ) );
     ABORT_ON_FAIL( __charcoal_sem_wait( &from->can_run ) );
+    from->container->start_time = clock();
     /* check if anybody should be deallocated (int sem_destroy(sem_t *);) */
 }
 

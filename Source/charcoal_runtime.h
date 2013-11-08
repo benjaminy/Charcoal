@@ -1,6 +1,7 @@
 #include<pthread.h>
 
 //#define OPA_PRIMITIVES_H_INCLUDED
+#include <time.h>
 #include "opa_primitives.h"
 #include "opa_config.h"
 #include "opa_util.h"
@@ -42,6 +43,8 @@ typedef struct
 {
     //volatile int unyield_depth; /* XXX should be atomic, not volatile */
     OPA_int_t unyield_depth;
+    clock_t start_time;
+    double max_time;
     unsigned activities_sz, activities_cap;
     __charcoal_activity_t **activities;
     pthread_mutex_t thd_management_mtx;
