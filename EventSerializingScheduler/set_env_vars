@@ -1,0 +1,12 @@
+# export TOP=`pwd`
+PIN_VERSION_NUM=2.13
+PIN_REPO_NUM=61206
+PIN_COMPILER=gcc.4.4.7
+# export PIN_COMPILER=clang.4.2
+PIN_OS=linux
+# export PIN_OS=mac
+PIN_REL_DIR=pin-${PIN_VERSION_NUM}-${PIN_REPO_NUM}-${PIN_COMPILER}-${PIN_OS}
+export PIN_ROOT=${HOME}/Research/${PIN_REL_DIR}
+PIN_KIT=${PIN_ROOT}
+PIN_HOME=${PIN_ROOT}/source/tools
+PIN_TOOLS=${PIN_HOME}

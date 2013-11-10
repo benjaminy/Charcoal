@@ -1,19 +1,27 @@
 # Foo
 
-GUEST_CMD      ?= /bin/ls
-TOP            ?= $(shell pwd)
-PIN_VERSION_NUM = 2.13
-PIN_REPO_NUM    = 61206
-PIN_COMPILER    = gcc.4.4.7
-# PIN_COMPILER  = clang.4.2
-PIN_OS  	= linux
-# PIN_OS	= mac
-PIN_REL_DIR     = pin-$(PIN_VERSION_NUM)-$(PIN_REPO_NUM)-$(PIN_COMPILER)-$(PIN_OS)
-PIN_ROOT        = $(HOME)/Research/$(PIN_REL_DIR)
-PIN_KIT         = $(PIN_ROOT)
-PIN_HOME        = $(PIN_ROOT)/source/tools
-PIN_TOOLS       = $(PIN_HOME)
+# PIN_ROOT must be defined and this Makefile must be invoked with the
+# -e option to prevent it from being overridden by the stupid Pin
+# makefiles.
 
+PINTOOL    ?= You_must_define_PINTOOL
+GUEST_CMD      ?= /bin/ls
+# TOP            ?= $(shell pwd)
+# PIN_VERSION_NUM = 2.13
+# PIN_REPO_NUM    = 61206
+# PIN_COMPILER    = gcc.4.4.7
+# # PIN_COMPILER  = clang.4.2
+# PIN_OS  	= linux
+# # PIN_OS	= mac
+# PIN_REL_DIR     = pin-$(PIN_VERSION_NUM)-$(PIN_REPO_NUM)-$(PIN_COMPILER)-$(PIN_OS)
+# PIN_ROOT        = $(HOME)/Research/$(PIN_REL_DIR)
+# PIN_KIT         = $(PIN_ROOT)
+# PIN_HOME        = $(PIN_ROOT)/source/tools
+# PIN_TOOLS       = $(PIN_HOME)
+
+
+all:
+	@echo There is no default action in this Makefile
 
 CONFIG_ROOT := $(PIN_ROOT)/source/tools/Config
 include $(CONFIG_ROOT)/makefile.config
@@ -24,8 +32,12 @@ OBJDIR          = obj-intel64/
 DLL_SUFFIX      = .so
 # DLL_SUFFIX      = .dylib
 
-all:
-	@echo $(FOO)
+# compile a pintool
+cpintool: $(OBJDIR)$(PINTOOL)$(DLL_SUFFIX)
+
+# run a pintool
+rpintool: $(OBJDIR)$(PINTOOL)$(DLL_SUFFIX)
+	$(PIN_ROOT)/pin -follow_execv 1 -injection dynamic -t $(OBJDIR)$(PINTOOL)$(DLL_SUFFIX) -- $(GUEST_CMD)
 
 clean:
 	-rm -rf $(OBJDIR) *.out *.log *.tested *.failed *.d *makefile.copy *.exp *.lib
@@ -37,11 +49,6 @@ $(PIN_TOOLS)/SimpleExamples/$(OBJDIR)bbl_queue$(DLL_SUFFIX): bbl_queue.cpp
 bbl_queue: $(PIN_TOOLS)/SimpleExamples/$(OBJDIR)bbl_queue$(DLL_SUFFIX)
 	make $(PIN_TOOLS)/SimpleExamples/$(OBJDIR)bbl_queue$(DLL_SUFFIX)
 
-hme:
-	ghc --make -Wall miscellaneous_utilities.hs graph_utilities.hs interface_utilities.hs queue_monster.hs
-
-cme:
-	gcc -Wall -g -o quoroboros_workhorse -I/opt/local/include -lpcre quoroboros_workhorse.c pointer_set.c parse_cfg_file.c
 
 runstuff:
 	~/Research/QueueExperimentCode/simple_run_pin.sh -o_base /tmp/zzzz07/bbl_cfg -- runspec --config=quor-gcc-v1 --size=test --noreportable --tune=base --iterations=1 gcc
