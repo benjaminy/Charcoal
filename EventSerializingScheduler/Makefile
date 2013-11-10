@@ -39,6 +39,18 @@ cpintool: $(OBJDIR)$(PINTOOL)$(DLL_SUFFIX)
 rpintool: $(OBJDIR)$(PINTOOL)$(DLL_SUFFIX)
 	$(PIN_ROOT)/pin -follow_execv 1 -injection dynamic -t $(OBJDIR)$(PINTOOL)$(DLL_SUFFIX) -- $(GUEST_CMD)
 
+Testing/thread_sleep: Testing/thread_sleep.c
+	gcc -Wall -g -o Testing/thread_sleep Testing/thread_sleep.c -pthread
+
+Testing/thread_sleep2: Testing/thread_sleep2.c
+	gcc -Wall -g -o Testing/thread_sleep2 Testing/thread_sleep2.c -pthread
+
+Testing/thread_sleep3: Testing/thread_sleep3.c
+	gcc -Wall -g -o Testing/thread_sleep3 Testing/thread_sleep3.c -pthread
+
+testfoo: $(OBJDIR)thread_fuss$(DLL_SUFFIX) Testing/thread_sleep Testing/thread_sleep2 Testing/thread_sleep3
+	$(PIN_ROOT)/pin -follow_execv 1 -injection dynamic -t $(OBJDIR)thread_fuss$(DLL_SUFFIX) -- Testing/thread_sleep3
+
 clean:
 	-rm -rf $(OBJDIR) *.out *.log *.tested *.failed *.d *makefile.copy *.exp *.lib
 

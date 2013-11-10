@@ -136,7 +136,9 @@ VOID handle_syscall_entry(
     thread_info_t self = (thread_info_t)(assert_ns( PIN_GetThreadData(
         thread_info, PIN_ThreadId() ) ) );
     self->flags |= FLAG_POST_SYSCALL;
+    unsigned int temp = event_threads_not_blocked;
     --event_threads_not_blocked;
+    assert_ns( event_threads_not_blocked < temp );
     if( 0 /* is thread spawn */ )
     {
     }
@@ -182,6 +184,7 @@ void analyze_post_syscall( void )
         assert_ns( thread_queue_back || ( 2 == event_threads_not_blocked ) );
         thread_info_t self = (thread_info_t)(assert_ns( PIN_GetThreadData(
             thread_info, PIN_ThreadId() ) ) );
+        fprintf( trace, "enqueue 1\n" ); fflush( trace );
         enqueue_thread( self );
         PIN_MutexUnlock( &threads_mtx );
         PIN_SemaphoreWait( &self->run_sem );
@@ -242,14 +245,18 @@ void analyze_post_spawn( void )
             while( self->os_ptid != thread_queue_front->os_tid )
             {
                 dequeue_thread( &temp );
+        fprintf( trace, "enqueue 2\n" ); fflush( trace );
                 enqueue_thread( temp );
             }
+        fprintf( trace, "enqueue 3\n" ); fflush( trace );
             enqueue_thread( self );
             dequeue_thread( &temp ); /* should be the parent */
+        fprintf( trace, "enqueue 4\n" ); fflush( trace );
             enqueue_thread( temp );
         }
         else
         {
+        fprintf( trace, "enqueue 5\n" ); fflush( trace );
             enqueue_thread( self );
         }
         fprintf( trace, "!!!!!! WOW 3\n" );
@@ -287,7 +294,9 @@ void handle_thread_fini(
         thread_info, PIN_ThreadId() ) ) );
     PIN_SemaphoreFini( &self->run_sem );
     free( self );
+    unsigned int temp = event_threads_not_blocked;
     --event_threads_not_blocked;
+    assert_ns( event_threads_not_blocked < temp );
     assert_ns( PIN_SetThreadData( thread_info, NULL, PIN_ThreadId() ) );
     PIN_MutexUnlock( &threads_mtx );
 }
