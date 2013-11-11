@@ -1,33 +1,4 @@
-/*BEGIN_LEGAL 
-Intel Open Source License 
-
-Copyright (c) 2002-2013 Intel Corporation. All rights reserved.
- 
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are
-met:
-
-Redistributions of source code must retain the above copyright notice,
-this list of conditions and the following disclaimer.  Redistributions
-in binary form must reproduce the above copyright notice, this list of
-conditions and the following disclaimer in the documentation and/or
-other materials provided with the distribution.  Neither the name of
-the Intel Corporation nor the names of its contributors may be used to
-endorse or promote products derived from this software without
-specific prior written permission.
- 
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE INTEL OR
-ITS CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-END_LEGAL */
+/* Copyright Benjamin Ylvisaker */
 /*
  *  This file contains an ISA-portable PIN tool for tracing system calls
  */
@@ -147,6 +118,9 @@ VOID handle_syscall_entry(
         /* TODO: Figure out if this syscall might block or not. */
         thread_info_t next;
         dequeue_thread( &next );
+        //fprintf( trace, "Thread %3u entering syscall release %x (%u)\n", self->tid,
+        //         next ? next->tid : 0xffffffff, event_threads_not_blocked );
+        //fflush( trace );
         if( next )
         {
             PIN_SemaphoreSet( &next->run_sem );
@@ -168,6 +142,7 @@ void analyze_post_syscall( void )
     PIN_MutexLock( &threads_mtx );
     thread_info_t self = (thread_info_t)(assert_ns( PIN_GetThreadData(
             thread_info, PIN_ThreadId() ) ) );
+    assert_ns( !self->next );
     if( !( self->flags & FLAG_POST_SYSCALL ) )
     {
         /* Weird case where the program jumps to the instruction
@@ -177,17 +152,19 @@ void analyze_post_syscall( void )
     }
     self->flags &= ~FLAG_POST_SYSCALL;
     ++event_threads_not_blocked;
+    //fprintf( trace, "Thread %3u post-syscall (sem: %i) (%u)\n", self->tid,
+    //         PIN_SemaphoreIsSet( &self->run_sem ), event_threads_not_blocked );
     if( 1 < event_threads_not_blocked )
     {
-        fprintf( trace, "!!!!!! WOW 1 %u\n", event_threads_not_blocked );
         fflush( trace );
         assert_ns( thread_queue_back || ( 2 == event_threads_not_blocked ) );
-        thread_info_t self = (thread_info_t)(assert_ns( PIN_GetThreadData(
-            thread_info, PIN_ThreadId() ) ) );
-        fprintf( trace, "enqueue 1\n" ); fflush( trace );
         enqueue_thread( self );
         PIN_MutexUnlock( &threads_mtx );
         PIN_SemaphoreWait( &self->run_sem );
+        PIN_SemaphoreClear( &self->run_sem );
+        //fprintf( trace, "Thread %3u post-syscall & released (%i) (%u)\n", self->tid,
+        //         PIN_SemaphoreIsSet( &self->run_sem ), event_threads_not_blocked );
+        // fflush( trace );
     }
     else
     {
@@ -210,6 +187,7 @@ void handle_thread_start(
     self->flags   = FLAG_EVENT_HANDLER_STYLE | FLAG_POST_SPAWN;
     self->next    = NULL;
     assert_ns( PIN_SemaphoreInit( &self->run_sem ) );
+    //fprintf( trace, "Semaphore start set? %i\n", PIN_SemaphoreIsSet( &self->run_sem ) );
 
     assert_ns( PIN_SetThreadData(
                 thread_info, self, PIN_ThreadId() ) );
@@ -229,9 +207,10 @@ void analyze_post_spawn( void )
     }
     self->flags &= ~FLAG_POST_SPAWN;
     ++event_threads_not_blocked;
-    fprintf( trace, "idx: %i  thread START  %u\n", self->tid,
-             event_threads_not_blocked );
-    fflush( trace );
+    // fprintf( trace, "N C ready %u  %u\n", self->tid, event_threads_not_blocked ); fflush( trace );
+    //fprintf( trace, "idx: %i  thread START  %u\n", self->tid,
+    //         event_threads_not_blocked );
+    //fflush( trace );
     if( 1 < event_threads_not_blocked )
     {
         assert_ns( thread_queue_back || 2 == event_threads_not_blocked );
@@ -245,26 +224,31 @@ void analyze_post_spawn( void )
             while( self->os_ptid != thread_queue_front->os_tid )
             {
                 dequeue_thread( &temp );
-        fprintf( trace, "enqueue 2\n" ); fflush( trace );
+                // fprintf( trace, "A. stupid parent thing %u\n", temp->tid ); fflush( trace );
                 enqueue_thread( temp );
             }
-        fprintf( trace, "enqueue 3\n" ); fflush( trace );
+            // fprintf( trace, "B. stupid parent thing %u\n", temp->tid ); fflush( trace );
             enqueue_thread( self );
             dequeue_thread( &temp ); /* should be the parent */
-        fprintf( trace, "enqueue 4\n" ); fflush( trace );
+            // fprintf( trace, "C. stupid parent thing %u\n", temp->tid ); fflush( trace );
             enqueue_thread( temp );
         }
         else
         {
-        fprintf( trace, "enqueue 5\n" ); fflush( trace );
+            // fprintf( trace, "enqueue 5\n" ); fflush( trace );
             enqueue_thread( self );
         }
-        fprintf( trace, "!!!!!! WOW 3\n" );
-        fflush( trace );
+        //fprintf( trace, "Thread %3u starting & waiting (%i)\n", self->tid,
+        //         PIN_SemaphoreIsSet( &self->run_sem ) );
+        //fflush( trace );
         PIN_MutexUnlock( &threads_mtx );
         PIN_SemaphoreWait( &self->run_sem );
-        fprintf( trace, "!!!!!! WOW 4\n" );
-        fflush( trace );
+        PIN_SemaphoreClear( &self->run_sem );
+        PIN_MutexLock( &threads_mtx );
+        //fprintf( trace, "Thread %3u starting & released (%i)\n", self->tid,
+        //         PIN_SemaphoreIsSet( &self->run_sem ) );
+        //fflush( trace );
+        PIN_MutexUnlock( &threads_mtx );
     }
     else
     {
@@ -289,14 +273,16 @@ void handle_thread_fini(
     VOID *v )
 {
     PIN_MutexLock( &threads_mtx );
-    fprintf( trace, "idx: %i  thread FIN\n", threadIndex );
+    // fprintf( trace, "idx: %i  thread FIN\n", threadIndex );
     thread_info_t self = (thread_info_t)(assert_ns( PIN_GetThreadData(
         thread_info, PIN_ThreadId() ) ) );
     PIN_SemaphoreFini( &self->run_sem );
     free( self );
-    unsigned int temp = event_threads_not_blocked;
-    --event_threads_not_blocked;
-    assert_ns( event_threads_not_blocked < temp );
+    // unsigned int temp = event_threads_not_blocked;
+    /* XXX hm... do thread need to make a syscall to fini */
+    // --event_threads_not_blocked;
+    // fprintf( trace, "N D ready %u  %u\n", self->tid, event_threads_not_blocked ); fflush( trace );
+    // assert_ns( event_threads_not_blocked < temp );
     assert_ns( PIN_SetThreadData( thread_info, NULL, PIN_ThreadId() ) );
     PIN_MutexUnlock( &threads_mtx );
 }

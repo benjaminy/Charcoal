@@ -48,8 +48,20 @@ Testing/thread_sleep2: Testing/thread_sleep2.c
 Testing/thread_sleep3: Testing/thread_sleep3.c
 	gcc -Wall -g -o Testing/thread_sleep3 Testing/thread_sleep3.c -pthread
 
+Testing/simple_data_race_1: Testing/simple_data_race_1.c
+	gcc -Wall -g -o Testing/simple_data_race_1 Testing/simple_data_race_1.c -pthread
+
+Testing/simple_data_race_2: Testing/simple_data_race_2.c
+	gcc -Wall -g -o Testing/simple_data_race_2 Testing/simple_data_race_2.c -pthread
+
 testfoo: $(OBJDIR)thread_fuss$(DLL_SUFFIX) Testing/thread_sleep Testing/thread_sleep2 Testing/thread_sleep3
 	$(PIN_ROOT)/pin -follow_execv 1 -injection dynamic -t $(OBJDIR)thread_fuss$(DLL_SUFFIX) -- Testing/thread_sleep3
+
+testrace: $(OBJDIR)thread_fuss$(DLL_SUFFIX) Testing/simple_data_race_1
+	$(PIN_ROOT)/pin -follow_execv 1 -injection dynamic -t $(OBJDIR)thread_fuss$(DLL_SUFFIX) -- Testing/simple_data_race_1
+
+testrace2: $(OBJDIR)thread_fuss$(DLL_SUFFIX) Testing/simple_data_race_2
+	$(PIN_ROOT)/pin -follow_execv 1 -injection dynamic -t $(OBJDIR)thread_fuss$(DLL_SUFFIX) -- Testing/simple_data_race_2
 
 clean:
 	-rm -rf $(OBJDIR) *.out *.log *.tested *.failed *.d *makefile.copy *.exp *.lib
