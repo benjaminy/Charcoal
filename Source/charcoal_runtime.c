@@ -97,7 +97,7 @@ int __charcoal_choose_next_activity( __charcoal_activity_t **p )
         *p = to_run;
     }
     ABORT_ON_FAIL( pthread_mutex_unlock( &thd->thd_management_mtx ) );
-    thd->start_time = clock();
+    thd->start_time = time(&(thd->timer));
     return 0;
 }
 
@@ -133,10 +133,15 @@ int __charcoal_yield()
     __charcoal_activity_t *foo = __charcoal_activity_self();
     int unyield_depth = OPA_load_int( &(foo->container->unyield_depth) );
     assert(unyield_depth >= 0);
-    int timed_out = (double)(clock() - foo->container->start_time) / CLOCKS_PER_SEC >
-            foo->container->max_time;
+    double time_difference = (double)(time(&(foo->container->timer)) - foo->container->start_time);
+    printf("Start time: %f\n", (double) foo->container->start_time);
+    printf("Current time: %f\n", (double) time(&(foo->container->timer)));
+    printf("Time difference: %f\n", time_difference);
+    int timed_out = (double)(time(&(foo->container->timer)) -
+            foo->container->start_time) > foo->container->max_time;
     int received_signal = 0; // TODO why exactly do we need signals?
-    if( (unyield_depth == 0) && (timed_out || received_signal) )
+    //printf("Unyield depth: %d\n", unyield_depth);
+    if( unyield_depth == 0 && (timed_out || received_signal) )
     {
         __charcoal_activity_t *to;
         /* XXX error check */
@@ -173,7 +178,7 @@ void __charcoal_switch_from_to( __charcoal_activity_t *from, __charcoal_activity
     /* XXX assert from is the currently running activity? */
     ABORT_ON_FAIL( __charcoal_sem_post( &to->can_run ) );
     ABORT_ON_FAIL( __charcoal_sem_wait( &from->can_run ) );
-    from->container->start_time = clock();
+    from->container->start_time = time(&(from->container->timer));
     /* check if anybody should be deallocated (int sem_destroy(sem_t *);) */
 }
 
@@ -187,6 +192,7 @@ static void *__charcoal_activity_entry_point( void *p )
 {
     __charcoal_activity_t *next, *_self = (__charcoal_activity_t *)p;
     printf( "Starting activity %p\n", _self );
+    _self->container->start_time = time(&(_self->container->timer));
     ABORT_ON_FAIL( pthread_setspecific( __charcoal_self_key, _self ) );
     ABORT_ON_FAIL( __charcoal_sem_wait( &_self->can_run ) );
     _self->f( _self->args );

@@ -43,7 +43,8 @@ typedef struct
 {
     //volatile int unyield_depth; /* XXX should be atomic, not volatile */
     OPA_int_t unyield_depth;
-    clock_t start_time;
+    time_t timer;
+	double start_time;
     double max_time;
     unsigned activities_sz, activities_cap;
     __charcoal_activity_t **activities;
