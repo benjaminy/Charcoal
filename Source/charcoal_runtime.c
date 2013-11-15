@@ -9,6 +9,7 @@
 #include <stdio.h> /* XXX remove dep eventually */
 #include <errno.h>
 #include <limits.h>
+#include <unistd.h>
 #include <charcoal_runtime.h>
 
 /* Scheduler stuff */
@@ -118,30 +119,19 @@ void __charcoal_unyielding_exit()
 {
 }
 
-//TODO
-//Call yield
-//check if unyielding:
-//  return
-//else:
-//  have pointer to thread
-//  thread has pointers to other activities
-//  increment someone else's signal flag/semaphore
-//
-int __charcoal_yield()
-{
+void timeout_signal_handler(){
+    OPA_store_int(&(__charcoal_activity_self()->container->timeout), 1);
+    //printf("signal handler went off\n");
+}
+
+int __charcoal_yield(){
     int rv = 0;
     __charcoal_activity_t *foo = __charcoal_activity_self();
-    int unyield_depth = OPA_load_int( &(foo->container->unyield_depth) );
-    assert(unyield_depth >= 0);
-    double time_difference = (double)(time(&(foo->container->timer)) - foo->container->start_time);
-    printf("Start time: %f\n", (double) foo->container->start_time);
-    printf("Current time: %f\n", (double) time(&(foo->container->timer)));
-    printf("Time difference: %f\n", time_difference);
-    int timed_out = (double)(time(&(foo->container->timer)) -
-            foo->container->start_time) > foo->container->max_time;
-    int received_signal = 0; // TODO why exactly do we need signals?
-    //printf("Unyield depth: %d\n", unyield_depth);
-    if( unyield_depth == 0 && (timed_out || received_signal) )
+
+    foo->yield_attempts++;
+    int unyielding = OPA_load_int( &(foo->container->unyielding) );
+    int timeout = OPA_load_int(&foo->container->timeout);
+    if( (unyielding == 0) && (timeout==1) )
     {
         __charcoal_activity_t *to;
         /* XXX error check */
@@ -158,10 +148,47 @@ int __charcoal_yield()
         else
             return 0;
     }
-    if (unyield_depth > 0)
+
+    return rv;
+
+}
+
+int __charcoal_timeout_yield()
+{
+    int rv = 0;
+    __charcoal_activity_t *foo = __charcoal_activity_self();
+    int unyielding = OPA_load_int( &(foo->container->unyielding) );
+    assert(unyielding >= 0);
+    //double time_difference = (double)(time(&(foo->container->timer)) - foo->container->start_time);
+    //printf("Start time: %f\n", (double) foo->container->start_time);
+    //printf("Current time: %f\n", (double) time(&(foo->container->timer)));
+    //printf("Time difference: %f\n", time_difference);
+    int timed_out = (double)(time(&(foo->container->timer)) -
+            foo->container->start_time) > foo->container->max_time;
+    signal(SIGALRM, timeout_signal_handler);
+    //int received_signal = 0; // TODO why exactly do we need signals?
+    //printf("Unyield depth: %d\n", unyielding);
+    if( unyielding == 0 && timed_out )
     {
-        OPA_decr_int(&foo->container->unyield_depth);
+        __charcoal_activity_t *to;
+        /* XXX error check */
+        __charcoal_choose_next_activity( &to );
+        if( to )
+        {
+            int rc;
+            if( ( rc = __charcoal_sem_post( &to->can_run ) ) )
+            {
+                return rc;
+            }
+            return __charcoal_sem_wait( &foo->can_run );
+        }
+        else
+            return 0;
     }
+    /*if (unyielding > 0)
+    {
+        OPA_decr_int(&foo->container->unyielding);
+    }*/
     return rv;
 }
 
@@ -179,6 +206,11 @@ void __charcoal_switch_from_to( __charcoal_activity_t *from, __charcoal_activity
     ABORT_ON_FAIL( __charcoal_sem_post( &to->can_run ) );
     ABORT_ON_FAIL( __charcoal_sem_wait( &from->can_run ) );
     from->container->start_time = time(&(from->container->timer));
+
+    alarm((int) to->container->max_time);
+    OPA_store_int(&(__charcoal_activity_self()->container->timeout), 0);
+    from->yield_attempts = 0;
+    //printf("Set timeout value to 0 in charcoal_switch_from_to\n");
     /* check if anybody should be deallocated (int sem_destroy(sem_t *);) */
 }
 
@@ -192,6 +224,7 @@ static void *__charcoal_activity_entry_point( void *p )
 {
     __charcoal_activity_t *next, *_self = (__charcoal_activity_t *)p;
     printf( "Starting activity %p\n", _self );
+    signal(SIGALRM, timeout_signal_handler);
     _self->container->start_time = time(&(_self->container->timer));
     ABORT_ON_FAIL( pthread_setspecific( __charcoal_self_key, _self ) );
     ABORT_ON_FAIL( __charcoal_sem_wait( &_self->can_run ) );
@@ -245,6 +278,10 @@ __charcoal_activity_t *__charcoal_activate( void (*f)( void *args ), void *args 
     act_info->args = args;
     act_info->flags = 0;
     act_info->container = __charcoal_activity_self()->container;
+    act_info->yield_attempts = 0;
+    alarm((int) act_info->container->max_time);
+    OPA_store_int(&(act_info->container->timeout), 0);
+    //printf("Setting timeout to 0 in charcoal_activate");
     ABORT_ON_FAIL( pthread_mutex_lock( &act_info->container->thd_management_mtx ) );
     ++act_info->container->activities_sz;
     ABORT_ON_FAIL( __charcoal_adjust_activity_cap( act_info->container ) );
@@ -383,8 +420,7 @@ int main( int argc, char **argv )
     ABORT_ON_FAIL( __charcoal_sem_init( &__charcoal_main_activity.can_run, 0, 0 ) );
     ABORT_ON_FAIL( pthread_setspecific( __charcoal_self_key, &__charcoal_main_activity ) );
     
-    OPA_store_int(&(__charcoal_main_thread.unyield_depth), 1);
-    //__charcoal_main_thread.unyield_depth  = 1;
+    OPA_store_int(&(__charcoal_main_thread.unyielding), 0);
     __charcoal_main_thread.activities_sz  = 1;
     __charcoal_main_thread.activities_cap = 1;
     __charcoal_main_thread.activities = malloc( sizeof( __charcoal_main_thread.activities[0] ) );
