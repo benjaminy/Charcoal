@@ -5,7 +5,7 @@
 #include <assert.h>
 #include <sched.h>
 
-#define M 200000
+#define M 20000
 #define N 100
 
 void *f( void *a )

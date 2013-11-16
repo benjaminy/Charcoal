@@ -5,7 +5,7 @@
 # makefiles.
 
 PINTOOL    ?= You_must_define_PINTOOL
-GUEST_CMD      ?= /bin/ls
+GUEST_CMD  ?= /bin/ls
 # TOP            ?= $(shell pwd)
 # PIN_VERSION_NUM = 2.13
 # PIN_REPO_NUM    = 61206
@@ -31,6 +31,8 @@ include $(TOOLS_ROOT)/Config/makefile.default.rules
 OBJDIR          = obj-intel64/
 DLL_SUFFIX      = .so
 # DLL_SUFFIX      = .dylib
+
+# TOOL_CXXFLAGS += -I.
 
 # compile a pintool
 cpintool: $(OBJDIR)$(PINTOOL)$(DLL_SUFFIX)
