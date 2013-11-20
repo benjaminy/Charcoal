@@ -455,15 +455,42 @@ void analyze_thread_entry( void )
     PIN_MutexUnlock( &threads_mtx );
 }
 
-void instrument_trace( TRACE trace, VOID *v )
+struct {
+    int buffer_space1[20];
+    int the_key;
+    int buffer_space2[20];
+} foo;
+
+int *key = &foo.the_key;
+
+static ADDRINT trace_if( void )
+{
+    return ATOMIC::OPS::Load( key );
+}
+
+static void trace_then( void )
+{
+    ATOMIC::OPS::Store( key, 0 );
+}
+
+static void instrument_trace( TRACE trace, VOID *v )
 {
     PIN_MutexLock( &threads_mtx );
     thread_info_t self = (thread_info_t)(assert_ns( PIN_GetThreadData(
             thread_info, PIN_ThreadId() ) ) );
-    if( self->flags & FLAG_THREAD_ENTRY )
+    int entry = !!( self->flags & FLAG_THREAD_ENTRY ),
+        syscall = !!( self->flags & FLAG_SYSCALL );
+    assert_ns( !( entry && syscall ) );
+    if( entry )
         TRACE_InsertCall( trace, IPOINT_BEFORE, analyze_thread_entry, IARG_END );
-    if( self->flags & FLAG_SYSCALL )
+    else if( syscall )
         TRACE_InsertCall( trace, IPOINT_BEFORE, analyze_post_syscall, IARG_END );
+    else
+    {
+        /* Common case.  Use if/then instrumentation for better performance. */
+        TRACE_InsertIfCall  ( trace, IPOINT_BEFORE, (AFUNPTR)trace_if,   IARG_END );
+        TRACE_InsertThenCall( trace, IPOINT_BEFORE,          trace_then, IARG_END );
+    }
     PIN_MutexUnlock( &threads_mtx );
 }
 
