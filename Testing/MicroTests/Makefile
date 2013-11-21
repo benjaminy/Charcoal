@@ -6,6 +6,8 @@ FLAGS = $(INCLUDE_DIRS) $(LIB_DIRS) -lcharcoal_sys -lpthread -pg
 
 checks:
 	gcc -Wall -o check check_default_stack_size.c -lpthread
+	gcc -g -o dumb $(FLAGS) dumb.c
+	gcc -g -o dumber $(FLAGS) dumber.c
 	./check
 
 simple_yield:
