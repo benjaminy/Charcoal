@@ -10,10 +10,10 @@ long *X;
 
 void *f( void *a )
 {
-    unsigned int i;
+    unsigned i, *s = (unsigned *)a;
     for( i = 0; i < M; ++i )
     {
-        *X += rand();
+        *X += rand_r( s );
     }
     return a;
 }
@@ -35,12 +35,13 @@ int main( int argc, char **argv )
     }
 
     pthread_t t[ N ];
-    srand( 42 );
+    unsigned seeds[ N ];
     long i, x = 0;
     X = &x;
     for( i = 0; i < N; ++i )
     {
-        assert( !pthread_create( &t[i], NULL, f, NULL ) );
+        seeds[ i ] = i;
+        assert( !pthread_create( &t[i], NULL, f, &seeds[ i ] ) );
     }
     for( i = 0; i < N; ++i )
     {

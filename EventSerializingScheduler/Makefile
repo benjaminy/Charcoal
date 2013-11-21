@@ -5,7 +5,7 @@
 # makefiles.
 
 PINTOOL    ?= You_must_define_PINTOOL
-GUEST_CMD      ?= /bin/ls
+GUEST_CMD  ?= /bin/ls
 # TOP            ?= $(shell pwd)
 # PIN_VERSION_NUM = 2.13
 # PIN_REPO_NUM    = 61206
@@ -32,6 +32,9 @@ OBJDIR          = obj-intel64/
 DLL_SUFFIX      = .so
 # DLL_SUFFIX      = .dylib
 
+# TOOL_CXXFLAGS += -I.
+# TOOL_CXXFLAGS += --std=c++11
+
 # compile a pintool
 cpintool: $(OBJDIR)$(PINTOOL)$(DLL_SUFFIX)
 
@@ -53,6 +56,12 @@ Testing/simple_data_race_1: Testing/simple_data_race_1.c
 
 Testing/simple_data_race_2: Testing/simple_data_race_2.c
 	gcc -Wall -g -o Testing/simple_data_race_2 Testing/simple_data_race_2.c -pthread
+
+Testing/simple_data_race_3: Testing/simple_data_race_3.c
+	gcc -Wall -g -o Testing/simple_data_race_3 Testing/simple_data_race_3.c -pthread
+
+Testing/simple_data_race_4: Testing/simple_data_race_4.c
+	gcc -Wall -g -o Testing/simple_data_race_4 Testing/simple_data_race_4.c -pthread
 
 testfoo: $(OBJDIR)thread_fuss$(DLL_SUFFIX) Testing/thread_sleep Testing/thread_sleep2 Testing/thread_sleep3
 	$(PIN_ROOT)/pin -follow_execv 1 -injection dynamic -t $(OBJDIR)thread_fuss$(DLL_SUFFIX) -- Testing/thread_sleep3

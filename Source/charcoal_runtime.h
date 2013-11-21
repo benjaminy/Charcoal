@@ -41,9 +41,10 @@ typedef struct __charcoal_activity_t __charcoal_activity_t;
 
 typedef struct
 {
-    //volatile int unyield_depth; /* XXX should be atomic, not volatile */
-    OPA_int_t unyield_depth;
-    clock_t start_time;
+    OPA_int_t unyielding;
+    OPA_int_t timeout; //initially 0, signal handler sets to 1
+    time_t timer;
+	double start_time;
     double max_time;
     unsigned activities_sz, activities_cap;
     __charcoal_activity_t **activities;
@@ -60,6 +61,7 @@ struct __charcoal_activity_t
 {
     void (*f)( void * );
     pthread_t self;
+    int yield_attempts;
     __charcoal_thread_t *container;
     __charcoal_sem_t can_run;
     unsigned flags;
