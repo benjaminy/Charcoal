@@ -91,8 +91,9 @@ int __charcoal_choose_next_activity( __charcoal_activity_t **p )
     __charcoal_sem_getvalue( &self->can_run, &sv );
     if( to_run )
         __charcoal_sem_getvalue( &to_run->can_run, &rv );
-    printf( "SWITCH from: %p(%i)  to: %p(%i)\n",
-            self, sv, to_run, rv );
+    //commented this out for testing purposes, TODO: put back
+    //printf( "SWITCH from: %p(%i)  to: %p(%i)\n",
+    //        self, sv, to_run, rv );
     if( p )
     {
         *p = to_run;
@@ -223,13 +224,13 @@ void __charcoal_switch_to( __charcoal_activity_t *act )
 static void *__charcoal_activity_entry_point( void *p )
 {
     __charcoal_activity_t *next, *_self = (__charcoal_activity_t *)p;
-    printf( "Starting activity %p\n", _self );
+    //printf( "Starting activity %p\n", _self );
     signal(SIGALRM, timeout_signal_handler);
     _self->container->start_time = time(&(_self->container->timer));
     ABORT_ON_FAIL( pthread_setspecific( __charcoal_self_key, _self ) );
     ABORT_ON_FAIL( __charcoal_sem_wait( &_self->can_run ) );
     _self->f( _self->args );
-    printf( "Finishing activity %p\n", _self );
+    //printf( "Finishing activity %p\n", _self );
     __charcoal_thread_t *thd = _self->container;
     ABORT_ON_FAIL( pthread_mutex_lock( &thd->thd_management_mtx ) );
     if( _self->flags & __CRCL_ACTF_DETACHED )
