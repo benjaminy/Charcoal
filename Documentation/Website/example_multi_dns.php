@@ -13,10 +13,10 @@
 
 <h1>Multi-DNS Lookup</h1>
 
-The first example is a multi-DNS lookup procedure.  This example is
+<p>The first example is a multi-DNS lookup procedure.  This example is
 shamelessly stolen from the
 paper <a href="http://static.usenix.org/event/usenix07/tech/krohn.html">Events
-Can Make Sense</a> by Krohn, Kohler, and Kaashoek.
+Can Make Sense</a> by Krohn, Kohler, and Kaashoek.</p>
 
 <h3>Sequential Version</h3>
 
