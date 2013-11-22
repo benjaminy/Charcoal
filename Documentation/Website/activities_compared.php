@@ -194,17 +194,21 @@ atomic is easy.
 
 <h2>Activities Compared to Concurrency Primitive X</h2>
 
-Lots of variations on the "Big Four" (processes, events, threads,
+<p>Lots of variations on the "Big Four" (processes, events, threads,
 cooperative threads) have been proposed over the years.  If you would
 like to see my take on how activities compare to any of these, let me
-know.  I'll do my best to write something and update here.
+know.  I'll do my best to write something and update here.</p>
 
 
-More Junk
+<p>More Junk</p>
 
 <h3>For Language Designers/Enthusiasts</h3>
 
+<p> </p>
+
 <h3>For Programmers</h3>
+
+<p> </p>
 
 <h3>For Computer Architects</h3>
 

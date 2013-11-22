@@ -5,39 +5,48 @@
 #include <assert.h>
 #include <sched.h>
 
-#define M 2000000
-#define N 100
-
-int x;
+unsigned N, M;
+long *X;
 
 void *f( void *a )
 {
-    unsigned *seed = (unsigned *)a;
-    unsigned int i;
-    int xl = 0;
+    unsigned i, *s = (unsigned *)a;
     for( i = 0; i < M; ++i )
     {
-        xl += rand_r( seed );
+        *X += rand_r( s );
     }
-    x += xl;
     return a;
 }
 
 int main( int argc, char **argv )
 {
+    N = 100; M = 100;
+    if( argc > 2 )
+    {
+        long m = strtol( argv[2], NULL, 10 );
+        if( m > 0 )
+            M = m;
+    }
+    if( argc > 1 )
+    {
+        long n = strtol( argv[1], NULL, 10 );
+        if( n > 0 )
+            N = n;
+    }
+
     pthread_t t[ N ];
-    unsigned i, seeds[ N*100 ];
-    srandom( 42 );
-    x = 0;
+    unsigned seeds[ N ];
+    long i, x = 0;
+    X = &x;
     for( i = 0; i < N; ++i )
     {
-        seeds[i] = i;
-        assert( !pthread_create( &t[i], NULL, f, &seeds[i*100] ) );
+        seeds[ i ] = i;
+        assert( !pthread_create( &t[i], NULL, f, &seeds[ i ] ) );
     }
     for( i = 0; i < N; ++i )
     {
         assert( !pthread_join( t[i], NULL ) );
     }
-    printf( "x:%i\n", x );
+    printf( "x:%li\n", x );
     return 0;
 }

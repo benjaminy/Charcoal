@@ -10,7 +10,7 @@
 <table width="100%"><tbody><tr>
 <td valign="top"><h1>Charcoal</h1>
 <hr/>
-<h3>Easier Concurrency for Application Developers</h3></td>
+<h3>Interactive Software for Regular Programmers</h3></td>
 <td><img src="activated_charcoal_3.png"/></td>
 </tr></tbody></table>
 
@@ -24,7 +24,7 @@ characteristics are:</p>
     <li>Follows the "C philosophy"
   </ul>
   <li>Charcoal makes the design and implementation of
-  asynchronous/&#8203;concurrent/&#8203;reactive/&#8203;interactive software more accessible to
+  interactive/&#8203;reactive/&#8203;asynchronous/&#8203;concurrent software more accessible to
   application programmers
 </ul>
 <p>Charcoal is currently in a very early stage of development.  As of

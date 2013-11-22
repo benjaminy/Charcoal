@@ -76,6 +76,12 @@ static THREADID       watchdog_tid = INVALID_THREADID;
 static PIN_THREAD_UID watchdog_utid = 0;
 static PIN_SEMAPHORE  watchdog_sem;
 
+static thread_info_t get_self( void )
+{
+    return (thread_info_t)(assert_ns( PIN_GetThreadData(
+        thread_info, PIN_ThreadId() ) ) );
+}
+
 /* TQ = Thread Queue */
 enum thread_kind
 {
@@ -304,8 +310,7 @@ static void handle_syscall_entry(
     VOID *v )
 {
     PIN_MutexLock( &threads_mtx );
-    thread_info_t self = (thread_info_t)(assert_ns( PIN_GetThreadData(
-        thread_info, PIN_ThreadId() ) ) );
+    thread_info_t self = get_self();
     fprintf( trace, "tid: %4lx syscall_entry  q_empty?%i\n", PIN_ThreadUid(),
              TQ::is_empty( EV_THREAD ) );
     fflush( trace );
@@ -350,18 +355,16 @@ VOID handle_syscall_exit(
     if( is_thread_create( ctxt, std )
         && ( 0 > PIN_GetSyscallReturn( ctxt, std ) ) )
     {
-        thread_info_t self = (thread_info_t)(assert_ns( PIN_GetThreadData(
-            thread_info, PIN_ThreadId() ) ) );
+        thread_info_t self = get_self();
         UNSET_FLAG( self->flags, FLAG_THREAD_CREATE );
     }
     PIN_MutexUnlock( &threads_mtx );
 }
 
-void analyze_post_syscall( void )
+void analyze_post_syscall( UINT32 sz )
 {
     PIN_MutexLock( &threads_mtx );
-    thread_info_t self = (thread_info_t)(assert_ns( PIN_GetThreadData(
-            thread_info, PIN_ThreadId() ) ) );
+    thread_info_t self = get_self();
     fprintf( trace, "tid: %4lx post_syscall\n", PIN_ThreadUid() ); fflush( trace );
     assert_ns( !THR_NEXT( EV_THREAD, self ) );
     if( !( self->flags & FLAG_SYSCALL ) )
@@ -450,11 +453,10 @@ static void handle_thread_start(
     PIN_MutexUnlock( &threads_mtx );
 }
 
-void analyze_thread_entry( void )
+void analyze_thread_entry( UINT32 sz )
 {
     PIN_MutexLock( &threads_mtx );
-    thread_info_t self = (thread_info_t)(assert_ns( PIN_GetThreadData(
-            thread_info, PIN_ThreadId() ) ) );
+    thread_info_t self = get_self();
     fprintf( trace, "tid: %4lx thread_entry\n", PIN_ThreadUid() ); fflush( trace );
     if( !( self->flags & FLAG_THREAD_ENTRY ) )
     {
@@ -471,15 +473,77 @@ void analyze_thread_entry( void )
     PIN_MutexUnlock( &threads_mtx );
 }
 
-void instrument_trace( TRACE trace, VOID *v )
+struct {
+    int buffer_space1[20];
+    int the_key;
+    int buffer_space2[20];
+} foo;
+
+int *key = &foo.the_key;
+
+static ADDRINT trace_if( void )
+{
+    return ATOMIC::OPS::Load( key );
+}
+
+//    ATOMIC::OPS::Store( key, 0 );
+
+static void trace_then( UINT32 sz )
 {
     PIN_MutexLock( &threads_mtx );
-    thread_info_t self = (thread_info_t)(assert_ns( PIN_GetThreadData(
-            thread_info, PIN_ThreadId() ) ) );
-    if( self->flags & FLAG_THREAD_ENTRY )
-        TRACE_InsertCall( trace, IPOINT_BEFORE, analyze_thread_entry, IARG_END );
-    if( self->flags & FLAG_SYSCALL )
-        TRACE_InsertCall( trace, IPOINT_BEFORE, analyze_post_syscall, IARG_END );
+    ADDRINT run_mode = ATOMIC::OPS::Load( key );
+    if( !run_mode )
+    {
+        /* Very unlikely, but maybe possible */
+        PIN_MutexUnlock( &threads_mtx );
+        return;
+    }
+    thread_info_t self = get_self();
+    if( self == running_event_thread )
+    {
+        /* check time? */
+    }
+    else
+    {
+        if( run_mode == 1 )
+        {
+            /* safe point yield */
+        }
+        else if( run_mode == 2 )
+        {
+            /* Yield immediately */
+        }
+        else
+        {
+            assert_ns( false );
+        }
+    }
+    PIN_MutexUnlock( &threads_mtx );
+}
+
+static void instrument_trace( TRACE trace, VOID *v )
+{
+    PIN_MutexLock( &threads_mtx );
+    thread_info_t self = get_self();
+    int entry   = !!( self->flags & FLAG_THREAD_ENTRY ),
+        syscall = !!( self->flags & FLAG_SYSCALL );
+    assert_ns( !( entry && syscall ) );
+    UINT32 sz = (UINT32)TRACE_Size( trace );
+    if( entry )
+        TRACE_InsertCall( trace, IPOINT_BEFORE, (AFUNPTR)analyze_thread_entry,
+                          IARG_UINT32, sz, IARG_END );
+    else if( syscall )
+        TRACE_InsertCall( trace, IPOINT_BEFORE, (AFUNPTR)analyze_post_syscall,
+                          IARG_UINT32, sz, IARG_END );
+    else
+    {
+        /* Common case.  Use if/then instrumentation for better performance. */
+        TRACE_InsertIfCall  ( trace, IPOINT_BEFORE, (AFUNPTR)trace_if,   IARG_END );
+        TRACE_InsertThenCall( trace, IPOINT_BEFORE, (AFUNPTR)trace_then,
+                              IARG_UINT32, sz, IARG_END );
+
+
+    }
     PIN_MutexUnlock( &threads_mtx );
 }
 
@@ -491,8 +555,7 @@ void handle_thread_fini(
 {
     PIN_MutexLock( &threads_mtx );
     fprintf( trace, "tid: %x thread_fini\n", threadIndex ); fflush( trace );
-    thread_info_t self = (thread_info_t)(assert_ns( PIN_GetThreadData(
-        thread_info, PIN_ThreadId() ) ) );
+    thread_info_t self = get_self();
     PIN_SemaphoreFini( &self->sem );
     free( self );
     // unsigned int temp = event_threads_not_blocked;
