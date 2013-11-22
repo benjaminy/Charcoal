@@ -26,16 +26,18 @@
        x; })
 
 #define safe_dec( e ) \
-    ({ typeof( e ) x = e; \
-       --e; \
-       assert_ns( e < x ); \
-       e; })
+    ({ typeof( e ) *xp = &e; \
+       typeof( e ) x = *xp; \
+       --(*xp); \
+       assert_ns( *xp < x ); \
+       *xp; })
 
 #define safe_inc( e ) \
-    ({ typeof( e ) x = e; \
-       ++e; \
-       assert_ns( e > x ); \
-       e; })
+    ({ typeof( e ) *xp = &e; \
+       typeof( e ) x = *xp; \
+       ++(*xp); \
+       assert_ns( *xp > x ); \
+       *xp; })
 
 #define SET_FLAG( x, f )   ({ x |= f; })
 #define UNSET_FLAG( x, f ) ({ x &= ~f; })
@@ -256,27 +258,41 @@ bool is_thread_create(
 
 static void pause_other_threads( thread_info_t self )
 {
-    fprintf( trace, "tid: %4x pause_other\n", self->tid ); fflush( trace );
+    fprintf( trace, "tid: %4lx pause_other\n", PIN_ThreadUid() ); fflush( trace );
     /* TODO: In the future, be more polite about stopping other threads */
+    if( need_resume )
+    {
+        assert_ns( need_resume == self );
+        PIN_SemaphoreClear( &self->sem );
+        PIN_MutexUnlock( &threads_mtx );
+        fprintf( trace, "tid: %4lx PauseA\n", PIN_ThreadUid() ); fflush( trace );
+        PIN_SemaphoreWait( &self->sem );
+        fprintf( trace, "tid: %4lx PauseB\n", PIN_ThreadUid() ); fflush( trace );
+        PIN_MutexLock( &threads_mtx );
+        fprintf( trace, "tid: %4lx PauseC\n", PIN_ThreadUid() ); fflush( trace );
+    }
     assert_ns( PIN_StopApplicationThreads( self->tid ) );
     threads_stopped = true;
 }
 
 /* Assumptions:
  * - This procedure is only called from EV threads. */
-static void resume_other_threads( thread_info_t self )
+static void resume_other_threads( thread_info_t pauser )
 {
-    fprintf( trace, "tid: %4x resume  stopped:%i\n", self->tid, threads_stopped );
+    fprintf( trace, "tid: %4lx resume  stopped:%i\n", PIN_ThreadUid(), threads_stopped );
     fflush( trace );
     if( threads_stopped )
     {
-        PIN_ResumeApplicationThreads( self->tid );
+        fprintf( trace, "tid: %4lx ResumeA\n", PIN_ThreadUid() ); fflush( trace );
+        PIN_ResumeApplicationThreads( pauser->tid );
+        fprintf( trace, "tid: %4lx ResumeB\n", PIN_ThreadUid() ); fflush( trace );
         for( thread_info_t t = TQ::peek_front( COMP_THREAD );
              t;
              t = THR_NEXT( COMP_THREAD, t ) )
         {
             PIN_SemaphoreSet( &t->sem );
         }
+        fprintf( trace, "tid: %4lx ResumeC\n", PIN_ThreadUid() ); fflush( trace );
     }
     threads_stopped = false;
 }
@@ -290,7 +306,7 @@ static void handle_syscall_entry(
     PIN_MutexLock( &threads_mtx );
     thread_info_t self = (thread_info_t)(assert_ns( PIN_GetThreadData(
         thread_info, PIN_ThreadId() ) ) );
-    fprintf( trace, "tid: %4x syscall_entry  q_empty?%i\n", threadIndex,
+    fprintf( trace, "tid: %4lx syscall_entry  q_empty?%i\n", PIN_ThreadUid(),
              TQ::is_empty( EV_THREAD ) );
     fflush( trace );
     /* TODO: maybe only do this if it's a blocking syscall. */
@@ -330,7 +346,7 @@ VOID handle_syscall_exit(
     VOID *v)
 {
     PIN_MutexLock( &threads_mtx );
-    fprintf( trace, "tid: %4x syscall_exit\n", threadIndex ); fflush( trace );
+    fprintf( trace, "tid: %4lx syscall_exit\n", PIN_ThreadUid() ); fflush( trace );
     if( is_thread_create( ctxt, std )
         && ( 0 > PIN_GetSyscallReturn( ctxt, std ) ) )
     {
@@ -346,7 +362,7 @@ void analyze_post_syscall( void )
     PIN_MutexLock( &threads_mtx );
     thread_info_t self = (thread_info_t)(assert_ns( PIN_GetThreadData(
             thread_info, PIN_ThreadId() ) ) );
-    fprintf( trace, "tid: %4x post_syscall\n", self->tid ); fflush( trace );
+    fprintf( trace, "tid: %4lx post_syscall\n", PIN_ThreadUid() ); fflush( trace );
     assert_ns( !THR_NEXT( EV_THREAD, self ) );
     if( !( self->flags & FLAG_SYSCALL ) )
     {
@@ -416,7 +432,7 @@ static void handle_thread_start(
 {
     PIN_MutexLock( &threads_mtx );
     thread_info_t self = (thread_info_t)assert_ns( malloc( sizeof( self[0] ) ) );
-    fprintf( trace, "tid: %4x thread_start\n", threadIndex ); fflush( trace );
+    fprintf( trace, "tid: %4lx thread_start\n", PIN_ThreadUid() ); fflush( trace );
     self->os_tid       = PIN_GetTid();
     self->os_ptid      = PIN_GetParentTid();
     self->tid          = PIN_ThreadId();
@@ -439,7 +455,7 @@ void analyze_thread_entry( void )
     PIN_MutexLock( &threads_mtx );
     thread_info_t self = (thread_info_t)(assert_ns( PIN_GetThreadData(
             thread_info, PIN_ThreadId() ) ) );
-    fprintf( trace, "tid: %4x thread_entry\n", self->tid ); fflush( trace );
+    fprintf( trace, "tid: %4lx thread_entry\n", PIN_ThreadUid() ); fflush( trace );
     if( !( self->flags & FLAG_THREAD_ENTRY ) )
     {
         /* Weird case where a thread entry point executes "again". */
@@ -450,7 +466,7 @@ void analyze_thread_entry( void )
     UNSET_FLAG( self->flags, FLAG_THREAD_ENTRY );
     // ++event_threads_not_blocked;
     TQ::enqueue_front( EV_THREAD, self );
-    fprintf( trace, "tid: %4x   q_empty?%i\n", self->tid, TQ::is_empty( EV_THREAD ) );
+    fprintf( trace, "tid: %4lx   q_empty?%i\n", PIN_ThreadUid(), TQ::is_empty( EV_THREAD ) );
     fflush( trace );
     PIN_MutexUnlock( &threads_mtx );
 }
@@ -521,6 +537,7 @@ void watchdog( void *a )
         if( need_resume )
         {
             resume_other_threads( need_resume );
+            PIN_SemaphoreSet( &need_resume->sem );
             need_resume = NULL;
         }
         else if( TQ::is_empty( EV_THREAD ) )
@@ -532,6 +549,7 @@ void watchdog( void *a )
             PIN_MutexUnlock( &threads_mtx );
             BOOL is_set = PIN_SemaphoreTimedWait(
                 &watchdog_sem, 100/*millisecond*/ );
+            PIN_MutexLock( &threads_mtx );
             if( is_set )
                 PIN_SemaphoreClear( &watchdog_sem );
         }
@@ -549,8 +567,8 @@ void watchdog( void *a )
                 /* The currently executing thread is not an event
                  * thread. */
             }
-            PIN_MutexUnlock( &threads_mtx );
         }
+        PIN_MutexUnlock( &threads_mtx );
     }
 }
 
