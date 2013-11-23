@@ -19,4 +19,4 @@ for j in {1..$numruns}; do
 done
 echo $noyieldnum
 #Deleted +$yield_total because it doesn't seem to do anything?
-echo `python -c "print float($yieldnum - $noyieldnum)/(2*$n*$numruns)"`
+echo `python -c "print float($yieldnum - $noyieldnum)/(2*$n)"`
