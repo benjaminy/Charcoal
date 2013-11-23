@@ -11,7 +11,7 @@ void fa( void *a )
 	double j = 0;
 	for(i = 0; i < n; i++){
 		j+=i;
-		OPA_store_int(&(__charcoal_activity_self()->container->timeout), 1);
+		OPA_store_int(&(__charcoal_activity_self()->container->unyielding), 1);
 	#if YIELDING==1
 		__charcoal_yield();
 	#endif
@@ -28,7 +28,7 @@ int __charcoal_replace_main( int argc, char **argv )
     //__charcoal_activity_self()->container->max_time = 0;
 	struct timeval starttime;
 	struct timeval endtime;
-        OPA_store_int(&(__charcoal_activity_self()->container->unyielding), 1);
+        OPA_store_int(&(__charcoal_activity_self()->container->unyielding), 2);
 	gettimeofday(&starttime, NULL);
     __charcoal_activity_t* a = __charcoal_activate(fa, (void*) &n );
     __charcoal_activity_t* b = __charcoal_activate(fa, (void*) &n );
