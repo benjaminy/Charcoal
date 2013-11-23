@@ -3,7 +3,7 @@ make clean
 make simple_test
 make simple_test_noyield
 n=1000000
-numruns=100
+numruns=1000
 yield_total=0
 yieldnum=0
 noyieldnum=0

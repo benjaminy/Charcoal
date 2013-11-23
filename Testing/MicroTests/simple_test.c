@@ -11,7 +11,7 @@ void fa( void *a )
 	double j = 0;
 	for(i = 0; i < n; i++){
 		j+=i;
-		OPA_store_int(&(__charcoal_activity_self()->container->timeout), 1);
+		OPA_store_int(&(__charcoal_activity_self()->container->unyielding), 0);
 	#if YIELDING==1
 		__charcoal_yield();
 	#endif
