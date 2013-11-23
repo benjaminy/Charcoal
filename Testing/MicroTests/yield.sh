@@ -19,4 +19,4 @@ for j in {1..$numruns}; do
 done
 echo $noyieldnum
 
-echo `python -c "print float($yieldnum - $noyieldnum)/(2*$n) + $yield_total"`
+echo `python -c "print float($yieldnum - $noyieldnum)/(2*$n*$numruns) + $yield_total"`

@@ -225,6 +225,7 @@ static void *__charcoal_activity_entry_point( void *p )
 {
     __charcoal_activity_t *next, *_self = (__charcoal_activity_t *)p;
     //printf( "Starting activity %p\n", _self );
+    //REGISTER SIGNAL HANDLER (important)
     signal(SIGALRM, timeout_signal_handler);
     _self->container->start_time = time(&(_self->container->timer));
     ABORT_ON_FAIL( pthread_setspecific( __charcoal_self_key, _self ) );
