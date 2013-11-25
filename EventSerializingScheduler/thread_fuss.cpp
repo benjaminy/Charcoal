@@ -6,7 +6,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <time.h>
+#include <sys/time.h>
 
 #if defined(TARGET_MAC)
 #include <sys/syscall.h>
@@ -27,17 +27,26 @@
 
 #define safe_dec( e ) \
     ({ typeof( e ) *xp = &e; \
-       typeof( e ) x = *xp; \
+       typeof( e ) XSAFE_DEC = *xp; \
        --(*xp); \
-       assert_ns( *xp < x ); \
+       assert_ns( *xp < XSAFE_DEC ); \
        *xp; })
 
 #define safe_inc( e ) \
     ({ typeof( e ) *xp = &e; \
-       typeof( e ) x = *xp; \
+       typeof( e ) XSAFE_INC = *xp; \
        ++(*xp); \
-       assert_ns( *xp > x ); \
+       assert_ns( *xp > XSAFE_INC ); \
        *xp; })
+
+#define LOGF(...) do{ fprintf( log_file, __VA_ARGS__ ); fflush( log_file ); } while(0)
+
+static bool tv_greater_than( struct timeval *t1, struct timeval *t2 )
+{
+    if( t1->tv_sec > t2->tv_sec )
+        return true;
+    return t1->tv_usec > t2->tv_usec;
+}
 
 #define SET_FLAG( x, f )   ({ x |= f; })
 #define UNSET_FLAG( x, f ) ({ x &= ~f; })
@@ -66,10 +75,12 @@ struct _thread_info_t
 };
 
 static bool threads_stopped, stop_requested;
-static unsigned int event_threads_not_blocked, event_count;
+static unsigned int event_threads_not_blocked, ev_thread_effort, ev_thread_effort_limit;
 static TLS_KEY thread_info;
-static FILE * trace;
+static FILE * log_file;
 static PIN_MUTEX threads_mtx;
+static struct timeval ev_thread_timeout;
+
 
 static THREADID       watchdog_tid = INVALID_THREADID;
 static PIN_THREAD_UID watchdog_utid = 0;
@@ -237,8 +248,7 @@ void handle_ctx_change(
     INT32                 info,
     VOID                 *v )
 {
-    fprintf( trace, "idx: %i  CONTEXT CHANGE\n", threadIndex );
-    fflush( trace );
+    LOGF( "idx: %i  CONTEXT CHANGE\n", threadIndex );
 }
 
 static bool __attribute__((unused)) is_ev_thread( thread_info_t t )
@@ -253,71 +263,70 @@ static bool is_comp_thread( thread_info_t t )
 
 /* XXX: Not at all portable */
 bool is_thread_create(
-    CONTEXT *ctxt,
+    CONTEXT *ctx,
     SYSCALL_STANDARD std )
 {
     return
-        SYS_clone == PIN_GetSyscallNumber( ctxt, std )
-        && ( CLONE_THREAD & PIN_GetSyscallArgument( ctxt, std, 1 ) );
+        SYS_clone == PIN_GetSyscallNumber( ctx, std )
+        && ( CLONE_THREAD & PIN_GetSyscallArgument( ctx, std, 1 ) );
 }
 
-/* Run mode
- * 0 = Run freely
- * 1 = An EV thread is patiently waiting
- * 2 = An EV thread is not so patiently waiting
- * 3 = An EV thread is running
- */
+enum run_modes
+{
+    RUN_FREELY = 0,
+    EV_THREAD_WAITING_HINT,  /* be patient for a while ... */
+    EV_THREAD_WAITING_FORCE, /* ... then demand all threads pause */
+    EV_THREAD_RUNNING,
+};
+
 static struct {
     /* run_mode is going to get hammered, so we really don't want any
      * false sharing. */
     int buffer_space1[20];
-    int run_mode;
+    run_modes run_mode;
     int buffer_space2[20];
 } run_mode_struct;
 
-static int *run_mode_ptr = &run_mode_struct.run_mode;
-static int comp_threads_running = 0;
+static run_modes *run_mode_ptr = &run_mode_struct.run_mode;
+static unsigned int comp_threads_running = 0, comp_threads_waiting = 0;
 
 /* pre-condition: threads_mtx is held */
 static void pause_other_threads( thread_info_t self )
 {
-    fprintf( trace, "tid: %4lx pause_other\n", PIN_ThreadUid() );
-    fflush( trace );
+    LOGF( "tid: %4lx pause_other\n", PIN_ThreadUid() );
     if( comp_threads_running > 0 )
     {
-        fprintf( trace, "tid: %4lx PauseA\n", PIN_ThreadUid() );
-        fflush( trace );
+        LOGF( "tid: %4lx PauseA\n", PIN_ThreadUid() );
         PIN_SemaphoreClear( &self->sem );
-        ATOMIC::OPS::Store( run_mode_ptr, 1 );
+        ATOMIC::OPS::Store( run_mode_ptr, EV_THREAD_WAITING_HINT );
         PIN_MutexUnlock( &threads_mtx );
         /* XXX: should probably be a much shorter wait */
         PIN_SemaphoreTimedWait( &self->sem, 1/*milliseconds*/ );
         PIN_MutexLock( &threads_mtx );
         if( comp_threads_running > 0 )
         {
-            fprintf( trace, "tid: %4lx PauseB\n", PIN_ThreadUid() );
-            fflush( trace );
+            LOGF( "tid: %4lx PauseB\n", PIN_ThreadUid() );
             PIN_SemaphoreClear( &self->sem );
-            ATOMIC::OPS::Store( run_mode_ptr, 2 );
+            ATOMIC::OPS::Store( run_mode_ptr, EV_THREAD_WAITING_FORCE );
             PIN_MutexUnlock( &threads_mtx );
-            /* XXX: should probably be a xmuch shorter wait */
+            /* XXX: should probably be a much shorter wait */
             PIN_SemaphoreTimedWait( &self->sem, 1/*milliseconds*/ );
             PIN_MutexLock( &threads_mtx );
         }
-        assert_ns( comp_threads_running == 0 )
+        assert_ns( comp_threads_running == 0 );
     }
-    ATOMIC::OPS::Store( run_mode_ptr, 3 );
+    ATOMIC::OPS::Store( run_mode_ptr, EV_THREAD_RUNNING );
 }
 
 /* Assumptions:
  * - This procedure is only called from EV threads. */
 static void resume_other_threads( thread_info_t pauser )
 {
-    assert_ns( 3 == ATOMIC::OPS::Load( run_mode_ptr ) );
-    fprintf( trace, "tid: %4lx resume  stopped:%i\n",
-             PIN_ThreadUid(), threads_stopped );
-    fflush( trace );
-    ATOMIC::OPS::Store( run_mode_ptr, 0 );
+    assert_ns( EV_THREAD_RUNNING == ATOMIC::OPS::Load( run_mode_ptr ) );
+    LOGF( "tid: %4lx resume  stopped:%i\n", PIN_ThreadUid(), threads_stopped );
+    comp_threads_running = comp_threads_waiting;
+    comp_threads_waiting = 0;
+    ATOMIC::OPS::Store( run_mode_ptr, RUN_FREELY );
     for( thread_info_t t = TQ::peek_front( COMP_THREAD );
          t;
          t = THR_NEXT( COMP_THREAD, t ) )
@@ -328,55 +337,75 @@ static void resume_other_threads( thread_info_t pauser )
 
 static void handle_syscall_entry(
     THREADID threadIndex,
-    CONTEXT *ctxt,
+    CONTEXT *ctx,
     SYSCALL_STANDARD std,
     VOID *v )
 {
     PIN_MutexLock( &threads_mtx );
     thread_info_t self = get_self();
-    fprintf( trace, "tid: %4lx syscall_entry  q_empty?%i\n", PIN_ThreadUid(),
-             TQ::is_empty( EV_THREAD ) );
-    fflush( trace );
-    /* TODO: maybe only do this if it's a blocking syscall. */
-    if( threads_stopped )
-    {
-        need_resume = self;
-        PIN_SemaphoreSet( &watchdog_sem );
-    }
+    LOGF( "tid: %4lx syscall_entry  q_empty?%i\n", PIN_ThreadUid(), TQ::is_empty( EV_THREAD ) );
     SET_FLAG( self->flags, FLAG_SYSCALL );
-    if( is_thread_create( ctxt, std ) )
+    run_modes run_mode = (run_modes)ATOMIC::OPS::Load( run_mode_ptr );
+
+    /* Thread creation gets the "highest priority".  No matter what
+     * threads are paused or waiting or whatever, the new thread gets to
+     * run next. */
+    if( is_thread_create( ctx, std ) )
     {
         SET_FLAG( self->flags, FLAG_THREAD_CREATE );
         PIN_SemaphoreClear( &self->sem );
     }
+    /* A computation thread in a syscall doesn't count as "running". */
     else if( is_comp_thread( self ) )
     {
-        PIN_MutexUnlock( &threads_mtx );
-        return;
+        safe_dec( comp_threads_running );
+        if( run_mode != RUN_FREELY
+            && comp_threads_running == 0 )
+        {
+            thread_info_t waiting_ev_thread = TQ::peek_front( EV_THREAD );
+            assert_ns( waiting_ev_thread );
+            PIN_SemaphoreSet( &waiting_ev_thread->sem );
+        }
     }
-    else /* if syscall is blocking */
+    else if( true /* XXX is a blocking syscall */ )
     {
         assert_ns( TQ::peek_front( EV_THREAD ) == self );
         TQ::dequeue( EV_THREAD, NULL );
         thread_info_t next = TQ::peek_front( EV_THREAD );
         if( next )
         {
+            /* XXX: EV threads can collectively starve comp threads.
+             * Problem? */
+            assert_ns( !gettimeofday( &ev_thread_timeout, NULL ) );
+            ev_thread_timeout.tv_usec += 1000;
+            if( ev_thread_timeout.tv_usec > 1000000 )
+            {
+                ev_thread_timeout.tv_usec -= 1000000;
+                ev_thread_timeout.tv_sec += 1;
+            }
             PIN_SemaphoreSet( &next->sem );
         }
+        else if( 0 < comp_threads_waiting )
+        {
+            resume_other_threads( self );
+            PIN_SemaphoreSet( &watchdog_sem );
+        }
     }
+    /* Otherwise, we're going to assume the syscall runs quickly and
+     * treat it more like regular computation.  */
     PIN_MutexUnlock( &threads_mtx );
 }
 
 VOID handle_syscall_exit(
     THREADID threadIndex,
-    CONTEXT *ctxt,
+    CONTEXT *ctx,
     SYSCALL_STANDARD std,
     VOID *v)
 {
     PIN_MutexLock( &threads_mtx );
-    fprintf( trace, "tid: %4lx syscall_exit\n", PIN_ThreadUid() ); fflush( trace );
-    if( is_thread_create( ctxt, std )
-        && ( 0 > PIN_GetSyscallReturn( ctxt, std ) ) )
+    LOGF( "tid: %4lx syscall_exit\n", PIN_ThreadUid() );
+    if( is_thread_create( ctx, std )
+        && ( 0 > ((int)PIN_GetSyscallReturn( ctx, std )) ) )
     {
         thread_info_t self = get_self();
         UNSET_FLAG( self->flags, FLAG_THREAD_CREATE );
@@ -384,11 +413,11 @@ VOID handle_syscall_exit(
     PIN_MutexUnlock( &threads_mtx );
 }
 
-void analyze_post_syscall( UINT32 sz )
+void analyze_post_syscall( void )
 {
     PIN_MutexLock( &threads_mtx );
     thread_info_t self = get_self();
-    fprintf( trace, "tid: %4lx post_syscall\n", PIN_ThreadUid() ); fflush( trace );
+    LOGF( "tid: %4lx post_syscall\n", PIN_ThreadUid() );
     assert_ns( !THR_NEXT( EV_THREAD, self ) );
     if( !( self->flags & FLAG_SYSCALL ) )
     {
@@ -396,26 +425,42 @@ void analyze_post_syscall( UINT32 sz )
         return;
     }
     UNSET_FLAG( self->flags, FLAG_SYSCALL );
+    /* If we just created a new thread, we must wait. */
     if( self->flags & FLAG_THREAD_CREATE )
     {
+        /* XXX queue stuff? */
         PIN_MutexUnlock( &threads_mtx );
         PIN_SemaphoreWait( &self->sem );
         PIN_MutexLock( &threads_mtx );
     }
+    UNSET_FLAG( self->flags, FLAG_THREAD_CREATE );
     if( is_comp_thread( self ) )
     {
-        /* check for self-suspending? */
+        if( run_mode == RUN_FREELY )
+        {
+            safe_inc( comp_threads_running );
+            PIN_MutexUnlock( &threads_mtx );
+        }
+        else
+        {
+            safe_inc( comp_threads_waiting );
+            PIN_SemaphoreClear( &self->sem );
+            PIN_MutexUnlock( &threads_mtx );
+            PIN_SemaphoreWait( &self->sem );
+        }
     }
     else if( TQ::is_empty( EV_THREAD ) )
     {
         /* Nobody else is trying to go.  Just do it. */
         TQ::enqueue( EV_THREAD, self );
         pause_other_threads( self );
+        PIN_MutexUnlock( &threads_mtx );
     }
     else if( TQ::peek_front( EV_THREAD ) == self )
     {
         /* Decided to not switch for syscall */
         pause_other_threads( self );
+        PIN_MutexUnlock( &threads_mtx );
     }
     else
     {
@@ -424,8 +469,6 @@ void analyze_post_syscall( UINT32 sz )
         PIN_MutexUnlock( &threads_mtx );
         PIN_SemaphoreWait( &self->sem );
     }
-    PIN_MutexUnlock( &threads_mtx );
-    // ++event_threads_not_blocked;
 }
 
 static thread_info_t find_parent( thread_info_t self )
@@ -452,13 +495,13 @@ static thread_info_t find_parent( thread_info_t self )
 
 static void handle_thread_start(
     THREADID threadIndex,
-    CONTEXT *ctxt,
+    CONTEXT *ctx,
     INT32    flags,
     VOID    *v )
 {
     PIN_MutexLock( &threads_mtx );
     thread_info_t self = (thread_info_t)assert_ns( malloc( sizeof( self[0] ) ) );
-    fprintf( trace, "tid: %4lx thread_start\n", PIN_ThreadUid() ); fflush( trace );
+    LOGF( "tid: %4lx thread_start\n", PIN_ThreadUid() );
     self->os_tid       = PIN_GetTid();
     self->os_ptid      = PIN_GetParentTid();
     self->tid          = PIN_ThreadId();
@@ -476,11 +519,11 @@ static void handle_thread_start(
     PIN_MutexUnlock( &threads_mtx );
 }
 
-void analyze_thread_entry( UINT32 sz )
+void analyze_thread_entry( void )
 {
     PIN_MutexLock( &threads_mtx );
     thread_info_t self = get_self();
-    fprintf( trace, "tid: %4lx thread_entry\n", PIN_ThreadUid() ); fflush( trace );
+    LOGF( "tid: %4lx thread_entry\n", PIN_ThreadUid() );
     if( !( self->flags & FLAG_THREAD_ENTRY ) )
     {
         /* Weird case where a thread entry point executes "again". */
@@ -491,47 +534,77 @@ void analyze_thread_entry( UINT32 sz )
     UNSET_FLAG( self->flags, FLAG_THREAD_ENTRY );
     // ++event_threads_not_blocked;
     TQ::enqueue_front( EV_THREAD, self );
-    fprintf( trace, "tid: %4lx   q_empty?%i\n", PIN_ThreadUid(), TQ::is_empty( EV_THREAD ) );
-    fflush( trace );
+    LOGF( "tid: %4lx   q_empty?%i\n", PIN_ThreadUid(), TQ::is_empty( EV_THREAD ) );
     PIN_MutexUnlock( &threads_mtx );
 }
 
+/* trace_if must be extremely fast, because it is called before the
+ * execution of almost every trace.  (The only exceptions are the traces
+ * that are handled specially, like thread entry and syscalls.)
+ * trace_if should return 0 (RUN_FREELY) the vast majority of the time
+ * for applications that are at all CPU-intensive. */
 static ADDRINT trace_if( void )
 {
     return ATOMIC::OPS::Load( run_mode_ptr );
 }
 
-static void trace_then( UINT32 sz )
+static void pause_self()
 {
     PIN_MutexLock( &threads_mtx );
-    ADDRINT run_mode = ATOMIC::OPS::Load( run_mode_ptr );
-    if( !run_mode )
-    {
-        /* Very unlikely, but maybe possible */
-        PIN_MutexUnlock( &threads_mtx );
-        return;
-    }
     thread_info_t self = get_self();
-    if( self == running_event_thread )
+    assert_ns( is_comp_thread( self ) );
+    safe_dec( comp_threads_running );
+    safe_inc( comp_threads_waiting );
+    if( comp_threads_running == 0 )
     {
-        /* check time? */
+        thread_info_t waiting_ev_thread = TQ::peek_front( EV_THREAD );
+        assert_ns( waiting_ev_thread );
+        PIN_SemaphoreSet( &waiting_ev_thread->sem );
     }
-    else
-    {
-        if( run_mode == 1 )
-        {
-            /* safe point yield */
-        }
-        else if( run_mode == 2 )
-        {
-            /* Yield immediately */
-        }
-        else
-        {
-            assert_ns( false );
-        }
-    }
+    PIN_SemaphoreClear( &self->sem );
     PIN_MutexUnlock( &threads_mtx );
+    PIN_SemaphoreWait( &self->sem );
+}
+
+/* trace_then is called when an EV thread is waiting to run or running. */
+static void trace_then( UINT32 sz )
+{
+    run_modes run_mode = (run_modes)ATOMIC::OPS::Load( run_mode_ptr );
+    switch( run_mode )
+    {
+    case RUN_FREELY:
+        /* I don't think it's possible for run_mode to change like this
+         * between trace_if and trace_then, but maybe it is. */
+        return;
+    case EV_THREAD_WAITING_HINT:
+        if( false /* XXX at safe pause point */ )
+        {
+            pause_self();
+        }
+        break;
+    case EV_THREAD_WAITING_FORCE:
+        pause_self();
+        break;
+    case EV_THREAD_RUNNING:
+        ev_thread_effort += sz;
+        if( ev_thread_effort > ev_thread_effort_limit )
+        {
+            struct timeval curr_time;
+            assert_ns( !gettimeofday( &curr_time, NULL ) );
+            if( tv_greater_than( &curr_time, &ev_thread_timeout ) )
+            {
+                /* Not an EV thread anymore! */
+            }
+            else
+            {
+                ev_thread_effort_limit = ev_thread_effort + 1000;
+            }
+        }
+        break;
+    default:
+        assert_ns( false );
+    }
+    // if( self ){}
 }
 
 static void instrument_trace( TRACE trace, VOID *v )
@@ -541,40 +614,38 @@ static void instrument_trace( TRACE trace, VOID *v )
     int entry   = !!( self->flags & FLAG_THREAD_ENTRY ),
         syscall = !!( self->flags & FLAG_SYSCALL );
     assert_ns( !( entry && syscall ) );
-    UINT32 sz = (UINT32)TRACE_Size( trace );
     if( entry )
-        TRACE_InsertCall( trace, IPOINT_BEFORE, (AFUNPTR)analyze_thread_entry,
-                          IARG_UINT32, sz, IARG_END );
+        TRACE_InsertCall( trace, IPOINT_BEFORE, (AFUNPTR)analyze_thread_entry, IARG_END );
     else if( syscall )
-        TRACE_InsertCall( trace, IPOINT_BEFORE, (AFUNPTR)analyze_post_syscall,
-                          IARG_UINT32, sz, IARG_END );
+        TRACE_InsertCall( trace, IPOINT_BEFORE, (AFUNPTR)analyze_post_syscall, IARG_END );
     else
     {
         /* Common case.  Use if/then instrumentation for better performance. */
+        /* "sz" is a _very_ rough approximation of the execution cost of a trace */
+        UINT32 sz = (UINT32)TRACE_Size( trace );
+        /* TODO: decide if this is a safe pause point */
         TRACE_InsertIfCall  ( trace, IPOINT_BEFORE, (AFUNPTR)trace_if,   IARG_END );
         TRACE_InsertThenCall( trace, IPOINT_BEFORE, (AFUNPTR)trace_then,
                               IARG_UINT32, sz, IARG_END );
-
-
     }
     PIN_MutexUnlock( &threads_mtx );
 }
 
 void handle_thread_fini(
     THREADID threadIndex,
-    const CONTEXT *ctxt,
+    const CONTEXT *ctx,
     INT32 code,
     VOID *v )
 {
     PIN_MutexLock( &threads_mtx );
-    fprintf( trace, "tid: %x thread_fini\n", threadIndex ); fflush( trace );
+    LOGF( "tid: %x thread_fini\n", threadIndex );
     thread_info_t self = get_self();
     PIN_SemaphoreFini( &self->sem );
     free( self );
     // unsigned int temp = event_threads_not_blocked;
     /* XXX hm... do threads need to make a syscall to fini */
     // --event_threads_not_blocked;
-    // fprintf( trace, "N D ready %u  %u\n", self->tid, event_threads_not_blocked ); fflush( trace );
+    // LOGF( "N D ready %u  %u\n", self->tid, event_threads_not_blocked );
     // assert_ns( event_threads_not_blocked < temp );
     assert_ns( PIN_SetThreadData( thread_info, NULL, PIN_ThreadId() ) );
     PIN_MutexUnlock( &threads_mtx );
@@ -582,8 +653,8 @@ void handle_thread_fini(
 
 VOID Fini(INT32 code, VOID *v)
 {
-    fprintf(trace,"#eof\n");
-    fclose(trace);
+    LOGF( "#eof\n" );
+    fclose( log_file );
     assert_ns( PIN_DeleteThreadDataKey( thread_info ) );
     PIN_MutexFini( &threads_mtx );
 }
@@ -600,8 +671,10 @@ INT32 Usage()
     return -1;
 }
 
+
 void watchdog( void *a )
 {
+#if 0
     while( 1 )
     {
         if( PIN_IsProcessExiting() )
@@ -609,7 +682,7 @@ void watchdog( void *a )
             break;
         }
         PIN_MutexLock( &threads_mtx );
-        // fprintf( trace, "watchdog loop\n" ); fflush( trace );
+        // LOGF( "watchdog loop\n" );
         if( need_resume )
         {
             resume_other_threads( need_resume );
@@ -646,6 +719,7 @@ void watchdog( void *a )
         }
         PIN_MutexUnlock( &threads_mtx );
     }
+#endif
 }
 
 /* ===================================================================== */
@@ -656,14 +730,14 @@ int main(int argc, char *argv[])
 {
     if( PIN_Init( argc, argv ) ) return Usage();
 
-    trace = fopen( "strace.out", "w" );
+    log_file = fopen( "strace.out", "w" );
     thread_info = PIN_CreateThreadDataKey( NULL );
     assert_ns( PIN_MutexInit( &threads_mtx ) );
     event_threads_not_blocked = 0;
     TQ::init();
     threads_stopped = false;
     stop_requested  = false;
-    need_resume = NULL;
+    // need_resume = NULL;
 
     PIN_AddThreadStartFunction  ( handle_thread_start,  NULL );
     PIN_AddThreadFiniFunction   ( handle_thread_fini,   NULL );
