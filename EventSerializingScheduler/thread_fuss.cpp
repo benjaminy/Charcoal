@@ -70,7 +70,6 @@ static unsigned int event_threads_not_blocked, event_count;
 static TLS_KEY thread_info;
 static FILE * trace;
 static PIN_MUTEX threads_mtx;
-static thread_info_t need_resume;
 
 static THREADID       watchdog_tid = INVALID_THREADID;
 static PIN_THREAD_UID watchdog_utid = 0;
@@ -262,45 +261,69 @@ bool is_thread_create(
         && ( CLONE_THREAD & PIN_GetSyscallArgument( ctxt, std, 1 ) );
 }
 
+/* Run mode
+ * 0 = Run freely
+ * 1 = An EV thread is patiently waiting
+ * 2 = An EV thread is not so patiently waiting
+ * 3 = An EV thread is running
+ */
+static struct {
+    /* run_mode is going to get hammered, so we really don't want any
+     * false sharing. */
+    int buffer_space1[20];
+    int run_mode;
+    int buffer_space2[20];
+} run_mode_struct;
+
+static int *run_mode_ptr = &run_mode_struct.run_mode;
+static int comp_threads_running = 0;
+
+/* pre-condition: threads_mtx is held */
 static void pause_other_threads( thread_info_t self )
 {
-    fprintf( trace, "tid: %4lx pause_other\n", PIN_ThreadUid() ); fflush( trace );
-    /* TODO: In the future, be more polite about stopping other threads */
-    if( need_resume )
+    fprintf( trace, "tid: %4lx pause_other\n", PIN_ThreadUid() );
+    fflush( trace );
+    if( comp_threads_running > 0 )
     {
-        assert_ns( need_resume == self );
+        fprintf( trace, "tid: %4lx PauseA\n", PIN_ThreadUid() );
+        fflush( trace );
         PIN_SemaphoreClear( &self->sem );
+        ATOMIC::OPS::Store( run_mode_ptr, 1 );
         PIN_MutexUnlock( &threads_mtx );
-        fprintf( trace, "tid: %4lx PauseA\n", PIN_ThreadUid() ); fflush( trace );
-        PIN_SemaphoreWait( &self->sem );
-        fprintf( trace, "tid: %4lx PauseB\n", PIN_ThreadUid() ); fflush( trace );
+        /* XXX: should probably be a much shorter wait */
+        PIN_SemaphoreTimedWait( &self->sem, 1/*milliseconds*/ );
         PIN_MutexLock( &threads_mtx );
-        fprintf( trace, "tid: %4lx PauseC\n", PIN_ThreadUid() ); fflush( trace );
+        if( comp_threads_running > 0 )
+        {
+            fprintf( trace, "tid: %4lx PauseB\n", PIN_ThreadUid() );
+            fflush( trace );
+            PIN_SemaphoreClear( &self->sem );
+            ATOMIC::OPS::Store( run_mode_ptr, 2 );
+            PIN_MutexUnlock( &threads_mtx );
+            /* XXX: should probably be a xmuch shorter wait */
+            PIN_SemaphoreTimedWait( &self->sem, 1/*milliseconds*/ );
+            PIN_MutexLock( &threads_mtx );
+        }
+        assert_ns( comp_threads_running == 0 )
     }
-    assert_ns( PIN_StopApplicationThreads( self->tid ) );
-    threads_stopped = true;
+    ATOMIC::OPS::Store( run_mode_ptr, 3 );
 }
 
 /* Assumptions:
  * - This procedure is only called from EV threads. */
 static void resume_other_threads( thread_info_t pauser )
 {
-    fprintf( trace, "tid: %4lx resume  stopped:%i\n", PIN_ThreadUid(), threads_stopped );
+    assert_ns( 3 == ATOMIC::OPS::Load( run_mode_ptr ) );
+    fprintf( trace, "tid: %4lx resume  stopped:%i\n",
+             PIN_ThreadUid(), threads_stopped );
     fflush( trace );
-    if( threads_stopped )
+    ATOMIC::OPS::Store( run_mode_ptr, 0 );
+    for( thread_info_t t = TQ::peek_front( COMP_THREAD );
+         t;
+         t = THR_NEXT( COMP_THREAD, t ) )
     {
-        fprintf( trace, "tid: %4lx ResumeA\n", PIN_ThreadUid() ); fflush( trace );
-        PIN_ResumeApplicationThreads( pauser->tid );
-        fprintf( trace, "tid: %4lx ResumeB\n", PIN_ThreadUid() ); fflush( trace );
-        for( thread_info_t t = TQ::peek_front( COMP_THREAD );
-             t;
-             t = THR_NEXT( COMP_THREAD, t ) )
-        {
-            PIN_SemaphoreSet( &t->sem );
-        }
-        fprintf( trace, "tid: %4lx ResumeC\n", PIN_ThreadUid() ); fflush( trace );
+        PIN_SemaphoreSet( &t->sem );
     }
-    threads_stopped = false;
 }
 
 static void handle_syscall_entry(
@@ -473,25 +496,15 @@ void analyze_thread_entry( UINT32 sz )
     PIN_MutexUnlock( &threads_mtx );
 }
 
-struct {
-    int buffer_space1[20];
-    int the_key;
-    int buffer_space2[20];
-} foo;
-
-int *key = &foo.the_key;
-
 static ADDRINT trace_if( void )
 {
-    return ATOMIC::OPS::Load( key );
+    return ATOMIC::OPS::Load( run_mode_ptr );
 }
-
-//    ATOMIC::OPS::Store( key, 0 );
 
 static void trace_then( UINT32 sz )
 {
     PIN_MutexLock( &threads_mtx );
-    ADDRINT run_mode = ATOMIC::OPS::Load( key );
+    ADDRINT run_mode = ATOMIC::OPS::Load( run_mode_ptr );
     if( !run_mode )
     {
         /* Very unlikely, but maybe possible */
