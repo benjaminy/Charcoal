@@ -16,6 +16,57 @@
 
 #include "pin.H"
 
+/* The three dimensions of asserts: effects, cost, fatal
+ * Effects:
+ * - E: "Effectful". The expression must be evaluated for effects,
+ *      whether it's checked or not.
+ * - R: "Read-only". The expression doesn't change the state of the
+ *      program.  Don't evaluate it if we're not enforcing it.
+ * Fatality:
+ * - F: "Fatal". The assertion should always be enforced, because
+ *      something _really bad_ might happen if the program continues.
+ * - S: "Survivable". The consequences of continuing are tolerable.  Log
+ *      instead of crashing in non-debug builds.
+ * Cost:
+ * - H: "High". Only appropriate for debug builds.
+ * - L: "Low". Can be included in production builds.
+ */
+
+extern void __assert_fail (__const char *__assertion, __const char *__file,
+			   unsigned int __line, __const char *__function)
+     __THROW __attribute__ ((__noreturn__));
+
+/* Version 2.4 and later of GCC define a magical variable `__PRETTY_FUNCTION__'
+   which contains the name of the function currently being defined.
+   This is broken in G++ before version 2.6.
+   C9x has a similar variable called __func__, but prefer the GCC one since
+   it demangles C++ function names.  */
+# if defined __cplusplus ? __GNUC_PREREQ (2, 6) : __GNUC_PREREQ (2, 4)
+#   define __ASSERT_FUNCTION	__PRETTY_FUNCTION__
+# else
+#  if defined __STDC_VERSION__ && __STDC_VERSION__ >= 199901L
+#   define __ASSERT_FUNCTION	__func__
+#  else
+#   define __ASSERT_FUNCTION	((__const char *) 0)
+#  endif
+# endif
+
+#define assert_EF( e, ... )   \
+    ({ typeof( e ) x = e; \
+       if( x ) \
+           __assert_fail( __STRING( e ) "(" __VA_ARGS__")", \
+                          __FILE__, __LINE__, __ASSERT_FUNCTION ); \
+       x; })
+
+/*
+EF
+ES
+RFL
+RFH
+RSL
+RSH
+*/
+
 /* assert_ns means "assert, no shortcut".  The trouble with regular
  * assert is that it can be compiled away entirely, which is bad if
  * there are import effects to evaluating "e".  This version of assert
@@ -428,7 +479,6 @@ void analyze_post_syscall( void )
     /* If we just created a new thread, we must wait. */
     if( self->flags & FLAG_THREAD_CREATE )
     {
-        /* XXX queue stuff? */
         PIN_MutexUnlock( &threads_mtx );
         PIN_SemaphoreWait( &self->sem );
         PIN_MutexLock( &threads_mtx );
@@ -436,6 +486,7 @@ void analyze_post_syscall( void )
     UNSET_FLAG( self->flags, FLAG_THREAD_CREATE );
     if( is_comp_thread( self ) )
     {
+        run_modes run_mode = (run_modes)ATOMIC::OPS::Load( run_mode_ptr );
         if( run_mode == RUN_FREELY )
         {
             safe_inc( comp_threads_running );
