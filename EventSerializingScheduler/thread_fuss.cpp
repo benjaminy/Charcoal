@@ -3,7 +3,6 @@
  *  This file contains an ISA-portable PIN tool for tracing system calls
  */
 
-#include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/time.h>
@@ -15,79 +14,20 @@
 #endif
 
 #include "pin.H"
-
-/* The three dimensions of asserts: effects, cost, fatal
- * Effects:
- * - E: "Effectful". The expression must be evaluated for effects,
- *      whether it's checked or not.
- * - R: "Read-only". The expression doesn't change the state of the
- *      program.  Don't evaluate it if we're not enforcing it.
- * Fatality:
- * - F: "Fatal". The assertion should always be enforced, because
- *      something _really bad_ might happen if the program continues.
- * - S: "Survivable". The consequences of continuing are tolerable.  Log
- *      instead of crashing in non-debug builds.
- * Cost:
- * - H: "High". Only appropriate for debug builds.
- * - L: "Low". Can be included in production builds.
- */
-
-extern void __assert_fail (__const char *__assertion, __const char *__file,
-			   unsigned int __line, __const char *__function)
-     __THROW __attribute__ ((__noreturn__));
-
-/* Version 2.4 and later of GCC define a magical variable `__PRETTY_FUNCTION__'
-   which contains the name of the function currently being defined.
-   This is broken in G++ before version 2.6.
-   C9x has a similar variable called __func__, but prefer the GCC one since
-   it demangles C++ function names.  */
-# if defined __cplusplus ? __GNUC_PREREQ (2, 6) : __GNUC_PREREQ (2, 4)
-#   define __ASSERT_FUNCTION	__PRETTY_FUNCTION__
-# else
-#  if defined __STDC_VERSION__ && __STDC_VERSION__ >= 199901L
-#   define __ASSERT_FUNCTION	__func__
-#  else
-#   define __ASSERT_FUNCTION	((__const char *) 0)
-#  endif
-# endif
-
-#define assert_EF( e, ... )   \
-    ({ typeof( e ) x = e; \
-       if( x ) \
-           __assert_fail( __STRING( e ) "(" __VA_ARGS__")", \
-                          __FILE__, __LINE__, __ASSERT_FUNCTION ); \
-       x; })
-
-/*
-EF
-ES
-RFL
-RFH
-RSL
-RSH
-*/
-
-/* assert_ns means "assert, no shortcut".  The trouble with regular
- * assert is that it can be compiled away entirely, which is bad if
- * there are import effects to evaluating "e".  This version of assert
- * also has the fanciness that it returns the parameter. */
-#define assert_ns( e ) \
-    ({ typeof( e ) x = e; \
-       assert( x ); \
-       x; })
+#include "assert_efc.h"
 
 #define safe_dec( e ) \
     ({ typeof( e ) *xp = &e; \
        typeof( e ) XSAFE_DEC = *xp; \
        --(*xp); \
-       assert_ns( *xp < XSAFE_DEC ); \
+       assert_RFL( *xp < XSAFE_DEC ); \
        *xp; })
 
 #define safe_inc( e ) \
     ({ typeof( e ) *xp = &e; \
        typeof( e ) XSAFE_INC = *xp; \
        ++(*xp); \
-       assert_ns( *xp > XSAFE_INC ); \
+       assert_RFL( *xp > XSAFE_INC ); \
        *xp; })
 
 #define LOGF(...) do{ fprintf( log_file, __VA_ARGS__ ); fflush( log_file ); } while(0)
@@ -139,7 +79,7 @@ static PIN_SEMAPHORE  watchdog_sem;
 
 static thread_info_t get_self( void )
 {
-    return (thread_info_t)(assert_ns( PIN_GetThreadData(
+    return (thread_info_t)(assert_EF( PIN_GetThreadData(
         thread_info, PIN_ThreadId() ) ) );
 }
 
@@ -167,7 +107,7 @@ namespace TQ
 
     void front_back( thread_kind k, thread_info_t **f, thread_info_t **b )
     {
-        assert_ns( f && b );
+        assert_RFL( f && b );
         switch( k )
         {
         case ALL_THREAD:
@@ -183,7 +123,7 @@ namespace TQ
             *b = &comp_bk;
             break;
         default:
-            assert_ns( 0 );
+            assert_RFL( false );
             break;
         }
     }
@@ -204,7 +144,7 @@ namespace TQ
         default:
             break;
         }
-        assert_ns( 0 );
+        assert_RFL( false );
         return NULL;
     }
 
@@ -213,7 +153,7 @@ namespace TQ
     bool is_empty( thread_kind k )
     {
         DECL_FRONT_BACK( k );
-        assert_ns( !(*fr) == !(*bk) );
+        assert_RFL( !(*fr) == !(*bk) );
         return !(*fr);
     }
 
@@ -232,8 +172,9 @@ namespace TQ
     void enqueue( thread_kind k, thread_info_t t )
     {
         DECL_FRONT_BACK( k );
-        assert_ns( ( *fr && *bk ) || ( !(*fr) && !(*bk) ) );
-        assert_ns( !THR_NEXT( k, t ) );
+        assert_if_RFL( *fr, *bk );
+        assert_if_RFL( !(*fr), !(*bk) );
+        assert_RFL( !THR_NEXT( k, t ) );
         if( *fr )
         {
             THR_NEXT( k, *bk ) = t;
@@ -248,8 +189,9 @@ namespace TQ
     void enqueue_front( thread_kind k, thread_info_t t )
     {
         DECL_FRONT_BACK( k );
-        assert_ns( ( *fr && *bk ) || ( !(*fr) && !(*bk) ) );
-        assert_ns( !THR_NEXT( k, t ) );
+        assert_if_RFL( *fr, *bk );
+        assert_if_RFL( !(*fr), !(*bk) );
+        assert_RFL( !THR_NEXT( k, t ) );
         if( *fr )
         {
             THR_NEXT( k, t ) = *fr;
@@ -264,7 +206,8 @@ namespace TQ
     void dequeue( thread_kind k, thread_info_t *t )
     {
         DECL_FRONT_BACK( k );
-        assert_ns( ( *fr && *bk ) || ( !(*fr) && !(*bk) ) );
+        assert_if_RFL( *fr, *bk );
+        assert_if_RFL( !(*fr), !(*bk) );
         if( t )
         {
             *t = NULL;
@@ -331,8 +274,8 @@ enum run_modes
 };
 
 static struct {
-    /* run_mode is going to get hammered, so we really don't want any
-     * false sharing. */
+    /* run_mode is read _very frequently_ by all threads, so we really
+     * don't want any false sharing. */
     int buffer_space1[20];
     run_modes run_mode;
     int buffer_space2[20];
@@ -364,16 +307,17 @@ static void pause_other_threads( thread_info_t self )
             PIN_SemaphoreTimedWait( &self->sem, 1/*milliseconds*/ );
             PIN_MutexLock( &threads_mtx );
         }
-        assert_ns( comp_threads_running == 0 );
+        assert_RSL( comp_threads_running == 0 );
     }
     ATOMIC::OPS::Store( run_mode_ptr, EV_THREAD_RUNNING );
 }
 
 /* Assumptions:
- * - This procedure is only called from EV threads. */
+ * - thread_mtx is held. */
 static void resume_other_threads( thread_info_t pauser )
 {
-    assert_ns( EV_THREAD_RUNNING == ATOMIC::OPS::Load( run_mode_ptr ) );
+    assert_RFL( is_ev_thread( pauser ) );
+    assert_RFL( EV_THREAD_RUNNING == ATOMIC::OPS::Load( run_mode_ptr ) );
     LOGF( "tid: %4lx resume  stopped:%i\n", PIN_ThreadUid(), threads_stopped );
     comp_threads_running = comp_threads_waiting;
     comp_threads_waiting = 0;
@@ -414,20 +358,20 @@ static void handle_syscall_entry(
             && comp_threads_running == 0 )
         {
             thread_info_t waiting_ev_thread = TQ::peek_front( EV_THREAD );
-            assert_ns( waiting_ev_thread );
+            assert_RFL( waiting_ev_thread );
             PIN_SemaphoreSet( &waiting_ev_thread->sem );
         }
     }
     else if( true /* XXX is a blocking syscall */ )
     {
-        assert_ns( TQ::peek_front( EV_THREAD ) == self );
+        assert_RFL( TQ::peek_front( EV_THREAD ) == self );
         TQ::dequeue( EV_THREAD, NULL );
         thread_info_t next = TQ::peek_front( EV_THREAD );
         if( next )
         {
             /* XXX: EV threads can collectively starve comp threads.
              * Problem? */
-            assert_ns( !gettimeofday( &ev_thread_timeout, NULL ) );
+            assert_EF( !gettimeofday( &ev_thread_timeout, NULL ) );
             ev_thread_timeout.tv_usec += 1000;
             if( ev_thread_timeout.tv_usec > 1000000 )
             {
@@ -469,7 +413,7 @@ void analyze_post_syscall( void )
     PIN_MutexLock( &threads_mtx );
     thread_info_t self = get_self();
     LOGF( "tid: %4lx post_syscall\n", PIN_ThreadUid() );
-    assert_ns( !THR_NEXT( EV_THREAD, self ) );
+    assert_RFL( !THR_NEXT( EV_THREAD, self ) );
     if( !( self->flags & FLAG_SYSCALL ) )
     {
         PIN_MutexUnlock( &threads_mtx );
@@ -540,7 +484,7 @@ static thread_info_t find_parent( thread_info_t self )
         }
         t = THR_NEXT( ALL_THREAD, t );
     }
-    assert_ns( false );
+    assert_RFL( false );
     return NULL;
 }
 
@@ -551,7 +495,7 @@ static void handle_thread_start(
     VOID    *v )
 {
     PIN_MutexLock( &threads_mtx );
-    thread_info_t self = (thread_info_t)assert_ns( malloc( sizeof( self[0] ) ) );
+    thread_info_t self = (thread_info_t)assert_EF( malloc( sizeof( self[0] ) ) );
     LOGF( "tid: %4lx thread_start\n", PIN_ThreadUid() );
     self->os_tid       = PIN_GetTid();
     self->os_ptid      = PIN_GetParentTid();
@@ -561,11 +505,11 @@ static void handle_thread_start(
     self->next_all     = NULL;
     self->next_ev_comp = NULL;
     self->parent       = find_parent( self );
-    assert_ns( PIN_SemaphoreInit( &self->sem ) );
-    assert_ns( PIN_MutexInit( &self->mtx ) );
+    assert_EF( PIN_SemaphoreInit( &self->sem ) );
+    assert_EF( PIN_MutexInit( &self->mtx ) );
 
     TQ::enqueue( ALL_THREAD, self );
-    assert_ns( PIN_SetThreadData(
+    assert_EF( PIN_SetThreadData(
                 thread_info, self, PIN_ThreadId() ) );
     PIN_MutexUnlock( &threads_mtx );
 }
@@ -603,13 +547,13 @@ static void pause_self()
 {
     PIN_MutexLock( &threads_mtx );
     thread_info_t self = get_self();
-    assert_ns( is_comp_thread( self ) );
+    assert_RFL( is_comp_thread( self ) );
     safe_dec( comp_threads_running );
     safe_inc( comp_threads_waiting );
     if( comp_threads_running == 0 )
     {
         thread_info_t waiting_ev_thread = TQ::peek_front( EV_THREAD );
-        assert_ns( waiting_ev_thread );
+        assert_RFL( waiting_ev_thread );
         PIN_SemaphoreSet( &waiting_ev_thread->sem );
     }
     PIN_SemaphoreClear( &self->sem );
@@ -641,7 +585,7 @@ static void trace_then( UINT32 sz )
         if( ev_thread_effort > ev_thread_effort_limit )
         {
             struct timeval curr_time;
-            assert_ns( !gettimeofday( &curr_time, NULL ) );
+            assert_EF( !gettimeofday( &curr_time, NULL ) );
             if( tv_greater_than( &curr_time, &ev_thread_timeout ) )
             {
                 /* Not an EV thread anymore! */
@@ -653,7 +597,7 @@ static void trace_then( UINT32 sz )
         }
         break;
     default:
-        assert_ns( false );
+        assert_RFL( false );
     }
     // if( self ){}
 }
@@ -664,7 +608,7 @@ static void instrument_trace( TRACE trace, VOID *v )
     thread_info_t self = get_self();
     int entry   = !!( self->flags & FLAG_THREAD_ENTRY ),
         syscall = !!( self->flags & FLAG_SYSCALL );
-    assert_ns( !( entry && syscall ) );
+    assert_RFL( !( entry && syscall ) );
     if( entry )
         TRACE_InsertCall( trace, IPOINT_BEFORE, (AFUNPTR)analyze_thread_entry, IARG_END );
     else if( syscall )
@@ -697,8 +641,8 @@ void handle_thread_fini(
     /* XXX hm... do threads need to make a syscall to fini */
     // --event_threads_not_blocked;
     // LOGF( "N D ready %u  %u\n", self->tid, event_threads_not_blocked );
-    // assert_ns( event_threads_not_blocked < temp );
-    assert_ns( PIN_SetThreadData( thread_info, NULL, PIN_ThreadId() ) );
+    // assert_RFL( event_threads_not_blocked < temp );
+    assert_EF( PIN_SetThreadData( thread_info, NULL, PIN_ThreadId() ) );
     PIN_MutexUnlock( &threads_mtx );
 }
 
@@ -706,7 +650,7 @@ VOID Fini(INT32 code, VOID *v)
 {
     LOGF( "#eof\n" );
     fclose( log_file );
-    assert_ns( PIN_DeleteThreadDataKey( thread_info ) );
+    assert_EF( PIN_DeleteThreadDataKey( thread_info ) );
     PIN_MutexFini( &threads_mtx );
 }
 
@@ -783,7 +727,7 @@ int main(int argc, char *argv[])
 
     log_file = fopen( "strace.out", "w" );
     thread_info = PIN_CreateThreadDataKey( NULL );
-    assert_ns( PIN_MutexInit( &threads_mtx ) );
+    assert_EF( PIN_MutexInit( &threads_mtx ) );
     event_threads_not_blocked = 0;
     TQ::init();
     threads_stopped = false;
@@ -798,10 +742,10 @@ int main(int argc, char *argv[])
     TRACE_AddInstrumentFunction ( instrument_trace,     NULL );
     PIN_AddFiniFunction         (Fini, 0);
 
-    assert_ns( PIN_SemaphoreInit( &watchdog_sem ) );
+    assert_EF( PIN_SemaphoreInit( &watchdog_sem ) );
     watchdog_tid = PIN_SpawnInternalThread(
         watchdog, NULL, 0, &watchdog_utid );
-    assert_ns( watchdog_tid != INVALID_THREADID );
+    assert_RFL( watchdog_tid != INVALID_THREADID );
 
     // Never returns
     PIN_StartProgram();
