@@ -17,9 +17,11 @@
  * - L: "Low". Can be included in production builds.
  */
 
+extern "C" {
 extern void __assert_fail (__const char *__assertion, __const char *__file,
 			   unsigned int __line, __const char *__function)
      __THROW __attribute__ ((__noreturn__));
+}
 
 /* Version 2.4 and later of GCC define a magical variable `__PRETTY_FUNCTION__'
    which contains the name of the function currently being defined.
@@ -38,7 +40,7 @@ extern void __assert_fail (__const char *__assertion, __const char *__file,
 
 #define assert_EF( e, ... ) \
     ({ typeof( e ) x = e; \
-       if( x ) \
+       if( !x ) \
            __assert_fail( __STRING( e ) "(" __VA_ARGS__")", \
                           __FILE__, __LINE__, __ASSERT_FUNCTION ); \
        x; })
@@ -47,7 +49,7 @@ extern void __assert_fail (__const char *__assertion, __const char *__file,
 /* XXX: Should really log, not crash: */
 #define assert_ES( e, ... ) \
     ({ typeof( e ) x = e; \
-       if( x ) \
+       if( !x ) \
            __assert_fail( __STRING( e ) "(" __VA_ARGS__")", \
                           __FILE__, __LINE__, __ASSERT_FUNCTION ); \
        x; })

@@ -34,6 +34,9 @@ DLL_SUFFIX      = .so
 
 # TOOL_CXXFLAGS += -I.
 # TOOL_CXXFLAGS += --std=c++11
+# TOOL_CXXFLAGS += -lc
+
+TOOL_CXXFLAGS += -g
 
 # compile a pintool
 cpintool: $(OBJDIR)$(PINTOOL)$(DLL_SUFFIX)
