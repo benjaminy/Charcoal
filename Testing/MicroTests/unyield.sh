@@ -2,7 +2,7 @@
 make clean
 make simple_unyield_test
 make simple_unyield_test_noyield
-n=10000000
+n=100000000
 numruns=20
 yieldnum=0
 noyieldnum=0
