@@ -1,6 +1,6 @@
-/* Copyright Benjamin Ylvisaker */
-/*
- *  This file contains an ISA-portable PIN tool for tracing system calls
+/* Copyright Benjamin Ylvisaker
+ *
+ * This file contains a pintool for monkeying with thread scheduling
  */
 
 #include <stdlib.h>
@@ -263,12 +263,17 @@ void handle_ctx_change(
 
 static bool __attribute__((unused)) is_ev_thread( thread_info_t t )
 {
-    return t->flags & FLAG_EVENT_HANDLER_STYLE;
+    return !!( t->flags & FLAG_EVENT_HANDLER_STYLE );
 }
 
 static bool is_comp_thread( thread_info_t t )
 {
     return !( t->flags & FLAG_EVENT_HANDLER_STYLE );
+}
+
+static bool making_syscall( thread_info_t t )
+{
+    return !!( t->flags & FLAG_SYSCALL );
 }
 
 /* XXX: Not at all portable */
@@ -706,11 +711,25 @@ void handle_thread_fini(
     PIN_MutexLock( &threads_mtx );
     thread_info_t self = get_self();
     LOGF( "tid: %x thread_fini flags:%x\n", threadIndex, self->flags );
+    if( is_comp_thread( self ) )
+    {
+        if( !making_syscall( self ) )
+            safe_dec( comp_threads_running );
+        /* XXX self cannot possibly be waiting if we're here, right? */
+    }
+    else
+    {
+        if( making_syscall( self ) )
+        {
+        }
+        else
+        {
+        }
+    }
+    /* XXX remove from list(s) */
     PIN_SemaphoreFini( &self->sem );
-    free( self );
-    /* XXX hm... do threads need to make a syscall to fini */
-    // LOGF( "N D ready %u\n", self->tid );
     assert_EF( PIN_SetThreadData( thread_info, NULL, PIN_ThreadId() ) );
+    free( self );
     PIN_MutexUnlock( &threads_mtx );
 }
 
