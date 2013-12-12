@@ -9,7 +9,7 @@ def main():
   for line in f:
     nums.append(float(line))
   pylab.plot(range(1,101), nums, 'mo')
-  pylab.axis([0, 101, 0, 10]) # xmin, xmax, ymin, ymax
+  pylab.axis([0, 101, 4, 6.5]) # xmin, xmax, ymin, ymax
   pylab.xlabel('Iteration')
   pylab.ylabel('Yield time (microsec)')
   pylab.show()
@@ -19,7 +19,7 @@ def main():
   for line in unyield:
     n.append(float(line))
   pylab.plot(range(1,101), n, 'bo')
-  pylab.axis([0, 101, 0, 1]) # xmin, xmax, ymin, ymax
+  pylab.axis([0, 101, 0, .25]) # xmin, xmax, ymin, ymax
   pylab.xlabel('Iteration')
   pylab.ylabel('Yield time (microsec)')
   pylab.show()
