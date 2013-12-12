@@ -27,8 +27,8 @@ activity_create:
 	gcc -g -o activity_create $(FLAGS) activity_create.c
 	./activity_create
 
-unyielding_test:
-	gcc -g -o unyielding_test_exe $(FLAGS) unyielding_test.c
+loop_test:
+	gcc -g -o loop_test_exe $(FLAGS) loop_test.c
 
 timeout:
 	gcc -g -o timeout_test_exe $(FLAGS) timeout_test.c
