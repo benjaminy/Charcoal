@@ -71,6 +71,7 @@ int __charcoal_replace_main( int argc, char **argv )
             buffer_size = atoi(argv[4]);
         }
     }
+    printf("n=%d, m=%d\n", n, m);
     int i;
     __charcoal_activity_t* activities[num_activities];
     int args[3];
