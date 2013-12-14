@@ -2,17 +2,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-
-#undef strcpy
-
-
-char *strcpy( char *s1, const char *s2 )
-{
-    char *s1cpy = s1;
-    while( *s2 ) *s1++ = *s2++;
-    *s1 = '\0';
-    return s1cpy;
-}
+#include <math.h>
 
 void instantiate_buffer(char* s1, int size){
     int i;
@@ -59,15 +49,20 @@ int __charcoal_replace_main( int argc, char **argv )
 {
     int n = 100;
     int m = 100;
-    int buffer_size = 1024;
+    int buffer_size = 128;
     int num_activities = 2;
-    
+    void* function = loop_strcpy;
 
     if (argc > 3){
         n = atoi(argv[1]);
         m = atoi(argv[2]); //Second argument is inner loop size
         num_activities = atoi(argv[3]);
         if(argc > 4){
+            if(strcmp(argv[4], "memcpy")==0){
+                function = loop_memcpy;
+            }
+        }
+        if(argc > 5){
             buffer_size = atoi(argv[4]);
         }
     }
@@ -77,7 +72,7 @@ int __charcoal_replace_main( int argc, char **argv )
     int args[3];
     args[0] = n; args[1] = m; args[2] = buffer_size;
     for( i = 0; i < num_activities; i++){
-        activities[i] = __charcoal_activate(loop_strcpy, (void*) args );
+        activities[i] = __charcoal_activate(function, (void*) args );
         if(i==0){
             activities[i]->container->max_time = 0; //data races?
         }

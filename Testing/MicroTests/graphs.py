@@ -3,6 +3,36 @@
 import pylab
 
 def main():
+  strcpy = open('loop_strcpy_results.csv', 'rb')
+  m = []
+  t=[]
+  for line in strcpy.readlines()[1:]:
+    entry = line.split(',')
+    m.append(float(entry[1]))
+    t.append(float(entry[2]))
+
+  pylab.plot(m, t, 'bo')
+  pylab.axis([0, 1000000, 0, .2]) # xmin, xmax, ymin, ymax
+  pylab.semilogx()
+  pylab.xlabel('Number of inner loop iterations')
+  pylab.ylabel('Time')
+  pylab.show()
+  
+  memcpy = open('loop_memcpy_results.csv', 'rb')
+  m = []
+  t=[]
+  for line in memcpy.readlines()[1:]:
+    entry = line.split(',')
+    m.append(float(entry[1]))
+    t.append(float(entry[2]))
+
+  pylab.plot(m, t, 'bo')
+  pylab.axis([0, 1000000, 0, .2]) # xmin, xmax, ymin, ymax
+  pylab.semilogx()
+  pylab.xlabel('Number of inner loop iterations')
+  pylab.ylabel('Time')
+  pylab.show()
+ 
 
   f = open('simple-yield.txt', 'rb')
   nums = []
@@ -24,8 +54,6 @@ def main():
   pylab.ylabel('Yield time (microsec)')
   pylab.show()
  
-
-
   return 0
 
 
