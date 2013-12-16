@@ -157,21 +157,44 @@ int __charcoal_yield()
     return rv;
 }
 
-int __charcoal_timeout_yield()
+int __charcoal_timeout_yield(){
+    int rv = 0;
+    __charcoal_activity_t *foo = __charcoal_activity_self();
+
+    foo->yield_attempts++;
+    int unyielding = OPA_load_int( &(foo->container->unyielding) );
+    int timeout = OPA_load_int( &(foo->container->timeout) );
+    if( unyielding == 0 && timeout==1 )
+    {
+        __charcoal_activity_t *to;
+        /* XXX error check */
+        __charcoal_choose_next_activity( &to );
+        if( to )
+        {
+            int rc;
+            if( ( rc = __charcoal_sem_post( &to->can_run ) ) )
+            {
+                return rc;
+            }
+            return __charcoal_sem_wait( &foo->can_run );
+        }
+        else
+            return 0;
+    }
+
+    return rv;
+}
+
+int __charcoal_timeout_yield_bad()
 {
     int rv = 0;
     __charcoal_activity_t *foo = __charcoal_activity_self();
     int unyielding = OPA_load_int( &(foo->container->unyielding) );
     assert(unyielding >= 0);
-    //double time_difference = (double)(time(&(foo->container->timer)) - foo->container->start_time);
-    //printf("Start time: %f\n", (double) foo->container->start_time);
-    //printf("Current time: %f\n", (double) time(&(foo->container->timer)));
-    //printf("Time difference: %f\n", time_difference);
+
     int timed_out = (double)(time(&(foo->container->timer)) -
-            foo->container->start_time) > foo->container->max_time;
-    signal(SIGALRM, timeout_signal_handler);
-    //int received_signal = 0; // TODO why exactly do we need signals?
-    //printf("Unyield depth: %d\n", unyielding);
+            foo->container->start_time) > foo->container->max_time;  //what i don't even
+
     if( unyielding == 0 && timed_out )
     {
         __charcoal_activity_t *to;
@@ -189,10 +212,7 @@ int __charcoal_timeout_yield()
         else
             return 0;
     }
-    /*if (unyielding > 0)
-    {
-        OPA_decr_int(&foo->container->unyielding);
-    }*/
+    
     return rv;
 }
 
@@ -230,7 +250,7 @@ static void *__charcoal_activity_entry_point( void *p )
     //printf( "Starting activity %p\n", _self );
     // SIGNAL HANDLER
     signal(SIGALRM, timeout_signal_handler);
-    _self->container->start_time = time(&(_self->container->timer));
+    _self->container->start_time = time(&(_self->container->timer)); //not needed
     ABORT_ON_FAIL( pthread_setspecific( __charcoal_self_key, _self ) );
     ABORT_ON_FAIL( __charcoal_sem_wait( &_self->can_run ) );
     _self->f( _self->args );
