@@ -12,10 +12,10 @@ def main():
     t.append(float(entry[2]))
 
   pylab.plot(m, t, 'bo')
-  pylab.axis([0, 1000000, 0, .2]) # xmin, xmax, ymin, ymax
+  pylab.axis([0, 1000000, 0, .9]) # xmin, xmax, ymin, ymax
   pylab.semilogx()
   pylab.xlabel('Number of inner loop iterations')
-  pylab.ylabel('Time')
+  pylab.ylabel('% overhead')
   pylab.show()
   
   memcpy = open('loop_memcpy_results.csv', 'rb')
@@ -27,10 +27,10 @@ def main():
     t.append(float(entry[2]))
 
   pylab.plot(m, t, 'bo')
-  pylab.axis([0, 1000000, 0, .2]) # xmin, xmax, ymin, ymax
+  pylab.axis([0, 1000000, 0, .9]) # xmin, xmax, ymin, ymax
   pylab.semilogx()
   pylab.xlabel('Number of inner loop iterations')
-  pylab.ylabel('Time')
+  pylab.ylabel('% overhead')
   pylab.show()
  
 

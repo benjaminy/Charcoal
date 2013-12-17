@@ -24,7 +24,9 @@ void loop_strcpy( void *a )
             //printf("i=%d, j=%d\n", i, j);
             strcpy(s2, s1);
         }
-        __charcoal_yield();
+        if(args[3]){
+            __charcoal_yield();
+        }
     }
 }
 
@@ -41,7 +43,9 @@ void loop_memcpy( void *a )
             //printf("i=%d, j=%d\n", i, j);
             memcpy(s1, s2, args[2]);
         }
-        __charcoal_yield();
+        if(args[3]){
+            __charcoal_yield();
+        }
     }
 }
 
@@ -52,6 +56,7 @@ int __charcoal_replace_main( int argc, char **argv )
     int buffer_size = 128;
     int num_activities = 2;
     void* function = loop_strcpy;
+    int yield = 1;
 
     if (argc > 3){
         n = atoi(argv[1]);
@@ -63,14 +68,19 @@ int __charcoal_replace_main( int argc, char **argv )
             }
         }
         if(argc > 5){
-            buffer_size = atoi(argv[4]);
+            buffer_size = atoi(argv[5]);
+        }
+        if(argc > 6){
+            if(strcmp(argv[6], "noyield")==0){
+                yield = 0;
+            }
         }
     }
     printf("n=%d, m=%d\n", n, m);
     int i;
     __charcoal_activity_t* activities[num_activities];
-    int args[3];
-    args[0] = n; args[1] = m; args[2] = buffer_size;
+    int args[4];
+    args[0] = n; args[1] = m; args[2] = buffer_size; args[3] = yield;
     for( i = 0; i < num_activities; i++){
         activities[i] = __charcoal_activate(function, (void*) args );
         if(i==0){
