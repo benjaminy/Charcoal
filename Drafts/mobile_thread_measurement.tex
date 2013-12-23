@@ -2,10 +2,56 @@
 
 \begin{abstract}
 
-Recently multithreaded programming has gone mainstream.  There are two
-primary reasons for this shift: The first is the well-known
-commoditization of multi-processor systems (i.e. multi-cores).  The
-second has to do with using threads for interactive programming.
-Applications have become more richly
+Multithreading is now used in most modern mainstream software \[citation
+needed\].  In this paper we report on measurements and analyses of the
+threading behavior of dozens of popular applications running on six
+popular mobile and desktop platforms.  Relative to previous measurement
+studies of threading behavior, we make two primary contributions: We
+perform measurements on three popular mobile platforms; previous studies
+were conducted only on desktops and servers.  We measure and analyze the
+use of threads as event handlers.
+
+Much of the research literature on multithreading focuses exclusively on
+the use of threads to keep multi-processor systems busy.  That is, the
+extent to which applications exploit thread level parallelism (TLP).
+Several previous studies have shown that most popular applications have
+precious little TLP.  We quantify the other use of threads: asynchronous
+event handling.
+
+blah lots of threads just sit there
+
+Our headline results: Mobile apps have no more TLP than their desktop
+cousins.  The average in our study was 1.X.
+
+Most threads are event handler threads.  9X\% of the time when a thread
+starts running, it blocks again within Y microseconds
+
+Might have some implications for schedulers.
+
+
+Multithreaded programming has gone mainstream.  There are two primary
+reasons for this shift, which correspond to the two distinct uses of
+threads: First, threads are used to take advantage of the processor
+parallelism available on multi-core processors.  Multi-cores are found
+in all commodity computing platforms, with core counts predicted to rise
+into the dozens in low-cost devices in the near future.  Second, threads
+are used to allow applications to remain responsive while performing (or
+waiting to perform) I/O operations.  Modern mainstream applications have
+more of this kind of interactivity than their peers a decade ago because
+of the increasing use of networked services and increasing richness of
+human interface modalities, especially on mobile platforms.
+
+In this paper we report on how modern applications--both desktop and
+mobile--are using threads.  We measured both parallelism and the use of
+threads as I/O event handlers.  We find that few applications use more
+than a very modest amount of thread level parallelism, which confirms
+and extends previous studies.  On the other hand, we find that most
+applications use threads as event handlers.  In some cases, applications
+have dozens of threads waiting on I/O events simulatenously.
+
+The bulk of this paper is a detailed report on the measurements that we
+took regarding multithreading behavior.  We also offer some suggestions
+about how systems could be adapted to better support the way
+applications use threads.
 
 \end{abstract}
