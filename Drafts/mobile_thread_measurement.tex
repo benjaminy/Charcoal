@@ -1,6 +1,146 @@
+\documentclass[11pt]{sigplanconf}
 
+% The following \documentclass options may be useful:
+
+% preprint      Remove this option only once the paper is in final form.
+% 10pt          To set in 10-point type instead of 9-point.
+% 11pt          To set in 11-point type instead of 9-point.
+% authoryear    To obtain author/year citation style instead of numeric.
+
+\begin{document}
+
+\special{papersize=8.5in,11in}
+\setlength{\pdfpageheight}{\paperheight}
+\setlength{\pdfpagewidth}{\paperwidth}
+
+\conferenceinfo{CONF 'yy}{Month d--d, 20yy, City, ST, Country} 
+\copyrightyear{2014} 
+\copyrightdata{978-1-nnnn-nnnn-n/yy/mm} 
+\doi{nnnnnnn.nnnnnnn}
+
+\titlebanner{Preprint.  Please do not redistribute}        % These are ignored unless
+\preprintfooter{Preprint.  Please do not redistribute}   % 'preprint' option specified.
+
+\title{Multithreading in Modern Mobile and Desktop Applications}
+\subtitle{Not Much Thread-Level Parallelism; Lots of Event Handling}
+
+\authorinfo{Name1}
+           {Affiliation1}
+           {Email1}
+\authorinfo{Name2\and Name3}
+           {Affiliation2/3}
+           {Email2/3}
+
+\maketitle
 
 \begin{abstract}
+This is the text of the abstract.
+\end{abstract}
+
+\category{CR-number}{subcategory}{third-level}
+
+% general terms are not compulsory anymore, 
+% you may leave them out
+\terms
+term1, term2
+
+\keywords
+keyword1, keyword2
+
+\section{Introduction}
+
+Multithreading is a commonplace feature of modern software.  Almost all
+popular mobile and desktop applications create more than one thread at
+some point.  Some applications keep dozens of threads alive.
+
+It is a common misconception that the primary purpose of threads in
+modern software is taking advantage of the parallelism available in
+multicore processors.  In fact, previous studies have found that most
+applications exhibit very little thread-level parallelism (TLP).
+
+This gap between the number of threads and the amount of TLP is
+mysterious.  Why are applications creating all those threads, if they
+are not going to take advantage of the available processors?  We find
+that the majority of threads created by modern applications are what we
+call \emph{event handler threads}.  Event handler (EH) threads spend the
+vast majority of their lives blocked, waiting for some external event to
+occur.  When the event happens, an EH thread becomes active very
+briefly, then goes back to waiting for the next event.  Note that EH
+threads are not structurally different from ``regular''
+(i.e. long-running \emph{computation}) threads.  EH threads are defined
+by a particular behavioral pattern.
+
+This paper makes two contributions to the study of how real software
+uses threads.  First, we extend previous TLP studies to mobile
+platforms.  We find that mobile applications exhibit marginally more TLP
+than desktop applications, but still very little.  Second, we quantify
+the extent to which applications use the event handler thread pattern.
+
+We are specifically \emph{not} interested in scientific and media
+applications.  It is well known that many applications in these domains
+can be highly parallelized and are typically not particularly
+interactive.  We are interested in the behavior of mainstream
+applications and the implications for architectures, system software and
+programming languages/frameworks.
+
+\section{Background and Related Work}
+
+\section{Methods}
+
+Use dynamic tracing tools to observe thread scheduling events.
+
+\begin{table*}
+
+\begin{tabular}{l|l|l}
+System(s) & Tracing tool & Notes \\
+\hline
+Windows and Windows Phone & ETW (Event Tracing for Windows) & \\
+Mac OS X and Linux        & DTrace                          & Not official on Linux \\
+iOS                       & Instruments (built on DTrace)   & \\
+Android                   & Systrace                        & 
+\end{tabular}
+
+\end{table*}
+
+\section{Test Applications}
+
+\section{Results}
+
+\section{Discussion}
+
+It appears that on mobile platforms the system does more work on behalf
+of the applications.  We speculate that this is largely a result of
+different security architectures.  Mobile operating systems give
+applications less direct access to system services in an effort to
+improve overall security.  One of the consequences of this is that it is
+harder to properly account for which applications are using system
+resources.  It may be useful to define an API to expose this
+information.
+
+Might have some implications for schedulers.
+
+\section{Conclusions}
+
+We explored two themes in this paper: most modern applications, both
+mobile and desktop use very little thread-level parallelism.  As other
+researchers have observed, unless this changes there will be very little
+demand for processors with a large number of cores (``many-cores'').  We
+believe that creative programmers would happily use more processor
+power, if the price in development effort were right.  This suggests
+that current tools for parallel programming do not make it sufficiently
+appealing to the majority of developers.
+
+The second theme is the event handler thread pattern.  We have shown
+that EH threads are used pervassively in modern software, yet they have
+received scant attention in the research literature.  It is possible
+that applications would be better off using some primitive other than
+threads (event loops, actors, cooperative threads, coroutines, \ldots).
+It is also possible that system software developers could improve the
+performance and/or bug resistance of applications by optimizing for
+event handling, instead of only maximzing thread throughput.
+
+\section{Acknowledgments}
+
 
 Multithreading is now used in most modern mainstream software \[citation
 needed\].  In this paper we report on measurements and analyses of the
@@ -26,7 +166,6 @@ cousins.  The average in our study was 1.X.
 Most threads are event handler threads.  9X\% of the time when a thread
 starts running, it blocks again within Y microseconds
 
-Might have some implications for schedulers.
 
 
 Multithreaded programming has gone mainstream.  There are two primary
@@ -54,4 +193,22 @@ took regarding multithreading behavior.  We also offer some suggestions
 about how systems could be adapted to better support the way
 applications use threads.
 
-\end{abstract}
+\acks
+
+Acknowledgments, if needed.
+
+% We recommend abbrvnat bibliography style.
+
+\bibliographystyle{abbrvnat}
+
+% The bibliography should be embedded for final submission.
+
+\begin{thebibliography}{}
+\softraggedright
+
+\bibitem[Smith et~al.(2009)Smith, Jones]{smith02}
+P. Q. Smith, and X. Y. Jones. ...reference text...
+
+\end{thebibliography}
+
+\end{document}
