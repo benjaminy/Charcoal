@@ -143,8 +143,8 @@ that some processing in processes not owned by a particular application
 is actually done ``on behalf'' of that application.
 
 For each test run we calculate a colletion of values $c_i$, the amount
-of time that $i$ processors (cores) were actively used by an application
-thread.  We calculate TLP as follows.
+of time that $i$ processors (cores) were actively used by any
+application thread.  We calculate TLP as follows.
 
 \begin{equation}
 \mathrm{TLP} = \frac{\sum_{i=1}^N c_ii}{\sum_{i=1}^N c_i} \nonumber
