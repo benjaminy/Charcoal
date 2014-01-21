@@ -14,6 +14,16 @@
 <h3>... in 100 lines or less ... or more</h3>
 </header>
 
+<div>
+[tl;dr] The main frameworks for writing interactive software (threads,
+event loops) have annoying problems.  There are more exotic alternatives
+(cooperative threads, coroutines, generators), but they have more
+obscure problems.  This project is an exploration of a new idea called
+pseudo-preemptive threads, a.k.a. <em>activities</em>.  Under the hood
+activities look just like cooperative threads, but the compiler throws
+in lots of yields
+</div>
+
 <p>Once upon a time, all software was functions.  By <em>once upon a
 time</em> I mean around the dawn of modern computing in the 30s, 40s and
 50s.  By <em>functions</em> I mean that the interface between a program

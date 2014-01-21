@@ -11,6 +11,8 @@
 
 <div class="main_div">
 
+<!-- http://tirania.org/blog/archive/2013/Aug-15.html -->
+
 <h1>Multi-DNS Lookup</h1>
 
 <p>The first example is a multi-DNS lookup procedure.  This example is
