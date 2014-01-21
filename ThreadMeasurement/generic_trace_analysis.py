@@ -1,8 +1,8 @@
-# Header stuff
+# TODO: Header stuff
 
-# Trace file should be CSV formatted.  Each field should be enclosed in
-# double quotes and no quotes should appear within each line.  The
-# fields (in the order in which they much appear)
+# This program reads trace files that are CSV formatted.  Each field
+# should be enclosed in double quotes and no quotes should appear within
+# each line.  The fields (in the order in which they much appear)
 # - Timestamp
 #   - seconds
 #   - milliseconds
@@ -26,44 +26,55 @@ class Process(object):
 class Thread(object):
     pass
 
-next_id = 1
+class Event(object):
+    pass
+
+class Processor(object):
+    pass
+
+next_id     = 1
 process_ids = {}
-processes = {}
-threads = {}
+processes   = {}
+threads     = {}
+
+def get_fresh_id():
+    global next_id
+    id = next_id
+    next_id = next_id + 1
+    return id
 
 def get_process(process_name):
-    global next_id
     global process_ids
     global processes
 
     if process_name in process_ids:
         process = processes[process_ids[process_name]]
     else:
-        process = Process()
-        process.id = next_id
-        next_id = next_id + 1
+        process                   = Process()
+        process.id                = get_fresh_id()
         process_ids[process_name] = process.id
-        process.name = process_name
-        process.threads = []
-        process.thread_ids = {}
-        processes[process.id] = process
+        process.name              = process_name
+        process.threads           = []
+        process.thread_ids        = {}
+        process.cpu_time          = 0
+        processes[process.id]     = process
     return process
 
 def get_thread(process, thread_name):
-    global next_id
     global threads
 
     if thread_name in process.thread_ids:
         thread = threads[process.thread_ids[thread_name]]
     else:
-        thread = Thread()
-        thread.id = next_id
-        next_id = next_id + 1
+        thread                          = Thread()
+        thread.id                       = get_fresh_id()
+        thread.name                     = thread_name
         process.thread_ids[thread_name] = thread.id
+        thread.process                  = process
+        thread.events                   = []
+        thread.cpu_time                 = 0
+        threads[thread.id]              = thread
         process.threads.append(thread)
-        thread.process = process
-        thread.events = []
-        threads[thread.id] = thread
     return thread
 
 def parse_timestamp(row_csv):
@@ -73,8 +84,8 @@ def parse_timestamp(row_csv):
     timestamp_ns = int(row_csv[3])
     # XXX: numerical overflow? I guess Python will use 64 bits automagically
     timestamp = timestamp_s * 1000 + timestamp_ms
-    timestamp = timestamp * 1000 + timestamp_us
-    return timestamp * 1000 + timestamp_ns
+    timestamp = timestamp   * 1000 + timestamp_us
+    return      timestamp   * 1000 + timestamp_ns
 
 def parse_event_kind(name):
     if name == "create":
@@ -83,7 +94,7 @@ def parse_event_kind(name):
         event_kind = EVKIND_DESTROY
     elif name == "start":
         event_kind = EVKIND_START
-    elif name == "destroy":
+    elif name == "stop":
         event_kind = EVKIND_STOP
     else:
         raise Exception('weird event kind', name)
@@ -97,177 +108,60 @@ def main():
                       help="If present, consider all processes to be part of the application")
     argp.add_argument('trace_file', metavar='T', type=file,
                       help='Name of the input trace file')
-
     args = argp.parse_args()
 
     trace_reader = csv.reader(args.trace_file)
 
-    next_process_id = 1
-    next_thread_id = 1
+    active_intervals = []
 
+    running_thread_count = 0
+
+    event_counter = 0
+    timestamp_min = 0
+    timestamp_max = 0
+    cpu_time_total = 0
     for row_csv in trace_reader:
         # print row_csv
-        process = get_process(row_csv[4])
-        thread  = get_thread(process, row_csv[5])
-        core_id = int(row_csv[6])
-        timestamp = parse_timestamp(row_csv)
-        event_kind = parse_event_kind(row_csv[7])
-        event = (timestamp, event_kind)
+        process         = get_process(row_csv[4])
+        thread          = get_thread(process, row_csv[5])
+        event           = Event()
+        event.timestamp = parse_timestamp(row_csv)
+        event.kind      = parse_event_kind(row_csv[7])
+        event.core_id   = int(row_csv[6])
+        event.thread    = thread
 
-        if process.name in process_dict:
-            thread_dict = process_dict[process_name]
-            if thread_name in thread_dict:
-                thread = thread_dict[thread_name]
-                prev_event = thread[len(thread)-1]
-                thread.append(event)
-                # check compatibility of event and prev_event
-            else:
-                thread_dict[thread_name] = [event]
-        else:
-            process_dict[process_name] = {thread_name : [event]}
+        if event_counter == 0 or event.timestamp < timestamp_min:
+            timestamp_min = event.timestamp
+        if event_counter == 0 or event.timestamp > timestamp_max:
+            timestamp_max = event.timestamp
 
-    #for line in core0:
-    #    print line
-    #
-    #print
-    #for line in core1:
-    #    print line
-        
-    core0 = consolidateDurations(core0)
-    core1 = consolidateDurations(core1)
-    
-    TLP = calculateTLP(core0, core1)
-    print "TLP:", TLP
-    
-    
-    
-def readTimeSlices(cpuFile):
-    infile = open(cpuFile, 'r')
-    timeSlices = []
-    for line in infile.readlines()[1:]:
-        line = line.split(',')
-        
-        timePieces = line[1].split(':')
-        timePieces[1] = ''.join([timePieces[1][0:6],timePieces[1][7:10]])
-        time = int(timePieces[0][1:])*60+float(timePieces[1])
-        
-        timeSlices.append([time, int(line[3][1:-1]), line[4][1:-1]])
-    
-    infile.close()
-    return timeSlices
-    
-    
-def splitSlicesByCore(slices):
-    core0 = []
-    core1 = []
-    
-    for slice in slices:
-        if slice[1] == 0:
-            core0.append(slice)
-        else:
-            core1.append(slice)
-    
-    return [core0, core1]
+        if event.kind == EVKIND_CREATE and len(thread.events) > 0:
+            raise Exception('event before create', thread.name)
 
+        if event.kind == EVKIND_START:
+            if running_thread_count == 0:
+                pass
+            running_thread_count = running_thread_count + 1
 
-def convertTimestampsToDurations(slices):
-    for i in range(len(slices)-1):
-        slices[i][0] = round(1000*(slices[i+1][0]-slices[i][0])/1.024, 2)
-        #divide by 2^10/1000 = 1.024 to compensate for systematic sampling error
-    slices[len(slices)-1][0] = 1.0
-    
-    
-def insertIdleTimes(slices, threshold):
-    newSlices = []
-    for i in range(len(slices)):
-        nextSlice = list(slices[i])
-        
-        if nextSlice[0] > threshold:
-            nextSlice[0] = 1.0
-            idleSlice = [round(slices[i][0]-1.0, 2), slices[i][1], "idle"]
-            newSlices.append(nextSlice)
-            newSlices.append(idleSlice)
-            
-        else:
-            newSlices.append(nextSlice)
-            
-    return newSlices
-    
+        if len(thread.events) > 0:
+            prev_event = thread.events[len(thread.events) - 1]
+            if event.kind == EVKIND_STOP:
+                active_intervals.append(prev_event, event)
+                cpu_time = event.timestamp - prev_event.timestamp
+                cpu_time_total = cpu_time_total + cpu_time
+                thread.cpu_time = thread.cpu_time + cpu_time
+                p = thread.process
+                if p != prev_thread.process:
+                    raise Exception('process mismatch', p.name)
+                p.cpu_time = p.cpu_time + cpu_time
 
-def handleIdleTime(slices, mainProcess, mode):
-    if mode == 1:
-        for slice in slices:
-            if slice[2] != mainProcess:
-                slice[2] = 'idle'
-    
-    else:
-        for slice in slices:
-            if slice[2] != 'idle':
-                slice[2] = mainProcess
+        thread.events.append(event)
+        event_counter = event_counter + 1        
 
+    for interval in active_intervals:
+        pass
 
-def consolidateDurations(slices):
-    duration = 0
-    currentProcess = slices[0][2]
-    consolidatedSlices = []
-    
-    for slice in slices:
-        if slice[2] == currentProcess:
-            duration += slice[0]
-            
-        else:
-            consolidatedSlices.append([round(duration, 2), slice[1], currentProcess])
-            currentProcess = slice[2]
-            duration = slice[0]
+    for id, process in processes.items():
+        print process.name, " ", (process)
 
-    consolidatedSlices.append([round(duration, 2), slice[1], currentProcess])
-    return consolidatedSlices
-
-
-def calculateTLP(core0, core1):
-    index0 = 0
-    index1 = 0
-    
-    time0 = 0
-    time1 = 0
-    currentTime = 0
-    
-    total1 = 0
-    total2 = 0
-    
-    while index0 < len(core0) and index1 < len(core1):
-        nextCore0Time = time0+core0[index0][0] #absolute time of end of next section
-        nextCore1Time = time1+core1[index1][0]
-        
-        numberActive = (core0[index0][2] != 'idle') + (core1[index1][2] != 'idle')
-                
-        if nextCore0Time < nextCore1Time:
-            if numberActive > 0:
-                if numberActive == 1:
-                    total1 += nextCore0Time-currentTime
-                else:
-                    total2 += nextCore0Time-currentTime
-                    
-            currentTime = nextCore0Time
-            time0 = nextCore0Time
-            index0 += 1
-                        
-        else:
-            if numberActive > 0:
-                if numberActive == 1:
-                    total1 += nextCore1Time-currentTime
-                else:
-                    total2 += nextCore1Time-currentTime
-                    
-            currentTime = nextCore1Time
-            time1 = nextCore1Time
-            index1 += 1
-            
-            if nextCore0Time == nextCore1Time:
-                time0 = nextCore0Time
-                index0 += 1
-                            
-    print total1, total2
-    return (total1+2*total2)/(total1+total2)
-    
 main()
