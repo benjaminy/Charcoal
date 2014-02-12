@@ -1,0 +1,92 @@
+The traces are organized in a directory heirarchy that looks like this:
+
+iOS/
+Android/
+Windows Phone/
+MacOS/
+Linux/
+Windows/
+    native_to_generic_trace.py
+    notes.txt
+        "We used system(s) XYZ"
+    Productivity/
+    Media/
+    Games/
+        Gears of War/
+        Tetris/
+        Minesweeper/
+            taskA.txt
+            taskB.txt
+            taskC.txt
+                "We clicked here and did that and blah"
+            native_trace_A_1
+            native_trace_A_2
+            native_trace_A_3
+            generic_trace_A_1.sqlite3
+            generic_trace_A_2.sqlite3
+            generic_trace_A_3.sqlite3
+
+The generic traces have a subset of the information from the native
+traces, so it's kind of bad practice to retain them both.  However, I
+definitely want to keep the native traces so we can go back for more
+information if we want to.  And I think it's a good idea to store the
+generic traces, because I anticipate doing a fair amount of analysis
+work on the data and it would be really inefficient to regenerate the
+generic traces over and over.
+
+Schema for the generic traces:
+
+Tables:
+- events
+- threads
+- processes
+- kinds
+
+events table:
+-        id : KEY (ideally these will be in the order the events appear in the native trace)
+-   process : INTEGER (ref to process table)
+-    thread : INTEGER (ref to thread table)
+-      core : INTEGER
+-      kind : INTEGER (ref to event kind table)
+- timestamp : INTEGER (in nanoseconds)
+
+threads table:
+-      id : KEY
+-    name : TEXT
+- process : INTEGER (ref to process table)
+
+processes table:
+-            id : KEY
+-          name : TEXT
+- friendly_name : TEXT
+
+kinds table:
+-   id : KEY
+- name : TEXT (initially just "start" and "stop")
+
+
+[begin obsolete ramblings ...]
+
+The format for the event traces:
+
+Timestamp - It doesn't matter what the initial time is.  Relative is all we care about.
+Nanosecond resolution would be lovely, but I don't think Instruments or Ftrace does it;
+microsecond is okay.
+
+Format: MM:SS.mmm.uuu.nnn
+
+Thread.
+
+Process.
+
+If the trace tool in question doesn't have separate thread and process names, just duplicate.
+
+Core.  Format: 0-N
+
+
+Instruments example:
+
+#,Timestamp,Thread,Process,Core,Time,State,Reason,Priority
+"4","00:00.097.311","<Unnamed Thread> 0x710"," ","0","6.34 µs","Supervisor","System trap (start)",0
+
+Possible values for "State": Blocked, Interrupt, Preempted, Runnable, Running, 

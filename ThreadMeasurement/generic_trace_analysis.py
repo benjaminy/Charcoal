@@ -2,7 +2,7 @@
 
 # This program reads trace files that are CSV formatted.  Each field
 # should be enclosed in double quotes and no quotes should appear within
-# each line.  The fields (in the order in which they much appear)
+# a field.  The fields (in the order in which they much appear)
 # - Timestamp
 #   - seconds
 #   - milliseconds
@@ -24,6 +24,9 @@ class Process(object):
     pass
 
 class Thread(object):
+    pass
+
+class RawEvent(object):
     pass
 
 class Event(object):
@@ -89,15 +92,18 @@ def parse_timestamp(row_csv):
 
 def parse_event_kind(name):
     if name == "create":
-        event_kind = EVKIND_CREATE
+        return EVKIND_CREATE
     elif name == "destroy":
-        event_kind = EVKIND_DESTROY
+        return EVKIND_DESTROY
     elif name == "start":
-        event_kind = EVKIND_START
+        return EVKIND_START
     elif name == "stop":
-        event_kind = EVKIND_STOP
+        return EVKIND_STOP
     else:
         raise Exception('weird event kind', name)
+
+def compare_timestamps(x,y):
+    return x.timestamp - y.timestamp
 
 def main():
     argp = argparse.ArgumentParser(description="""Thread analyzer command line parser.  The format is: ...
@@ -111,57 +117,94 @@ def main():
     args = argp.parse_args()
 
     trace_reader = csv.reader(args.trace_file)
+    # It seems possible that the events will not be in chronological
+    # order, so do a shallow parse then sort them by timestamp
+    raw_events = []
+    for row_csv in trace_reader:
+        # print row_csv
+        raw_event              = RawEvent()
+        raw_event.timestamp    = parse_timestamp(row_csv)
+        raw_event.process_name = row_csv[4]
+        raw_event.thread_name  = row_csv[5]
+        raw_event.core         = int(row_csv[6])
+        raw_event.kind         = parse_event_kind(row_csv[7])
+        raw_events.append(raw_event)
+
+    raw_events_chronological = sorted(raw_events, cmp=compare_timestamps)
 
     active_intervals = []
 
-    running_thread_count = 0
-
-    event_counter = 0
-    timestamp_min = 0
-    timestamp_max = 0
+    event_counter  = 0
+    timestamp_min  = raw_events_chronological[0].timestamp
+    timestamp_max  = raw_events_chronological[-1].timestamp
+    timestamp_prev = 0
     cpu_time_total = 0
-    for row_csv in trace_reader:
-        # print row_csv
-        process         = get_process(row_csv[4])
-        thread          = get_thread(process, row_csv[5])
+    tlp_accum      = {}
+    processors     = {}
+    for raw_event in raw_events_chronological:
+        process         = get_process(raw_event.process_name)
+        thread          = get_thread(process, raw_event.thread_name)
         event           = Event()
-        event.timestamp = parse_timestamp(row_csv)
-        event.kind      = parse_event_kind(row_csv[7])
-        event.core_id   = int(row_csv[6])
+        event.timestamp = raw_event.timestamp
+        event.kind      = raw_event.kind
+        event.core_id   = raw_event.core
         event.thread    = thread
 
-        if event_counter == 0 or event.timestamp < timestamp_min:
-            timestamp_min = event.timestamp
-        if event_counter == 0 or event.timestamp > timestamp_max:
-            timestamp_max = event.timestamp
+        active_core_count = len(processors)
+        if event_counter != 0:
+            interval_len = event.timestamp - timestamp_prev
+            if not active_core_count in tlp_accum:
+                tlp_accum[active_core_count] = 0
+            tlp_accum[active_core_count] += interval_len
+
+        if event.kind == EVKIND_STOP:
+            if event.core_id in processors:
+                # TODO: check that it's the right threads
+                del processors[event.core_id]
+            else:
+                # weird, but okay I guess
+                pass
+
+        if event.kind == EVKIND_START:
+            processors[event.core_id] = event
 
         if event.kind == EVKIND_CREATE and len(thread.events) > 0:
             raise Exception('event before create', thread.name)
 
-        if event.kind == EVKIND_START:
-            if running_thread_count == 0:
-                pass
-            running_thread_count = running_thread_count + 1
-
         if len(thread.events) > 0:
             prev_event = thread.events[len(thread.events) - 1]
             if event.kind == EVKIND_STOP:
-                active_intervals.append(prev_event, event)
+                active_intervals.append((prev_event, event))
                 cpu_time = event.timestamp - prev_event.timestamp
                 cpu_time_total = cpu_time_total + cpu_time
                 thread.cpu_time = thread.cpu_time + cpu_time
                 p = thread.process
-                if p != prev_thread.process:
+                if p != prev_event.thread.process:
                     raise Exception('process mismatch', p.name)
                 p.cpu_time = p.cpu_time + cpu_time
 
         thread.events.append(event)
-        event_counter = event_counter + 1        
+        timestamp_prev = event.timestamp
+        event_counter = event_counter + 1
+
+    tlp = calculate_tlp(tlp_accum)
+
 
     for interval in active_intervals:
         pass
 
     for id, process in processes.items():
         print process.name, " ", (process)
+
+def calculate_tlp(data):
+    tlp_numerator = 0
+    tlp_denominator = 0
+    for core_count, time in data.items():
+        tlp_numerator += time * core_count
+        if core_count > 0:
+            tlp_denominator += time
+        print core_count, time
+
+    print "TLP:", float(tlp_numerator) / tlp_denominator
 
 main()
