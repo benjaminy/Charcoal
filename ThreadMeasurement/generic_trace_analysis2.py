@@ -7,6 +7,8 @@
 
 import argparse, sqlite3
 
+import matplotlib.pyplot as plt
+
 class Process(object):
     pass
 
@@ -129,9 +131,15 @@ def main():
                 del cores[core]
         elif event_kind == 1:
             cores[core] = timestamp
-        print row
+        # print row
     def compare_fst((a1,b1), (a2, b2)):
-        return a1 - a2
+        diff = a1 - a2
+        if diff > 0:
+            return 1
+        elif diff < 0:
+            return -1
+        else:
+            return 0
     active_intervals_sorted = sorted(active_intervals, cmp=compare_fst)
     print len(active_intervals_sorted)
     total = 0
@@ -139,13 +147,28 @@ def main():
         total += ai
     i = 0
     foo = 0
+    ais = []
+    blars = []
+    shmoos = []
     for (ai,t) in active_intervals_sorted:
         i += 1
         foo += ai
-        print ("%5.1f  %5.1f  %12d" % (100.0*i/len(active_intervals), 100.0*foo/total, ai)),
+        # print ("%5.1f  %5.1f  %12d" % (100.0*i/len(active_intervals), 100.0*foo/total, ai)),
         (tname, pid) = threads[t]
         (pname, pname2) = processes[pid]
-        print ('%8d %20s'% (t,pname))
+        # print ('%8d %20s'% (t,pname))
+        ais.append(ai)
+        blars.append(100.0*foo/total)
+        shmoos.append(100.0*i/len(active_intervals))
+
+    # fig = plt.figure()
+    # ax = fig.add_subplot(2,1,1)
+    # line, = ax.plot(ais, blars, 'ro', ais, shmoos, 'b-' ) #a, color='blue', lw=2)
+    # ax.set_yscale('log')
+    plt.plot(ais, blars, 'ro', ais, shmoos, 'b-')
+    # plt.axis([0, 6, 0, 20])
+    plt.show()
+
 
     # # It seems possible that the events will not be in chronological
     # # order, so do a shallow parse then sort them by timestamp
