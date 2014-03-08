@@ -32,7 +32,7 @@ def translate_ftrace_to_generic():
     threads[0] = 0
     event_id = 1
     process_id = 1
-    for line in temp:
+    for line in text_file:
         m = pat.search(line)
         if not m:
             print 'NO MATCH',line,
