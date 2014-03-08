@@ -10,8 +10,11 @@ import thread_study_utils as utils
 
 def translate_ftrace_to_generic():
     args = parse_command_line_args()
-    temp = tempfile.NamedTemporaryFile(mode='w+b')
-    dat_to_txt(args.dat_file, temp.name)
+    if args.skip_report:
+        txt_file = open(args.dat_file, 'r')
+    else:
+        txt_file = tempfile.NamedTemporaryFile(mode='w+b')
+        dat_to_txt(args.dat_file, txt_file.name)
     try:
         os.remove(args.sql_file)
     except:
@@ -21,8 +24,8 @@ def translate_ftrace_to_generic():
     utils.init_sqlite_file(c)
 
     pat = re.compile('-.*\[(.*)\]\D*(\d*)\.(\d*).*sched_switch\D*(\d*).*==>\D*(\d*)\S*\s+(.*)')
-    min_time = min_timestamp(temp, pat)
-    temp.seek(0)
+    min_time = min_timestamp(txt_file, pat)
+    txt_file.seek(0)
     threads = {}
     processes = {}
     # Assumption: The pid of the idle task is 0
@@ -44,6 +47,9 @@ def translate_ftrace_to_generic():
         time_ns = time_ns_abs - min_time
         print('CPU:%d stamp:%12d from:%8d to:%8d  to_name:%s' %
               (cpu, time_ns, from_pid, to_pid, to_task_name))
+
+        # XXX Add core/thread sanity checking
+
         # Deal with the thread that's stopping
         if from_pid != 0 and (from_pid in threads):
             c.execute("INSERT INTO events VALUES (%d, %d, %d, 2, %d)" %
@@ -70,6 +76,7 @@ def parse_command_line_args():
                       help='Name of the input ftrace dat file')
     argp.add_argument('sql_file', metavar='G',
                       help='Name of the output sqlite3 file')
+    argp.add_argument('--skip-report', action='store_true')
     return argp.parse_args()
 
 def dat_to_txt(in_name, out_name):
