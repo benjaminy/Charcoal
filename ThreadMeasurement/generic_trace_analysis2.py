@@ -6,7 +6,6 @@
 # described elsewhere
 
 import argparse, sqlite3
-
 import matplotlib.pyplot as plt
 
 class Process(object):
@@ -94,15 +93,21 @@ def parse_event_kind(name):
 def compare_timestamps(x,y):
     return x.timestamp - y.timestamp
 
+def is_app_proc( proc, processes ):
+    return proc in processes or (1 > len(processes))
+
+def is_app_thread( thread, processes ):
+    return is_app_proc(thread[1], processes)
+
 def main():
     argp = argparse.ArgumentParser(description="""Thread analyzer command line parser.  The format is: ...
         Hello""")
+    argp.add_argument('trace_file', metavar='T',
+                      help='Name of the input trace file')
     argp.add_argument('processes', metavar='P', type=int, nargs='*',
                       help='List of process IDs to consider part of the application')
     argp.add_argument('--background_app', dest='does_background_count', action='store_true',
                       help="If present, consider all processes to be part of the application")
-    argp.add_argument('trace_file', metavar='T',
-                      help='Name of the input trace file')
     args = argp.parse_args()
 
     conn = sqlite3.connect(args.trace_file)
@@ -113,60 +118,96 @@ def main():
 
     processes = {}
     for process in c.execute('SELECT * FROM processes'):
-        processes[process[0]] = (process[1], process[2])
+        pid    = process[0]
+        pname  = process[1]
+        pfname = process[2]
+        processes[pid] = (pname, pfname, 0.0)
 
     threads = {}
     for thread in c.execute('SELECT * FROM threads'):
-        threads[thread[0]] = (thread[1], thread[2])
+        tid   = thread[0]
+        tname = thread[1]
+        pid   = thread[2]
+        threads[tid] = (tname, pid)
 
-    for row in c.execute('SELECT * FROM events ORDER BY timestamp, kind DESC, id'):
-        event_id   = row[0]
-        thread_id  = row[1]
-        core       = row[2]
-        event_kind = row[3]
-        timestamp  = row[4]
+    active_interval_count = 0
+    total_run_time = 0
+    app_run_time = 0
+    non_app_run_time = 0
+    for event in c.execute('SELECT * FROM events ORDER BY timestamp, kind DESC, id'):
+        event_id   = event[0]
+        thread_id  = event[1]
+        core       = event[2]
+        event_kind = event[3]
+        timestamp  = event[4]
         if event_kind == 2:
             if core in cores:
-                active_intervals.append((timestamp - cores[core], thread_id))
+                duration = timestamp - cores[core]
+                thread = threads[thread_id]
+                proc = processes[thread[1]]
+                total_run_time += duration
+                processes[thread[1]] = (proc[0], proc[1], proc[2] + duration)
+                if is_app_thread( thread, args.processes ):
+                    active_interval_count += 1
+                    app_run_time += duration
+                    active_intervals.append((duration, thread_id))
+                else:
+                    non_app_run_time += duration
                 del cores[core]
         elif event_kind == 1:
             cores[core] = timestamp
-        # print row
-    def compare_fst((a1,b1), (a2, b2)):
-        diff = a1 - a2
-        if diff > 0:
-            return 1
-        elif diff < 0:
+        # print event
+
+    print "Active interval count:", active_interval_count
+    if 0 < len(args.processes):
+        print 'Ignored processes account for %.6f%% of total CPU time' % (100.0 * non_app_run_time / total_run_time)
+
+    def cmp_snd_third((pid1, (a1, b1, c1)), (pid2, (a2, b2, c2))):
+        diff = c1 - c2
+        if diff < 0:
             return -1
+        elif diff > 0:
+            return 1
         else:
             return 0
-    active_intervals_sorted = sorted(active_intervals, cmp=compare_fst)
-    print len(active_intervals_sorted)
-    total = 0
-    for (ai,t) in active_intervals_sorted:
-        total += ai
-    i = 0
-    foo = 0
-    ais = []
-    blars = []
-    shmoos = []
-    for (ai,t) in active_intervals_sorted:
-        i += 1
-        foo += ai
-        # print ("%5.1f  %5.1f  %12d" % (100.0*i/len(active_intervals), 100.0*foo/total, ai)),
-        (tname, pid) = threads[t]
-        (pname, pname2) = processes[pid]
-        # print ('%8d %20s'% (t,pname))
-        ais.append(ai)
-        blars.append(100.0*foo/total)
-        shmoos.append(100.0*i/len(active_intervals))
 
-    # fig = plt.figure()
-    # ax = fig.add_subplot(2,1,1)
-    # line, = ax.plot(ais, blars, 'ro', ais, shmoos, 'b-' ) #a, color='blue', lw=2)
-    # ax.set_yscale('log')
-    plt.plot(ais, blars, 'ro', ais, shmoos, 'b-')
-    # plt.axis([0, 6, 0, 20])
+    for (pid, proc) in sorted(processes.items(), cmp=cmp_snd_third):
+        if is_app_proc( pid, args.processes ):
+            print pid, proc, ('APP %6.2f' % (100.0 * proc[2] / app_run_time))
+        else:
+            print pid, proc, ('NON-APP %6.2f' % (100.0 * proc[2] / non_app_run_time))
+
+    # The default comparison function should be fine, because we only
+    # care about the first field of the tuple
+    active_intervals_sorted = sorted(active_intervals)
+
+    ai_count = 0
+    cumm_run_time = 0
+    just_active_intervals = []
+    pct_run_time = []
+    pct_active_intervals = []
+    for (ai,t) in active_intervals_sorted:
+        ai_count += 1
+        cumm_run_time += ai
+        pct_active = 100.0*ai_count     /active_interval_count
+        pct_run    = 100.0*cumm_run_time/app_run_time
+        # print ("%5.1f  %5.1f  %12d" % (pct_active, pct_run, ai)),
+        # (tname, pid) = threads[t]
+        # (pname, pname2) = processes[pid]
+        # print ('%8d %20s'% (t,pname))
+        just_active_intervals.append(ai)
+        pct_run_time.append(pct_run)
+        pct_active_intervals.append(pct_active)
+
+    if True:
+        fig = plt.figure()
+        ax = fig.add_subplot(1,1,1)
+        line,  = ax.plot(just_active_intervals, pct_run_time, color='blue', lw=2)
+        line2, = ax.plot(just_active_intervals, pct_active_intervals, color='red', lw=2)
+        ax.set_xscale('log')
+    else:
+        plt.plot(just_active_intervals, pct_run_time, 'ro', just_active_intervals, pct_active_intervals, 'b-')
+        # plt.axis([0, 6, 0, 20])
     plt.show()
 
 
