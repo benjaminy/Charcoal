@@ -49,10 +49,10 @@ struct _TET_CHANNEL
 };
 
 static int pseudo_multithreaded_check(
-    OPA_int_t *iptr, OPA_ptr_t *ptr, void *thread )
+    __crcl_atomic_int *iptr, __crcl_atomic_int *ptr, void *thread )
 {
-    int ifoo = OPA_fetch_and_incr_int( iptr );
-    void *foo = OPA_cas_ptr( ptr, thread, self->thread );
+    int ifoo = __crcl_atomic_fetch_and_incr_int( iptr );
+    void *foo = __crcl_atomic_compare_exchange_ptr( ptr, thread, self->thread );
     if( foo != self->thread )
     {
     }
@@ -60,8 +60,8 @@ static int pseudo_multithreaded_check(
 
 void send( channel c, void *data )
 {
-    int foo = OPA_fetch_and_incr_int( &c->working_int );
-    void *foo = OPA_cas_ptr( &c->cas_ptr, c->thread, self->thread );
+    int foo = __crcl_atomic_fetch_and_incr_int( &c->working_int );
+    void *foo = __crcl_atomic_compare_exchange_ptr( &c->cas_ptr, c->thread, self->thread );
     {
         /* multithreaded channel!!! */
     }
@@ -140,7 +140,7 @@ int release( mutex m )
 void sem_inc( semaphore *s )
 {
     if( pseudo_multithreaded_check(
-            OPA_int_t *iptr, OPA_ptr_t *ptr, void *thread ) )
+            __crcl_atomic_int *iptr, __crcl_atomic_ptr *ptr, void *thread ) )
     {
         system_semaphore_inc();
     }
@@ -157,7 +157,7 @@ void sem_inc( semaphore *s )
 void sem_dec()
 {
     if( pseudo_multithreaded_check(
-            OPA_int_t *iptr, OPA_ptr_t *ptr, void *thread ) )
+            __crcl_atomic_int *iptr, __crcl_atomic_ptr *ptr, void *thread ) )
     {
         system_semaphore_inc();
     }

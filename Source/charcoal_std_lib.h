@@ -1,6 +1,18 @@
 /* Using the C11 API where appropriate */
 
 
+
+int  charcoal_setjmp    ( jmp_buf, int );
+void charcoal_longjmp   ( jmp_buf ) /*__dead2*/;
+int  charcoal__setjmp   ( jmp_buf, int );
+void charcoal__longjmp  ( jmp_buf ) /*__dead2*/;
+int  charcoal_sigsetjmp ( sigjmp_buf, int, int );
+void charcoal_siglongjmp( sigjmp_buf, int ) /*__dead2*/;
+
+void deliverjmp   ( activity_t, int, void * );
+void _deliverjmp  ( activity_t, int, void * );
+void sigdeliverjmp( activity_t, int, void * );
+
 /* Thread and activity types */
 typedef struct *thrd_t;
 typedef struct *activity_t;

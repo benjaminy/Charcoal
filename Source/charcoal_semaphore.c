@@ -1,18 +1,10 @@
-/*
- * A simple little semaphore library.  Anonymous POSIX semaphores are
- * not supported in OS-X, which is why this file exists.  In the future
- * it should be changed to trivial wrappers for the system's anonymous
- * semaphores, if they exist.
- */
-
 /* XXX Unresolved: use errno or return value for error code? */
 
 #include<stdlib.h>
 #include<errno.h>
-#include<charcoal_runtime.h>
+#include<charcoal_base.h>
 
-/* pshared == Process-shared.  Not supported for now. */
-int __charcoal_sem_init( __charcoal_sem_t *s, int pshared, unsigned int value )
+int CRCL(sem_init)( CRCL(sem_t) *s, int pshared, unsigned int value )
 {
     if( pshared || !s )
     {
@@ -32,7 +24,7 @@ int __charcoal_sem_init( __charcoal_sem_t *s, int pshared, unsigned int value )
     return 0;
 }
 
-int __charcoal_sem_destroy(  __charcoal_sem_t *s )
+int CRCL(sem_destroy)( CRCL(sem_t) *s )
 {
     if( !s )
     {
@@ -57,7 +49,7 @@ int __charcoal_sem_destroy(  __charcoal_sem_t *s )
     return 0;
 }
 
-int __charcoal_sem_getvalue( __charcoal_sem_t * __restrict s, int * __restrict vp )
+int CRCL(sem_get_value)( CRCL(sem_t) * __restrict s, int * __restrict vp )
 {
     if( !s || !vp )
     {
@@ -76,7 +68,7 @@ int __charcoal_sem_getvalue( __charcoal_sem_t * __restrict s, int * __restrict v
     return 0;
 }
 
-int __charcoal_sem_post( __charcoal_sem_t *s )
+int CRCL(sem_incr)( CRCL(sem_t) *s )
 {
     if( !s )
     {
@@ -110,7 +102,7 @@ int __charcoal_sem_post( __charcoal_sem_t *s )
     return 0;
 }
 
-int __charcoal_sem_trywait( __charcoal_sem_t *s )
+int CRCL(sem_try_decr)( CRCL(sem_t) *s )
 {
     if( !s )
     {
@@ -131,7 +123,7 @@ int __charcoal_sem_trywait( __charcoal_sem_t *s )
     return rv;
 }
 
-int __charcoal_sem_wait( __charcoal_sem_t *s )
+int CRCL(sem_decr)( CRCL(sem_t) *s )
 {
     if( !s )
     {
@@ -147,14 +139,15 @@ int __charcoal_sem_wait( __charcoal_sem_t *s )
         ++s->waiters; /* XXX OVERFLOW */
         if( ( rc = pthread_cond_wait( &s->c, &s->m ) ) )
         {
+            --s->waiters;
+            if( ( pthread_mutex_unlock( &s->m ) ) )
+            {
+                return rc;
+            }
             return rc;
         }
         --s->waiters;
     }
     --s->value;
-    if( ( pthread_mutex_unlock( &s->m ) ) )
-    {
-        return rc;
-    }
-    return 0;
+    return pthread_mutex_unlock( &s->m );
 }
