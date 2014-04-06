@@ -8,6 +8,8 @@
  * anonymous semaphores, if they exist.
  */
 
+#include <pthread.h>
+
 /* This struct is defined concretely so that client code can get the
  * proper size for allocation.  Should be treated as abstract. */
 typedef struct

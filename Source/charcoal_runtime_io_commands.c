@@ -1,3 +1,4 @@
+#include <charcoal_base.h>
 #include <stdio.h>
 #include <charcoal_runtime_io_commands.h>
 #include <charcoal_runtime.h>

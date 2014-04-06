@@ -3,7 +3,12 @@
 
 #include <unistd.h>
 #include <uv.h>
-#include "charcoal_runtime_atomics.h"
+#define _XOPEN_SOURCE
+#include <ucontext.h>
+#include <setjmp.h>
+#include <pthread.h>
+#include <charcoal_semaphore.h>
+#include <charcoal_runtime_atomics.h>
 
 /* Exactly one of the following should be defined */
 #define __CHARCOAL_ACTIVITY_IMPL_PTHREAD
@@ -13,7 +18,7 @@
 /* when activities are implemented with threads, a charcoal thread is
  * just a unique id */
 
-typedef void (*CRCL(entry_t))( void * );
+typedef void (*CRCL(entry_t))( void *formals );
 
 typedef struct CRCL(thread_t) CRCL(thread_t);
 typedef struct CRCL(activity_t) CRCL(activity_t);
@@ -29,9 +34,9 @@ struct CRCL(thread_t)
     uv_timer_t timer_req;
     double start_time;
     double max_time;
-    CRCL(activity_t) *activities;
-    uv_mutex_t thd_management_mtx;
-    uv_cond_t thd_management_cond;
+    CRCL(activity_t) *activities, *ready;
+    pthread_mutex_t thd_management_mtx;
+    pthread_cond_t thd_management_cond;
     unsigned flags;
     unsigned runnable_activities;
     /* Linked list of all threads */
@@ -46,17 +51,22 @@ struct CRCL(activity_t)
 {
     int yield_attempts;
     CRCL(thread_t) *container;
-    uv_sem_t can_run;
+    CRCL(sem_t) can_run;
+    double stupid_buffer[100];
     unsigned flags;
     /* Linked list of all activities in a given thread */
-    CRCL(activity_t) *next, *prev;
+    CRCL(activity_t) *next, *prev, *ready_next, *ready_prev;
+    ucontext_t ctx;
+    jmp_buf    jmp; 
     /* Using the variable-sized last field of the struct hack */
+    size_t ret_size;
     char return_value[ sizeof( int ) ];
 };
 
-CRCL(activity_t) *CRCL(activate)( void (*f)( void *args ), void *args );
+int CRCL(activate)( CRCL(activity_t) *act, CRCL(entry_t) f, void *args );
 
-CRCL(activity_t) *CRCL(activity_self)( void );
+CRCL(activity_t) *CRCL(get_self_activity)( void );
+void CRCL(set_self_activity)( CRCL(activity_t) *a );
 int CRCL(activity_join)( CRCL(activity_t) * );
 int CRCL(activity_detach)( CRCL(activity_t) * );
 

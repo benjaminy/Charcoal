@@ -1,9 +1,14 @@
 
 # INCLUDE_DIRS = -I../../Install/include -I../../ThirdParty/OpenPA/Releases/1.0.4/Install/include
-INCLUDE_DIRS = -I../../Install/include -I../../ThirdParty/OpenPA/Releases/1.0.4/Install/include
+INCLUDE_DIRS = -I../../Install/include -I../../ThirdParty/OpenPA/Releases/1.0.4/Install/include -I../../ThirdParty/libuv/Releases/0.10.25/include
 LIB_DIRS =  -L../../Install/lib
 FLAGS = $(INCLUDE_DIRS) $(LIB_DIRS) -lcharcoal_sys -lpthread -pg
 TARGETS = simple_test simple_test_noyield simple_yield_exe  unyielding_test_exe activity_create timeout_test_exe simple_unyield_test simple_unyield_test_noyield
+
+smoke_test_01: smoke_test_01.c
+	gcc -g -o smoke_test_01 $(FLAGS) -DYIELDING smoke_test_01.c ../../Build/libuv/libuv.a  -framework CoreFoundation -framework CoreServices
+
+
 simple_unyield_test:
 	gcc -g -o simple_unyield_test $(FLAGS) -DYIELDING simple_unyield_test.c -lm
 

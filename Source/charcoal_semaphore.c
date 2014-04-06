@@ -1,8 +1,9 @@
 /* XXX Unresolved: use errno or return value for error code? */
 
+#include<charcoal_base.h>
+#include<charcoal_semaphore.h>
 #include<stdlib.h>
 #include<errno.h>
-#include<charcoal_base.h>
 
 int CRCL(sem_init)( CRCL(sem_t) *s, int pshared, unsigned int value )
 {
