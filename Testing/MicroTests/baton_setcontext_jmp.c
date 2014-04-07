@@ -1,5 +1,6 @@
 #define _XOPEN_SOURCE
 #include <ucontext.h>
+#include <setjmp.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
@@ -11,6 +12,7 @@ typedef struct activity_t activity_t;
 struct activity_t
 {
     ucontext_t ctx;
+    jmp_buf    jmp; 
     activity_t *next, *prev, *rnext, *rprev;
     int id;
 };
@@ -20,6 +22,7 @@ typedef struct trampoline_t trampoline_t;
 struct trampoline_t
 {
     ucontext_t *prv;
+    jmp_buf    *cur; 
     void (*entry)( void * );
     void *param;
     activity_t *a;
@@ -71,7 +74,10 @@ void switch_to( activity_t *to )
     /* printf( "switch %i\n", ready_len() ); */
     add_to_ready_queue();
     self = to;
-    assert( !swapcontext( &realself->ctx, &to->ctx ) );
+    if( _setjmp( realself->jmp ) == 0 )
+    {
+        _longjmp( to->jmp, 1 ); 
+    }
     self = realself;
 }
 
@@ -97,7 +103,11 @@ void schedule()
         activity_t *realself = self;
         self = to;
         /* printf( "a %d -> %d   %p %p\n", realself->id, to->id, realself->jmp, to->jmp ); */
-        assert( !swapcontext( &realself->ctx, &to->ctx ) );
+        if( _setjmp( realself->jmp ) == 0 )
+        {
+            /* printf( "c %d -> %d\n", realself->id, to->id ); */
+            _longjmp( to->jmp, 1 ); 
+        }
         /* printf( "b\n" ); */
         self = realself;
     }
@@ -121,7 +131,12 @@ void activity_entry( void *p )
     self->rprev = NULL;
     add_to_ready_queue();
 
-    swapcontext( &self->ctx, tramp.prv ); 
+    /* printf( "Generic entry switching back %p\n", tramp.param ); fflush( stdout ); */
+    if ( _setjmp( *tramp.cur ) == 0 ) 
+    { 
+        ucontext_t tmp; 
+        swapcontext( &tmp, tramp.prv ); 
+    } 
 
     self = tramp.a;
     /* printf( "Generic entry go %p\n", tramp.param ); fflush( stdout ); */
@@ -152,6 +167,7 @@ void activate( activity_t *a, void (*f)( void * ), void *p )
     ucontext_t tmp;
     trampoline_t tramp;
     tramp.prv = &tmp;
+    tramp.cur = &a->jmp;
     tramp.entry = f;
     tramp.param = p;
     tramp.a = a;
