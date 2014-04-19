@@ -28,13 +28,13 @@ typedef struct CRCL(activity_t) CRCL(activity_t);
 
 struct CRCL(thread_t)
 {
-    pthread_t self;
+    pthread_t sys;
     CRCL(atomic_int) unyielding;
     CRCL(atomic_int) timeout; //initially 0, signal handler sets to 1
     uv_timer_t timer_req;
     double start_time;
     double max_time;
-    CRCL(activity_t) *activities, *ready;
+    CRCL(activity_t) *activities, *ready, *to_be_reaped;
     pthread_mutex_t thd_management_mtx;
     pthread_cond_t thd_management_cond;
     unsigned flags;
@@ -44,25 +44,30 @@ struct CRCL(thread_t)
 };
 
 /* Activity flags */
-#define __CRCL_ACTF_DETACHED 1
-#define __CRCL_ACTF_BLOCKED 2
+#define __CRCL_ACTF_DETACHED       (1 << 0)
+#define __CRCL_ACTF_BLOCKED        (1 << 1)
+#define __CRCL_ACTF_IN_READY_QUEUE (1 << 2)
 
 struct CRCL(activity_t)
 {
-    int yield_attempts;
     CRCL(thread_t) *container;
     CRCL(sem_t) can_run;
-    double stupid_buffer[100];
     unsigned flags;
-    /* Linked list of all activities in a given thread */
-    CRCL(activity_t) *next, *prev, *ready_next, *ready_prev;
+    /* Every activity is is the (thread-local) list of all activities.
+     * An activity may be in another "special" list, of which there
+     * are currently two: Ready and To Be Reaped */
+    CRCL(activity_t) *next, *prev, *snext, *sprev;
     ucontext_t ctx;
-    jmp_buf    jmp; 
+    jmp_buf    jmp;
+    /* Debug and profiling stuff */
+    int yield_attempts;
     /* Using the variable-sized last field of the struct hack */
     size_t ret_size;
     char return_value[ sizeof( int ) ];
 };
 
+int CRCL(any_threads)( void );
+void CRCL(remove_from_threads)( CRCL(thread_t) *t );
 int CRCL(activate)( CRCL(activity_t) *act, CRCL(entry_t) f, void *args );
 
 CRCL(activity_t) *CRCL(get_self_activity)( void );

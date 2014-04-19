@@ -15,13 +15,13 @@ endif
 
 ifeq ($(OS),Windows_NT)
     CCFLAGS += -D WIN32
+else
+    LIBUV_FLAGS = ../../Build/libuv/libuv.a
 endif
 ifeq ($(OS),Linux)
-    LIBUV_FLAGS = ../../Build/libuv/libuv.a
     CCFLAGS += -D LINUX
 endif
 ifeq ($(OS),Darwin)
-    LIBUV_FLAGS = ../../Build/libuv/libuv.a
     LIBUV_FLAGS += -framework CoreFoundation -framework CoreServices
     CCFLAGS += -D OSX
 endif
@@ -30,7 +30,7 @@ endif
 # INCLUDE_DIRS = -I../../Install/include -I../../ThirdParty/OpenPA/Releases/1.0.4/Install/include
 INCLUDE_DIRS = -I../../Install/include -I../../ThirdParty/OpenPA/Releases/1.0.4/Install/include -I../../ThirdParty/libuv/Releases/0.10.25/include
 LIB_DIRS =  -L../../Install/lib
-FLAGS = $(INCLUDE_DIRS) $(LIB_DIRS) -lcharcoal_sys -lpthread -pg
+FLAGS = $(INCLUDE_DIRS) $(LIB_DIRS) -lcharcoal_sys -lpthread -pg -lrt
 TARGETS = simple_test simple_test_noyield simple_yield_exe  unyielding_test_exe activity_create timeout_test_exe simple_unyield_test simple_unyield_test_noyield
 
 timer_create_test: timer_create_test.c

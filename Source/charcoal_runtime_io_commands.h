@@ -9,14 +9,19 @@ extern uv_async_t CRCL(io_cmd);
 typedef enum
 {
     __CRCL_IO_CMD_START,
+    __CRCL_IO_CMD_JOIN_THREAD,
 } CRCL(io_cmd_op);
 
 typedef struct CRCL(io_cmd_t) CRCL(io_cmd_t);
 
-struct __charcoal_io_cmd_t
+struct CRCL(io_cmd_t)
 {
     CRCL(io_cmd_op) command;
-    __charcoal_activity_t *sender;
+    union
+    {
+        CRCL(activity_t) *activity;
+        CRCL(thread_t) *thread;
+    } _;
     uint64_t time_ns;
     __charcoal_io_cmd_t *next;
 };
