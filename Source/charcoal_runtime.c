@@ -348,7 +348,7 @@ struct CRCL(thread_launch_ctx)
 static void CRCL(activity_entry)( void *p )
 {
     CRCL(activity_t) *stmp = CRCL(get_self_activity)();
-    printf( "E %p, %p  %f\n", stmp, stmp->container, stmp->stupid_buffer[0] );
+    printf( "E %p, %p\n", stmp, stmp->container );
 
     CRCL(thread_launch_ctx) ctx = *(CRCL(thread_launch_ctx) *)p;
     /* XXX activity migration between threads will cause problems */
@@ -395,7 +395,7 @@ int CRCL(activate_in_thread)(CRCL(thread_t) *thd, CRCL(activity_t) *act,
     }
     WTF.uc_stack.ss_flags = 0; /* SA_DISABLE and/or SA_ONSTACK */
     WTF.uc_link = NULL; /* XXX fix. */
-    WTF.uc_sigmask = 0; /* XXX sigset_t */
+    // WTF.uc_sigmask = 0; /* XXX sigset_t */
 
     ++thd->runnable_activities;
 
@@ -408,11 +408,11 @@ int CRCL(activate_in_thread)(CRCL(thread_t) *thd, CRCL(activity_t) *act,
 
     CRCL(activity_t) *real_self = CRCL(get_self_activity)();
 
-    printf( "A %p, %p  %f %p\n", real_self, real_self->container, real_self->stupid_buffer[0], act );
+    printf( "A %p, %p  %p\n", real_self, real_self->container, act );
 
     makecontext( &WTF, CRCL(activity_entry), 1, &ctx );
 
-    printf( "B %p, %p  %f\n", real_self, real_self->container, real_self->stupid_buffer[0] );
+    printf( "B %p, %p\n", real_self, real_self->container );
 
     swapcontext( &tmp, &WTF );
 
@@ -526,6 +526,7 @@ static int CRCL(create_thread)(
     thd->flags = 0; // __CRCL_THDF_ANY_RUNNING
     thd->runnable_activities = 1;
     thd->activities = NULL;
+    thd->ready = NULL;
     act->container = thd;
 
     pthread_attr_t attr;
@@ -607,6 +608,82 @@ static void CRCL(main_thread_entry)( void *p )
     /* XXX Maybe free the initial thread and activity??? */
 }
 
+#define CLOCKID CLOCK_MONOTONIC
+#define SIG SIGRTMIN
+static timer_t CRCL(heartbeat_timer);
+
+/* yield_heartbeat is the signal handler that should run every few
+ * milliseconds (give or take) when any activity is running.  It
+ * atomically modifies the activity state so that the next call to
+ * yield will do a more thorough check to see if it should switch to
+ * another activity.
+ *
+ * XXX Actually, this only really needs to be armed if there are any
+ * threads with more than one ready activity. */
+static void CRCL(yield_heartbeat)( int sig, siginfo_t *info, void *uc )
+{
+    if( sig != SIG )
+    {
+        /* XXX Very weird */
+        exit( sig );
+    }
+
+    void *p = si->si_value.sival_ptr;
+    if( p == &CRCL(threads) )
+    {
+        /* XXX Is it worth worrying about a weird address collision
+         * here? */
+        /* XXX disarm if no activities are running */
+        /* XXX For all threads: check flags, decr unyielding */
+    }
+    else
+    {
+        /* XXX pass the signal on to the application? */
+        exit( -sig );
+    }
+}
+
+static void CRCL(init_yield_heartbeat)()
+{
+    /* Establish handler for timer signal */
+    struct sigaction sa;
+    printf("Establishing handler for signal %d\n", SIG);
+    sa.sa_flags     = SA_SIGINFO;
+    sa.sa_sigaction = CRCL(yield_heartbeat);
+    sigemptyset( &sa.sa_mask );
+    if( !sigaction( SIG, &sa, NULL ) )
+    {
+        exit( -1 );
+    }
+
+    /* Create the timer */
+    struct sigevent sev;
+    sev.sigev_notify = SIGEV_SIGNAL;
+    sev.sigev_signo  = SIG;
+    sev.sigev_value.sival_ptr = &timerid;
+    if( !timer_create( CLOCKID, &sev, &CRCL(heartbeat_timer) ) )
+    {
+        exit( -1 );
+    }
+
+    printf( "timer ID is 0x%lx\n", (long) CRCL(heartbeat_timer) );
+
+    /* Start the timer */
+    /* XXX I think 'its' can be stack alloc'ed.  Check this. */
+    struct itimerspec its;
+    /* XXX Think about what the interval should be. */
+    long long freq_nanosecs = 10000000;
+    its.it_value.tv_sec     = freq_nanosecs / 1000000000;
+    its.it_value.tv_nsec    = freq_nanosecs % 1000000000;
+    its.it_interval.tv_sec  = its.it_value.tv_sec;
+    its.it_interval.tv_nsec = its.it_value.tv_nsec;
+
+    if( !timer_settime( CRCL(heartbeat_timer), 0, &its, NULL ) )
+    {
+        exit( -1 );
+    }
+}
+
 int main( int argc, char **argv, char **env )
 {
     /* Okay to stack-allocate these here because the I/O thread should
@@ -615,12 +692,14 @@ int main( int argc, char **argv, char **env )
     CRCL(activity_t) io_activity;
     CRCL(threads) = &io_thread;
 
-    ABORT_ON_FAIL( pthread_key_create( &CRCL(self_key), NULL /* XXX destructor */ ) );
+    ABORT_ON_FAIL(
+        pthread_key_create( &CRCL(self_key), NULL /* XXX destructor */ ) );
 
     /* Most of the thread and activity fields are not relevant to the I/O thread */
     io_thread.activities     = &io_activity;
     io_thread.next           = CRCL(threads);
     io_thread.prev           = CRCL(threads);
+    io_thread.ready          = NULL;
     /* XXX Not sure about the types of self: */
     io_thread.self           = pthread_self();
     io_activity.container    = &io_thread;
