@@ -1,3 +1,8 @@
+baton_libuv
+baton_setcontext
+baton_setcontext_jmp
+smoke_test_01
+timer_create_test
 check
 activity_create
 simple_yield_exe

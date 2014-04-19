@@ -1,4 +1,5 @@
 #define _XOPEN_SOURCE
+#define _BSD_SOURCE
 #include <ucontext.h>
 #include <setjmp.h>
 #include <stdlib.h>
@@ -162,7 +163,7 @@ void activate( activity_t *a, void (*f)( void * ), void *p )
     a->ctx.uc_stack.ss_sp = malloc( a->ctx.uc_stack.ss_size );
     a->ctx.uc_stack.ss_flags = 0; /* SA_DISABLE and/or SA_ONSTACK */
     a->ctx.uc_link = NULL; /* XXX fix. */
-    a->ctx.uc_sigmask = 0; /* XXX sigset_t */
+    sigemptyset( &a->ctx.uc_sigmask );
 
     ucontext_t tmp;
     trampoline_t tramp;
