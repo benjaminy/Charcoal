@@ -1,80 +1,74 @@
-#include<pthread.h>
+#ifndef __CHARCOAL_RUNTIME
+#define __CHARCOAL_RUNTIME
 
-//#define OPA_PRIMITIVES_H_INCLUDED
-#include <time.h>
-#include "opa_primitives.h"
-#include "opa_config.h"
-#include "opa_util.h"
-#ifndef _opa_inline
-#define _opa_inline inline
-#endif
+#include <unistd.h>
+#include <uv.h>
+#define _XOPEN_SOURCE
+#include <ucontext.h>
+#include <setjmp.h>
+#include <pthread.h>
+#include <charcoal_semaphore.h>
+#include <charcoal_runtime_atomics.h>
 
 /* Exactly one of the following should be defined */
 #define __CHARCOAL_ACTIVITY_IMPL_PTHREAD
 #undef __CHARCOAL_ACTIVITY_IMPL_GCC_SPLIT_STACK
 #undef __CHARCOAL_ACTIVITY_IMPL_GCC_SPLIT_STACK
 
-/* OS-X doesn't support anonymous semaphores.  Annoying. */
-typedef struct
-{
-    unsigned value, waiters;
-    pthread_mutex_t m;
-    pthread_cond_t c;
-}__charcoal_sem_t;
-
-/* This is basically a copy of the POSIX semaphore API. */
-int __charcoal_sem_init    ( __charcoal_sem_t *s, int pshared, unsigned int value );
-int __charcoal_sem_destroy ( __charcoal_sem_t *s );
-int __charcoal_sem_getvalue( __charcoal_sem_t * __restrict s, int * __restrict vp );
-int __charcoal_sem_post    ( __charcoal_sem_t *s );
-int __charcoal_sem_trywait ( __charcoal_sem_t *s );
-int __charcoal_sem_wait    ( __charcoal_sem_t *s );
-
-
 /* when activities are implemented with threads, a charcoal thread is
  * just a unique id */
 
-typedef struct __charcoal_activity_t __charcoal_activity_t;
+typedef void (*CRCL(entry_t))( void *formals );
+
+typedef struct CRCL(thread_t) CRCL(thread_t);
+typedef struct CRCL(activity_t) CRCL(activity_t);
 
 /* Thread flags */
 // #define __CRCL_THDF_ANY_RUNNING 1
 
-typedef struct
+struct CRCL(thread_t)
 {
-    OPA_int_t unyielding;
-    OPA_int_t timeout; //initially 0, signal handler sets to 1
-    time_t timer;
-	double start_time;
+    pthread_t self;
+    CRCL(atomic_int) unyielding;
+    CRCL(atomic_int) timeout; //initially 0, signal handler sets to 1
+    uv_timer_t timer_req;
+    double start_time;
     double max_time;
-    unsigned activities_sz, activities_cap;
-    __charcoal_activity_t **activities;
+    CRCL(activity_t) *activities, *ready;
     pthread_mutex_t thd_management_mtx;
+    pthread_cond_t thd_management_cond;
     unsigned flags;
     unsigned runnable_activities;
-} __charcoal_thread_t;
+    /* Linked list of all threads */
+    CRCL(thread_t) *next, *prev;
+};
 
 /* Activity flags */
 #define __CRCL_ACTF_DETACHED 1
 #define __CRCL_ACTF_BLOCKED 2
 
-struct __charcoal_activity_t
+struct CRCL(activity_t)
 {
-    void (*f)( void * );
-    pthread_t self;
     int yield_attempts;
-    __charcoal_thread_t *container;
-    __charcoal_sem_t can_run;
+    CRCL(thread_t) *container;
+    CRCL(sem_t) can_run;
+    double stupid_buffer[100];
     unsigned flags;
-    void *args;
+    /* Linked list of all activities in a given thread */
+    CRCL(activity_t) *next, *prev, *ready_next, *ready_prev;
+    ucontext_t ctx;
+    jmp_buf    jmp; 
+    /* Using the variable-sized last field of the struct hack */
+    size_t ret_size;
     char return_value[ sizeof( int ) ];
-    /* The size of the return_value depends on the activity */
 };
 
-__charcoal_activity_t *__charcoal_activate( void (*f)( void *args ), void *args );
+int CRCL(activate)( CRCL(activity_t) *act, CRCL(entry_t) f, void *args );
 
-__charcoal_activity_t *__charcoal_activity_self( void );
-int __charcoal_activity_join( __charcoal_activity_t * );
-int __charcoal_activity_detach( __charcoal_activity_t * );
+CRCL(activity_t) *CRCL(get_self_activity)( void );
+void CRCL(set_self_activity)( CRCL(activity_t) *a );
+int CRCL(activity_join)( CRCL(activity_t) * );
+int CRCL(activity_detach)( CRCL(activity_t) * );
 
 
 /* Ignore everything from here to the end */
@@ -167,3 +161,5 @@ typedef struct
 } semaphore;
 
 #endif
+
+#endif /* __CHARCOAL_RUNTIME */

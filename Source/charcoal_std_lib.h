@@ -1,8 +1,11 @@
+#ifndef __CHARCOAL_STD_LIB_H
+#define __CHARCOAL_STD_LIB_H
+
 /* Using the C11 API where appropriate */
 
 
 /* Thread and activity types */
-typedef struct *thrd_t;
+typedef struct *thread_t;
 typedef struct *activity_t;
 
 typedef int (*thrd_start_t)(void*)
@@ -123,3 +126,4 @@ TET_RESULT_CODE tet_async_call( void *(*f)( void *), promise? );
 
 /* synchronization primitives */
 
+#endif  /* __CHARCOAL_STD_LIB_H */
