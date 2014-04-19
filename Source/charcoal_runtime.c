@@ -284,7 +284,7 @@ int CRCL(activity_join)( CRCL(activity_t) *a )
     {
         return EINVAL;
     }
-    int rc;
+    /* XXX int rc; */
     CRCL(activity_t) *self = CRCL(get_self_activity)();
     CRCL(thread_t) *thd = self->container;
     self->flags |= __CRCL_ACTF_BLOCKED;
@@ -352,7 +352,7 @@ static void CRCL(activity_entry)( void *p )
 
     CRCL(thread_launch_ctx) ctx = *(CRCL(thread_launch_ctx) *)p;
     /* XXX activity migration between threads will cause problems */
-    CRCL(thread_t) *thd = ctx.act->container;
+    /* XXX CRCL(thread_t) *thd = ctx.act->container; */
 
 
 
@@ -619,7 +619,7 @@ static timer_t CRCL(heartbeat_timer);
  * another activity.
  *
  * XXX Actually, this only really needs to be armed if there are any
- * threads with more than one ready activity. */
+ * threads with more than one ready (or running) activity. */
 static void CRCL(yield_heartbeat)( int sig, siginfo_t *info, void *uc )
 {
     if( sig != SIG )
@@ -628,7 +628,7 @@ static void CRCL(yield_heartbeat)( int sig, siginfo_t *info, void *uc )
         exit( sig );
     }
 
-    void *p = si->si_value.sival_ptr;
+    void *p = info->si_value.sival_ptr;
     if( p == &CRCL(threads) )
     {
         /* XXX Is it worth worrying about a weird address collision
@@ -660,7 +660,7 @@ static void CRCL(init_yield_heartbeat)()
     struct sigevent sev;
     sev.sigev_notify = SIGEV_SIGNAL;
     sev.sigev_signo  = SIG;
-    sev.sigev_value.sival_ptr = &timerid;
+    sev.sigev_value.sival_ptr = &CRCL(threads);
     if( !timer_create( CLOCKID, &sev, &CRCL(heartbeat_timer) ) )
     {
         exit( -1 );
@@ -672,7 +672,7 @@ static void CRCL(init_yield_heartbeat)()
     /* XXX I think 'its' can be stack alloc'ed.  Check this. */
     struct itimerspec its;
     /* XXX Think about what the interval should be. */
-    long long freq_nanosecs = 10000000;
+    long long freq_nanosecs = 10*1000*1000;
     its.it_value.tv_sec     = freq_nanosecs / 1000000000;
     its.it_value.tv_nsec    = freq_nanosecs % 1000000000;
     its.it_interval.tv_sec  = its.it_value.tv_sec;
@@ -684,6 +684,12 @@ static void CRCL(init_yield_heartbeat)()
     }
 }
 
+/* Architecture note: For the time being (as of early 2014, at least),
+ * we're using libuv to handle asynchronous I/O stuff.  It would be
+ * lovely if we could "embed" libuv's event loop in the yield logic.
+ * Unfortunately, libuv embedding is not totally solidified yet.  So
+ * we're going to have a separate thread for running the I/O event
+ * loop.  Eventually we should be able to get rid of that. */
 int main( int argc, char **argv, char **env )
 {
     /* Okay to stack-allocate these here because the I/O thread should
@@ -734,6 +740,7 @@ int main( int argc, char **argv, char **env )
     params.argv = argv;
     params.env  = env;
 
+    CRCL(init_yield_heartbeat)();
     CRCL(create_thread)( thd, act, CRCL(main_thread_entry), &params );
 
     /* XXX Someone's going to have to tell the loop to stop at some
