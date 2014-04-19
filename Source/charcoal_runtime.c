@@ -526,6 +526,7 @@ static int CRCL(create_thread)(
     thd->flags = 0; // __CRCL_THDF_ANY_RUNNING
     thd->runnable_activities = 1;
     thd->activities = NULL;
+    thd->ready = NULL;
     act->container = thd;
 
     pthread_attr_t attr;
@@ -619,6 +620,7 @@ int main( int argc, char **argv, char **env )
 
     /* Most of the thread and activity fields are not relevant to the I/O thread */
     io_thread.activities     = &io_activity;
+    io_thread.ready          = NULL;
     io_thread.next           = CRCL(threads);
     io_thread.prev           = CRCL(threads);
     /* XXX Not sure about the types of self: */
