@@ -1,0 +1,29 @@
+#define N 10
+
+int main( int argc, char **argv )
+{
+    semaphore_t s[N], done_sem;
+    int done_count = 0, i;
+    int m = ( argc > 1 ) ? (int)atol( argv[1] ) : N;
+
+    sem_init( &done_sem, 0 );
+    for( i = 0; i < N; ++i )
+    {
+        sem_init( &s[i], 0 );
+        activate( i )
+        {
+            int j;
+            for( j = 0; j < m; ++j )
+            {
+                sem_dec( &s[ i ] );
+                sem_inc( &s[ ( i + 1 ) % N ] );
+            }
+            ++done_count;
+            if( done_count == N )
+                sem_inc( &done_sem );
+        }
+    }
+    sem_inc( &s[0] );
+    sem_dec( &done_sem );
+    return 0;
+}
