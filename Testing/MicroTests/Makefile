@@ -48,6 +48,11 @@ baton_libuv: baton_libuv.c
 smoke_test_01: smoke_test_01.c
 	gcc -g -o smoke_test_01 $(FLAGS) -DYIELDING smoke_test_01.c $(LIBUV_FLAGS)
 
+smoke_test_02: smoke_test_02.c
+	gcc -g -o smoke_test_02 $(FLAGS) -DYIELDING smoke_test_02.c $(LIBUV_FLAGS)
+
+smoke_test_03: smoke_test_03.c
+	gcc -g -o smoke_test_03 $(FLAGS) -DYIELDING smoke_test_03.c $(LIBUV_FLAGS)
 
 simple_unyield_test:
 	gcc -g -o simple_unyield_test $(FLAGS) -DYIELDING simple_unyield_test.c -lm

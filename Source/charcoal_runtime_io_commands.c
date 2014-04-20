@@ -60,13 +60,13 @@ void the_thing( uv_timer_t* handle, int status )
 
 void CRCL(io_cmd_close)( uv_handle_t *h )
 {
-    uv_async_t *a = (uv_async_t *)h;
-    printf( "CLOSE %p\n", a ); fflush(stdout);
+    /* uv_async_t *a = (uv_async_t *)h; */
+    /* printf( "CLOSE %p\n", a ); fflush(stdout); */
 }
 
 void CRCL(io_cmd_cb)( uv_async_t *handle, int status /*UNUSED*/ )
 {
-    fprintf( stderr, "IO THING\n" );
+    /* fprintf( stderr, "IO THING\n" ); */
     CRCL(io_cmd_t) cmd;
     /* Multiple async_sends might result in a single callback call, so
      * we need to loop until the queue is empty.  (I assume it will be
@@ -78,19 +78,17 @@ void CRCL(io_cmd_cb)( uv_async_t *handle, int status /*UNUSED*/ )
         switch( cmd.command )
         {
         case __CRCL_IO_CMD_START:
-            uv_timer_start( &cmd._.activity->container->timer_req, the_thing, 5000, 2000);
+            /* XXX this should go in the start_resume function */
+            uv_timer_start( &cmd._.activity->container->timer_req,
+                            the_thing, 5000, 2000);
             break;
         case __CRCL_IO_CMD_JOIN_THREAD:
-            printf( "Joining thread!!!\n" );
-            CRCL(thread_t) *thd = cmd._.thread;
-            pthread_join( thd->sys, NULL );
-            CRCL(remove_from_threads)( thd );
-            if( !CRCL(any_threads)() )
+            if( CRCL(join_thread)( cmd._.thread ) )
             {
-                printf( "Close, please\n" );
+                /* printf( "Close, please\n" ); */
+                /* XXX What about when there are more events???. */
                 uv_close( (uv_handle_t *)handle, CRCL(io_cmd_close) );
             }
-            printf( "GUESS NOT\n" );
             break;
         default:
             exit( 1 );

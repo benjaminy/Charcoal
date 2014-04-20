@@ -47,6 +47,7 @@ struct CRCL(thread_t)
 #define __CRCL_ACTF_DETACHED       (1 << 0)
 #define __CRCL_ACTF_BLOCKED        (1 << 1)
 #define __CRCL_ACTF_IN_READY_QUEUE (1 << 2)
+#define __CRCL_ACTF_IN_REAP_QUEUE  (1 << 3)
 
 struct CRCL(activity_t)
 {
@@ -66,8 +67,9 @@ struct CRCL(activity_t)
     char return_value[ sizeof( int ) ];
 };
 
-int CRCL(any_threads)( void );
-void CRCL(remove_from_threads)( CRCL(thread_t) *t );
+/* join thread t.  Return True if t was the last application
+ * thread. */
+int CRCL(join_thread)( CRCL(thread_t) *t );
 int CRCL(activate)( CRCL(activity_t) *act, CRCL(entry_t) f, void *args );
 
 CRCL(activity_t) *CRCL(get_self_activity)( void );
