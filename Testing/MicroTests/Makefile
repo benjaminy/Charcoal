@@ -36,15 +36,6 @@ TARGETS = simple_test simple_test_noyield simple_yield_exe  unyielding_test_exe 
 timer_create_test: timer_create_test.c
 	gcc -O1 -o timer_create_test timer_create_test.c -lrt
 
-baton_setcontext: baton_setcontext.c
-	gcc -g -O1 $(INCLUDE_DIRS) -o baton_setcontext baton_setcontext.c
-
-baton_setcontext_jmp: baton_setcontext_jmp.c
-	gcc -g -O1 $(INCLUDE_DIRS) -o baton_setcontext_jmp baton_setcontext_jmp.c
-
-baton_libuv: baton_libuv.c
-	gcc -g -O1 $(INCLUDE_DIRS) -o baton_libuv baton_libuv.c ../../Build/libuv/libuv.a -pthread
-
 smoke_test_01: smoke_test_01.c
 	gcc -g -o smoke_test_01 $(FLAGS) -DYIELDING smoke_test_01.c $(LIBUV_FLAGS)
 

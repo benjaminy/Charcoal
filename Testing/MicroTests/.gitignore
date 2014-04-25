@@ -1,6 +1,3 @@
-baton_libuv
-baton_setcontext
-baton_setcontext_jmp
 smoke_test_*
 !smoke_test_*.c
 timer_create_test
