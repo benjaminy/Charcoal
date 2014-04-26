@@ -1,9 +1,12 @@
 #ifndef __CHARCOAL_STD_LIB_H
 #define __CHARCOAL_STD_LIB_H
 
+#include <charcoal_runtime.h>
+#include <netdb.h>
+
 /* Using the C11 API where appropriate */
 
-
+#if 0
 /* Thread and activity types */
 typedef struct *thread_t;
 typedef struct *activity_t;
@@ -22,7 +25,28 @@ void thrd_yield();
 _Noreturn void thrd_exit( int res );
 int thrd_detach( thrd_t thr );
 int thrd_join( thrd_t thr, int *res );
+#endif
+typedef struct semaphore_t semaphore_t;
 
+struct semaphore_t
+{
+    unsigned value;
+    CRCL(activity_t) *waiters;
+};
+
+int semaphore_open    ( semaphore_t *s, unsigned i );
+int semaphore_close   ( semaphore_t *s );
+int semaphore_incr    ( semaphore_t *s );
+int semaphore_decr    ( semaphore_t *s );
+int semaphore_try_decr( semaphore_t *s );
+
+int getaddrinfo_crcl(
+    const char *node,
+    const char *service,
+    const struct addrinfo *hints,
+    struct addrinfo **res );
+
+#if 0
 enum{
 thrd_success
 thrd_timedout
@@ -125,5 +149,5 @@ TET_RESULT_CODE tet_set_coroutine_channel(
 TET_RESULT_CODE tet_async_call( void *(*f)( void *), promise? );
 
 /* synchronization primitives */
-
+#endif
 #endif  /* __CHARCOAL_STD_LIB_H */

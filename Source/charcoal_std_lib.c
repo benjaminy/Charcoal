@@ -1,3 +1,7 @@
+#include <charcoal_base.h>
+#include <charcoal_std_lib.h>
+#include <errno.h>
+
 /*
  * TetraStak
  */
@@ -136,7 +140,113 @@ int release( mutex m )
         }
     }
 }
+#endif
+/* XXX the semaphore implementation is not thread-safe yet.  Fix
+ * eventually. */
 
+int semaphore_open( semaphore_t *s, unsigned i )
+{
+    if( !s )
+    {
+        return EINVAL;
+    }
+    s->value = i;
+    s->waiters = NULL;
+    return 0;
+}
+
+int semaphore_close( semaphore_t *s )
+{
+    if( !s )
+    {
+        return EINVAL;
+    }
+    if( s->waiters )
+    {
+        /* XXX error? */
+    }
+    return 0;
+}
+
+int semaphore_incr( semaphore_t *s )
+{
+    if( !s )
+    {
+        return EINVAL;
+    }
+    ++s->value;
+    if( s->waiters )
+    {
+        CRCL(activity_t) *a = CRCL(pop_special_queue)(
+            __CRCL_ACTF_BLOCKED, NULL, &s->waiters );
+        CRCL(push_special_queue)(
+            __CRCL_ACTF_IN_READY_QUEUE, a, a->container, NULL );
+    }
+    return 0;
+}
+
+int semaphore_decr( semaphore_t *s )
+{
+    if( !s )
+    {
+        return EINVAL;
+    }
+    CRCL(activity_t) *self = CRCL(get_self_activity)();
+    while( s->value < 1 )
+    {
+        int rc;
+        CRCL(push_special_queue)(__CRCL_ACTF_BLOCKED,
+            self, NULL, &s->waiters );
+        if( ( rc = CRCL(activity_blocked)( self ) ) )
+        {
+            return rc;
+        }
+    }
+    --s->value;
+    /* XXX maybe this isn't necessary?  */
+    if( s->value > 0 && s->waiters )
+    {
+        CRCL(activity_t) *a = CRCL(pop_special_queue)(
+            __CRCL_ACTF_BLOCKED, NULL, &s->waiters );
+        CRCL(push_special_queue)(
+            __CRCL_ACTF_IN_READY_QUEUE, a, a->container, NULL );
+    }
+    return 0;
+}
+
+int semaphore_try_decr( semaphore_t *s )
+{
+    if( !s )
+    {
+        return EINVAL;
+    }
+    if( s->value < 1 )
+    {
+        return EAGAIN;
+    }
+    else
+    {
+        --s->value;
+        return 0;
+    }
+}
+
+
+
+
+uv_getaddrinfo_t resolver;
+
+int getaddrinfo_crcl(
+    const char *node,
+    const char *service,
+    const struct addrinfo *hints,
+    struct addrinfo **res )
+{
+    
+}
+
+
+#if 0
 void sem_inc( semaphore *s )
 {
     if( pseudo_multithreaded_check(

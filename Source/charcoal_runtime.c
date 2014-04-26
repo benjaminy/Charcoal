@@ -3,6 +3,7 @@
  */
 
 #include <charcoal_base.h>
+#undef _FORTIFY_SOURCE
 #include <assert.h>
 #include <signal.h>
 #include <stdlib.h>
@@ -12,6 +13,7 @@
 #include <limits.h>
 #include <charcoal_runtime.h>
 #include <charcoal_runtime_io_commands.h>
+#undef _FORTIFY_SOURCE
 
 /* Scheduler stuff */
 
@@ -108,7 +110,7 @@ void CRCL(unyielding_exit)()
 }
 
 void timeout_signal_handler(){
-    __charcoal_atomic_store_int(&(CRCL(get_self_activity)()->container->timeout), 1);
+    CRCL(atomic_store_int)(&(CRCL(get_self_activity)()->container->timeout), 1);
     //printf("signal handler went off\n");
 }
 
@@ -121,7 +123,7 @@ static void CRCL(activity_start_resume)( CRCL(activity_t) *self )
     ABORT_ON_FAIL( uv_async_send( &CRCL(io_cmd) ) );
     assert( !pthread_setspecific( CRCL(self_key), self ) );
     alarm((int) self->container->max_time);
-    CRCL(atomic_store_int)(&self->container->timeout, 0);
+    // CRCL(atomic_store_int)(&self->container->timeout, 0);
     self->yield_attempts = 0;
     /* XXX: Lots to fix here. */
 }
@@ -183,9 +185,11 @@ static void CRCL(print_special_queue)( CRCL(activity_t) **q )
 }
 
 /* Precondition: The thread mgmt mutex is held. */
-static CRCL(activity_t) *CRCL(pop_special_queue)(
-    unsigned queue_flag, CRCL(thread_t) *t )
+CRCL(activity_t) *CRCL(pop_special_queue)(
+    unsigned queue_flag, CRCL(thread_t) *t, CRCL(activity_t) **qp )
 {
+    // assert( t || qp );
+    // assert( !( t && qp ) );
     CRCL(activity_t) **q = NULL;
     switch( queue_flag )
     {
@@ -194,6 +198,9 @@ static CRCL(activity_t) *CRCL(pop_special_queue)(
         break;
     case __CRCL_ACTF_IN_REAP_QUEUE:
         q = &t->to_be_reaped;
+        break;
+    case __CRCL_ACTF_BLOCKED:
+        q = qp;
         break;
     default:
         exit( queue_flag );
@@ -225,9 +232,12 @@ static CRCL(activity_t) *CRCL(pop_special_queue)(
 }
 
 /* Precondition: The thread mgmt mutex is held. */
-static void CRCL(push_special_queue)(
-    unsigned queue_flag, CRCL(thread_t) *t, CRCL(activity_t) *a )
+void CRCL(push_special_queue)(
+    unsigned queue_flag, CRCL(activity_t) *a,
+    CRCL(thread_t) *t, CRCL(activity_t) **qp )
 {
+    assert( t || qp );
+    assert( !( t && qp ) );
     if( a->flags & queue_flag )
     {
         /* printf( "Already in queue\n" ); */
@@ -242,6 +252,9 @@ static void CRCL(push_special_queue)(
         break;
     case __CRCL_ACTF_IN_REAP_QUEUE:
         q = &t->to_be_reaped;
+        break;
+    case __CRCL_ACTF_BLOCKED:
+        q = qp;
         break;
     default:
         exit( queue_flag );
@@ -276,9 +289,10 @@ static void CRCL(push_special_queue)(
  *
  * Should the calling code call _setjmp, or should that happen in
  * here? */
-static int CRCL(activity_blocked)( CRCL(activity_t) *self )
+int CRCL(activity_blocked)( CRCL(activity_t) *self )
 {
     int rc;
+    // XXX --thd->runnable_activities;
     /* printf( "Actvity blocked\n" ); */
     CRCL(thread_t) *thd = self->container;
     if( ( rc = pthread_mutex_lock( &thd->thd_management_mtx ) ) )
@@ -294,7 +308,7 @@ static int CRCL(activity_blocked)( CRCL(activity_t) *self )
         }
     }
     CRCL(activity_t) *to = CRCL(pop_special_queue)(
-        __CRCL_ACTF_IN_READY_QUEUE, thd );
+        __CRCL_ACTF_IN_READY_QUEUE, thd, NULL );
     if( ( rc = pthread_mutex_unlock( &thd->thd_management_mtx ) ) )
     {
         return rc;
@@ -327,7 +341,7 @@ void CRCL(switch_from_to)( CRCL(activity_t) *from, CRCL(activity_t) *to )
         printf( "ERRR from: %p thd: %p %s\n", from, thd, strerror( rc ) ); fflush( stdout );
         exit( rc );
     }
-    CRCL(push_special_queue)( __CRCL_ACTF_IN_READY_QUEUE, thd, from );
+    CRCL(push_special_queue)( __CRCL_ACTF_IN_READY_QUEUE, from, thd, NULL );
     ABORT_ON_FAIL( pthread_mutex_unlock( &thd->thd_management_mtx ) );
     if( _setjmp( from->jmp ) == 0 )
     {
@@ -381,44 +395,24 @@ static void CRCL(insert_activity_into_thread)(
 }
 
 /* XXX remove problem!!! */
-int CRCL(activity_join)( CRCL(activity_t) *a )
+int CRCL(activity_join)( CRCL(activity_t) *a, void *p )
 {
     if( !a )
     {
         return EINVAL;
     }
-    /* XXX int rc; */
-    CRCL(activity_t) *self = CRCL(get_self_activity)();
-    CRCL(thread_t) *thd = self->container;
-    self->flags |= __CRCL_ACTF_BLOCKED;
-    CRCL(activity_t) *to;
-    ABORT_ON_FAIL( CRCL(choose_next_activity)( &to ) );
-    if( to )
+    if( a->flags & __CRCL_ACTF_DONE )
     {
-        CRCL(sem_incr)( &to->can_run );
+        return 0;
     }
-
-    --thd->runnable_activities;
-    /* XXX FIXME */
-    /* if( ( rc = pthread_join( a->self, NULL ) ) ) */
-    /* { */
-    /*     return rc; */
-    /* } */
-    ABORT_ON_FAIL( pthread_mutex_lock( &thd->thd_management_mtx ) );
-    /* I'm pretty sure we don't want this free anymore */
-    free( a );
-    /* assert( thd->activities_sz > 0 ) */
-    CRCL(remove_activity_from_thread)( a, thd );
-    /* XXX ! go if noone is going.  Wait otherwise */
-    self->flags &= ~__CRCL_ACTF_BLOCKED;
-    // int wait = !!( thd->flags & __CRCL_THDF_ANY_RUNNING );
-    int wait = thd->runnable_activities > 0;
-    ++thd->runnable_activities;
-    // thd->flags |= __CRCL_THDF_ANY_RUNNING;
-    ABORT_ON_FAIL( pthread_mutex_unlock( &thd->thd_management_mtx ) );
-    if( wait )
+    CRCL(activity_t) *self = CRCL(get_self_activity)();
+    /* printf( "joining.  push %p on %p\n", self, a ); */
+    CRCL(push_special_queue)( __CRCL_ACTF_BLOCKED,
+        self, NULL, &a->joining );
+    int rc;
+    if( ( rc = CRCL(activity_blocked)( self ) ) )
     {
-    CRCL(sem_decr)( &self->can_run );
+        return rc;
     }
     return 0;
 }
@@ -458,10 +452,10 @@ static void CRCL(activity_finished)( CRCL(activity_t) *a )
         exit( rc );
     }
     CRCL(activity_t) *reaper_act = a->container->activities;
-    CRCL(push_special_queue)( __CRCL_ACTF_IN_READY_QUEUE, thd, reaper_act );
-    CRCL(push_special_queue)( __CRCL_ACTF_IN_REAP_QUEUE, thd, a );
+    CRCL(push_special_queue)( __CRCL_ACTF_IN_READY_QUEUE, reaper_act, thd, NULL );
+    CRCL(push_special_queue)( __CRCL_ACTF_IN_REAP_QUEUE, a, thd, NULL );
     CRCL(activity_t) *next = CRCL(pop_special_queue)(
-        __CRCL_ACTF_IN_READY_QUEUE, thd );
+        __CRCL_ACTF_IN_READY_QUEUE, thd, NULL );
     ABORT_ON_FAIL( pthread_mutex_unlock( &thd->thd_management_mtx ) );
     /* printf( "Jumping to %p\n", next ); */
     CRCL(activity_start_resume)( next );
@@ -469,6 +463,8 @@ static void CRCL(activity_finished)( CRCL(activity_t) *a )
     exit( 1 );
 }
 
+/* XXX The compiler could generate this code to avoid too many layers
+ * of wrappers. */
 /* This is the entry procedure for new activities */
 static void CRCL(activity_entry)( void *p )
 {
@@ -476,18 +472,19 @@ static void CRCL(activity_entry)( void *p )
     /* printf( "Starting activity %p(thd:%p)\n", ctx.act, ctx.act->container ); */
 
     /* XXX activity migration between threads will cause problems */
-    /* XXX CRCL(thread_t) *thd = ctx.act->container; */
 
     /* Wacky code alert!  We swapcontext back to the activity that
      * created this one, after doing a setjmp here.  I'm not 100% sure
      * why it's important to do this swapcontext when "normal"
      * activity switching can be done with longjmp, but it seems to
      * be. */
+    /* XXX Maybe try to avoid malloc.  ucontext_t is huge. */
+    ucontext_t *tmp = (ucontext_t *)malloc( sizeof( tmp[0] ) );;
     if( _setjmp( ctx.act->jmp ) == 0 )
     {
-        ucontext_t tmp;
-        swapcontext( &tmp, ctx.prv );
+        swapcontext( tmp, ctx.prv );
     }
+    free( tmp );
     /* LOG: Actual activity starting. */
     ctx.entry( ctx.p );
     /* LOG: Actual activity complete. */
@@ -496,8 +493,6 @@ static void CRCL(activity_entry)( void *p )
     exit( -1 );
 }
 
-/* static ucontext_t WTF; */
-
 int CRCL(activate_in_thread)(CRCL(thread_t) *thd, CRCL(activity_t) *act,
         CRCL(entry_t) f, void *args )
 {
@@ -505,56 +500,45 @@ int CRCL(activate_in_thread)(CRCL(thread_t) *thd, CRCL(activity_t) *act,
     act->flags = 0;
     act->container = thd;
     act->yield_attempts = 0;
-    act->snext = act->sprev = NULL;
+    act->snext = act->sprev = act->joining = NULL;
     alarm((int) act->container->max_time);
     CRCL(atomic_store_int)(&(act->container->timeout), 0);
-    //printf("Setting timeout to 0 in charcoal_activate");
     pthread_mutex_lock( &thd->thd_management_mtx );
     CRCL(insert_activity_into_thread)( act, thd );
 
     ABORT_ON_FAIL( getcontext( &act->ctx ) );
-    // ABORT_ON_FAIL( getcontext( &WTF ) );
     /* I hope the minimum stack size is actually bigger, but this is
      * fine for now. */
-    act->ctx.uc_stack.ss_size = MINSIGSTKSZ*42;
-    /* printf( "MER??? %d\n", (int)act->ctx.uc_stack.ss_size ); */
+    act->ctx.uc_stack.ss_size = 16 * MINSIGSTKSZ;
     act->ctx.uc_stack.ss_sp = malloc( act->ctx.uc_stack.ss_size );
-    /* printf( "DER!\n" ); */
     if( !act->ctx.uc_stack.ss_sp )
     {
         return( ENOMEM );
     }
     act->ctx.uc_stack.ss_flags = 0; /* SA_DISABLE and/or SA_ONSTACK */
     act->ctx.uc_link = NULL; /* XXX fix. */
-    // act->ctx.uc_sigmask = 0; /* XXX sigset_t */
+    /* XXX mask signals??? */
+    sigemptyset( &act->ctx.uc_sigmask );
 
     ++thd->runnable_activities;
 
-    ucontext_t tmp;
+    /* XXX Maybe try to avoid malloc.  ucontext_t is huge. */
+    ucontext_t *tmp = (ucontext_t *)malloc( sizeof( tmp[0] ) );
     CRCL(thread_launch_ctx) ctx;
-    ctx.prv   = &tmp;
+    ctx.prv   = tmp;
     ctx.entry = f;
     ctx.p     = args;
     ctx.act   = act;
 
+    makecontext( &act->ctx, (void(*)(void))CRCL(activity_entry), 1, &ctx );
     CRCL(activity_t) *real_self = CRCL(get_self_activity)();
-
-    /* printf( "A %p, %p  %p\n", real_self, real_self->container, act ); */
-
-    void (*entry)(void) = (void(*)(void))CRCL(activity_entry);
-    makecontext( &act->ctx, entry, 1, &ctx );
-
-    /* printf( "B %p, %p\n", real_self, real_self->container ); */
-
     CRCL(activity_start_resume)( act );
-    swapcontext( &tmp, &act->ctx );
+    swapcontext( tmp, &act->ctx );
     CRCL(activity_start_resume)( real_self );
-
-    /* printf( "C %p, %p\n", real_self, real_self->container ); */
-
     pthread_mutex_unlock( &thd->thd_management_mtx );
     /* Whether the newly created activities goes first should probably
      * be controllable. */
+    free( tmp );
     CRCL(switch_to)( act );
     return 0;
 }
@@ -614,11 +598,19 @@ static void CRCL(reap_activities)( CRCL(activity_t) *a )
         while( thd->to_be_reaped )
         {
             CRCL(activity_t) *r = CRCL(pop_special_queue)(
-                __CRCL_ACTF_IN_REAP_QUEUE, thd );
+                __CRCL_ACTF_IN_REAP_QUEUE, thd, NULL );
             /* XXX */
-            /* printf( "Reaping activity %p\n", r ); */
+            /* printf( "Reaping activity %p j:%p\n", r, r->joining ); */
+            r->flags |= __CRCL_ACTF_DONE;
             CRCL(remove_activity_from_thread)( r, thd );
             free( r->ctx.uc_stack.ss_sp );
+            while( r->joining )
+            {
+                CRCL(activity_t) *ready = CRCL(pop_special_queue)(
+                    __CRCL_ACTF_BLOCKED, NULL, &r->joining );
+                CRCL(push_special_queue)(
+                    __CRCL_ACTF_IN_READY_QUEUE, ready, ready->container, NULL );
+            }
         }
 
         if( thd->activities->next == thd->activities )
@@ -658,6 +650,7 @@ static void *CRCL(thread_entry)( void *p )
     reaper_act.flags = 0;
     reaper_act.next = &reaper_act;
     reaper_act.prev = &reaper_act;
+    reaper_act.joining = NULL;
     reaper_act.snext = NULL;
     reaper_act.sprev = NULL;
     if( getcontext( &reaper_act.ctx ) )
@@ -718,7 +711,7 @@ static int CRCL(create_thread)(
      * waiting for all the other activities to finish.  Its stack does
      * not need to be very big.  In fact, PTHREAD_STACK_MIN might be on
      * the big side... TODO using something even smaller. */
-    ABORT_ON_FAIL( pthread_attr_setstacksize( &attr, PTHREAD_STACK_MIN *42) );
+    ABORT_ON_FAIL( pthread_attr_setstacksize( &attr, PTHREAD_STACK_MIN ) );
 
     /* XXX: pthread attributes */
     // detachstate guardsize inheritsched schedparam schedpolicy scope
@@ -877,6 +870,8 @@ static void CRCL(main_activity_entry)( void *p )
  * loop.  Eventually we should be able to get rid of that. */
 int main( int argc, char **argv, char **env )
 {
+    printf( "PTHREAD_STACK_MIN: %d\n", PTHREAD_STACK_MIN );
+    printf( "MINSIGSTKSZ: %d\n", MINSIGSTKSZ );
     /* Okay to stack-allocate these here because the I/O thread should
      * always be the last thing running in a Charcoal process. */
     CRCL(thread_t)   io_thread;

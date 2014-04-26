@@ -20,6 +20,8 @@ typedef struct
     unsigned int    waiters;
 } CRCL(sem_t);
 
+extern int foo;
+
 /* pshared == Process-shared.  Not supported for now. */
 int CRCL(sem_init)     ( CRCL(sem_t) *, int pshared, unsigned int init );
 int CRCL(sem_destroy)  ( CRCL(sem_t) * );

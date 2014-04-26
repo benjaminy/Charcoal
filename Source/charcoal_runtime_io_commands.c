@@ -4,8 +4,8 @@
 #include <charcoal_runtime_io_commands.h>
 #include <charcoal_runtime.h>
 
-uv_loop_t *__charcoal_io_loop;
-uv_async_t __charcoal_io_cmd;
+uv_loop_t *CRCL(io_loop);
+uv_async_t CRCL(io_cmd);
 
 typedef struct
 {
@@ -58,10 +58,16 @@ void the_thing( uv_timer_t* handle, int status )
 {
 }
 
-void CRCL(io_cmd_close)( uv_handle_t *h )
+static void CRCL(io_cmd_close)( uv_handle_t *h )
 {
     /* uv_async_t *a = (uv_async_t *)h; */
     /* printf( "CLOSE %p\n", a ); fflush(stdout); */
+}
+
+static void CRCL(getaddrinfo_cb)(
+    uv_getaddrinfo_t* req, int status, struct addrinfo* res )
+{
+    
 }
 
 void CRCL(io_cmd_cb)( uv_async_t *handle, int status /*UNUSED*/ )
@@ -89,6 +95,16 @@ void CRCL(io_cmd_cb)( uv_async_t *handle, int status /*UNUSED*/ )
                 /* XXX What about when there are more events???. */
                 uv_close( (uv_handle_t *)handle, CRCL(io_cmd_close) );
             }
+            break;
+        case __CRCL_IO_CMD_GETADDRINFO:
+#if 0
+UV_EXTERN int uv_getaddrinfo(CRCL(io_loop),
+                             cmd._.addrinfo.resolver,
+                             uv_getaddrinfo_cb getaddrinfo_cb,
+                             const char* node,
+                             const char* service,
+                             const struct addrinfo* hints);
+#endif
             break;
         default:
             exit( 1 );

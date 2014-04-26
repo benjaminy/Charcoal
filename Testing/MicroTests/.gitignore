@@ -1,5 +1,6 @@
 smoke_test_*
 !smoke_test_*.c
+multi_dns_crcl
 timer_create_test
 check
 activity_create

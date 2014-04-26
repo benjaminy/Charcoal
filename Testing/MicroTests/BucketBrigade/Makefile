@@ -48,6 +48,9 @@ bucket_brigade_pthread: bucket_brigade_pthread.c
 bucket_brigade_silly_loop: bucket_brigade_silly_loop.c
 	gcc -g -O1 -o bucket_brigade_silly_loop bucket_brigade_silly_loop.c
 
+bucket_brigade_crcl: bucket_brigade_crcl.c
+	gcc -O1 $(FLAGS) -o bucket_brigade_crcl bucket_brigade_crcl.c -lcharcoal_sys $(LIBUV_FLAGS)
+
 bucket_brigade.class: bucket_brigade.java
 	javac bucket_brigade.java
 

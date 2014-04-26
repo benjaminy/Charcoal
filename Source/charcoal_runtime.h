@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <uv.h>
 #define _XOPEN_SOURCE
+#undef _FORTIFY_SOURCE
 #include <ucontext.h>
 #include <setjmp.h>
 #include <pthread.h>
@@ -48,6 +49,7 @@ struct CRCL(thread_t)
 #define __CRCL_ACTF_BLOCKED        (1 << 1)
 #define __CRCL_ACTF_IN_READY_QUEUE (1 << 2)
 #define __CRCL_ACTF_IN_REAP_QUEUE  (1 << 3)
+#define __CRCL_ACTF_DONE           (1 << 4)
 
 struct CRCL(activity_t)
 {
@@ -57,7 +59,7 @@ struct CRCL(activity_t)
     /* Every activity is is the (thread-local) list of all activities.
      * An activity may be in another "special" list, of which there
      * are currently two: Ready and To Be Reaped */
-    CRCL(activity_t) *next, *prev, *snext, *sprev;
+    CRCL(activity_t) *next, *prev, *snext, *sprev, *joining;
     ucontext_t ctx;
     jmp_buf    jmp;
     /* Debug and profiling stuff */
@@ -67,6 +69,14 @@ struct CRCL(activity_t)
     char return_value[ sizeof( int ) ];
 };
 
+void CRCL(push_special_queue)(
+    unsigned queue_flag, CRCL(activity_t) *a,
+    CRCL(thread_t) *t, CRCL(activity_t) **qp );
+CRCL(activity_t) *CRCL(pop_special_queue)(
+    unsigned queue_flag, CRCL(thread_t) *t, CRCL(activity_t) **qp );
+
+int CRCL(activity_blocked)( CRCL(activity_t) *self );
+
 /* join thread t.  Return True if t was the last application
  * thread. */
 int CRCL(join_thread)( CRCL(thread_t) *t );
@@ -74,7 +84,7 @@ int CRCL(activate)( CRCL(activity_t) *act, CRCL(entry_t) f, void *args );
 
 CRCL(activity_t) *CRCL(get_self_activity)( void );
 void CRCL(set_self_activity)( CRCL(activity_t) *a );
-int CRCL(activity_join)( CRCL(activity_t) * );
+int CRCL(activity_join)( CRCL(activity_t) *, void * );
 int CRCL(activity_detach)( CRCL(activity_t) * );
 
 

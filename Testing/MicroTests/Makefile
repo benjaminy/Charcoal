@@ -30,7 +30,8 @@ endif
 # INCLUDE_DIRS = -I../../Install/include -I../../ThirdParty/OpenPA/Releases/1.0.4/Install/include
 INCLUDE_DIRS = -I../../Install/include -I../../ThirdParty/OpenPA/Releases/1.0.4/Install/include -I../../ThirdParty/libuv/Releases/0.10.25/include
 LIB_DIRS =  -L../../Install/lib
-FLAGS = $(INCLUDE_DIRS) $(LIB_DIRS) -lcharcoal_sys -lpthread -pg -lrt
+# FLAGS = $(INCLUDE_DIRS) $(LIB_DIRS) -lcharcoal_sys -lpthread -pg -lrt
+FLAGS = $(INCLUDE_DIRS) $(LIB_DIRS) -lcharcoal_sys -lpthread -lrt
 TARGETS = simple_test simple_test_noyield simple_yield_exe  unyielding_test_exe activity_create timeout_test_exe simple_unyield_test simple_unyield_test_noyield
 
 timer_create_test: timer_create_test.c
@@ -44,6 +45,9 @@ smoke_test_02: smoke_test_02.c
 
 smoke_test_03: smoke_test_03.c
 	gcc -g -o smoke_test_03 $(FLAGS) -DYIELDING smoke_test_03.c $(LIBUV_FLAGS)
+
+multi_dns_crcl: multi_dns_crcl.c
+	gcc -o multi_dns_crcl $(INCLUDE_DIRS) multi_dns_crcl.c
 
 simple_unyield_test:
 	gcc -g -o simple_unyield_test $(FLAGS) -DYIELDING simple_unyield_test.c -lm
