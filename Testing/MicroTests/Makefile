@@ -47,7 +47,7 @@ smoke_test_03: smoke_test_03.c
 	gcc -g -o smoke_test_03 $(FLAGS) -DYIELDING smoke_test_03.c $(LIBUV_FLAGS)
 
 multi_dns_crcl: multi_dns_crcl.c
-	gcc -o multi_dns_crcl $(INCLUDE_DIRS) multi_dns_crcl.c
+	gcc -g -o multi_dns_crcl $(FLAGS) multi_dns_crcl.c -lcharcoal_sys $(LIBUV_FLAGS)
 
 simple_unyield_test:
 	gcc -g -o simple_unyield_test $(FLAGS) -DYIELDING simple_unyield_test.c -lm

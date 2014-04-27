@@ -14,11 +14,13 @@ all: semaphore runtime runtime_io_commands std_lib
 	cp charcoal_semaphore.h ../Install/include
 	cp charcoal_runtime.h ../Install/include
 	cp charcoal_runtime_atomics.h ../Install/include
+	cp charcoal_runtime_io_commands.h ../Install/include
 	cp charcoal_std_lib.h ../Install/include
 
 clean:
-	rm ../Build/*.o
-	rm ../Install/lib/libcharcoal_sys.a
+	rm -f ../Build/*.o
+	rm -f ../Install/lib/libcharcoal_sys.a
+	rm -f ../Install/include/*
 
 ../Build/charcoal_semaphore.o : charcoal_semaphore.c charcoal_semaphore.h charcoal_base.h
 	gcc $(CFLAGS) -c -o ../Build/charcoal_semaphore.o $(INCLUDE_DIRS) charcoal_semaphore.c

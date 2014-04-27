@@ -1,5 +1,8 @@
 #define _XOPEN_SOURCE
 #define _BSD_SOURCE
+#ifdef _FORTIFY_SOURCE
+#undef _FORTIFY_SOURCE
+#endif
 #include <ucontext.h>
 #include <setjmp.h>
 #include <stdlib.h>

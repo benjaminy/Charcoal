@@ -18,16 +18,16 @@ typedef struct
     pthread_mutex_t m;
     pthread_cond_t  c;
     unsigned int    waiters;
-} CRCL(sem_t);
+} crcl(sem_t);
 
 extern int foo;
 
 /* pshared == Process-shared.  Not supported for now. */
-int CRCL(sem_init)     ( CRCL(sem_t) *, int pshared, unsigned int init );
-int CRCL(sem_destroy)  ( CRCL(sem_t) * );
-int CRCL(sem_get_value)( CRCL(sem_t) *__restrict, int *__restrict );
-int CRCL(sem_incr)     ( CRCL(sem_t) * );
-int CRCL(sem_decr)     ( CRCL(sem_t) * );
-int CRCL(sem_try_decr) ( CRCL(sem_t) * );
+int crcl(sem_init)     ( crcl(sem_t) *, int pshared, unsigned int init );
+int crcl(sem_destroy)  ( crcl(sem_t) * );
+int crcl(sem_get_value)( crcl(sem_t) *__restrict, int *__restrict );
+int crcl(sem_incr)     ( crcl(sem_t) * );
+int crcl(sem_decr)     ( crcl(sem_t) * );
+int crcl(sem_try_decr) ( crcl(sem_t) * );
 
 #endif /* __CHARCOAL_SEMAPHORE */

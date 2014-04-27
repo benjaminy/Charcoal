@@ -1,6 +1,7 @@
 #include <charcoal_base.h>
 #include <charcoal_std_lib.h>
 #include <errno.h>
+#include <stdlib.h>
 
 /*
  * TetraStak
@@ -177,10 +178,10 @@ int semaphore_incr( semaphore_t *s )
     ++s->value;
     if( s->waiters )
     {
-        CRCL(activity_t) *a = CRCL(pop_special_queue)(
-            __CRCL_ACTF_BLOCKED, NULL, &s->waiters );
-        CRCL(push_special_queue)(
-            __CRCL_ACTF_IN_READY_QUEUE, a, a->container, NULL );
+        crcl(activity_t) *a = crcl(pop_special_queue)(
+            CRCL(ACTF_BLOCKED), NULL, &s->waiters );
+        crcl(push_special_queue)(
+            CRCL(ACTF_READY_QUEUE), a, a->container, NULL );
     }
     return 0;
 }
@@ -191,13 +192,13 @@ int semaphore_decr( semaphore_t *s )
     {
         return EINVAL;
     }
-    CRCL(activity_t) *self = CRCL(get_self_activity)();
+    crcl(activity_t) *self = crcl(get_self_activity)();
     while( s->value < 1 )
     {
         int rc;
-        CRCL(push_special_queue)(__CRCL_ACTF_BLOCKED,
+        crcl(push_special_queue)(CRCL(ACTF_BLOCKED),
             self, NULL, &s->waiters );
-        if( ( rc = CRCL(activity_blocked)( self ) ) )
+        if( ( rc = crcl(activity_blocked)( self ) ) )
         {
             return rc;
         }
@@ -206,10 +207,10 @@ int semaphore_decr( semaphore_t *s )
     /* XXX maybe this isn't necessary?  */
     if( s->value > 0 && s->waiters )
     {
-        CRCL(activity_t) *a = CRCL(pop_special_queue)(
-            __CRCL_ACTF_BLOCKED, NULL, &s->waiters );
-        CRCL(push_special_queue)(
-            __CRCL_ACTF_IN_READY_QUEUE, a, a->container, NULL );
+        crcl(activity_t) *a = crcl(pop_special_queue)(
+            CRCL(ACTF_BLOCKED), NULL, &s->waiters );
+        crcl(push_special_queue)(
+            CRCL(ACTF_READY_QUEUE), a, a->container, NULL );
     }
     return 0;
 }
@@ -231,10 +232,14 @@ int semaphore_try_decr( semaphore_t *s )
     }
 }
 
-
-
-
-uv_getaddrinfo_t resolver;
+static int crcl(send_io_cmd)( crcl(io_cmd_t) *cmd, crcl(activity_t) *a )
+{
+    enqueue( cmd );
+    a->flags |= CRCL(ACTF_BLOCKED);
+    /* XXX Race between the next two lines??? */
+    RET_IF_ERROR( uv_async_send( &crcl(io_cmd) ) );
+    RET_IF_ERROR( crcl(activity_blocked)( a ) );
+}
 
 int getaddrinfo_crcl(
     const char *node,
@@ -242,9 +247,24 @@ int getaddrinfo_crcl(
     const struct addrinfo *hints,
     struct addrinfo **res )
 {
-    
+    /* XXX if unyielding, just call directly */
+    uv_getaddrinfo_t resolver;
+    crcl(activity_t) *self = crcl(get_self_activity)();
+    resolver.data = self;
+    crcl(io_cmd_t) *cmd = (crcl(io_cmd_t) *)malloc( sizeof( cmd[0] ) );
+    if( !cmd )
+    {
+        return ENOMEM;
+    }
+    cmd->command = CRCL(IO_CMD_GETADDRINFO);
+    cmd->_.addrinfo.resolver = &resolver;
+    cmd->_.addrinfo.node     = node;
+    cmd->_.addrinfo.service  = service;
+    cmd->_.addrinfo.hints    = hints;
+    RET_IF_ERROR( crcl(send_io_cmd)( cmd, self ) );
+    *res = self->io_response.addrinfo.info;
+    return self->io_response.addrinfo.rc;
 }
-
 
 #if 0
 void sem_inc( semaphore *s )

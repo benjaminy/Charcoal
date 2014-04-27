@@ -4,8 +4,8 @@
 #include <charcoal_runtime_io_commands.h>
 #include <charcoal_runtime.h>
 
-uv_loop_t *CRCL(io_loop);
-uv_async_t CRCL(io_cmd);
+uv_loop_t *crcl(io_loop);
+uv_async_t crcl(io_cmd);
 
 typedef struct
 {
@@ -15,7 +15,7 @@ typedef struct
 
 static __charcoal_cmd_queue_t __charcoal_cmd_queue;
 
-void enqueue( CRCL(io_cmd_t) *cmd )
+void enqueue( crcl(io_cmd_t) *cmd )
 {
     /* The queue takes ownership of *cmd */
     uv_mutex_lock( &__charcoal_cmd_queue.mtx );
@@ -28,7 +28,7 @@ void enqueue( CRCL(io_cmd_t) *cmd )
  * Removes an item from the command queue.  Returns 0 on success and 1
  * if the queue is empty.
  */
-int dequeue( CRCL(io_cmd_t) *cmd_ref )
+int dequeue( crcl(io_cmd_t) *cmd_ref )
 {
     if( !__charcoal_cmd_queue.front )
     {
@@ -58,22 +58,36 @@ void the_thing( uv_timer_t* handle, int status )
 {
 }
 
-static void CRCL(io_cmd_close)( uv_handle_t *h )
+static void crcl(io_cmd_close)( uv_handle_t *h )
 {
     /* uv_async_t *a = (uv_async_t *)h; */
     /* printf( "CLOSE %p\n", a ); fflush(stdout); */
 }
 
-static void CRCL(getaddrinfo_cb)(
-    uv_getaddrinfo_t* req, int status, struct addrinfo* res )
+static int crcl(wake_up_requester)( crcl(activity_t) *a )
 {
-    
+    a->flags &= ~CRCL(ACTF_BLOCKED);
+    crcl(thread_t) *thd = a->container;
+    RET_IF_ERROR( pthread_mutex_lock( &thd->thd_management_mtx ) );
+    crcl(push_special_queue)( CRCL(ACTF_READY_QUEUE), a, thd, NULL );
+    RET_IF_ERROR( pthread_mutex_unlock( &thd->thd_management_mtx ) );
+    RET_IF_ERROR( pthread_cond_signal( &thd->thd_management_cond ) );
 }
 
-void CRCL(io_cmd_cb)( uv_async_t *handle, int status /*UNUSED*/ )
+static void crcl(getaddrinfo_callback)(
+    uv_getaddrinfo_t* req, int status, struct addrinfo* res )
+{
+    crcl(activity_t) *a = (crcl(activity_t) *)req->data;
+    a->io_response.addrinfo.rc   = status;
+    a->io_response.addrinfo.info = res;
+    /* XXX handle errors? */
+    crcl(wake_up_requester)( a );
+}
+
+void crcl(io_cmd_cb)( uv_async_t *handle, int status /*UNUSED*/ )
 {
     /* fprintf( stderr, "IO THING\n" ); */
-    CRCL(io_cmd_t) cmd;
+    crcl(io_cmd_t) cmd;
     /* Multiple async_sends might result in a single callback call, so
      * we need to loop until the queue is empty.  (I assume it will be
      * extremely uncommon for this queue to actually grow
@@ -83,29 +97,39 @@ void CRCL(io_cmd_cb)( uv_async_t *handle, int status /*UNUSED*/ )
         /* XXX implement stuff */
         switch( cmd.command )
         {
-        case __CRCL_IO_CMD_START:
+        case CRCL(IO_CMD_START):
             /* XXX this should go in the start_resume function */
-            uv_timer_start( &cmd._.activity->container->timer_req,
+            uv_timer_start( &cmd.activity->container->timer_req,
                             the_thing, 5000, 2000);
             break;
-        case __CRCL_IO_CMD_JOIN_THREAD:
-            if( CRCL(join_thread)( cmd._.thread ) )
+        case CRCL(IO_CMD_JOIN_THREAD):
+            if( crcl(join_thread)( cmd._.thread ) )
             {
                 /* printf( "Close, please\n" ); */
                 /* XXX What about when there are more events???. */
-                uv_close( (uv_handle_t *)handle, CRCL(io_cmd_close) );
+                uv_close( (uv_handle_t *)handle, crcl(io_cmd_close) );
             }
             break;
-        case __CRCL_IO_CMD_GETADDRINFO:
-#if 0
-UV_EXTERN int uv_getaddrinfo(CRCL(io_loop),
-                             cmd._.addrinfo.resolver,
-                             uv_getaddrinfo_cb getaddrinfo_cb,
-                             const char* node,
-                             const char* service,
-                             const struct addrinfo* hints);
-#endif
+        case CRCL(IO_CMD_GETADDRINFO):
+        {
+            int rc;
+            if( ( rc = uv_getaddrinfo(crcl(io_loop),
+                                      cmd._.addrinfo.resolver,
+                                      crcl(getaddrinfo_callback),
+                                      cmd._.addrinfo.node,
+                                      cmd._.addrinfo.service,
+                                      cmd._.addrinfo.hints ) ) )
+            {
+                crcl(activity_t) *a = (crcl(activity_t) *)cmd._.addrinfo.resolver->data;
+                a->io_response.addrinfo.rc = rc;
+                crcl(wake_up_requester)( a );
+            }
+            else
+            {
+                /* it worked! */
+            }
             break;
+        }
         default:
             exit( 1 );
         }

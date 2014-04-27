@@ -6,6 +6,13 @@
 
 /* I suspect more stuff will find its way in here, but if not maybe
  * refactor this into some other file. */
-#define CRCL(n) __charcoal_ ## n
+#define crcl(n) __charcoal_ ## n
+#define CRCL(n) __CHARCOAL_ ## n
+
+#define RET_IF_ERROR(cmd) \
+    do { int rc; if( ( rc = cmd ) ) { return rc; } } while( 0 )
+
+typedef struct crcl(thread_t)   crcl(thread_t);
+typedef struct crcl(activity_t) crcl(activity_t);
 
 #endif /* __CHARCOAL_BASE */

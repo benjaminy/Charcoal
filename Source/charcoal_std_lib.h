@@ -31,7 +31,7 @@ typedef struct semaphore_t semaphore_t;
 struct semaphore_t
 {
     unsigned value;
-    CRCL(activity_t) *waiters;
+    crcl(activity_t) *waiters;
 };
 
 int semaphore_open    ( semaphore_t *s, unsigned i );

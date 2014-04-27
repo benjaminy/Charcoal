@@ -5,7 +5,7 @@
 #include<stdlib.h>
 #include<errno.h>
 
-int CRCL(sem_init)( CRCL(sem_t) *s, int pshared, unsigned int value )
+int crcl(sem_init)( crcl(sem_t) *s, int pshared, unsigned int value )
 {
     if( pshared || !s )
     {
@@ -25,7 +25,7 @@ int CRCL(sem_init)( CRCL(sem_t) *s, int pshared, unsigned int value )
     return 0;
 }
 
-int CRCL(sem_destroy)( CRCL(sem_t) *s )
+int crcl(sem_destroy)( crcl(sem_t) *s )
 {
     if( !s )
     {
@@ -50,7 +50,7 @@ int CRCL(sem_destroy)( CRCL(sem_t) *s )
     return 0;
 }
 
-int CRCL(sem_get_value)( CRCL(sem_t) * __restrict s, int * __restrict vp )
+int crcl(sem_get_value)( crcl(sem_t) * __restrict s, int * __restrict vp )
 {
     if( !s || !vp )
     {
@@ -69,7 +69,7 @@ int CRCL(sem_get_value)( CRCL(sem_t) * __restrict s, int * __restrict vp )
     return 0;
 }
 
-int CRCL(sem_incr)( CRCL(sem_t) *s )
+int crcl(sem_incr)( crcl(sem_t) *s )
 {
     if( !s )
     {
@@ -103,7 +103,7 @@ int CRCL(sem_incr)( CRCL(sem_t) *s )
     return 0;
 }
 
-int CRCL(sem_try_decr)( CRCL(sem_t) *s )
+int crcl(sem_try_decr)( crcl(sem_t) *s )
 {
     if( !s )
     {
@@ -124,7 +124,7 @@ int CRCL(sem_try_decr)( CRCL(sem_t) *s )
     return rv;
 }
 
-int CRCL(sem_decr)( CRCL(sem_t) *s )
+int crcl(sem_decr)( crcl(sem_t) *s )
 {
     if( !s )
     {
