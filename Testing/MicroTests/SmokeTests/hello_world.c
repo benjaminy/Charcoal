@@ -3,7 +3,7 @@
 
 #include <stdio.h>
 
-int __charcoal_application_main( int argc, char **argv )
+int crcl(application_main)( int argc, char **argv )
 {
     printf( "Hello World\n" );
     return 42;

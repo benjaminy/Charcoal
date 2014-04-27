@@ -168,9 +168,9 @@ void doit( void *p )
 
 #define N 40
 
-__charcoal_application_main( int argc, char **argv, char **env )
+crcl(application_main)( int argc, char **argv, char **env )
 {
-    CRCL(activity_t) *as = (CRCL(activity_t) *)malloc( N * sizeof( as[0] ) );
+    crcl(activity_t) *as = (crcl(activity_t) *)malloc( N * sizeof( as[0] ) );
     size_t url_count = sizeof( urls ) / sizeof( urls[0] );
     printf( "%lu  %lu \n", sizeof( urls ), url_count );
     unsigned i;
@@ -181,7 +181,7 @@ __charcoal_application_main( int argc, char **argv, char **env )
         {
             int *i_copy = (int *)malloc( sizeof( i_copy[0] ) );
             *i_copy = i;
-            CRCL(activate)( &as[i], doit, i_copy );
+            crcl(activate)( &as[i], doit, i_copy );
         }
         else
         {
@@ -192,7 +192,7 @@ __charcoal_application_main( int argc, char **argv, char **env )
     {
         if( multi )
         {
-            assert( !CRCL(activity_join)( &as[i], NULL ) );
+            assert( !crcl(activity_join)( &as[i], NULL ) );
         }
     }
     printf( "\nERROR COUNT: %d\n", error_count );

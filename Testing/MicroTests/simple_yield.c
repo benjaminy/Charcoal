@@ -8,20 +8,20 @@ void fa( void *a )
     for( i = 0; i < 5; ++i )
     {
         printf( "%s %i\n", str, i );
-        __charcoal_yield();
+        crcl(yield)();
     }
 }
 
-int __charcoal_replace_main( int argc, char **argv )
+int crcl(replace_main)( int argc, char **argv )
 {
-    __charcoal_activity_t *a = __charcoal_activate( fa, "A" );
-    __charcoal_activity_t *b = __charcoal_activate( fa, "B" );
-    __charcoal_activity_t *c = __charcoal_activate( fa, "C" );
-    __charcoal_activity_join( a );
+    crcl(activity_t) *a = crcl(activate)( fa, "A" );
+    crcl(activity_t) *b = crcl(activate)( fa, "B" );
+    crcl(activity_t) *c = crcl(activate)( fa, "C" );
+    crcl(activity_join)( a );
     printf( "Joined A\n" );
-    __charcoal_activity_join( b );
+    crcl(activity_join)( b );
     printf( "Joined B\n" );
-    __charcoal_activity_join( c );
+    crcl(activity_join)( c );
     printf( "Joined C\n" );
     return 0;
 }

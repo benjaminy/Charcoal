@@ -6,8 +6,8 @@ void fa( void *a )
 {
 }
 
-int __charcoal_replace_main( int argc, char **argv )
+int crcl(replace_main)( int argc, char **argv )
 {
-    __charcoal_activity_t* a = __charcoal_activate(fa, NULL );
-    __charcoal_activity_t* b = __charcoal_activate(fa, NULL );
+    crcl(activity_t)* a = crcl(activate)(fa, NULL );
+    crcl(activity_t)* b = crcl(activate)(fa, NULL );
 }

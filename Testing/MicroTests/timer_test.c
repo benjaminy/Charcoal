@@ -15,7 +15,7 @@ static void inter2( int sig, siginfo_t *siginfo, void *context )
     exit( foo );
 }
 
-static void __charcoal_timer_handler( int sig, siginfo_t *siginfo, void *context )
+static void crcl(timer_handler)( int sig, siginfo_t *siginfo, void *context )
 {
     struct itimerval value;
     value.it_interval = foot;
@@ -28,7 +28,7 @@ static void __charcoal_timer_handler( int sig, siginfo_t *siginfo, void *context
 int main( int argc, char **argv )
 {
     struct sigaction sigact;
-    sigact.sa_sigaction = __charcoal_timer_handler;
+    sigact.sa_sigaction = crcl(timer_handler);
     sigact.sa_flags = SA_SIGINFO;
     assert( 0 == sigemptyset( &sigact.sa_mask ) );
     assert( 0 == sigaction( SIGALRM, &sigact, NULL ) );

@@ -21,9 +21,9 @@ void f( void *p )
     printf( "Done %d\n", me );
 }
 
-int __charcoal_application_main( int argc, char **argv )
+int crcl(application_main)( int argc, char **argv )
 {
-    CRCL(activity_t) as[N];
+    crcl(activity_t) as[N];
     printf( "sizeof container      %d\n", (int)sizeof(as[0].container) );
     printf( "sizeof can_run        %d\n", (int)sizeof(as[0].can_run) );
     printf( "sizeof flags          %d\n", (int)sizeof(as[0].flags) );
@@ -45,13 +45,13 @@ int __charcoal_application_main( int argc, char **argv )
     {
         int *i_copy = (int *)malloc( sizeof( i_copy[0] ) );
         *i_copy = i;
-        CRCL(activate)( &as[i], f, i_copy );
+        crcl(activate)( &as[i], f, i_copy );
     }
     semaphore_incr( &s[0] );
     for( i = 0; i < N; ++i )
     {
         /* printf( "trying to join %d  %p\n", i, &as[i] ); */
-        assert( !CRCL(activity_join)( &as[i], NULL ) );
+        assert( !crcl(activity_join)( &as[i], NULL ) );
     }
     for( i = 0; i < N; ++i )
     {

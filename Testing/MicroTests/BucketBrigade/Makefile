@@ -31,7 +31,9 @@ endif
 INCLUDE_DIRS = -I../../../Install/include -I../../../ThirdParty/OpenPA/Releases/1.0.4/Install/include -I../../../ThirdParty/libuv/Releases/0.10.25/include
 LIB_DIRS =  -L../../../Install/lib
 FLAGS = $(INCLUDE_DIRS) $(LIB_DIRS) -lcharcoal_sys -lpthread -pg -lrt
-TARGETS = bucket_brigade_setcontext bucket_brigade_setcontext_jmp bucket_brigade_libuv bucket_brigade_silly_loop
+TARGETS = bucket_brigade_setcontext bucket_brigade_setcontext_jmp bucket_brigade_libuv bucket_brigade_pthread bucket_brigade_silly_loop bucket_brigade_crcl
+
+all: $(TARGETS)
 
 bucket_brigade_setcontext: bucket_brigade_setcontext.c
 	gcc -g -O1 $(INCLUDE_DIRS) -o bucket_brigade_setcontext bucket_brigade_setcontext.c

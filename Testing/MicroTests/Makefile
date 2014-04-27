@@ -37,15 +37,6 @@ TARGETS = simple_test simple_test_noyield simple_yield_exe  unyielding_test_exe 
 timer_create_test: timer_create_test.c
 	gcc -O1 -o timer_create_test timer_create_test.c -lrt
 
-smoke_test_01: smoke_test_01.c
-	gcc -g -o smoke_test_01 $(FLAGS) -DYIELDING smoke_test_01.c $(LIBUV_FLAGS)
-
-smoke_test_02: smoke_test_02.c
-	gcc -g -o smoke_test_02 $(FLAGS) -DYIELDING smoke_test_02.c $(LIBUV_FLAGS)
-
-smoke_test_03: smoke_test_03.c
-	gcc -g -o smoke_test_03 $(FLAGS) -DYIELDING smoke_test_03.c $(LIBUV_FLAGS)
-
 multi_dns_crcl: multi_dns_crcl.c
 	gcc -g -o multi_dns_crcl $(FLAGS) multi_dns_crcl.c -lcharcoal_sys $(LIBUV_FLAGS)
 
