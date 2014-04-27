@@ -2,37 +2,34 @@
 
 int main( int argc, char **argv )
 {
-    semaphore_t s[N], done_sem;
-    int done_count = 0, i;
-    int m = ( argc > 1 ) ? (int)atol( argv[1] ) : N;
+    semaphore_t sems[N];
+    activity_t *activities = (activity_t *)malloc( N * sizeof( activities[0] ) );
+    if( !activities )
+        return ENOMEM;
+    int i, m = ( argc > 1 ) ? (int)atol( argv[1] ) : N;
 
-    semaphore_open( &done_sem, 0 );
     for( i = 0; i < N; ++i )
     {
-        semaphore_open( &s[i], 0 );
+        semaphore_open( &sems[i], 0 );
     }
     for( i = 0; i < N; ++i )
     {
-        activate( i )
+        activate{ &activities[i] }( i )
         {
             int j;
             for( j = 0; j < m; ++j )
             {
-                semaphore_decr( &s[ i ] );
-                semaphore_incr( &s[ ( i + 1 ) % N ] );
+                semaphore_decr( &sems[ i ] );
+                semaphore_incr( &sems[ ( i + 1 ) % N ] );
             }
-            ++done_count;
-            if( done_count == N )
-                semaphore_incr( &done_sem );
         }
     }
-    semaphore_incr( &s[0] );
-    semaphore_decr( &done_sem );
+    semaphore_incr( &sems[0] );
+    activity_wait( &activities[ N - 1 ] );
     for( i = 0; i < N; ++i )
     {
-        semaphore_close( &s[i]
- );
+        semaphore_close( &sems[i] );
     }
-    semaphore_close( &done_sem );
+    free( activities );
     return 0;
 }

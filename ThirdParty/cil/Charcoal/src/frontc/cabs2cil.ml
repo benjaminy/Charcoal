@@ -4604,7 +4604,8 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
 
     | A.ACTIVATE _ -> E.s (E.bug "ACTIVATE in cabs2cil input")
 
-    | A.YIELD -> E.s (E.bug "YIELD in cabs2cil input")
+    | A.YIELD ->  finishExp empty (integer 0) intType
+                  (*E.s (E.bug "YIELD in cabs2cil input")*)
 
   with e when continueOnError -> begin
     (*ignore (E.log "error in doExp (%s)" (Printexc.to_string e));*)
