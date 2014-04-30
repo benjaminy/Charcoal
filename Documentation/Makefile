@@ -13,3 +13,6 @@ build: $(addprefix WebsiteDeploy/,$(addsuffix .html, $(website_html)))
 
 deploy:
 	rsync -avz WebsiteDeploy/* "root@charcoal-lang.org:/var/www/nginx-charcoal/"
+
+clean:
+	rm -rf WebsiteDeploy/*

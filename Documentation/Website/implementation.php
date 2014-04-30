@@ -22,13 +22,17 @@
 
 <h1>Charcoal Implementation</h1>
 
-<p>There are a few pieces to the Charcoal implementation:</p>
+<p>There are two primary pieces to the Charcoal implementation: the
+translation (i.e. compilation) to C and the runtime library.</p>
 
-<ul>
-<li>Charcoal to C translation
-<li>Charcoal runtime library
-<li>Syscalls and signals
-</ul>
+<p>Beyond some convenient syntax, the primary difference between C and
+Charcoal is that the compiler implicitly inserts yield invocations.</p>
+
+<p>...</p>
+
+<p>All Charcoal programs have an "extra" thread that is created at
+startup.  This thread handles I/O and is a timer that tells other
+threads when they should switch from one activity to another.</p>
 
 <div class="hblock2">
 <a id="translation"/>
