@@ -1,6 +1,10 @@
 # 1 "cilcode.tmp/ex20.cil.c"
-# 1 "<command-line>"
-# 1 "cilcode.tmp/ex20.cil.c"
+# 1 "<built-in>" 1
+# 1 "<built-in>" 3
+# 170 "<built-in>" 3
+# 1 "<command line>" 1
+# 1 "<built-in>" 2
+# 1 "cilcode.tmp/ex20.cil.c" 2
 # 1 "cilcode.tmp/ex20.c"
 int main(void)
 {
@@ -14,15 +18,15 @@ int main(void)
 # 1 "cilcode.tmp/ex20.c"
   y = x;
 # 2 "cilcode.tmp/ex20.c"
-  x ++;
+ x ++;
   L:
 # 2 "cilcode.tmp/ex20.c"
-  y -= x;
+ y -= x;
 # 2 "cilcode.tmp/ex20.c"
-  z = y;
+ z = y;
 # 3 "cilcode.tmp/ex20.c"
-  goto L;
+ goto L;
 # 3 "cilcode.tmp/ex20.c"
-  return (0);
+ return (0);
 }
 }

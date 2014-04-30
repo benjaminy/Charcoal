@@ -1,6 +1,10 @@
 # 1 "cilcode.tmp/ex17.cil.c"
-# 1 "<command-line>"
-# 1 "cilcode.tmp/ex17.cil.c"
+# 1 "<built-in>" 1
+# 1 "<built-in>" 3
+# 170 "<built-in>" 3
+# 1 "<command line>" 1
+# 1 "<built-in>" 2
+# 1 "cilcode.tmp/ex17.cil.c" 2
 # 1 "cilcode.tmp/ex17.c"
 int main(void)
 {
@@ -12,71 +16,71 @@ int main(void)
 
   {
 # 2 "cilcode.tmp/ex17.c"
-  if (x) {
+ if (x) {
 # 2 "cilcode.tmp/ex17.c"
-    tmp = 2;
+ tmp = 2;
   } else {
 # 2 "cilcode.tmp/ex17.c"
-    tmp = 4;
+ tmp = 4;
   }
 # 2 "cilcode.tmp/ex17.c"
-  y = tmp;
+ y = tmp;
 # 3 "cilcode.tmp/ex17.c"
-  if (x) {
+ if (x) {
 # 3 "cilcode.tmp/ex17.c"
-    tmp___0 = 1;
+ tmp___0 = 1;
   } else
 # 3 "cilcode.tmp/ex17.c"
-  if (y) {
+ if (y) {
 # 3 "cilcode.tmp/ex17.c"
-    tmp___0 = 1;
+ tmp___0 = 1;
   } else {
 # 3 "cilcode.tmp/ex17.c"
-    tmp___0 = 0;
+ tmp___0 = 0;
   }
 # 3 "cilcode.tmp/ex17.c"
-  z = tmp___0;
+ z = tmp___0;
 # 5 "cilcode.tmp/ex17.c"
-  if (x) {
+ if (x) {
 # 5 "cilcode.tmp/ex17.c"
-    if (y) {
+ if (y) {
 # 5 "cilcode.tmp/ex17.c"
-      return (0);
+ return (0);
     } else {
 # 5 "cilcode.tmp/ex17.c"
-      return (1);
+ return (1);
     }
   } else {
 # 5 "cilcode.tmp/ex17.c"
-    return (1);
+ return (1);
   }
 # 8 "cilcode.tmp/ex17.c"
-  if (x) {
+ if (x) {
 # 8 "cilcode.tmp/ex17.c"
-    if (y) {
+ if (y) {
 # 8 "cilcode.tmp/ex17.c"
-      goto _L;
+ goto _L;
     } else {
 # 8 "cilcode.tmp/ex17.c"
-      goto _L___0;
+ goto _L___0;
     }
   } else
   _L___0:
 # 8 "cilcode.tmp/ex17.c"
-  if (z) {
+ if (z) {
     _L:
 # 8 "cilcode.tmp/ex17.c"
-    x ++;
+ x ++;
 # 8 "cilcode.tmp/ex17.c"
-    y ++;
+ y ++;
 # 8 "cilcode.tmp/ex17.c"
-    z ++;
+ z ++;
 # 8 "cilcode.tmp/ex17.c"
-    x ++;
+ x ++;
 # 8 "cilcode.tmp/ex17.c"
-    y ++;
+ y ++;
 # 8 "cilcode.tmp/ex17.c"
-    return (z);
+ return (z);
   }
 }
 }

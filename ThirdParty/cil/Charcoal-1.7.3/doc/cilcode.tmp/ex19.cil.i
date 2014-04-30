@@ -1,6 +1,10 @@
 # 1 "cilcode.tmp/ex19.cil.c"
-# 1 "<command-line>"
-# 1 "cilcode.tmp/ex19.cil.c"
+# 1 "<built-in>" 1
+# 1 "<built-in>" 3
+# 170 "<built-in>" 3
+# 1 "<command line>" 1
+# 1 "<built-in>" 2
+# 1 "cilcode.tmp/ex19.cil.c" 2
 # 1 "cilcode.tmp/ex19.c"
 int main(void)
 {
@@ -9,36 +13,36 @@ int main(void)
 
   {
 # 2 "cilcode.tmp/ex19.c"
-  i = 0;
+ i = 0;
 # 2 "cilcode.tmp/ex19.c"
-  while (i < 5) {
+ while (i < 5) {
 # 3 "cilcode.tmp/ex19.c"
-    if (i == 5) {
+ if (i == 5) {
 # 3 "cilcode.tmp/ex19.c"
-      goto __Cont;
+ goto __Cont;
     }
 # 4 "cilcode.tmp/ex19.c"
-    if (i == 4) {
+ if (i == 4) {
 # 4 "cilcode.tmp/ex19.c"
-      break;
+ break;
     }
 # 5 "cilcode.tmp/ex19.c"
-    i += 2;
+ i += 2;
     __Cont:
 # 2 "cilcode.tmp/ex19.c"
-    i ++;
+ i ++;
   }
 # 7 "cilcode.tmp/ex19.c"
-  while (x < 5) {
+ while (x < 5) {
 # 8 "cilcode.tmp/ex19.c"
-    if (x == 3) {
+ if (x == 3) {
 # 8 "cilcode.tmp/ex19.c"
-      continue;
+ continue;
     }
 # 9 "cilcode.tmp/ex19.c"
-    x ++;
+ x ++;
   }
 # 11 "cilcode.tmp/ex19.c"
-  return (0);
+ return (0);
 }
 }

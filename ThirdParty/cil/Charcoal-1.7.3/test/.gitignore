@@ -1,0 +1,13 @@
+*.cil.c
+*-tmp.c
+*.i
+*.exe
+*.o
+*.s
+*.a
+*.err
+*.out
+*.cmi
+*.cmo
+*.log
+merge-ar

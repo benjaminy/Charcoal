@@ -1,6 +1,10 @@
 # 1 "cilcode.tmp/ex16.cil.c"
-# 1 "<command-line>"
-# 1 "cilcode.tmp/ex16.cil.c"
+# 1 "<built-in>" 1
+# 1 "<built-in>" 3
+# 170 "<built-in>" 3
+# 1 "<command line>" 1
+# 1 "<built-in>" 2
+# 1 "cilcode.tmp/ex16.cil.c" 2
 # 1 "cilcode.tmp/ex16.c"
 extern int f(int ) ;
 # 1 "cilcode.tmp/ex16.c"
@@ -12,12 +16,12 @@ int main(void)
 
   {
 # 2 "cilcode.tmp/ex16.c"
-  tmp = x;
+ tmp = x;
 # 2 "cilcode.tmp/ex16.c"
-  x ++;
+ x ++;
 # 2 "cilcode.tmp/ex16.c"
-  tmp___0 = f(x);
+ tmp___0 = f(x);
 # 2 "cilcode.tmp/ex16.c"
-  return (tmp + tmp___0);
+ return (tmp + tmp___0);
 }
 }
