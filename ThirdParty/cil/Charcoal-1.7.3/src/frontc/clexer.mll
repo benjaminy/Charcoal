@@ -153,6 +153,16 @@ let init_lexicon _ =
       ("for", fun loc -> FOR loc);
       ("if", fun loc -> dbgToken (IF loc));
       ("else", fun _ -> ELSE);
+      (*** Begin Charcoal keywords ***)
+      ("activate",       fun loc -> dbgToken( ACTIVATE     loc ) );
+      ("yield",          fun loc -> dbgToken( YIELD        loc ) );
+      ("unyielding",     fun loc -> dbgToken( UNYIELDING   loc ) );
+      ("synchronized",   fun loc -> dbgToken( SYNCHRONIZED loc ) );
+      ("for_no_yield",   fun loc -> dbgToken( FOR_NY       loc ) );
+      ("while_no_yield", fun loc -> dbgToken( WHILE_NY     loc ) );
+      ("do_no_yield",    fun loc -> dbgToken( DO_NY        loc ) );
+      ("goto_no_yield",  fun loc -> dbgToken( GOTO_NY      loc ) );
+      (*** End Charcoal keywords ***)
       (*** Implementation specific keywords ***)
       ("__signed__", fun loc -> SIGNED loc);
       ("__inline__", fun loc -> INLINE loc);

@@ -249,8 +249,6 @@ begin
                 !counter (List.length file))
 end
 
-
-
 let parse_helper fname =
   (trace "sm" (dprintf "parsing %s to Cabs\n" fname));
   let cabs = parse_to_cabs fname in

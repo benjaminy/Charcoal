@@ -405,6 +405,8 @@ and get_operator exp =
   | MEMBEROFPTR (exp, fld) -> ("", 15)
   | GNU_BODY _ -> ("", 17)
   | EXPR_PATTERN _ -> ("", 16)     (* sm: not sure about this *)
+  | ACTIVATE _ -> ("", 16)
+  | YIELD _ -> ("", 16)
 
 and print_comma_exps exps =
   print_commas false print_expression exps
@@ -543,6 +545,9 @@ and print_expression_level (lvl: int) (exp : expression) =
       print ")"
   | EXPR_PATTERN (name) ->
       printl ["@expr";"(";name;")"]
+  | ACTIVATE( act, by_vals, body ) ->
+      printl ["@expr";"(AcTiViTy)"]
+  | YIELD ->  printl ["@expr";"(YiElD)"]
   in
   ()
     

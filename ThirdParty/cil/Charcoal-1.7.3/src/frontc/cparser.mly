@@ -44,6 +44,12 @@
 open Cabs
 open Cabshelper
 module E = Errormsg
+module V = Cabsvisit
+module SS = Set.Make( 
+  struct
+    let compare = String.compare
+    type t = string
+  end )
 
 let parse_error msg : unit =       (* sm: c++-mode highlight hack: -> ' <- *)
   E.parse_error msg
@@ -82,6 +88,15 @@ let smooth_expression lst =
   | [expr] -> expr
   | _ -> COMMA (lst)
 
+
+let add_yield before_not_after loc stmt =
+  let stmts =
+    if before_not_after then
+      [ COMPUTATION( YIELD, loc ); stmt ]
+    else
+      [ stmt; COMPUTATION( YIELD, loc ) ]
+  in
+  BLOCK( { blabels=[]; battrs=[]; bstmts=stmts }, loc )
 
 let currentFunctionName = ref "<outside any function>"
     
@@ -238,6 +253,83 @@ let transformOffsetOf (speclist, dtype) member =
   let resultExpr = CAST (sizeofType, SINGLE_INIT addrExpr) in
   resultExpr
 
+(* Find all the labels in a phrase. Skip activate expressions, because
+   it doesn't make sense to 'goto' from outside an activity to
+   inside. *)
+class label_gather_class : V.cabsVisitor = object (self)
+  inherit V.nopCabsVisitor as super
+
+  val mutable labels = SS.empty
+
+  method vexpr e = match e with
+  | ACTIVATE _ -> V.SkipChildren
+  | _ -> V.DoChildren
+
+  method vblock b =
+    let () = labels <- List.fold_right SS.add b.blabels labels in
+    V.DoChildren
+
+  method vstmt s =
+    match s with
+        LABEL(label, _, _) ->
+          let () = labels <- SS.add label labels in
+          V.DoChildren
+      | _ -> V.DoChildren
+end (* label_gather_class *)
+
+(* Insert something before control transfers that might leave some
+   enclosing scope. *)
+class insert_shit_class stmt_to_insert internal_labels : V.cabsVisitor =
+object (self)
+  inherit V.nopCabsVisitor as super
+
+  val mutable breakable_depth = 0
+  val mutable contable_depth = 0
+
+  method vexpr e = match e with
+  | ACTIVATE _ -> V.SkipChildren
+  | _ -> V.DoChildren
+
+  method vstmt s =
+    let cond_insert c = if c then V.ChangeDoChildrenPost ([stmt_to_insert;s], fun s -> s)
+      else V.DoChildren
+    in
+    match s with
+        RETURN _        -> cond_insert true
+      | BREAK _         -> cond_insert (breakable_depth <= 0)
+      | CONTINUE _      -> cond_insert (contable_depth <= 0)
+      | GOTO (label, _) -> cond_insert (not(SS.mem label internal_labels))
+      | COMPGOTO _ -> failwith "unimp"
+
+      | ASM _ -> failwith "unimp"
+
+      | TRY_EXCEPT _ -> failwith "unimp"
+      | TRY_FINALLY _ -> failwith "unimp"
+
+      | WHILE _ | DOWHILE _ | FOR _ ->
+        let () = breakable_depth <- 1 + breakable_depth in
+        let () = contable_depth <- 1 + contable_depth in
+        let after s_after =
+          let () = breakable_depth <- breakable_depth - 1 in
+          let () = contable_depth <- contable_depth - 1 in
+          s_after
+        in
+        V.ChangeDoChildrenPost ([s], after)
+
+      | SWITCH _ ->
+        let () = breakable_depth <- 1 + breakable_depth in
+        let after s_after =
+          let () = breakable_depth <- breakable_depth - 1 in
+          s_after
+        in
+        V.ChangeDoChildrenPost ([s], after)
+
+      | NOP _ | COMPUTATION _ | BLOCK _ | SEQUENCE _
+      | IF _ | CASE _ | CASERANGE _ | DEFAULT _ | LABEL _
+      | DEFINITION _ -> V.DoChildren
+
+end (* insert_shit_class *)
+
 %}
 
 %token <string * Cabs.cabsloc> IDENT
@@ -284,9 +376,9 @@ let transformOffsetOf (speclist, dtype) member =
 %token<Cabs.cabsloc> SEMICOLON
 %token COMMA ELLIPSIS QUEST
 
-%token<Cabs.cabsloc> BREAK CONTINUE GOTO RETURN
+%token<Cabs.cabsloc> BREAK CONTINUE GOTO GOTO_NY RETURN ACTIVATE YIELD UNYIELDING SYNCHRONIZED
 %token<Cabs.cabsloc> SWITCH CASE DEFAULT
-%token<Cabs.cabsloc> WHILE DO FOR
+%token<Cabs.cabsloc> WHILE WHILE_NY DO DO_NY FOR FOR_NY
 %token<Cabs.cabsloc> IF TRY EXCEPT FINALLY
 %token ELSE 
 
@@ -461,6 +553,7 @@ maybecomma:
 /* *** Expressions *** */
 
 primary_expression:                     /*(* 6.5.1. *)*/
+|               YIELD   { YIELD, $1 }
 |		IDENT
 		        {VARIABLE (fst $1), snd $1}
 |        	constant
@@ -543,7 +636,36 @@ unary_expression:   /*(* 6.5.3 *)*/
 |		TILDE cast_expression
 		        {UNARY (BNOT, fst $2), $1}
 |               AND_AND IDENT  { LABELADDR (fst $2), $1 }
-;
+|               ACTIVATE LBRACE cast_expression RBRACE var_list_opt comma_expression
+                        {ACTIVATE (fst $3, $5, RETURN (smooth_expression (fst $6), snd $6)), $1}
+|               ACTIVATE LBRACE cast_expression RBRACE var_list_opt statement
+                        {ACTIVATE (fst $3, $5, $6), $1}
+|               UNYIELDING { YIELD, $1 (* XXX *) }
+|               SYNCHRONIZED paren_comma_expression statement { (* XXX I guess this has to be translated later because of escaping *)
+           GNU_BODY{ blabels=[]; battrs=[];
+                     bstmts=[
+                       DEFINITION( doDeclaration $1 [(*(specs: spec_elem list)   *)] [(*(nl: init_name list __charcoal_sync_mutex_XXX $2)*)] );
+                       COMPUTATION( QUESTION(
+                         CALL( VARIABLE "mutex_acquire", [VARIABLE "__charcoal_sync_mutex_XXX"]),
+                         CONSTANT (CONST_INT "1"),
+                         GNU_BODY( { blabels=[]; battrs=[]; bstmts=
+                           [$3;
+                            COMPUTATION( QUESTION(
+                              CALL( VARIABLE "mutex_release", [VARIABLE "__charcoal_sync_mutex_XXX"] ),
+                              CONSTANT (CONST_INT "2"),
+                              CONSTANT (CONST_INT "0") ),
+                            $1 ) ] } ) ),
+                         $1 ) ] },
+           $1 };
+
+var_list_opt:
+| { [] }
+| LPAREN RPAREN { [] }
+| LPAREN IDENT var_list RPAREN { (fst $2)::$3 }
+
+var_list:
+| { [] }
+| COMMA IDENT var_list { (fst $2)::$3 }
 
 cast_expression:   /*(* 6.5.4 *)*/
 |              unary_expression 
@@ -870,10 +992,17 @@ statement:
 |   SWITCH paren_comma_expression statement
                         {SWITCH (smooth_expression (fst $2), $3, (*handleLoc*) $1)}
 |   WHILE paren_comma_expression statement
+	        	{WHILE (smooth_expression (fst $2), add_yield false $1 $3, (*handleLoc*) $1)}
+|   WHILE_NY paren_comma_expression statement
 	        	{WHILE (smooth_expression (fst $2), $3, (*handleLoc*) $1)}
 |   DO statement WHILE paren_comma_expression SEMICOLON
+	        {DOWHILE (smooth_expression (fst $4), add_yield false $3 $2, (*handleLoc*) $1)}
+|   DO_NY statement WHILE paren_comma_expression SEMICOLON
 	        	         {DOWHILE (smooth_expression (fst $4), $2, (*handleLoc*) $1)}
 |   FOR LPAREN for_clause opt_expression
+	        SEMICOLON opt_expression RPAREN statement
+	                         {FOR ($3, $4, $6, add_yield false $1 $8, (*handleLoc*) $1)}
+|   FOR_NY LPAREN for_clause opt_expression
 	        SEMICOLON opt_expression RPAREN statement
 	                         {FOR ($3, $4, $6, $8, (*handleLoc*) $1)}
 |   IDENT COLON attribute_nocv_list statement
@@ -894,8 +1023,13 @@ statement:
 |   BREAK SEMICOLON     {BREAK ((*handleLoc*) $1)}
 |   CONTINUE SEMICOLON	 {CONTINUE ((*handleLoc*) $1)}
 |   GOTO IDENT SEMICOLON
-		                 {GOTO (fst $2, (*handleLoc*) $1)}
+
+      { add_yield true $1 (GOTO (fst $2, (*handleLoc*) $1))}
 |   GOTO STAR comma_expression SEMICOLON 
+            { add_yield true $1 (COMPGOTO (smooth_expression (fst $3), (*handleLoc*) $1)) }
+|   GOTO_NY IDENT SEMICOLON
+		                 {GOTO (fst $2, (*handleLoc*) $1)}
+|   GOTO_NY STAR comma_expression SEMICOLON 
                                  { COMPGOTO (smooth_expression (fst $3), (*handleLoc*) $1) }
 |   ASM asmattr LPAREN asmtemplate asmoutputs RPAREN SEMICOLON
                         { ASM ($2, $4, $5, (*handleLoc*) $1) }
