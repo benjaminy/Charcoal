@@ -6675,13 +6675,20 @@ object (self)
 
   val mutable activate_depth = 0
   val mutable fun_def_depth = 0
+  val mutable activity_bodies = []
 
   method vdef d : definition list V.visitAction = match d with
       FUNDEF(fname, body, loc, lend) ->
+        let () =
+          let (_, (name, _, _, _)) = fname in
+          Printf.printf "How about now? %s\n" name
+        in
         let after defs =
           let () = fun_def_depth <- fun_def_depth - 1 in
+          let acts = activity_bodies in
+          let () = activity_bodies <- [] in
           match defs with
-              [def] -> defs
+              [def] -> acts @ defs
             | _ -> failwith "wrong number of defs"
         in
         (* XXX add the parameters to the local defs *)
@@ -6692,17 +6699,44 @@ object (self)
     | _ -> V.DoChildren
 
   method vexpr e = match e with
-      ACTIVATE (activity, by_val_vars, stmt_body) ->
-        if activate_depth > 0 then V.DoChildren
-        else V.DoChildren
+      ACTIVATE _ ->
+        let () = activate_depth <- activate_depth + 1 in
+        if activate_depth > 1 then
+          let after_children e = let () = activate_depth <- activate_depth - 1 in e in
+          V.ChangeDoChildrenPost (e, after_children)
+        else
+          let after_children e =
+            let ACTIVATE( act_ref, by_vals, body ) = e in
+            let () = activate_depth <- activate_depth - 1 in
+            let name = ([], ("ffff", PROTO(JUSTBASE, [], false), [], cabslu)) in
+            let body_bk = { blabels = []; battrs = []; bstmts = [body] } in
+            let act_fun = FUNDEF( name, body_bk, cabslu, cabslu ) in
+            let () = activity_bodies <- act_fun::activity_bodies in
+            e
+          in
+          V.ChangeDoChildrenPost (e, after_children)
     | VARIABLE v ->
       if activate_depth > 0 then
-        match None (* XXX *) with
-            None       -> V.SkipChildren
+        match None (* XXX *) with (* XXX local in outer intersect used in activity *)
+            None -> V.DoChildren
           | Some _ -> V.ChangeTo (UNARY (MEMOF, e))
       else
-        V.SkipChildren
+        V.DoChildren
     | _ -> V.DoChildren
+
+  method vstmt s = match s with
+      RETURN (e, loc) -> V.DoChildren (* XXX if > 0, set activity rv *)
+    | GOTO _ -> V.DoChildren (* XXX No gotos from activity body to outer scope *)
+    | COMPGOTO _ -> V.DoChildren (* XXX No gotos from activity body to outer scope *)
+    | DEFINITION _ -> V.DoChildren (* XXX find local variables *)
+    | _ -> V.DoChildren (* XXX audit the rest of the statement kinds *)
+
+  method vvar name =
+    let _ = Printf.printf "vvar (at %s)\n" name in
+    if name = "main" then
+      "__charcoal_application_main"
+    else
+      name
 
   method vEnterScope () = ()
   method vExitScope  () = ()
@@ -6710,15 +6744,46 @@ object (self)
 end (* extract_activity_class *)
 
 let rec extract_one def : definition list option =
-  None
+  let vis = new extract_activity_class in
+  let defs = V.visitCabsDefinition vis def in
+  match defs with
+      [d] -> None
+    | _ -> Some defs
 
 let rec extract_all defs : definition list =
+  let _ = Printf.printf "extract_all %d\n" (List.length defs) in
   match defs with
       [] -> []
     | def::rest ->
       (match extract_one def with
-          None -> def::(extract_all defs)
+          None -> def::(extract_all rest)
         | Some new_defs -> (extract_all new_defs) @ (extract_all rest))
+
+class replace_main_class : V.cabsVisitor =
+object (self)
+  inherit V.nopCabsVisitor as super
+
+  method vdef d : definition list V.visitAction = match d with
+      FUNDEF((spec, (name, ty, attrs, loc1)), body, loc2, lend) ->
+        let repl_name =
+          if name = "main" then
+            "__charcoal_application_main"
+          else
+            name
+        in
+        let () = Printf.printf "name: '%s' repl_name:'%s'\n" name repl_name in
+        if repl_name <> name then
+          let () = Printf.printf "Please replace!!!\n" in
+          V.ChangeTo [FUNDEF((spec, (repl_name, ty, attrs, loc1)), body, loc2, lend)]
+        else
+          V.SkipChildren
+    | _ -> V.DoChildren
+end
+
+let just_main_thing def_with_main =
+  match V.visitCabsDefinition (new replace_main_class) def_with_main with
+      [d] -> d
+    | _ -> E.s (bug "Replace main didn't return one")
 
 (* Translate a file *)
 let convFile (f : A.file) : Cil.file =
@@ -6726,7 +6791,9 @@ let convFile (f : A.file) : Cil.file =
 
   (* remove parentheses from the Cabs *)
   let fname,dl_with_activate = stripParenFile f in 
-  let dl = extract_all dl_with_activate in
+  let dl_with_activate_main = List.map just_main_thing dl_with_activate in
+  let dl = extract_all dl_with_activate_main in
+  (* let dl = dl_with_activate in *)
 
   (* Clean up the global types *)
   initGlobals();

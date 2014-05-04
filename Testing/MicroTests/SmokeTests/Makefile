@@ -2,6 +2,8 @@
 # 
 # 
 
+BUILD_DIR=../../Build
+
 ifeq ($(OS),Windows_NT)
 else
     UNAME_S := $(shell uname -s)
@@ -34,8 +36,8 @@ LIB_DIRS =  -L../../../Install/lib
 FLAGS = $(INCLUDE_DIRS) $(LIB_DIRS) -lcharcoal_sys -lpthread -lrt
 TARGETS = hello_world one_activity activate_loop
 
-hello_world: hello_world.c
-	gcc -g -o hello_world $(FLAGS) -DYIELDING hello_world.c $(LIBUV_FLAGS)
+$(BUILD_DIR)/hello_world: hello_world.c
+	gcc -g -o $(BUILD_DIR)/hello_world $(FLAGS) -DYIELDING hello_world.c $(LIBUV_FLAGS)
 
 one_activity: one_activity.c
 	gcc -g -o one_activity $(FLAGS) -DYIELDING one_activity.c $(LIBUV_FLAGS)
