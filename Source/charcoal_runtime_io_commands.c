@@ -72,6 +72,7 @@ static int crcl(wake_up_requester)( crcl(activity_t) *a )
     crcl(push_special_queue)( CRCL(ACTF_READY_QUEUE), a, thd, NULL );
     RET_IF_ERROR( pthread_mutex_unlock( &thd->thd_management_mtx ) );
     RET_IF_ERROR( pthread_cond_signal( &thd->thd_management_cond ) );
+    return 0;
 }
 
 static void crcl(getaddrinfo_callback)(

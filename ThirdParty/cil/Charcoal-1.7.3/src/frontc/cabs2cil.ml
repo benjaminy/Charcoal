@@ -6673,20 +6673,22 @@ class extract_activity_class : V.cabsVisitor =
 object (self)
   inherit V.nopCabsVisitor as super
 
-  val mutable activate_depth = 0
-  val mutable fun_def_depth = 0
+  val mutable activate_depth  = 0
+  val mutable fun_def_depth   = 0
   val mutable activity_bodies = []
+  val mutable fun_name        = None
 
   method vdef d : definition list V.visitAction = match d with
       FUNDEF(fname, body, loc, lend) ->
         let () =
           let (_, (name, _, _, _)) = fname in
-          Printf.printf "How about now? %s\n" name
+          fun_name <- Some name
         in
         let after defs =
           let () = fun_def_depth <- fun_def_depth - 1 in
           let acts = activity_bodies in
           let () = activity_bodies <- [] in
+          let () = fun_name <- None in
           match defs with
               [def] -> acts @ defs
             | _ -> failwith "wrong number of defs"
@@ -6708,11 +6710,17 @@ object (self)
           let after_children e =
             let ACTIVATE( act_ref, by_vals, body ) = e in
             let () = activate_depth <- activate_depth - 1 in
-            let name = ([], ("ffff", PROTO(JUSTBASE, [], false), [], cabslu)) in
-            let body_bk = { blabels = []; battrs = []; bstmts = [body] } in
+            let safe_name =
+              match fun_name with
+                Some n -> "__charcoal_" ^ n ^ "_act_N" (* XXX unique number *)
+              | None -> E.s (bug "Activate without function name")
+            in
+            let name = ([], (safe_name, PROTO(JUSTBASE, [], false), [], cabslu)) in
+            let (body_bk:Cabs.block) = { blabels = []; Cabs.battrs = []; bstmts = [body] } in
             let act_fun = FUNDEF( name, body_bk, cabslu, cabslu ) in
             let () = activity_bodies <- act_fun::activity_bodies in
-            e
+            CALL( VARIABLE "__charcoal_activate",
+                  [act_ref; VARIABLE safe_name; CONSTANT( CONST_INT "0" ) ] )
           in
           V.ChangeDoChildrenPost (e, after_children)
     | VARIABLE v ->
@@ -6732,7 +6740,6 @@ object (self)
     | _ -> V.DoChildren (* XXX audit the rest of the statement kinds *)
 
   method vvar name =
-    let _ = Printf.printf "vvar (at %s)\n" name in
     if name = "main" then
       "__charcoal_application_main"
     else
@@ -6780,7 +6787,7 @@ object (self)
     | _ -> V.DoChildren
 end
 
-let just_main_thing def_with_main =
+let just_main_thing fname def_with_main =
   match V.visitCabsDefinition (new replace_main_class) def_with_main with
       [d] -> d
     | _ -> E.s (bug "Replace main didn't return one")
@@ -6791,7 +6798,7 @@ let convFile (f : A.file) : Cil.file =
 
   (* remove parentheses from the Cabs *)
   let fname,dl_with_activate = stripParenFile f in 
-  let dl_with_activate_main = List.map just_main_thing dl_with_activate in
+  let dl_with_activate_main = List.map (just_main_thing fname) dl_with_activate in
   let dl = extract_all dl_with_activate_main in
   (* let dl = dl_with_activate in *)
 

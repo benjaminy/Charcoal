@@ -239,6 +239,7 @@ static int crcl(send_io_cmd)( crcl(io_cmd_t) *cmd, crcl(activity_t) *a )
     /* XXX Race between the next two lines??? */
     RET_IF_ERROR( uv_async_send( &crcl(io_cmd) ) );
     RET_IF_ERROR( crcl(activity_blocked)( a ) );
+    return 0;
 }
 
 int getaddrinfo_crcl(

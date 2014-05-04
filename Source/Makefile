@@ -4,7 +4,7 @@
 # INCLUDE_DIRS = -I. -I /usr/local/stow/openpa-1.0.4/include
 INCLUDE_DIRS = -I. -I../ThirdParty/libuv/Releases/0.10.25/include
 
-CFLAGS += -Wall -O1
+CFLAGS += -Wall -O1 -g
 
 all: semaphore runtime runtime_io_commands std_lib
 	mkdir -p ../Install/lib

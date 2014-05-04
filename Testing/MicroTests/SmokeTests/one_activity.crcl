@@ -1,0 +1,17 @@
+#include <charcoal_base.h>
+#include <charcoal_runtime.h>
+#include <stdlib.h>
+#include <stdio.h>
+
+int crcl(application_main)( int argc, char **argv )
+{
+    printf( "Hello World\n" );
+    crcl(activity_t) *a = (crcl(activity_t) *)malloc( sizeof( a[0] ) );
+    {
+        activate {a} ()
+        {
+            printf( "Goodbye\n" );
+        };
+    }
+    return 0;
+}

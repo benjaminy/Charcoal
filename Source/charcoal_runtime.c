@@ -100,13 +100,13 @@ int crcl(choose_next_activity)( __charcoal_activity_t **p )
 void crcl(unyielding_enter)()
 {
     crcl(activity_t) *self = crcl(get_self_activity)();
-    crcl(atomic_incr_int)( &self->container->unyielding );
+    crcl(atomic_incr_int)( &self->container->unyield_depth );
 }
 
 void crcl(unyielding_exit)()
 {
     crcl(activity_t) *self = crcl(get_self_activity)();
-    crcl(atomic_decr_int)( &self->container->unyielding );
+    crcl(atomic_decr_int)( &self->container->unyield_depth );
     /* TODO: Maybe call yield here? */
 }
 
@@ -158,8 +158,8 @@ void crcl(yield)(){
     __charcoal_activity_t *foo = crcl(get_self_activity)();
 
     /* DEBUG foo->yield_attempts++; */
-    int unyielding = __charcoal_atomic_load_int( &(foo->container->unyielding) );
-    if(unyielding == 0 )
+    int unyield_depth = __charcoal_atomic_load_int( &(foo->container->unyield_depth) );
+    if(unyield_depth == 0 )
     {
         /* ) && (timeout==1) */
         __charcoal_yield_try_switch( foo );
@@ -622,7 +622,9 @@ static void crcl(reap_activities)( crcl(activity_t) *a )
 static void *crcl(thread_entry)( void *p )
 {
     crcl(thread_launch_ctx) ctx = *((crcl(thread_launch_ctx)*)p);
+    printf( "\n\nXXXXXXXXXX\n\n" ); fflush( stdout );
     free( p );
+    printf( "\n\nYYYYYYYYYY\n\n" ); fflush( stdout );
     crcl(activity_t) *client_act = ctx.act;
     crcl(thread_t) *thd = client_act->container;
     /* printf( "CLIENT act %p\n", client_act ); */
@@ -672,7 +674,7 @@ static int crcl(create_thread)(
     assert( act );
     crcl(add_to_threads)( thd );
 
-    crcl(atomic_store_int)( &thd->unyielding, 0 );
+    crcl(atomic_store_int)( &thd->unyield_depth, 0 );
     crcl(atomic_store_int)( &thd->timeout, 0 );
     thd->timer_req.data = thd;
     /* XXX Does timer_init have to be called from the I/O thread? */

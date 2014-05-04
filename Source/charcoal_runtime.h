@@ -31,7 +31,7 @@ typedef struct crcl(activity_t) crcl(activity_t);
 struct crcl(thread_t)
 {
     pthread_t sys;
-    crcl(atomic_int) unyielding;
+    crcl(atomic_int) unyield_depth;
     crcl(atomic_int) timeout; //initially 0, signal handler sets to 1
     uv_timer_t timer_req;
     double start_time;
