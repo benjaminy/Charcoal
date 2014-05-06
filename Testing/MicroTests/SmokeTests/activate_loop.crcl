@@ -1,0 +1,22 @@
+#include <charcoal_base.h>
+#include <charcoal_runtime.h>
+#include <stdlib.h>
+#include <stdio.h>
+
+#define N 10
+
+int main( int argc, char **argv )
+{
+    printf( "Hello World\n" );
+    unsigned i;
+    for( i = 0; i < N; ++i )
+    {
+        crcl(activity_t) *a = (crcl(activity_t) *)malloc( sizeof( a[0] ) );
+        /* activity_t *a = (activity_t *)malloc( sizeof( a[0] ) ); */
+        activate{a}( i )
+        {
+            printf( "Goodbye %d\n", i );
+        };
+    }
+    return N;
+}

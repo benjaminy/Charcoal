@@ -276,7 +276,6 @@ and expression =
   | GNU_BODY of block
   | EXPR_PATTERN of string     (* pattern variable, and name *)
   | ACTIVATE of expression * string list * statement
-  | YIELD
 
 and constant =
   | CONST_INT of string   (* the textual representation *)

@@ -92,9 +92,9 @@ let smooth_expression lst =
 let add_yield before_not_after loc stmt =
   let stmts =
     if before_not_after then
-      [ COMPUTATION( YIELD, loc ); stmt ]
+      [ COMPUTATION( CALL( VARIABLE "yield", [] ), loc ); stmt ]
     else
-      [ stmt; COMPUTATION( YIELD, loc ) ]
+      [ stmt; COMPUTATION( CALL( VARIABLE "yield", [] ), loc ) ]
   in
   BLOCK( { blabels=[]; battrs=[]; bstmts=stmts }, loc )
 
@@ -376,7 +376,7 @@ end (* insert_shit_class *)
 %token<Cabs.cabsloc> SEMICOLON
 %token COMMA ELLIPSIS QUEST
 
-%token<Cabs.cabsloc> BREAK CONTINUE GOTO GOTO_NY RETURN ACTIVATE YIELD UNYIELDING SYNCHRONIZED
+%token<Cabs.cabsloc> BREAK CONTINUE GOTO GOTO_NY RETURN ACTIVATE UNYIELDING SYNCHRONIZED
 %token<Cabs.cabsloc> SWITCH CASE DEFAULT
 %token<Cabs.cabsloc> WHILE WHILE_NY DO DO_NY FOR FOR_NY
 %token<Cabs.cabsloc> IF TRY EXCEPT FINALLY
@@ -553,7 +553,6 @@ maybecomma:
 /* *** Expressions *** */
 
 primary_expression:                     /*(* 6.5.1. *)*/
-|               YIELD   { YIELD, $1 }
 |		IDENT
 		        {VARIABLE (fst $1), snd $1}
 |        	constant
@@ -640,7 +639,7 @@ unary_expression:   /*(* 6.5.3 *)*/
                         {ACTIVATE (fst $3, $5, RETURN (smooth_expression (fst $6), snd $6)), $1}
 |               ACTIVATE LBRACE cast_expression RBRACE var_list_opt statement
                         {ACTIVATE (fst $3, $5, $6), $1}
-|               UNYIELDING { YIELD, $1 (* XXX *) }
+|               UNYIELDING { UNARY( PLUS, CONSTANT( CONST_INT "0" ) ), $1 (* XXX *) }
 |               SYNCHRONIZED paren_comma_expression statement { (* XXX I guess this has to be translated later because of escaping *)
            GNU_BODY{ blabels=[]; battrs=[];
                      bstmts=[

@@ -4624,9 +4624,7 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
     end
 
     | A.ACTIVATE( act, by_vals, body ) ->
-      finishExp (doStatement body) zero voidPtrType (* XXX *)
-
-    | A.YIELD -> finishExp (empty +++ Call(None, zero, [], !currentLoc)) zero voidPtrType (* XXX *)
+      E.s (E.bug "activate should be gone before cabs2cil")
 
     | A.EXPR_PATTERN _ -> E.s (E.bug "EXPR_PATTERN in cabs2cil input")
 
@@ -6676,29 +6674,67 @@ object (self)
   val mutable activate_depth  = 0
   val mutable fun_def_depth   = 0
   val mutable activity_bodies = []
+  val mutable local_vars      = []
   val mutable fun_name        = None
 
   method vdef d : definition list V.visitAction = match d with
       FUNDEF(fname, body, loc, lend) ->
-        let () =
-          let (_, (name, _, _, _)) = fname in
-          fun_name <- Some name
+        let (_, (name, fun_ty, _, _)) = fname in
+        let new_locals =
+          match fun_ty with
+            PROTO( ret_ty, params, var_args ) ->
+              let single_name_to_name_group( spec, name ) = ( spec, [name] ) in
+              List.map single_name_to_name_group params
+          | _ -> E.s (bug "Function with type other than PROTO")
         in
+        let () = match local_vars with [] -> () | _ ->
+          E.s (bug "Function def, but there are already locals")
+        in
+        let () = local_vars <- [new_locals] in
+        let () = fun_def_depth <- fun_def_depth + 1 in
+        let () = fun_name <- Some name in
+
         let after defs =
-          let () = fun_def_depth <- fun_def_depth - 1 in
           let acts = activity_bodies in
+          let () = fun_def_depth   <- fun_def_depth - 1 in
           let () = activity_bodies <- [] in
-          let () = fun_name <- None in
+          let () = local_vars      <- [] in
+          let () = fun_name        <- None in
           match defs with
               [def] -> acts @ defs
             | _ -> failwith "wrong number of defs"
         in
-        (* XXX add the parameters to the local defs *)
-        let () = fun_def_depth <- fun_def_depth + 1 in
         V.ChangeDoChildrenPost ([d], after)
-    | DECDEF (name_group, loc) -> V.DoChildren
-      (* XXX: I guess there might be typedefs and shit like that *)
-    | _ -> V.DoChildren
+
+    | DECDEF( (spec, init_names), loc ) ->
+      (* let () = Printf.printf "decdef l:%d a:%d\n" (List.length local_vars) activate_depth in *)
+      (match local_vars with
+        [] -> V.DoChildren
+      | env::lvars' ->
+        if activate_depth > 0 then
+          V.DoChildren
+        else
+          let () = Printf.printf "Why NOT???\n" in
+          let names = List.map (fun ((x,_,_,_)as n,i) -> 
+
+            let () = Printf.printf "    BAR %s" x in
+n) init_names in
+          let () = local_vars <- ((spec, names)::env)::lvars' in
+          V.DoChildren)
+
+    | TYPEDEF _ | ONLYTYPEDEF _ | GLOBASM _ | PRAGMA _
+    | LINKAGE _ | TRANSFORMER _ | EXPRTRANSFORMER _ ->
+      (match local_vars with
+        [] -> V.DoChildren
+      | env::lvars' -> E.s (bug "Unexpected local definition"))
+
+  method vEnterScope () =
+    local_vars <- []::local_vars
+
+  method vExitScope () =
+    match local_vars with
+      [] -> E.s (bug "Empty local vars?!?!?")
+    | _::l -> local_vars <- l
 
   method vexpr e = match e with
       ACTIVATE _ ->
@@ -6709,18 +6745,101 @@ object (self)
         else
           let after_children e =
             let ACTIVATE( act_ref, by_vals, body ) = e in
-            let () = activate_depth <- activate_depth - 1 in
             let safe_name =
               match fun_name with
                 Some n -> "__charcoal_" ^ n ^ "_act_N" (* XXX unique number *)
               | None -> E.s (bug "Activate without function name")
             in
-            let name = ([], (safe_name, PROTO(JUSTBASE, [], false), [], cabslu)) in
-            let (body_bk:Cabs.block) = { blabels = []; Cabs.battrs = []; bstmts = [body] } in
-            let act_fun = FUNDEF( name, body_bk, cabslu, cabslu ) in
+            let obj_name = safe_name ^ "_obj" in
+            let filter_by_val_locals bvls env =
+              let () = Printf.printf "filter_by_val_locals %d\n" (List.length by_vals) in
+              let filter_name_group bvls' (spec, names) =
+                let () = Printf.printf "  Here\n" in
+                let foo (n,_,_,_) =
+                  let () = Printf.printf "  baroo? %s\n" n in
+                  List.mem n by_vals
+                in
+                match List.filter foo names with
+                  [] -> bvls'
+                | ns -> (spec, ns):: bvls'
+              in
+              List.fold_left filter_name_group bvls env
+            in
+            let by_val_locals = List.fold_left filter_by_val_locals [] local_vars in
+            let () = Printf.printf "Any local by vals? %d\n" (List.length by_val_locals) in
+            let struct_type =
+              match by_val_locals with
+                [] ->
+                  let () = Printf.printf "DOUBLE NO\n" in
+                  None
+              | _ ->
+                let obj_field f = MEMBEROFPTR( VARIABLE obj_name, f ) in
+
+                let types_to_business (acs, frs, fgs) ( spec, names ) =
+                  let type_to_business (as', frs', fs) ( ( n, _, _, loc ) as name ) =
+                    let actual = COMPUTATION( BINARY( ASSIGN, obj_field n, VARIABLE n ),
+                                              cabslu ) in
+                    let formal = (name, SINGLE_INIT( obj_field n ) ) in
+                    (actual::as', formal::frs', (name,None)::fs)
+                  in
+                  let (actuals, formals, fields) =
+                    List.fold_left type_to_business ([],[],[]) names
+                  in
+                  (* Find better locs *)
+                  let y = DEFINITION( DECDEF( ( spec, formals ), cabslu ) ) in
+                  (actuals @ acs, y::frs, (spec, fields)::fgs)
+                in
+                let (actuals, formals, field_groups) =
+                  List.fold_left types_to_business ([],[],[]) by_val_locals
+                in
+                let ty = Tstruct( safe_name ^ "_struct", Some field_groups, [] ) in
+                Some( actuals, formals, ty )
+            in
+            let () = activate_depth <- activate_depth - 1 in
+            let body_bk =
+              match struct_type with
+                None ->
+                  { blabels = []; Cabs.battrs = []; bstmts = [body] }
+              | Some( _, formals, ty ) ->
+                (* XXX better locs *)
+                let spec = [SpecType ty] in
+                let decl = PTR( [], JUSTBASE ) in
+                let name = ( obj_name, decl, [], cabslu ) in
+                let init = SINGLE_INIT( CAST( ( spec, decl ),
+                                              SINGLE_INIT( VARIABLE "p" ) ) ) in
+                let cast = DEFINITION( DECDEF( ( spec, [(name,init)]), cabslu ) ) in
+                let free = COMPUTATION( CALL( VARIABLE( "free" ), [VARIABLE( "p" )] ),
+                                        cabslu ) in
+                { blabels = []; Cabs.battrs = []; bstmts = cast::(formals)@[free;body] }
+            in
+            (* Find better locs *)
+            let act_fun =
+              let ty = ([SpecType Tvoid], ("p", PTR( [], JUSTBASE ), [], cabslu)) in
+              let name = ([], (safe_name, PROTO(JUSTBASE, [ty], false), [], cabslu)) in
+              FUNDEF( name, body_bk, cabslu, cabslu )
+            in
             let () = activity_bodies <- act_fun::activity_bodies in
-            CALL( VARIABLE "__charcoal_activate",
-                  [act_ref; VARIABLE safe_name; CONSTANT( CONST_INT "0" ) ] )
+
+            match struct_type with
+              None -> CALL( VARIABLE "__charcoal_activate",
+                            [act_ref; VARIABLE safe_name; CONSTANT( CONST_INT "0" ) ] )
+            | Some( (actuals:statement list), _, ty ) ->
+              let sizeof = EXPR_SIZEOF( INDEX( VARIABLE obj_name,
+                                               CONSTANT( CONST_INT "0" ) ) ) in
+              let malloc = SINGLE_INIT( CALL( VARIABLE "malloc", [sizeof] ) ) in
+              let spec = [SpecType ty] in
+              let decl = PTR( [], JUSTBASE ) in
+              let name = ( obj_name, decl, [], cabslu ) in
+              let init = SINGLE_INIT( CAST( ( spec, decl ), malloc ) ) in
+              let cast = DEFINITION( DECDEF( ( spec, [(name,init)]), cabslu ) ) in
+              let call =
+                COMPUTATION( CALL( VARIABLE "__charcoal_activate",
+                                   [act_ref;
+                                    VARIABLE safe_name;
+                                    VARIABLE obj_name ] ), cabslu )
+              in
+              GNU_BODY{ blabels = []; Cabs.battrs = [];
+                        bstmts = cast::actuals@[call] }
           in
           V.ChangeDoChildrenPost (e, after_children)
     | VARIABLE v ->
@@ -6736,7 +6855,9 @@ object (self)
       RETURN (e, loc) -> V.DoChildren (* XXX if > 0, set activity rv *)
     | GOTO _ -> V.DoChildren (* XXX No gotos from activity body to outer scope *)
     | COMPGOTO _ -> V.DoChildren (* XXX No gotos from activity body to outer scope *)
-    | DEFINITION _ -> V.DoChildren (* XXX find local variables *)
+    | DEFINITION _ ->
+      let () = Printf.printf "Gota def here!!!\n" in
+      V.DoChildren
     | _ -> V.DoChildren (* XXX audit the rest of the statement kinds *)
 
   method vvar name =
@@ -6744,9 +6865,6 @@ object (self)
       "__charcoal_application_main"
     else
       name
-
-  method vEnterScope () = ()
-  method vExitScope  () = ()
 
 end (* extract_activity_class *)
 
@@ -6758,7 +6876,7 @@ let rec extract_one def : definition list option =
     | _ -> Some defs
 
 let rec extract_all defs : definition list =
-  let _ = Printf.printf "extract_all %d\n" (List.length defs) in
+  (* let _ = Printf.printf "extract_all %d\n" (List.length defs) in *)
   match defs with
       [] -> []
     | def::rest ->
