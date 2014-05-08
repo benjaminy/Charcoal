@@ -23,7 +23,7 @@
 typedef void (*crcl(entry_t))( void *formals );
 
 typedef struct crcl(thread_t) crcl(thread_t);
-typedef struct crcl(activity_t) crcl(activity_t);
+typedef struct activity_t activity_t;
 
 /* Thread flags */
 // #define CRCL(THDF_ANY_RUNNING) 1
@@ -36,7 +36,7 @@ struct crcl(thread_t)
     uv_timer_t timer_req;
     double start_time;
     double max_time;
-    crcl(activity_t) *activities, *ready, *to_be_reaped;
+    activity_t *activities, *ready, *to_be_reaped;
     pthread_mutex_t thd_management_mtx;
     pthread_cond_t thd_management_cond;
     unsigned flags;
@@ -64,7 +64,7 @@ union crcl(io_response_t)
 #define __CHARCOAL_ACTF_REAP_QUEUE  (1 << 3)
 #define __CHARCOAL_ACTF_DONE        (1 << 4)
 
-struct crcl(activity_t)
+struct activity_t
 {
     crcl(thread_t) *container;
     crcl(sem_t) can_run;
@@ -72,7 +72,7 @@ struct crcl(activity_t)
     /* Every activity is is the (thread-local) list of all activities.
      * An activity may be in another "special" list, of which there
      * are currently two: Ready and To Be Reaped */
-    crcl(activity_t) *next, *prev, *snext, *sprev, *joining;
+    activity_t *next, *prev, *snext, *sprev, *joining;
     crcl(io_response_t) io_response;
     ucontext_t ctx;
     jmp_buf    jmp;
@@ -84,22 +84,22 @@ struct crcl(activity_t)
 };
 
 void crcl(push_special_queue)(
-    unsigned queue_flag, crcl(activity_t) *a,
-    crcl(thread_t) *t, crcl(activity_t) **qp );
-crcl(activity_t) *crcl(pop_special_queue)(
-    unsigned queue_flag, crcl(thread_t) *t, crcl(activity_t) **qp );
+    unsigned queue_flag, activity_t *a,
+    crcl(thread_t) *t, activity_t **qp );
+activity_t *crcl(pop_special_queue)(
+    unsigned queue_flag, crcl(thread_t) *t, activity_t **qp );
 
-int crcl(activity_blocked)( crcl(activity_t) *self );
+int crcl(activity_blocked)( activity_t *self );
 
 /* join thread t.  Return True if t was the last application
  * thread. */
 int crcl(join_thread)( crcl(thread_t) *t );
-int crcl(activate)( crcl(activity_t) *act, crcl(entry_t) f, void *args );
+int crcl(activate)( activity_t *act, crcl(entry_t) f, void *args );
 
-crcl(activity_t) *crcl(get_self_activity)( void );
-void crcl(set_self_activity)( crcl(activity_t) *a );
-int crcl(activity_join)( crcl(activity_t) *, void * );
-int crcl(activity_detach)( crcl(activity_t) * );
+activity_t *crcl(get_self_activity)( void );
+void crcl(set_self_activity)( activity_t *a );
+int crcl(activity_join)( activity_t *, void * );
+int crcl(activity_detach)( activity_t * );
 
 
 /* Ignore everything from here to the end */

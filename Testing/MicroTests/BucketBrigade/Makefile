@@ -2,38 +2,15 @@
 # 
 # 
 
-ifeq ($(OS),Windows_NT)
-else
-    UNAME_S := $(shell uname -s)
-    ifeq ($(UNAME_S),Linux)
-        OS = Linux
-    endif
-    ifeq ($(UNAME_S),Darwin)
-        OS = Darwin
-    endif
-endif
+CRCL_ROOT=../../..
 
-ifeq ($(OS),Windows_NT)
-    CCFLAGS += -D WIN32
-else
-    LIBUV_FLAGS = ../../../Build/libuv/libuv.a
-endif
-ifeq ($(OS),Linux)
-    CCFLAGS += -D LINUX
-endif
-ifeq ($(OS),Darwin)
-    LIBUV_FLAGS += -framework CoreFoundation -framework CoreServices
-    CCFLAGS += -D OSX
-endif
+include $(CRCL_ROOT)/Testing/generic.mk
 
-
-# INCLUDE_DIRS = -I../../../Install/include -I../../../ThirdParty/OpenPA/Releases/1.0.4/Install/include
-INCLUDE_DIRS = -I../../../Install/include -I../../../ThirdParty/OpenPA/Releases/1.0.4/Install/include -I../../../ThirdParty/libuv/Releases/0.10.25/include
-LIB_DIRS =  -L../../../Install/lib
-FLAGS = $(INCLUDE_DIRS) $(LIB_DIRS) -lcharcoal_sys -lpthread -pg -lrt
 TARGETS = bucket_brigade_setcontext bucket_brigade_setcontext_jmp bucket_brigade_libuv bucket_brigade_pthread bucket_brigade_silly_loop bucket_brigade_crcl
 
 all: $(TARGETS)
+
+include $(CRCL_ROOT)/Testing/cil_rules.mk
 
 bucket_brigade_setcontext: bucket_brigade_setcontext.c
 	gcc -g -O1 $(INCLUDE_DIRS) -o bucket_brigade_setcontext bucket_brigade_setcontext.c

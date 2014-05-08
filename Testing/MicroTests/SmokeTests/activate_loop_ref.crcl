@@ -1,5 +1,6 @@
 #include <charcoal_base.h>
 #include <charcoal_runtime.h>
+#include <charcoal_std_lib.h>
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -7,15 +8,23 @@
 
 int main( int argc, char **argv )
 {
-    printf( "Hello World\n" );
-    unsigned i;
+    unsigned i, j = 0, c = 0;
+    semaphore_t sem;
+    semaphore_open( &sem, 0 );
     for( i = 0; i < N; ++i )
     {
         activity_t *a = (activity_t *)malloc( sizeof( a[0] ) );
         activate{ a }( i )
         {
-            printf( "Goodbye %d\n", i );
+            j += i;
+            c += 1;
+            if( c == N )
+            {
+                semaphore_incr( &sem );
+            }
         };
     }
+    semaphore_decr( &sem );
+    printf( "Here's j: %d\n", j );
     return N;
 }

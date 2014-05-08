@@ -23,7 +23,7 @@ void f( void *p )
 
 int crcl(application_main)( int argc, char **argv )
 {
-    crcl(activity_t) as[N];
+    activity_t as[N];
     printf( "sizeof container      %d\n", (int)sizeof(as[0].container) );
     printf( "sizeof can_run        %d\n", (int)sizeof(as[0].can_run) );
     printf( "sizeof flags          %d\n", (int)sizeof(as[0].flags) );

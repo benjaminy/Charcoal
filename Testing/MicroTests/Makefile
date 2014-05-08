@@ -2,43 +2,22 @@
 # 
 # 
 
-ifeq ($(OS),Windows_NT)
-else
-    UNAME_S := $(shell uname -s)
-    ifeq ($(UNAME_S),Linux)
-        OS = Linux
-    endif
-    ifeq ($(UNAME_S),Darwin)
-        OS = Darwin
-    endif
-endif
+CRCL_ROOT=../..
 
-ifeq ($(OS),Windows_NT)
-    CCFLAGS += -D WIN32
-else
-    LIBUV_FLAGS = ../../Build/libuv/libuv.a
-endif
-ifeq ($(OS),Linux)
-    CCFLAGS += -D LINUX
-endif
-ifeq ($(OS),Darwin)
-    LIBUV_FLAGS += -framework CoreFoundation -framework CoreServices
-    CCFLAGS += -D OSX
-endif
+include $(CRCL_ROOT)/Testing/generic.mk
 
-
-# INCLUDE_DIRS = -I../../Install/include -I../../ThirdParty/OpenPA/Releases/1.0.4/Install/include
-INCLUDE_DIRS = -I../../Install/include -I../../ThirdParty/OpenPA/Releases/1.0.4/Install/include -I../../ThirdParty/libuv/Releases/0.10.25/include
-LIB_DIRS =  -L../../Install/lib
-# FLAGS = $(INCLUDE_DIRS) $(LIB_DIRS) -lcharcoal_sys -lpthread -pg -lrt
-FLAGS = $(INCLUDE_DIRS) $(LIB_DIRS) -lcharcoal_sys -lpthread -lrt
 TARGETS = simple_test simple_test_noyield simple_yield_exe  unyielding_test_exe activity_create timeout_test_exe simple_unyield_test simple_unyield_test_noyield
+
+include $(CRCL_ROOT)/Testing/cil_rules.mk
 
 timer_create_test: timer_create_test.c
 	gcc -O1 -o timer_create_test timer_create_test.c -lrt
 
-multi_dns_crcl: multi_dns_crcl.c
+multi_dns_crcl_c: multi_dns_crcl.c
 	gcc -g -o multi_dns_crcl $(FLAGS) multi_dns_crcl.c -lcharcoal_sys $(LIBUV_FLAGS)
+
+$(BUILD_DIR)/multi_dns_crcl: $(BUILD_DIR)/multi_dns$(CIL_C_EXT)
+	$(CC) -o $(BUILD_DIR)/multi_dns_crcl $< $(FLAGS) $(LIBUV_FLAGS)
 
 simple_unyield_test:
 	gcc -g -o simple_unyield_test $(FLAGS) -DYIELDING simple_unyield_test.c -lm

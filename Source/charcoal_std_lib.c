@@ -26,11 +26,11 @@ struct _TET_TASK
     TET_THREAD container;
 };
 
-pthread_key_t __charcoal_current_activity;
+pthread_key_t crcl(current_activity);
 
 activity_t activity_self( void )
 {
-    (activity_t)pthread_getspecific( __charcoal_current_activity );
+    (activity_t)pthread_getspecific( crcl(current_activity) );
 }
 
 typedef enum
@@ -178,7 +178,7 @@ int semaphore_incr( semaphore_t *s )
     ++s->value;
     if( s->waiters )
     {
-        crcl(activity_t) *a = crcl(pop_special_queue)(
+        activity_t *a = crcl(pop_special_queue)(
             CRCL(ACTF_BLOCKED), NULL, &s->waiters );
         crcl(push_special_queue)(
             CRCL(ACTF_READY_QUEUE), a, a->container, NULL );
@@ -192,7 +192,7 @@ int semaphore_decr( semaphore_t *s )
     {
         return EINVAL;
     }
-    crcl(activity_t) *self = crcl(get_self_activity)();
+    activity_t *self = crcl(get_self_activity)();
     while( s->value < 1 )
     {
         int rc;
@@ -207,7 +207,7 @@ int semaphore_decr( semaphore_t *s )
     /* XXX maybe this isn't necessary?  */
     if( s->value > 0 && s->waiters )
     {
-        crcl(activity_t) *a = crcl(pop_special_queue)(
+        activity_t *a = crcl(pop_special_queue)(
             CRCL(ACTF_BLOCKED), NULL, &s->waiters );
         crcl(push_special_queue)(
             CRCL(ACTF_READY_QUEUE), a, a->container, NULL );
@@ -232,7 +232,7 @@ int semaphore_try_decr( semaphore_t *s )
     }
 }
 
-static int crcl(send_io_cmd)( crcl(io_cmd_t) *cmd, crcl(activity_t) *a )
+static int crcl(send_io_cmd)( crcl(io_cmd_t) *cmd, activity_t *a )
 {
     enqueue( cmd );
     a->flags |= CRCL(ACTF_BLOCKED);
@@ -250,7 +250,7 @@ int getaddrinfo_crcl(
 {
     /* XXX if unyielding, just call directly */
     uv_getaddrinfo_t resolver;
-    crcl(activity_t) *self = crcl(get_self_activity)();
+    activity_t *self = crcl(get_self_activity)();
     resolver.data = self;
     crcl(io_cmd_t) *cmd = (crcl(io_cmd_t) *)malloc( sizeof( cmd[0] ) );
     if( !cmd )

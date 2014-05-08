@@ -32,9 +32,9 @@ static crcl(thread_t) *crcl(threads);
 static pthread_key_t crcl(self_key);
 static timer_t crcl(heartbeat_timer);
 
-crcl(activity_t) *crcl(get_self_activity)( void )
+activity_t *crcl(get_self_activity)( void )
 {
-    return (crcl(activity_t) *)pthread_getspecific( crcl(self_key) );
+    return (activity_t *)pthread_getspecific( crcl(self_key) );
 }
 
 static int crcl(start_stop_heartbeat)( int start )
@@ -60,9 +60,9 @@ static int crcl(start_stop_heartbeat)( int start )
     return 0;
 }
 
-int crcl(choose_next_activity)( __charcoal_activity_t **p )
+int crcl(choose_next_activity)( activity_t **p )
 {
-    crcl(activity_t) *to_run, *first, *self = crcl(get_self_activity)();
+    activity_t *to_run, *first, *self = crcl(get_self_activity)();
     crcl(thread_t) *thd = self->container;
     ABORT_ON_FAIL( pthread_mutex_lock( &thd->thd_management_mtx ) );
     first = to_run = thd->activities;
@@ -99,13 +99,13 @@ int crcl(choose_next_activity)( __charcoal_activity_t **p )
 
 void crcl(unyielding_enter)()
 {
-    crcl(activity_t) *self = crcl(get_self_activity)();
+    activity_t *self = crcl(get_self_activity)();
     crcl(atomic_incr_int)( &self->container->unyield_depth );
 }
 
 void crcl(unyielding_exit)()
 {
-    crcl(activity_t) *self = crcl(get_self_activity)();
+    activity_t *self = crcl(get_self_activity)();
     crcl(atomic_decr_int)( &self->container->unyield_depth );
     /* TODO: Maybe call yield here? */
 }
@@ -117,7 +117,7 @@ void timeout_signal_handler(){
 
 /* This should be called just before an activity starts or resumes from
  * yield/wait. */
-static void crcl(activity_start_resume)( crcl(activity_t) *self )
+static void crcl(activity_start_resume)( activity_t *self )
 {
     /* XXX: enqueue command */
     /* XXX: start heartbeat if runnable > 1 */
@@ -129,7 +129,7 @@ static void crcl(activity_start_resume)( crcl(activity_t) *self )
     /* XXX: Lots to fix here. */
 }
 
-typedef void (*crcl(switch_listener))(crcl(activity_t) *from, crcl(activity_t) *to, void *ctx);
+typedef void (*crcl(switch_listener))(activity_t *from, activity_t *to, void *ctx);
 
 void crcl(push_yield_switch_listener)( crcl(switch_listener) pre, void *pre_ctx, crcl(switch_listener) post, void *post_ctx )
 {
@@ -140,9 +140,9 @@ void crcl(pop_yield_switch_listener)()
 }
 
 /* XXX must fix.  Still assuming activities implemented as threads */
-static int crcl(yield_try_switch)( crcl(activity_t) *self )
+static int crcl(yield_try_switch)( activity_t *self )
 {
-    crcl(activity_t) *to;
+    activity_t *to;
     /* XXX error check */
     crcl(choose_next_activity)( &to );
     if( to )
@@ -154,22 +154,10 @@ static int crcl(yield_try_switch)( crcl(activity_t) *self )
     return 0;
 }
 
-void crcl(yield)(){
-    __charcoal_activity_t *foo = crcl(get_self_activity)();
-
-    /* DEBUG foo->yield_attempts++; */
-    int unyield_depth = __charcoal_atomic_load_int( &(foo->container->unyield_depth) );
-    if(unyield_depth == 0 )
-    {
-        /* ) && (timeout==1) */
-        __charcoal_yield_try_switch( foo );
-    }
-}
-
-static void crcl(print_special_queue)( crcl(activity_t) **q )
+static void crcl(print_special_queue)( activity_t **q )
 {
     assert( q );
-    crcl(activity_t) *a = *q, *first = a;
+    activity_t *a = *q, *first = a;
     if( a )
     {
         printf( "Special queue: " );
@@ -186,12 +174,12 @@ static void crcl(print_special_queue)( crcl(activity_t) **q )
 }
 
 /* Precondition: The thread mgmt mutex is held. */
-crcl(activity_t) *crcl(pop_special_queue)(
-    unsigned queue_flag, crcl(thread_t) *t, crcl(activity_t) **qp )
+activity_t *crcl(pop_special_queue)(
+    unsigned queue_flag, crcl(thread_t) *t, activity_t **qp )
 {
     // assert( t || qp );
     // assert( !( t && qp ) );
-    crcl(activity_t) **q = NULL;
+    activity_t **q = NULL;
     switch( queue_flag )
     {
     case CRCL(ACTF_READY_QUEUE):
@@ -210,7 +198,7 @@ crcl(activity_t) *crcl(pop_special_queue)(
     /* crcl(print_special_queue)( q ); */
     if( *q )
     {
-        crcl(activity_t) *a = *q;
+        activity_t *a = *q;
         if( a->snext == a )
         {
             *q = NULL;
@@ -234,8 +222,8 @@ crcl(activity_t) *crcl(pop_special_queue)(
 
 /* Precondition: The thread mgmt mutex is held. */
 void crcl(push_special_queue)(
-    unsigned queue_flag, crcl(activity_t) *a,
-    crcl(thread_t) *t, crcl(activity_t) **qp )
+    unsigned queue_flag, activity_t *a,
+    crcl(thread_t) *t, activity_t **qp )
 {
     assert( t || qp );
     assert( !( t && qp ) );
@@ -245,7 +233,7 @@ void crcl(push_special_queue)(
         return;
     }
     a->flags |= queue_flag;
-    crcl(activity_t) **q = NULL;
+    activity_t **q = NULL;
     switch( queue_flag )
     {
     case CRCL(ACTF_READY_QUEUE):
@@ -264,7 +252,7 @@ void crcl(push_special_queue)(
     /* crcl(print_special_queue)( q ); */
     if( *q )
     {
-        crcl(activity_t) *front = *q, *rear = front->sprev;
+        activity_t *front = *q, *rear = front->sprev;
         /* printf( "Front: %p(n:%p p:%p)  Rear:%p(n:%p p:%p)\n", */
         /*         front, front->snext, front->sprev, */
         /*         rear , rear ->snext, rear ->sprev ); */
@@ -290,7 +278,7 @@ void crcl(push_special_queue)(
  *
  * Should the calling code call _setjmp, or should that happen in
  * here? */
-int crcl(activity_blocked)( crcl(activity_t) *self )
+int crcl(activity_blocked)( activity_t *self )
 {
     // XXX --thd->runnable_activities;
     /* printf( "Actvity blocked\n" ); */
@@ -301,7 +289,7 @@ int crcl(activity_blocked)( crcl(activity_t) *self )
         RET_IF_ERROR( pthread_cond_wait( &thd->thd_management_cond,
                                          &thd->thd_management_mtx ) );
     }
-    crcl(activity_t) *to = crcl(pop_special_queue)(
+    activity_t *to = crcl(pop_special_queue)(
         CRCL(ACTF_READY_QUEUE), thd, NULL );
     RET_IF_ERROR( pthread_mutex_unlock( &thd->thd_management_mtx ) );
     if( !setjmp( self->jmp ) )
@@ -312,21 +300,22 @@ int crcl(activity_blocked)( crcl(activity_t) *self )
     return 0;
 }
 
-void crcl(activity_set_return_value)( crcl(activity_t) *a, void *ret_val_ptr )
+void crcl(activity_set_return_value)( activity_t *a, void *ret_val_ptr )
 {
     memcpy( a->return_value, ret_val_ptr, a->ret_size );
 }
 
-void crcl(activity_get_return_value)( crcl(activity_t) *a, void **ret_val_ptr )
+void crcl(activity_get_return_value)( activity_t *a, void **ret_val_ptr )
 {
     memcpy( ret_val_ptr, a->return_value, a->ret_size );
 }
 
-void crcl(switch_from_to)( crcl(activity_t) *from, crcl(activity_t) *to )
+void crcl(switch_from_to)( activity_t *from, activity_t *to )
 {
     int rc;
     /* XXX assert from is the currently running activity? */
     crcl(thread_t) *thd = from->container;
+    assert( thd );
     if( ( rc = pthread_mutex_lock( &thd->thd_management_mtx ) ) )
     {
         printf( "ERRR from: %p thd: %p %s\n", from, thd, strerror( rc ) ); fflush( stdout );
@@ -343,13 +332,35 @@ void crcl(switch_from_to)( crcl(activity_t) *from, crcl(activity_t) *to )
     /* check if anybody should be deallocated (int sem_destroy(sem_t *);) */
 }
 
-void crcl(switch_to)( crcl(activity_t) *act )
+void crcl(switch_to)( activity_t *act )
 {
     crcl(switch_from_to)( crcl(get_self_activity)(), act );
 }
 
+void yield(){
+    activity_t *self = crcl(get_self_activity)();
+
+    /* XXX DEBUG foo->yield_attempts++; */
+    int unyield_depth = crcl(atomic_load_int)( &(self->container->unyield_depth) );
+    if( unyield_depth == 0 )
+    {
+        crcl(thread_t) *thd = self->container;
+        /* XXX handle locking errors? */
+        pthread_mutex_lock( &thd->thd_management_mtx );
+        if( !thd->ready )
+        {
+            pthread_mutex_unlock( &thd->thd_management_mtx );
+            return;
+        }
+        activity_t *to = crcl(pop_special_queue)(
+            CRCL(ACTF_READY_QUEUE), thd, NULL );
+        pthread_mutex_unlock( &thd->thd_management_mtx );
+        crcl(switch_from_to)( self, to );
+    }
+}
+
 static void crcl(remove_activity_from_thread)(
-    crcl(activity_t) *a, crcl(thread_t) *t)
+    activity_t *a, crcl(thread_t) *t)
 {
     /* printf( "Remove activity %p  %p\n", a, t ); */
     if( a == a->next )
@@ -367,12 +378,12 @@ static void crcl(remove_activity_from_thread)(
 }
 
 static void crcl(insert_activity_into_thread)(
-    crcl(activity_t) *a, crcl(thread_t) *t )
+    activity_t *a, crcl(thread_t) *t )
 {
     /* printf( "Insert activity %p  %p\n", a, t ); */
     if( t->activities )
     {
-        crcl(activity_t) *rear = t->activities->prev;
+        activity_t *rear = t->activities->prev;
         /* printf( "f:%p  r:%p\n", t->activities, rear ); */
         rear->next = a;
         t->activities->prev = a;
@@ -386,7 +397,7 @@ static void crcl(insert_activity_into_thread)(
 }
 
 /* XXX remove problem!!! */
-int crcl(activity_join)( crcl(activity_t) *a, void *p )
+int crcl(activity_join)( activity_t *a, void *p )
 {
     if( !a )
     {
@@ -396,14 +407,14 @@ int crcl(activity_join)( crcl(activity_t) *a, void *p )
     {
         return 0;
     }
-    crcl(activity_t) *self = crcl(get_self_activity)();
+    activity_t *self = crcl(get_self_activity)();
     /* printf( "joining.  push %p on %p\n", self, a ); */
     crcl(push_special_queue)( CRCL(ACTF_BLOCKED), self, NULL, &a->joining );
     RET_IF_ERROR( crcl(activity_blocked)( self ) );
     return 0;
 }
 
-int crcl(activity_detach)( crcl(activity_t) *a )
+int crcl(activity_detach)( activity_t *a )
 {
     if( !a )
     {
@@ -423,12 +434,12 @@ struct crcl(thread_launch_ctx)
 {
     void            (*entry)( void * );
     void             *p;
-    crcl(activity_t) *act;
+    activity_t *act;
     ucontext_t       *prv;
 };
 
 /* Never returns */
-static void crcl(activity_finished)( crcl(activity_t) *a )
+static void crcl(activity_finished)( activity_t *a )
 {
     int rc;
     crcl(thread_t) *thd = a->container;
@@ -437,10 +448,10 @@ static void crcl(activity_finished)( crcl(activity_t) *a )
     {
         exit( rc );
     }
-    crcl(activity_t) *reaper_act = a->container->activities;
+    activity_t *reaper_act = a->container->activities;
     crcl(push_special_queue)( CRCL(ACTF_READY_QUEUE), reaper_act, thd, NULL );
     crcl(push_special_queue)( CRCL(ACTF_REAP_QUEUE), a, thd, NULL );
-    crcl(activity_t) *next = crcl(pop_special_queue)(
+    activity_t *next = crcl(pop_special_queue)(
         CRCL(ACTF_READY_QUEUE), thd, NULL );
     ABORT_ON_FAIL( pthread_mutex_unlock( &thd->thd_management_mtx ) );
     /* printf( "Jumping to %p\n", next ); */
@@ -479,7 +490,7 @@ static void crcl(activity_entry)( void *p )
     exit( -1 );
 }
 
-int crcl(activate_in_thread)(crcl(thread_t) *thd, crcl(activity_t) *act,
+int crcl(activate_in_thread)(crcl(thread_t) *thd, activity_t *act,
         crcl(entry_t) f, void *args )
 {
     /* TODO: provide some way for the user to pass in a stack */
@@ -517,7 +528,7 @@ int crcl(activate_in_thread)(crcl(thread_t) *thd, crcl(activity_t) *act,
     ctx.act   = act;
 
     makecontext( &act->ctx, (void(*)(void))crcl(activity_entry), 1, &ctx );
-    crcl(activity_t) *real_self = crcl(get_self_activity)();
+    activity_t *real_self = crcl(get_self_activity)();
     crcl(activity_start_resume)( act );
     swapcontext( tmp, &act->ctx );
     crcl(activity_start_resume)( real_self );
@@ -532,7 +543,7 @@ int crcl(activate_in_thread)(crcl(thread_t) *thd, crcl(activity_t) *act,
 /* I think the Charcoal type for activities and the C type need to be
  * different.  The Charcoal type should have the return type as a
  * parameter. */
-int crcl(activate)( crcl(activity_t) *act, crcl(entry_t) f, void *args )
+int crcl(activate)( activity_t *act, crcl(entry_t) f, void *args )
 {
     return crcl(activate_in_thread)(
         crcl(get_self_activity)()->container, act, f, args );
@@ -566,12 +577,12 @@ int crcl(join_thread)( crcl(thread_t) *t )
     return crcl(threads) == crcl(threads)->next;
 }
 
-static void crcl(report_thread_done)( crcl(activity_t) *a )
+static void crcl(report_thread_done)( activity_t *a )
 {
     /* printf( "XXX Thread is done!!!\n" ); */
 }
 
-static void crcl(reap_activities)( crcl(activity_t) *a )
+static void crcl(reap_activities)( activity_t *a )
 {
     crcl(thread_t) *thd = a->container;
     assert( thd->activities == a );
@@ -581,7 +592,7 @@ static void crcl(reap_activities)( crcl(activity_t) *a )
     while( 1 )
     {
         /* printf( "Reaping (reaper:%p) %p\n", a, thd->to_be_reaped ); */
-        crcl(activity_t) *r;
+        activity_t *r;
         while( ( r = crcl(pop_special_queue)( CRCL(ACTF_REAP_QUEUE), thd, NULL ) ) )
         {
             /* XXX */
@@ -591,7 +602,7 @@ static void crcl(reap_activities)( crcl(activity_t) *a )
             free( r->ctx.uc_stack.ss_sp );
             while( r->joining )
             {
-                crcl(activity_t) *ready = crcl(pop_special_queue)(
+                activity_t *ready = crcl(pop_special_queue)(
                     CRCL(ACTF_BLOCKED), NULL, &r->joining );
                 crcl(push_special_queue)(
                     CRCL(ACTF_READY_QUEUE), ready, ready->container, NULL );
@@ -625,10 +636,10 @@ static void *crcl(thread_entry)( void *p )
     printf( "\n\nXXXXXXXXXX\n\n" ); fflush( stdout );
     free( p );
     printf( "\n\nYYYYYYYYYY\n\n" ); fflush( stdout );
-    crcl(activity_t) *client_act = ctx.act;
+    activity_t *client_act = ctx.act;
     crcl(thread_t) *thd = client_act->container;
     /* printf( "CLIENT act %p\n", client_act ); */
-    crcl(activity_t) reaper_act;
+    activity_t reaper_act;
     reaper_act.yield_attempts = 0;
     assert( thd );
     reaper_act.container = thd;
@@ -667,7 +678,7 @@ static void *crcl(thread_entry)( void *p )
 /* NOTE: Launching a new thread needs storage for thread stuff and
  * activity stuff. */
 static int crcl(create_thread)(
-    crcl(thread_t) *thd, crcl(activity_t) *act, crcl(entry_t) entry_fn, void *actuals )
+    crcl(thread_t) *thd, activity_t *act, crcl(entry_t) entry_fn, void *actuals )
 {
     int rc;
     assert( thd );
@@ -792,7 +803,7 @@ static int crcl(init_yield_heartbeat)()
     return 0;
 }
 
-static int crcl(init_io_loop)( crcl(thread_t) *t, crcl(activity_t) *a )
+static int crcl(init_io_loop)( crcl(thread_t) *t, activity_t *a )
 {
     crcl(threads) = t;
 
@@ -816,7 +827,7 @@ static int crcl(init_io_loop)( crcl(thread_t) *t, crcl(activity_t) *a )
 }
 
 /* The Charcoal preprocessor replaces all instances of "main" in
- * Charcoal code with "__charcoal_replace_main".  The "real" main is
+ * Charcoal code with "crcl(replace_main)".  The "real" main is
  * provided by the runtime library below.
  *
  * "main" might actually be something else (like "WinMain"), depending
@@ -862,7 +873,7 @@ int main( int argc, char **argv, char **env )
     /* Okay to stack-allocate these here because the I/O thread should
      * always be the last thing running in a Charcoal process. */
     crcl(thread_t)   io_thread;
-    crcl(activity_t) io_activity;
+    activity_t io_activity;
     RET_IF_ERROR( crcl(init_io_loop)( &io_thread, &io_activity ) );
 
     /* There's nothing particularly special about the thread that runs
@@ -874,7 +885,7 @@ int main( int argc, char **argv, char **env )
     {
         return ENOMEM;
     }
-    crcl(activity_t) *act = (crcl(activity_t)*)malloc( sizeof( act[0] ) );
+    activity_t *act = (activity_t*)malloc( sizeof( act[0] ) );
     if( !act )
     {
         return ENOMEM;

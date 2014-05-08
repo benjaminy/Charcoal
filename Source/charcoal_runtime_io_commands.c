@@ -9,19 +9,19 @@ uv_async_t crcl(io_cmd);
 
 typedef struct
 {
-    __charcoal_io_cmd_t *front, *back;
+    crcl(io_cmd_t) *front, *back;
     uv_mutex_t mtx;
-} __charcoal_cmd_queue_t;
+} crcl(cmd_queue_t);
 
-static __charcoal_cmd_queue_t __charcoal_cmd_queue;
+static crcl(cmd_queue_t) crcl(cmd_queue);
 
 void enqueue( crcl(io_cmd_t) *cmd )
 {
     /* The queue takes ownership of *cmd */
-    uv_mutex_lock( &__charcoal_cmd_queue.mtx );
-    cmd->next = __charcoal_cmd_queue.back;
-    __charcoal_cmd_queue.back = cmd;
-    uv_mutex_unlock( &__charcoal_cmd_queue.mtx );
+    uv_mutex_lock( &crcl(cmd_queue).mtx );
+    cmd->next = crcl(cmd_queue).back;
+    crcl(cmd_queue).back = cmd;
+    uv_mutex_unlock( &crcl(cmd_queue).mtx );
 }
 
 /*
@@ -30,22 +30,22 @@ void enqueue( crcl(io_cmd_t) *cmd )
  */
 int dequeue( crcl(io_cmd_t) *cmd_ref )
 {
-    if( !__charcoal_cmd_queue.front )
+    if( !crcl(cmd_queue).front )
     {
-        uv_mutex_lock( &__charcoal_cmd_queue.mtx );
-        while( __charcoal_cmd_queue.back )
+        uv_mutex_lock( &crcl(cmd_queue).mtx );
+        while( crcl(cmd_queue).back )
         {
-            __charcoal_io_cmd_t *tmp = __charcoal_cmd_queue.back->next;
-            __charcoal_cmd_queue.back->next = __charcoal_cmd_queue.front;
-            __charcoal_cmd_queue.front = __charcoal_cmd_queue.back;
-            __charcoal_cmd_queue.back = tmp;
+            crcl(io_cmd_t) *tmp = crcl(cmd_queue).back->next;
+            crcl(cmd_queue).back->next = crcl(cmd_queue).front;
+            crcl(cmd_queue).front = crcl(cmd_queue).back;
+            crcl(cmd_queue).back = tmp;
         }
-        uv_mutex_unlock( &__charcoal_cmd_queue.mtx );
+        uv_mutex_unlock( &crcl(cmd_queue).mtx );
     }
-    if( __charcoal_cmd_queue.front )
+    if( crcl(cmd_queue).front )
     {
-        *cmd_ref = *__charcoal_cmd_queue.front;
-        __charcoal_cmd_queue.front = __charcoal_cmd_queue.front->next;
+        *cmd_ref = *crcl(cmd_queue).front;
+        crcl(cmd_queue).front = crcl(cmd_queue).front->next;
         return 0;
     }
     else
@@ -64,7 +64,7 @@ static void crcl(io_cmd_close)( uv_handle_t *h )
     /* printf( "CLOSE %p\n", a ); fflush(stdout); */
 }
 
-static int crcl(wake_up_requester)( crcl(activity_t) *a )
+static int crcl(wake_up_requester)( activity_t *a )
 {
     a->flags &= ~CRCL(ACTF_BLOCKED);
     crcl(thread_t) *thd = a->container;
@@ -78,7 +78,7 @@ static int crcl(wake_up_requester)( crcl(activity_t) *a )
 static void crcl(getaddrinfo_callback)(
     uv_getaddrinfo_t* req, int status, struct addrinfo* res )
 {
-    crcl(activity_t) *a = (crcl(activity_t) *)req->data;
+    activity_t *a = (activity_t *)req->data;
     a->io_response.addrinfo.rc   = status;
     a->io_response.addrinfo.info = res;
     /* XXX handle errors? */
@@ -121,7 +121,7 @@ void crcl(io_cmd_cb)( uv_async_t *handle, int status /*UNUSED*/ )
                                       cmd._.addrinfo.service,
                                       cmd._.addrinfo.hints ) ) )
             {
-                crcl(activity_t) *a = (crcl(activity_t) *)cmd._.addrinfo.resolver->data;
+                activity_t *a = (activity_t *)cmd._.addrinfo.resolver->data;
                 a->io_response.addrinfo.rc = rc;
                 crcl(wake_up_requester)( a );
             }

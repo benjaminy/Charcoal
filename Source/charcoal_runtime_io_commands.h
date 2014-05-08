@@ -19,7 +19,7 @@ struct crcl(io_cmd_t)
 {
     crcl(io_cmd_op) command;
     /* XXX Not _every_ command needs an activity, but I guess most will */
-    crcl(activity_t) *activity;
+    activity_t *activity;
     union
     {
         crcl(thread_t) *thread;
@@ -32,12 +32,12 @@ struct crcl(io_cmd_t)
         } addrinfo;
     } _;
     uint64_t time_ns;
-    __charcoal_io_cmd_t *next;
+    crcl(io_cmd_t) *next;
 };
 
-void enqueue( __charcoal_io_cmd_t *cmd );
+void enqueue( crcl(io_cmd_t) *cmd );
 
-int dequeue( __charcoal_io_cmd_t *cmd_ref );
+int dequeue( crcl(io_cmd_t) *cmd_ref );
 
 void crcl(io_cmd_cb)( uv_async_t *handle, int status /*UNUSED*/ );
 

@@ -530,7 +530,18 @@ and childrenExpression vis e =
   | GNU_BODY b -> 
       let b' = visitCabsBlock vis b in
       if b' != b then GNU_BODY b' else e
-  | ACTIVATE( act, by_vals, body ) -> e (* XXX fix *)
+  | ACTIVATE( act, by_vals, body ) ->
+      let act' = ve act in
+      let body' =
+        match visitCabsStatement vis body with
+          [s'] -> s'
+        | sl -> BLOCK ({blabels = []; battrs = []; bstmts = sl }, cabslu)
+      in
+      (* XXX cabslu and visit by-vals? *)
+      if act != act' || body != body' then
+        ACTIVATE( act', by_vals, body' )
+      else
+        e
   | EXPR_PATTERN _ -> e
         
 and visitCabsInitExpression vis (ie: init_expression) : init_expression = 

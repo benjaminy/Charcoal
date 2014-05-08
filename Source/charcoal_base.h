@@ -13,6 +13,6 @@
     do { int rc; if( ( rc = cmd ) ) { return rc; } } while( 0 )
 
 typedef struct crcl(thread_t)   crcl(thread_t);
-typedef struct crcl(activity_t) crcl(activity_t);
+typedef struct activity_t activity_t;
 
 #endif /* __CHARCOAL_BASE */
