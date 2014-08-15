@@ -24,7 +24,9 @@ the <em>strong</em> Church-Turing thesis and is nicely critiqued by Dina
 Goldin and Peter Wegner
 (<a href="http://www.cse.uconn.edu/~dqg/papers/strong-cct.pdf">1</a>,
 <a href="http://cs.brown.edu/people/pw/strong-cct.pdf">2</a>,
-<a href="http://www.nachira.net/a/turing.pdf">3</a>).</p>
+<a href="http://www.nachira.net/a/turing.pdf">3</a>).  (Footnote: Alan
+Turing and Alonozo Church understood all of this, they just focused on
+functions because that it what was interesting/important to them.)</p>
 
 <p>The function model leaves out any notion of interaction between
 software and its environment as the software is running.  Some
@@ -47,12 +49,13 @@ resources like memory and/or pass messages to each other.)</p>
 <div class="hblock2">
 <h2>Event Handlers</h2>
 
-<p>In the event model, the application starts a task called the event
-dispatcher and registers event handlers with it.  Event handlers are
-composed of a procedure (function, subroutine, method, whatever) plus
-some condition under which that procedure should be run.  The event
-dispatcher monitors the environment for events and runs handlers as
-appropriate.</p>
+<p>In the event model, the application starts a task called
+the <em>event dispatcher</em> (or <em>event loop</em>) and registers
+<em>event handlers</em> with it.  Event handlers are composed of a
+procedure (function, subroutine, method, whatever) plus some condition
+under which that procedure should be run.  The event dispatcher monitors
+the environment for events (I/O actions, time passing, etc.) and runs
+handlers as appropriate.</p>
 
 <p>(Vocabulary note: Event handlers are a kind of <em>callback</em>; so
 called, because the dispatcher "calls back" to the handler
@@ -63,10 +66,10 @@ procedure.)</p>
 
 <p>The primary strength of the event model is that coordination between
 tasks (i.e. event handlers) is simple.  Each handler runs to completion
-before the next handler can run.  The programmer does not need to worry
-about a handler being interrupted in the middle of some tricky sequence
-of operations.  This makes the management of shared resources much
-easier than with other concurrency models.</p>
+before the next handler can run.  Handlers <em>cannot</em> be
+interrupted by another handler in the middle of some tricky sequence of
+operations.  This makes the management of shared resources much easier
+than with other interactivity models.</p>
 
 <p>The event model is very widely used.  All popular GUI frameworks use
 the event model for defining the behavior of mouse clicks and key
@@ -75,9 +78,9 @@ incoming messages.  I believe that the popularity of the event model is
 primarily a result of the (relative) ease with which shared resources
 can be managemed.</p>
 
-<p>Implementations of the event model tend to have very low overhead in
-terms of memory wasted in the representation of task state and time
-wasted in scheduling tasks.</p>
+<p>Event handling frameworks generally have very low overhead in terms
+of memory for representing task state and time for context
+switching/scheduling.</p>
 
 <p>Event dispatchers can be implemented in user code in any general
 purpose programming language.  There are relatively few tricky
@@ -118,14 +121,31 @@ mushed together so often.</p>
 </div>
 <br/>
 <div class="hblock3">
+<h3>Events: Significant Variations</h3>
+
+<p>One of the significant differentiating issues among event handling
+frameworks is whether I/O is blocking or asynchronous.  With blocking
+I/O, handlers that perform I/O must wait until the operation completes
+before returning to the dispatcher.  With asynchronous I/O, handlers
+register a new handler that will be called when the I/O operation
+completes.  Blocking is generally considered more convenient, because
+the control flow need not be split among multiple handlers.  However,
+long-running I/O operations are a major problem, because they would
+block the whole application.  To avoid this, applications that use
+blocking I/O-style event handling generally also use threads for
+performing long-running I/O operations.</p>
+
+</div>
+<br/>
+<div class="hblock3">
 <h3>Events: Summary</h3>
 
-<p>For applications that don't have much interaction complexity, the
-simplicity of the event handler model is hard to beat.  As applications
-get more complex (as many applications are wont to do), event
-handler-based implementations tend to scale poorly in terms of code
-complexity and maintainability.  Here is one more or less randomly
-chosen site devoted to this phenomenon, sometimes
+<p>For applications that have low interaction complexity, the simplicity
+of the event handler model is hard to beat.  As applications get more
+complex (as many applications are wont to do), event handler-based
+implementations tend to scale poorly in terms of code complexity and
+maintainability.  Here is one more or less randomly chosen site devoted
+to this phenomenon, sometimes
 called <a href="http://callbackhell.com/">callback hell</a>.</p>
 </div>
 </div>
@@ -180,9 +200,11 @@ aware of any really satisfactory solutions yet.</p>
 
 <p>Threads tend to have relatively high memory overhead.  Most popular
 threading implementations force application code to pre-allocate a large
-amount of stack space for each thread.  Context switching between
-threads typically requires some interaction with the operating system
-which adds some time overhead.</p>
+amount of stack space for each thread.  This is not strictly necessary,
+but is nearly universal in widely-used multithreading implementations.
+See the cooperative threads section below for the major alternative.
+Context switching between threads typically requires some interaction
+with the operating system which adds some time overhead.</p>
 </div>
 <br/>
 <div class="hblock3">
@@ -215,12 +237,26 @@ cooperative threads than preemptive threads because between yield
 invocations, cooperative threads do not need to worry about other
 threads interfering with their work.</p>
 
-<p>Good implementations of cooperative threads solve the problem in the
-event model of one task waiting for some external action and blocking
-the progress of other tasks.  What I mean by good implementations is
-that some care needs to be taken with system primitives like "read", so
-that only the calling thread is blocked, not all threads.  This is
-doable, but requires a bit of fancy engineering.</p>
+<p>Good implementations of cooperative threads resolve the tension
+between blocking and asynchronous I/O in the event handling model.  The
+I/O libraries can be written in a blocking style, but implemented with
+asynchronous I/O OS primitives.  In other words, a "blocking" I/O call
+will only block the calling cooperative thread, but not the whole
+system.  This requires some care to get right, but can be entirely
+hidden in the language/runtime implementation.</p>
+
+<p>Some cooperative multithreading implementations avoid the high memory
+overhead associated with preallocating stack space by individually
+allocating call frames (a.k.a. activation records).  This allocation
+strategy choice is not technically linked to preemptive versus
+cooperative, but the combination of individual frame allocation and
+preemption is very rare.  My speculation about this is that individual
+frame allocation is most important for scaling up to large numbers of
+threads (say, more than 100).  Avoiding concurrency bugs with large
+numbers of preemptive threads in complex applications is approximately
+impossible, so there is little motivation to make preemptive threading
+frameworks scale up to large thread counts.</p>
+
 </div>
 <br/>
 <div class="hblock3">
@@ -230,10 +266,11 @@ doable, but requires a bit of fancy engineering.</p>
 long-running tasks.  With cooperative threads it is easy for such a task
 to starve other running tasks.  The main way to combat this problem is
 to add more yield invocations to give other threads a chance to run.
-However this leads to a subtle problem.  Yield is both a synchronization
-primitive and a scheduling primitive and these two things are in
-conflict.  Getting a "just right" balance of yield frequency can be
-tricky, esecially in the context of long-term code mantenance.</p>
+However this leads to a subtle but nasty problem.  Yield is both a
+synchronization primitive and a scheduling primitive and these two
+things are in conflict.  Getting a "just right" balance of yield
+frequency can be tricky, esecially in the context of long-term code
+mantenance.</p>
 
 <p>Also cooperative threads cannot be run in parallel.  Like I said
 before, don't care much about this one.  There are a couple of research
@@ -251,25 +288,34 @@ sort of strange goal to me.</p>
 <h2>Coroutines</h2>
 
 <p>Some people use <em>coroutine</em> and <em>cooperative thread</em>
-synonymously, but there is a distinct concept that is also called
-coroutine that I think is more useful.  In implementation terms these
-"shallow" coroutines only allow yield to be invoked from the "coroutine
-entry function".  This means that we only need one normal stack.  Each
-"coroutine frame" can be allocated separately on the heap.  We can be
-sure that a (shallow) coroutine will not yield to another coroutine
-while it is in the middle of some deeply nested call.</p>
+synonymously, but I think this is an abuse of the term coroutine.  In
+implementation terms "proper" or "shallow" coroutines only allow yield
+to be invoked from a "coroutine entry function".  The major consequence
+of this is that "normal" procedures cannot yield.  This has important
+implications for concurrency bugs and memory overhead.  Each "coroutine
+frame" can be allocated separately on the heap.  We can be sure that a
+(shallow) coroutine will not yield to another coroutine while it is in
+the middle of some (sub-)procedure call.</p>
+
+<p>By far the most widely used implementation of coroutines is
+async/await of the .NET platform.  In this implementation, methods
+marked "async" are actually coroutines, and what looks like a call to an
+async method is actually a new coroutine fork (called a Task&lt;T&gt; in
+.NET terms).</p>
 
 <div class="hblock3">
 <h3>(Shallow) Coroutines: Strengths</h3>
 
-<p>Simpler</p>
+<p>Compared to cooperative threads, it's easier to avoid atomicity
+violations with coroutines, because normal procedures are guaranteed to
+be atomic.</p>
+
 </div>
 <br/>
 <div class="hblock3">
 <h3>(Shallow) Coroutines: Weaknesses</h3>
 
-<p>They're a bit more like event handlers in the sense that it's harder
-to avoid starvation.</p>
+<p>Compared to cooperative threads, it's harder to avoid starvation.</p>
 
 </div>
 </div>
@@ -297,12 +343,16 @@ application patterns.</p>
 <div class="hblock2">
 <h2>Processes</h2>
 
-<p>I'll throw processes in here, just because.</p>
+<p>Kind of distantly related to Charcoal, but I'll throw processes in
+here, just for funsies.</p>
 
 <div class="hblock3">
 <h3>Processes: Strengths</h3>
 
 <p>Isolation.</p>
+
+<p>Parallelism</p>
+
 </div>
 <br/>
 <div class="hblock3">

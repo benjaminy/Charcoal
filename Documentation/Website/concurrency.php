@@ -23,8 +23,8 @@
 
 <p>Concurrency is a big topic.  In the most zoomed-out view, concurrent
 software has multiple "active" components &mdash; sometimes
-called <em>processes</em> or <em>tasks</em> &mdash; that can make
-progress simultaneously.  The simultaneity can be physical (different
+called <em>processes</em> or <em>tasks</em> &mdash; that can be
+in-progress simultaneously.  The simultaneity can be physical (different
 tasks executing on different processors) or simulated by interleaving
 the execution of multiple tasks on a single processor.  This page is my
 take on some of the most important concepts that fit under the

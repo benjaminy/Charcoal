@@ -14,14 +14,20 @@
 <h3>... in 100 lines or less ... or more</h3>
 </header>
 
-<div>
-[tl;dr] The main frameworks for writing interactive software (threads,
-event loops) have annoying problems.  There are more exotic alternatives
-(cooperative threads, coroutines, generators), but they have more
-obscure problems.  This project is an exploration of a new idea called
-pseudo-preemptive threads, a.k.a. <em>activities</em>.  Under the hood
-activities look just like cooperative threads, but the compiler throws
-in lots of yields
+<div class="hblock2">
+[tl;dr] 
+<p>Existing frameworks for writing interactive software
+(threads, event loops, coroutines) have annoying problems that make it
+too easy to write incomprehensible, unreliable and/or inefficient code.
+This project is an exploration of a new idea called pseudo-preemptive
+threads (or <em>activities</em>, for those who prefer fewer
+syllables).</p>
+
+<p>Under the hood activities look just like cooperative threads, but the
+language definition includes frequent implicit yields, which give
+activities more of a preemptive thread feel.  A simple synchronization
+primitive (<em>unyielding</em>) helps multi-activity software avoid
+atomicity violations, the bane of multithreaded software.</p>
 </div>
 
 <p>Once upon a time, all software was functions.  By <em>once upon a
@@ -46,18 +52,17 @@ different interface with its environment.  Interactive software can:
 </ul>
 </p>
 
-<p>Interactive software is generally considered harder to deal with than
-procedural software, so software engineers have gone to great lengths to
-make large-scale software "mostly procedural", with interactivity
-carefully sequestered in as small a corner of the code as possible.
-Much to the chagrin of the programmers who prefer thinking procedurally,
-the relative importance of interactivity in mainstream software has
-increased in recent years.  This increase can primarily be chalked up to
-three trends:
+<p>Interactive software is generally considered harder to write and
+maintain than procedural software, so software engineers have gone to
+great lengths to make large-scale software "mostly procedural", with
+interactivity carefully sequestered in as small a corner of the code as
+possible.  Much to the chagrin of the programmers who prefer thinking
+procedurally, the relative importance of interactivity in mainstream
+software has increased in recent years.  This increase can primarily be
+chalked up to three trends:
 <ul>
-<li>Previously most applications were mostly stand-alone, but now most
-applications communicate with multiple hosts over the network as part of
-their normal operation.</li>
+<li>Network communication has become an integral part of most
+applications.</li>
 <li>The richness of user interfaces has increased, especially (but not
 exclusively) on mobile platforms.</li>
 <li>Tiny computers have gotten cheap enough that the world of physically
@@ -92,14 +97,14 @@ several dozen threads at any given time.  These threads exist primarily
 to handle long-running and complex asynchronous tasks like database
 transactions and communicating with servers over the internet.</p>
 
-<p><strong>An aside about parallelism</strong>.  One of the major
-differences between event handlers and threads is that threads can run
-in parallel on separate processors, whereas event handlers cannot.
-While this is a significant difference, it is mostly irrelevant <em>from
-the perspective of interactivity</em>.  Interactivity and parallelism
-are completely different topics, so the fact that threads can be run in
-parallel is not an advantage when we are talking about how to write
-interactive software.</p>
+<p><strong>An aside about parallelism</strong>.  A major difference
+between event handlers and threads is that threads can run in parallel
+on separate processors, whereas event handlers cannot.  While this is
+difference is significant in general, <em>from the perspective of
+interactivity</em> it is mostly irrelevant.  Interactivity and
+parallelism are completely different topics, so the fact that threads
+can be run in parallel is beside the point when we are talking about how
+to write interactive software.</p>
 
 <p><strong>The main idea(!)</strong>: If event handlers and threads both
 have such serious problems, why are they used so heavily in modern
@@ -120,42 +125,54 @@ which makes avoiding concurrency bugs easier.</p>
 <p>Cooperative threads are a kind of compromise between event handlers
 and threads, and they do combine some of the advantages of both.
 Unfortunately, cooperative threads come with their own nasty drawback:
-the programmer is responsible for getting yield invocations in just the
+applications are responsible for getting yield invocations in just the
 right places.  If a cooperative thread doesn't yield frequently enough
 it can starve other threads of processor time and make the whole
-application unresponsive.  If the programmer throws in yields blithely
-in an attempt to avoid starvation they can violate atomicity
-assumptions, creating potentially catastrophic concurrency bugs.</p>
+application unresponsive.  If a programmer throws in yields blithely in
+an attempt to avoid starvation they can violate atomicity assumptions,
+creating potentially catastrophic concurrency bugs.</p>
 
-<p>The happy-medium yield frequency is especially hard to maintain when
-a program is composed of multiple libraries and frameworks (and most
-modern applications are).  What assumptions did the authors of the
-various components make about whether code in other components will
-yield or not?  Answering this question is important and extremely hard
-in general.  This problem has limited the adoption of cooperative
-threading to the margins of the software industry.  (There has been a
-recent surge of enthusiasm for cooperative threads in various "scripting"
-language
-communities: <a href="http://code.activestate.com/recipes/466008-simple-cooperative-multitasking-using-generators/">Python</a>,
+<p>The
+"<a href="http://en.wikipedia.org/wiki/Goldilocks_principle">Goldilocks</a>"
+yield frequency is especially hard to maintain when a program is
+composed of multiple libraries and frameworks (as most modern
+applications are).  What assumptions did the authors of the various
+components make about whether code in other components will yield or
+not?  Answering this question is important and extremely hard in
+general.  This problem has limited the adoption of cooperative threading
+to the margins of the software industry.  However, in the name of making
+interactive programming easier (especially for applications that run
+across the internet), cooperative threads (and their cousins,
+coroutines) have started showing up in some mainstream software
+(<a href="http://code.activestate.com/recipes/466008-simple-cooperative-multitasking-using-generators/">Python</a>,
 <a href="http://lua-users.org/wiki/MultiTasking">Lua</a>,
-<a href="http://ruby-doc.org/core-2.0/Fiber.html">Ruby</a>, etc.)</p>
+<a href="http://ruby-doc.org/core-2.0/Fiber.html">Ruby</a>, <a href="http://msdn.microsoft.com/en-us/library/hh191443.aspx">.NET</a>, etc.)</p>
 
-<p>Activities are a compromise between cooperative and preemptive
-threads, that I believe neatly captures the advantages of both.  From a
-runtime system perspective, activities are exactly cooperative threads.
-However, languages that support activities (like Charcoal) are defined
-to implicitly insert yield invocations very frequently.  This means that
-from the perspective of high-level language semantics, activities behave
+<p>Activities are a hybrid of cooperative and preemptive threads, that I
+believe neatly captures the advantages of both.  From a runtime system
+perspective, activities are exactly cooperative threads.  However,
+languages that support activities (like Charcoal) are defined to
+implicitly insert yield invocations very frequently (as a first
+approximation, think every iteration of every loop).  This means that
+from the perspective of high-level application design, activities behave
 more like preemptive threads.  The system still has to wait for a yield
 to switch between activities, but in non-buggy Charcoal code it should
 never have to wait very long.  Because of this I sometimes call
 activities pseudo-preemptive threads.</p>
 
-<p>These frequent yields could easily become a substantial drag on
-performance, so one of the most important implementation challenges in
-Charcoal is keeping the yield overhead extremely low and offering a
-convenient way for the programmer to suppress yield insertion in tight
+<p>These frequent yields could easily reintroduce the concurrency bugs
+that bedevil multithreaded software.  The primary tool to prevent this
+is the ability to declare any procedure or block of code unyielding.
+Within the dynamic scope of an unyielding block the current activity
+cannot be interrupted.</p>
+
+<p>Frequent yields could also become a substantial drag on performance,
+so one of the most important implementation challenges in Charcoal is
+keeping the yield overhead extremely low and offering a convenient way
+for the programmer to suppress yield insertion in tight
 performance-critical loops.</p>
+
+<p><strong>Summary</strong></p>
 
 <p>Relative to conventional threads, the advantages of activities are:
 <ul>
@@ -176,11 +193,41 @@ programs.</li>
 </ul>
 </p>
 
+<p>I believe activities inhabit an interesting new part of the universe
+of interactive software primitives.  In particular I aim to show that
+multi-activity software can be:</p>
+
+<ul>
+<li><em>Simple</em>.  Like multithreaded software, interactivity can be
+written in a natural, procedural style.  (i.e. no callback hell.)</li>
+<li><em>Reliable</em>.  The careful balancing of frequent implicit
+yields and simple synchronization make it easy (or at least easier) to
+avoid the most problematic concurrency bugs.</li>
+<li><em>Efficient</em>.  Activities have been very carefully designed to
+allow implementations that offer lightning-fast interactivity primitives
+(activity creation, context switching, synchronization, &hellip;) while
+avoiding slowing down sequential code or introducing memory
+overheads.</li>
+</ul>
+
 <p>If this sounds intriguing please explore the rest of this site, which
 includes several examples, ruminations on concurrency in general,
 detailed discussions of existing approaches to concurrent programming,
 and information about implementing activities (and some day an actual
 working implementation).</p>
+
+<p><strong>An aside about shared memory versus message passing</strong>.
+Some people (e.g. the designers of Go) believe that writing concurrent
+software (including interactive software) can be made doable by a strong
+focus on memory isolation between threads/&#8203;processes and rich
+message passing primitives.  While minimizing shared memory is an
+excellent rule of thumb, there are applications for which shared memory
+is quite clear, safe and efficient.  In other words, I do not believe
+that banning (or <em>very strongly</em> discouraging) the use of shared
+memory is <em>the</em> solution to the interactive software challenge.
+Charcoal and its core library have rich support for both shared memory
+and message passing (a la CML), because I think they are both
+useful.</p>
 
 <?php include 'copyright.html'; ?>
 

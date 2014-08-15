@@ -22,17 +22,243 @@
 
 <h1>Charcoal Implementation</h1>
 
-<p>There are two primary pieces to the Charcoal implementation: the
-translation (i.e. compilation) to C and the runtime library.</p>
+<p>The current Charcoal implementation consists of three pieces:
+<ul>
+<li>Translation</li>
+<li>Runtime System</li>
+<li>Standard Library</li>
+</ul>
+</p>
 
-<p>Beyond some convenient syntax, the primary difference between C and
-Charcoal is that the compiler implicitly inserts yield invocations.</p>
+<p>The target of the translation is C, since there is nothing
+particularly novel about the machine code generation for Charcoal.</p>
+
+<p>The most interesting features of Charcoal from an implementation
+perspective are:
+<ul>
+<li>Call frame management (a.k.a. coroutinization)</li>
+<li>Activity extraction</li>
+<li>Yield implementation</li>
+<li>System interface</li>
+</ul>
+</p>
+
+<div class="hblock2">
+<a id="call_frames"/>
+<h2 style="display:inline;">Call Frame Management</h2>
+
+<p>One of the most important practical problems faced in the
+implementation of any thread-like concurrency framework is the
+management of procedure call frames.  The conventional strategy for
+sequential software is to
+use <a href="http://en.wikipedia.org/wiki/Call_stack">The Stack</a>
+(briefly summarized below).  Stack-based call frame allocation leads to
+some unpleasant implementation choices for multithreaded software, so we
+are experimenting with a variant of heap-allocated call frames.</p>
+
+<div class="hblock3">
+<h3>Background: The Call Stack</h3>
+
+<p>
+The classical approach to call frame management is to use a single large
+contiguous region of memory (often half of the entire virtual address
+space) for <em>the stack</em>.  When one procedure calls another, the
+callee's frame is allocated (pushed) directly adjacent to the caller's.
+This strategy works well when there is only a single thread of control,
+because we know that a given call will never return (thus making its
+frame dead) until any procedure call it made has returned.
+</p>
+
+<p>
+Stack-based frame management is extremely efficient in terms of time and
+space overhead.  Time overhead is low because allocation and
+deallocation can be implemented with a single instruction: incrementing
+or decrementing the <em>stack pointer</em> by the appropriate number of
+bytes.  Space overhead is low because there is no need for allocation
+metadata; the size of a frame can be encoded in the instruction stream.
+Perhaps more importantly, for most intents and purposes there is no
+fragmentation.  Call frames use exactly the amount of space they need
+and the frames are packed next to each other with no space in between.
+</p>
+
+<p>
+Stack-based frame management runs into some problems with multithreaded
+software.  Each thread needs its own region of memory for call frames,
+which makes it impossible to use a single huge region for "the" stack.
+The most conventional approach is to allocate a moderately large (on the
+order of megabytes) region from the heap at thread spawn time.  The
+sizing of these allocations is a tricky engineering problem.  If they
+are too large, there will be a lot of internal memory fragmentation.  If
+they are too small, a thread may overflow its stack memory, leading to a
+hard crash (or even worse, unpredictable bizarre behavior).  In current
+practice, it is common to make these allocations relatively large and
+limit the number of concurrently active threads.
+</p>
+
+<p>
+(Fun little tangent: Stack-based frame management does not work
+particularly well for languages with higher-order first class functions.
+Some implementations of such languages use heap-based strategies kinda
+sorta like what the current Charcoal implementation does.)
+</p>
+
+</div> <!-- The call stack -->
+
+<p>
+For the Charcoal implementation we are experimenting with a novel hybrid
+heap/stack frame management strategy.  In the following two subsections
+we discuss what's novel about the Charcoal approach and some of the
+implementation details.
+</p>
+
+<div class="hblock3">
+<h3>Charcoal's Hybrid Call Frame Management</h3>
+
+<p>
+"Normal" (i.e. maybe yielding) calls get translated into a
+coroutine-like (or asynchronous in .NET jargon) form.  Here is a nice
+blog post on some of the implementation ideas in the C#/CLR
+context: <a href="http://weblogs.asp.net/dixin/understanding-c-async-await-1-compilation">Click
+Here</a>
+or <a href="https://www.simple-talk.com/dotnet/.net-tools/c-async-what-is-it,-and-how-does-it-work/">Here</a>.
+Gabriel Kerneis has a more academic take on a very similar set of ideas:
+<a href="http://gabriel.kerneis.info/software/cpc/">Click Here</a>.  The
+important reason for doing this is that individual call frames end up
+independently heap-allocated.  This means that we totally avoid the
+memory overhead issues associated with allocating stack space for
+threads.  The big down side is that procedure calls (and returns)
+are <em>much</em> slower than with conventional stack allocation.
+</p>
+
+<p>
+In Charcoal we can get something very near the best of both worlds,
+because of the role that <em>unyielding</em> procedures play in the
+language.  We start the argument by observing that procedure call
+overhead is only an important performance issue if calls and returns are
+happening quite frequently.  Frequent calls can only happen if most of
+the procedure executions are very short-lived.  So we really need a way
+to speed up short-lived procedure executions (relative to an
+implementation where we pay the higher price for <em>every</em> call and
+return).
+</p>
+
+<p>
+This is where unyielding comes in.  In Charcoal it is good practice to
+declare short-lived procedures to be unyielding.  This makes such
+procedures activity-atomic.  Because unyielding procedures cannot be
+interrupted, we do not need to do the coroutine transformation on them.
+This means that calls to unyielding procedures can be implemented with
+the regular old stack allocation strategy, which makes them fast
+(compared to maybe-yielding calls).  A consequence of this strategy is
+that in a Charcoal process each <em>thread</em> needs a pre-allocated
+block of memory for stacks, not every <em>activity</em>.  Well-tuned
+applications should have very few threads and potentially many
+activities, so this works out perfectly.
+</p>
+
+<p>
+The important observation here from a language design perspective is the
+fortunate coincidence that the procedures that we want to implement with
+stack-based frame allocation (i.e. the short-lived ones) are the very
+same procedures that make sense to execute atomically for concurrency
+bug avoidance reasons.  In Charcoal we get these two useful effects for
+the price of a single programmer-visible annotation (unyielding).
+</p>
+
+<p>
+It's interesting to notice that what we have here is very similar to the
+C# async/await implementation, but with the defaults reversed.  In
+Charcoal, "plain" calls are assumed to be maybe-yielding and are
+translated into coroutine form.  In C#, only calls to "async" procedures
+get translated.  I think Charcoal's default is better, but have very
+little data to back up that claim.
+</p>
+
+<div class="hblock4">
+<h4>Implications for API design</h4>
+
+<p>
+As described above, Charcoal strongly motivates programmers to declare
+"fast" procedures to be unyielding.  This is fine as far as it goes, but
+it's common for procedures to have a fast normal execution path and one
+or more exceptional execution paths that are "slow" (e.g. might perform
+blocking I/O operations).
+</p>
+
+<p>
+It's not immediately obvious how to handle such fast/slow procedures in
+light of the "declare fast procedures to be unyielding" guideline.
+Simply declaring them unyielding is not good, because an uncommon path
+might cause an activity to go an unacceptably long time without
+yielding.  On the other hand, <em>not</em> declaring such procedures
+unyielding might represent a non-trivial performance loss in the common
+case.
+</p>
+
+<p>
+Perhaps it's better to refactor APIs in such cases so that one procedure
+is always fast, but might return an exception code of some kind.  The
+caller would then be responsible for calling a separate procedure to
+handle the uncommon case.  I'm not sure that this pattern is a good idea
+in general, but it's worth investigating.
+</p>
+
+<p>
+A simple example of this pattern shows up in mutex APIs.  It is common
+to have both a "might block" version that absolutely won't return until
+the mutex is acquired and a "try" version that is guaranteed to return
+very quickly, but might not actually acquire the mutex.
+</p>
+
+</div> <!-- API design -->
+
+</div> <!-- Hybrid heap/stack -->
+
+<div class="hblock4">
+<h4>Implementing procedure calls in Charcoal</h4>
+
+<p>
+The compiler automatically translates procedures in to a
+"coroutine-like" form.  Some blog posts refer to the result of this
+transformation as a "finite state machine", which seems like an odd use
+of that term to me, but whatever.
+</p>
+
+</div> <!-- Call protocol implementation -->
+
+</div> <!-- Call frame management -->
 
 <p>...</p>
 
-<p>All Charcoal programs have an "extra" thread that is created at
-startup.  This thread handles I/O and is a timer that tells other
-threads when they should switch from one activity to another.</p>
+<div class="hblock2">
+<a id="activity_extraction"/>
+<h2 style="display:inline;">Activity Extraction</h2>
+
+</div> <!-- Activity extraction -->
+
+<p>...</p>
+
+<div class="hblock2">
+<a id="yield_implementation"/>
+<h2 style="display:inline;">Yield Implementation</h2>
+
+</div> <!-- Yield implementation -->
+
+<p>...</p>
+
+<div class="hblock2">
+<a id="system_interface"/>
+<h2 style="display:inline;">System Interface</h2>
+
+<p>
+All Charcoal programs have an "extra" thread that is created at startup.
+This thread handles I/O and is a timer that tells other threads when
+they should switch from one activity to another.
+</p>
+
+</div> <!-- System interface -->
+
+<p>...</p>
 
 <div class="hblock2">
 <a id="translation"/>

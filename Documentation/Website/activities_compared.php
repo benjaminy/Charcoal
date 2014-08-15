@@ -35,7 +35,7 @@ applications anyway, so it's not a uesful feature.  Parallelization
 should be done with task-oriented frameworks like Cilk, Microsoft's PPL,
 Intel's TBB, Apple's GCD, etc.</p>
 
-<p>So if we set asside parallelization (for example, just pretend we're
+<p>So if we set aside parallelization (for example, just pretend we're
 running everything on a single-processor machine), what's the difference
 between threads and activities?  Threads are fully preemptive, whereas
 activities are only preemptive at a coarser granularity and it's easy to

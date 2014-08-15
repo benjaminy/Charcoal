@@ -1,6 +1,6 @@
 <html>
 <head>
-<title>Charcoal: System-level Reactive and Interaction Programming for the Masses</title>
+<title>Charcoal: Simple, Safe and Efficient Interactive Software</title>
 <link rel="stylesheet" media="screen" type="text/css" href="charcoal.css"/>
 
 <script type="text/javascript">
@@ -25,7 +25,7 @@
 <table width="100%"><tbody><tr>
 <td valign="top"><h1>Charcoal</h1>
 <hr/>
-<h3>Interactive Software for Regular Programmers</h3></td>
+<h3>Simple, Safe and Efficient Interactive Software</h3></td>
 <td><img src="activated_charcoal_3.png"/></td>
 </tr></tbody></table>
 

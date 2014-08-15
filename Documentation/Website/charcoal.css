@@ -35,7 +35,8 @@ pre { display:inline }
 }
 
 .hblock1, .hblock2, .hblock3, .hblock4, .hblock5, .hblock6  {
-  padding:4px;
+  padding-left:8px;
+  padding-right:0px;
 }
 
 .hblock1 {
