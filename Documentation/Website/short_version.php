@@ -30,6 +30,107 @@ primitive (<em>unyielding</em>) helps multi-activity software avoid
 atomicity violations, the bane of multithreaded software.</p>
 </div>
 
+<div class="hblock2">
+[slightly longer tl;dr]
+<p>
+Color code:
+</p>
+
+<table border="1">
+<tr>
+<td class="color_good">Good</td>
+</tr>
+<tr>
+<td class="color_pretty_good">Pretty good</td>
+</tr>
+<tr>
+<td class="color_okay">Okay</td>
+</tr>
+<tr>
+<td class="color_pretty_bad">Pretty bad</td>
+</tr>
+<tr>
+<td class="color_bad">Bad</td>
+</tr>
+</table>
+
+<table>
+<tr>
+<td width="15%"></td>
+<td width="17%">Threads</td>
+<td width="17%">Activities</td>
+<td width="17%">Coop Threads</td>
+<td width="17%">Coroutines</td>
+<td width="17%">Events</td>
+</tr>
+<tr>
+<td>Atomicity</td>
+<td class="color_bad">Data races :(</td>
+<td class="color_good"><span class="mono">unyielding</span>:
+Like <span class="mono">synchronized</span> in Java, but way
+better</td>
+<td class="color_okay">Will that procedure Joe wrote
+invoke <span class="mono">yield</span>?  Who knows!  Wheee</td>
+<td class="color_pretty_good">Coroutines</td>
+<td class="color_pretty_good">Events</td>
+</tr>
+<tr>
+<tr>
+<td>Starvation</td>
+<td class="color_good">The only problem is all the synchronization you
+need to avoid atomicity violations</td>
+<td class="color_pretty_good">Just don't wrap a long-running block
+in <span class="mono">unyielding</span> and you're golden</td>
+<td class="color_bad">There's almost certainly some long-running loop
+hiding somewhere that you forgot to put
+a <span class="mono">yield</span> in</td>
+<td class="color_pretty_bad">Coroutines</td>
+<td class="color_pretty_bad">Events</td>
+</tr>
+<tr>
+<td>Memory scalability</td>
+<td class="color_bad">All those nasty stacks</td>
+<td class="color_good">Heap-allocated call frames mean zero
+per-activity stack overhead</td>
+<td class="color_pretty_bad">Most mainstream implementations are just
+like "normal" threads</td>
+<td class="color_good">Only need special allocation for coroutines (aka
+"async" procedures)</td>
+<td class="color_good">So pleasantly simple</td>
+</tr>
+<tr>
+<td>Overhead (spawn, context switch, etc.)</td>
+<td class="color_bad">All those nasty stacks</td>
+<td class="color_pretty_good">Just don't wrap a long-running block
+in <span class="mono">unyielding</span> and you're golden</td>
+<td class="color_okay">Will that library function
+invoke <span class="mono">yield</span>?  Who knows!  Wheee</td>
+<td class="color_good">Coroutines</td>
+<td class="color_good">Events</td>
+</tr>
+<tr>
+<td>Modularity</td>
+<td class="color_bad">All those nasty stacks</td>
+<td class="color_good">Just don't wrap a long-running block
+in <span class="mono">unyielding</span> and you're golden</td>
+<td class="color_bad">Will that library function
+invoke <span class="mono">yield</span>?  Who knows!  Wheee</td>
+<td class="color_pretty_bad">Coroutines</td>
+<td class="color_pretty_bad">Events</td>
+</tr>
+<tr>
+<td>Parallelism</td>
+<td class="color_good">Finally, threads win something</td>
+<td class="color_pretty_bad">See coop threads</td>
+<td class="color_pretty_bad">"<a href="http://www.google.com/search?q=observationally+cooperative+multithreading">Observationally cooperative multithreading</a>".  Color me skeptical</td>
+<td class="color_bad">See events</td>
+<td class="color_bad">No one's crazy enough to even try</td>
+</tr>
+
+
+</table>
+</div>
+
 <p>Once upon a time, all software was functions.  By <em>once upon a
 time</em> I mean around the dawn of modern computing in the 30s, 40s and
 50s.  By <em>functions</em> I mean that the interface between a program

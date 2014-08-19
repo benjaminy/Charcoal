@@ -63,6 +63,26 @@ pre { display:inline }
   background-color:#BFB5BE;
 }
 
+.color_bad {
+  background-color:lightcoral;
+}
+
+.color_pretty_bad {
+  background-color:orange;
+}
+
+.color_okay {
+  background-color:yellow;
+}
+
+.color_good {
+  background-color:lightskyblue;
+}
+
+.color_pretty_good {
+  background-color:greenyellow;
+}
+
 h1,
 h2,
 h3,
