@@ -16,18 +16,22 @@
 
 <div class="hblock2">
 [tl;dr] 
-<p>Existing frameworks for writing interactive software
-(threads, event loops, coroutines) have annoying problems that make it
-too easy to write incomprehensible, unreliable and/or inefficient code.
-This project is an exploration of a new idea called pseudo-preemptive
-threads (or <em>activities</em>, for those who prefer fewer
-syllables).</p>
+<p>
+Existing frameworks for writing interactive software (event dispatchers,
+{preemptive, cooperative} threads, coroutines, processes) have problems
+that make it easy to write unmaintainable, unreliable and/or inefficient
+code.  I am exploring a new approach called pseudo-preemptive threads
+(or <em>activities</em>, for those who prefer fewer syllables).
+</p>
 
-<p>Under the hood activities look just like cooperative threads, but the
-language definition includes frequent implicit yields, which give
-activities more of a preemptive thread feel.  A simple synchronization
-primitive (<em>unyielding</em>) helps multi-activity software avoid
-atomicity violations, the bane of multithreaded software.</p>
+<p>
+Under the hood activities look just like cooperative threads, but the
+language definition includes frequent implicit <em>yields</em>, which
+make activities feel more preemptive (thus "pseudo-preemptive").  A
+simple synchronization primitive called <em>unyielding</em> makes it
+relatively easy to avoid atomicity violations, the bane of multithreaded
+software.
+</p>
 </div>
 
 <div class="hblock2">
@@ -54,82 +58,157 @@ Color code:
 </tr>
 </table>
 
-<table>
+<table  style="width:1000;background-color:white">
 <tr>
 <td width="15%"></td>
 <td width="17%">Threads</td>
-<td width="17%">Activities</td>
+<td width="17%">Events</td>
 <td width="17%">Coop Threads</td>
 <td width="17%">Coroutines</td>
-<td width="17%">Events</td>
+<td width="17%">Activities</td>
 </tr>
 <tr>
 <td>Atomicity</td>
 <td class="color_bad">Data races :(</td>
+<td class="color_pretty_good">Trivial within a single handler; totally
+up to the application for tasks that span multiple handlers</td>
+<td class="color_okay">Will that procedure Joe wrote
+invoke <span class="mono">yield</span>?  Who knows!  Wheee</td>
+<td class="color_pretty_good">Pretty much the same issue as events
+(s/handler/non-async-procedure/)</td>
 <td class="color_good"><span class="mono">unyielding</span>:
 Like <span class="mono">synchronized</span> in Java, but way
 better</td>
-<td class="color_okay">Will that procedure Joe wrote
-invoke <span class="mono">yield</span>?  Who knows!  Wheee</td>
-<td class="color_pretty_good">Coroutines</td>
-<td class="color_pretty_good">Events</td>
 </tr>
 <tr>
 <tr>
-<td>Starvation</td>
-<td class="color_good">The only problem is all the synchronization you
-need to avoid atomicity violations</td>
-<td class="color_pretty_good">Just don't wrap a long-running block
-in <span class="mono">unyielding</span> and you're golden</td>
-<td class="color_bad">There's almost certainly some long-running loop
-hiding somewhere that you forgot to put
+<td>Starvation/<wbr>{Dead,Live}lock/<wbr>Progress</td>
+<td class="color_okay">Unsynchronized threads never block each other,
+but then you need all that synchronization to avoid atomicity
+violations</td>
+<td class="color_bad">So easy for a handler to take an unexpected path
+and run way too long</td>
+<td class="color_bad">There's almost certainly some long-running (or
+blocking) path somewhere that you forgot to put
 a <span class="mono">yield</span> in</td>
-<td class="color_pretty_bad">Coroutines</td>
-<td class="color_pretty_bad">Events</td>
+<td class="color_pretty_bad">Pretty much the same issue as events, but a
+little easier to fix</td>
+<td class="color_pretty_good">Just don't wrap long-running blocks
+in <span class="mono">unyielding</span> and you're golden</td>
 </tr>
 <tr>
 <td>Memory scalability</td>
 <td class="color_bad">All those nasty stacks</td>
-<td class="color_good">Heap-allocated call frames mean zero
-per-activity stack overhead</td>
-<td class="color_pretty_bad">Most mainstream implementations are just
-like "normal" threads</td>
-<td class="color_good">Only need special allocation for coroutines (aka
-"async" procedures)</td>
 <td class="color_good">So pleasantly simple</td>
+<td class="color_pretty_bad">Most implementations are like normal
+threads; can be implemented like coroutines, but most aren't</td>
+<td class="color_good">Only need a single frame (not a whole stack) for
+each coroutine (aka "async" procedure call)</td>
+<td class="color_good">Just like coroutines, but with fewer
+annotations</td>
 </tr>
 <tr>
 <td>Overhead (spawn, context switch, etc.)</td>
-<td class="color_bad">All those nasty stacks</td>
-<td class="color_pretty_good">Just don't wrap a long-running block
-in <span class="mono">unyielding</span> and you're golden</td>
-<td class="color_okay">Will that library function
-invoke <span class="mono">yield</span>?  Who knows!  Wheee</td>
-<td class="color_good">Coroutines</td>
-<td class="color_good">Events</td>
+<td class="color_bad">Have to enter the kernel to do most things</td>
+<td class="color_good">So pleasantly cheap</td>
+<td class="color_okay">Generally don't need to get the kernel involved,
+but still closer to threads than events</td>
+<td class="color_pretty_good">Generally a bit more expensive than events, but
+not by much</td>
+<td class="color_pretty_good">Just like coroutines</td>
 </tr>
 <tr>
-<td>Modularity</td>
-<td class="color_bad">All those nasty stacks</td>
-<td class="color_good">Just don't wrap a long-running block
-in <span class="mono">unyielding</span> and you're golden</td>
+<td>Modularity/<wbr>Composability</td>
+<td class="color_bad">See <a href="http://www.google.com/search?q=Composable+Memory+Transactions">Composable Memory Transactions</a> by Harris, Marlow, Peyton-Jones and Herlihy</td>
+<td class="color_bad">There's a whole domain devoted to
+it: <a href="http://callbackhell.com/">http://callbackhell.com/</a>;
+also
+"<a href="http://www.google.com/search?q=stack+ripping">stack
+ripping</a>"</td>
 <td class="color_bad">Will that library function
 invoke <span class="mono">yield</span>?  Who knows!  Wheee</td>
-<td class="color_pretty_bad">Coroutines</td>
-<td class="color_pretty_bad">Events</td>
+<td class="color_okay">More explicit than coop threads, but you're kind
+of stuck if a library doesn't provide an async version</td>
+<td class="color_good">See note below about foreign/<wbr>legacy code,
+but otherwise free of the other frameworks' problems</td>
 </tr>
 <tr>
 <td>Parallelism</td>
 <td class="color_good">Finally, threads win something</td>
-<td class="color_pretty_bad">See coop threads</td>
-<td class="color_pretty_bad">"<a href="http://www.google.com/search?q=observationally+cooperative+multithreading">Observationally cooperative multithreading</a>".  Color me skeptical</td>
-<td class="color_bad">See events</td>
 <td class="color_bad">No one's crazy enough to even try</td>
+<td class="color_bad">"<a href="http://www.google.com/search?q=observationally+cooperative+multithreading">Observationally cooperative multithreading</a>".  Color me skeptical</td>
+<td class="color_bad">See events</td>
+<td class="color_bad">See coop threads</td>
 </tr>
 
 
 </table>
+
+<p>
+There are at least three families of concurrency/interactivity
+frameworks that I haven't included here: processes (i.e. no shared
+memory by default), functional reactive programming (FRP), and threads
+plus transactional memory (TM).
+</p>
+
+<p>
+Shared memory is <em>so</em> useful for the kinds of applications I'm
+interested in, I'm not even considering frameworks that don't support it
+well.  You're welcome to try to convince me that it's a good idea to
+write GUI applications where each widget is its own process, but I'm
+extremely skeptical.
+</p>
+
+<p>
+FRP has been a reasonably active research topic since at least 1997
+(<a href="http://www.google.com/search?q=functional+reactive+animation">Functional
+Reactive Animation</a> by Elliott and Hudak).  I am aware of zero
+large-scale applications that make significant use of it.  I don't know
+if FRP will ever go mainstream, but I'm interested in improving the
+state of interactive software in a way that can integrate more easily
+with current tools and practices.
+</p>
+
+<p>
+My reason for ignoring TM is similar to FRP.  The software industry
+got <em>really</em> excited about TM in the early to mid aughts.
+Several of the biggest companies devoted some of their best engineers to
+implementing TM systems.  So far it's been a complete bust.  Most of the
+teams are now disbanded.  (Haskell's STM is beautiful, but Haskell is
+used by 0.0% of the world's professional developers (to a first
+approximation).)
+</p>
+
+<p>
+It's too early to declare TM dead, but I'd bet a large pile of money
+that it won't be ready for widespread use for <em>at least</em> a decade
+or two.  On a more philosophical note, I'm not that into TM because it's
+an attempt to do both parallelism and interactivity; I think those
+should really be handled by two different frameworks.
+</p>
+
+<p>
+Finally, a couple of notes under the No Free Lunch banner.  Integrating
+activity code with foreign/<wbr>legacy code is a little bit tricky (as
+one should expect from any concurrency framework).  I think I have a
+pretty reasonable interop story, but it's not trivial.
+</p>
+
+<p>
+Charcoal code runs in one of two modes: unyielding or might-yield.  In
+unyielding mode, it should run as quickly/<wbr>efficiently as equivalent
+C code.  However, in might-yield mode things slow down quite a bit.
+It's not hard to tune CPU-bound code to be in unyielding mode most of
+the time, but it does take some effort.  This is never catastrophic, it
+just means that untuned CPU-bound code is somewhat less efficient than
+it should be.
+</p>
+
 </div>
+
+<div class="hblock2">
+
+[narrative version]
 
 <p>Once upon a time, all software was functions.  By <em>once upon a
 time</em> I mean around the dawn of modern computing in the 30s, 40s and
@@ -329,6 +408,8 @@ memory is <em>the</em> solution to the interactive software challenge.
 Charcoal and its core library have rich support for both shared memory
 and message passing (a la CML), because I think they are both
 useful.</p>
+
+</div>
 
 <?php include 'copyright.html'; ?>
 

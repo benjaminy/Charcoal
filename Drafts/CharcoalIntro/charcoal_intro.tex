@@ -1,0 +1,137 @@
+\documentclass[11pt,preprint]{sigplanconf}
+
+% The following \documentclass options may be useful:
+
+% preprint      Remove this option only once the paper is in final form.
+% 10pt          To set in 10-point type instead of 9-point.
+% 11pt          To set in 11-point type instead of 9-point.
+% authoryear    To obtain author/year citation style instead of numeric.
+
+\begin{document}
+
+\special{papersize=8.5in,11in}
+\setlength{\pdfpageheight}{\paperheight}
+\setlength{\pdfpagewidth}{\paperwidth}
+
+\conferenceinfo{CONF 'yy}{Month d--d, 20yy, City, ST, Country} 
+\copyrightyear{2014} 
+\copyrightdata{978-1-nnnn-nnnn-n/yy/mm} 
+\doi{nnnnnnn.nnnnnnn}
+
+\titlebanner{Preprint.  Please do not redistribute}        % These are ignored unless
+\preprintfooter{Preprint.  Please do not redistribute}   % 'preprint' option specified.
+
+\title{Activities: A Framework for Writing Reliable, Modular and Maintainable Interactive Software}
+\subtitle{Threads and Events Considered Harmful}
+
+\authorinfo{Benjamin Ylvisaker}
+           {Affiliation1}
+           {Email1}
+\authorinfo{Name2\and Name3}
+           {Affiliation2/3}
+           {Email2/3}
+
+\maketitle
+
+\begin{abstract}
+This is the text of the abstract.
+\end{abstract}
+
+\category{CR-number}{subcategory}{third-level}
+
+% general terms are not compulsory anymore, 
+% you may leave them out
+\terms
+term1, term2
+
+\keywords
+keyword1, keyword2
+
+\section{Introduction}
+
+Interactive software is harder to get right than batch software.  So
+much so that most 
+
+\section{Implementation}
+
+Heap-allocation of call frames can be much faster
+(e.g. \cite{Shao2000}).  That was not our focus here.  Important
+observation: we do not \emph{need} super-fast call and return in the
+might-yield context, because calls that really matter in that way should
+happen in an unyielding context.
+
+There is another hybrid scheme called ``split'' or ``segmented'' stacks
+for (de)allocating call frames efficiently for multithreaded software.
+The idea is that stack space is allocated in small chunks (or segments).
+The common case call/return execution looks like traditional stack
+allocation.  When a thread reaches the end of its segment it allocates a
+new one and links them together.  This idea has a lot of appeal (the
+implementers of Rust and Go both used it), but it has some really
+unpleasant uncommon case behavior (the implementers of Rust and Go both
+abandonded it in later versions).
+
+\subsection{Fast and Slow}
+
+One of the important features of the implementation is that there are
+two versions of each procedure: an unyielding version and a might-yield
+version.
+
+Wait, don't we know whether a procedure is yielding or not?  Well, yes,
+but \ldots For procedures marked unyielding, we know there is no need to
+compile a might-yield version.  For other procedures we generally need
+to compile both versions, because the procedure might be called in
+either of the contexts.  The compiler might be able to do some analysis
+to prove that one or the other version is never called and can therefore
+be excised as dead code.
+
+This is kinda related to ideas from the Cilk-5 implementation
+\cite{Frigo1998}.
+
+\section{Foreign Code}
+
+Foreign code (including legacy code) will never yield.  This could lead
+to starvation pretty easily.  Here are three strategies:
+
+\begin{itemize}
+\item Do nothing.  Just run the foreign code.  This is a perfectly
+  reasonable strategy as long as the foreign code does not run for a
+  long time.
+\item Run the foreign code in its own thread.  If it has not returned by
+  the end of some time slice, pause it to allow other activities to run.
+  This runs the risk of creating atomicity violations galore.  It also
+  reintroduces the possibility of data races.  However, it might be a
+  reasonable strategy in situations where there is very little sharing
+  between the foreign code and the rest of the application.
+\item Run the foreign code in its own thread, but only interrupt it at
+  special ``safe-ish'' points, like system calls.  This is a compromise
+  between the previous two strategies in the sense that it opens the
+  door to both starvation and atomicity violations, but provides some
+  (imperfect) protection against both.
+\end{itemize}
+
+We have not thought at all about what the best default is or what
+syntactic sugar would be nice.
+
+Another important implementation issue to consider is foreign code that
+calls back in to activity-aware code.  There will definitely be some
+fancy footwork necessary there, no matter which strategy is used.
+
+\acks
+
+Acknowledgments, if needed.
+
+% We recommend abbrvnat bibliography style.
+
+\bibliographystyle{abbrvnat}
+
+% The bibliography should be embedded for final submission.
+
+\begin{thebibliography}{}
+\softraggedright
+
+\bibitem[Smith et~al.(2009)Smith, Jones]{smith02}
+P. Q. Smith, and X. Y. Jones. ...reference text...
+
+\end{thebibliography}
+
+\end{document}

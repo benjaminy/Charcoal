@@ -1,0 +1,83 @@
+Resource allocation and deallocation is an important part of how
+software operates.  Resources can be divided fairly cleanly into two
+categories: internal and external.  External resources are things like
+secondary storage space and network connections.  Allocation and
+deallocation of external resources by one application is directly
+visible to other applications and the general environment.  "Internal
+resources" is really just one thing: memory.
+
+The environment generally does not care how an application manages
+memory, with a couple of exceptions.  The effectiveness of an
+application's memory management can impact its speed and reliability.
+If an application tries to use too much memory, it can have an impact on
+the performance of other applications.  However, operating systems
+provide memory virtualization and do their best to get applications to
+share physical memory fairly.
+
+Sharing of memory locations between different applications or an
+application and the environment is fairly unusual.  When it does happen,
+it must be handled with extreme care.
+
+The difference between allocation of internal and external resources is
+widely understood to be sufficiently large that different strategies are
+appropriate for allocating and deallocating them.  While automatic
+techniques like garbage collection have been extremely successful for
+memory management, allocation and deallocation of external resources is
+largely done manually.  The issue is that no single entity has a broad
+enough view of the system to automatically judge when it's safe to
+deallocate external resources.  Nevertheless, some people do try to
+automate the management of external resources by linking them to memory
+in one way or another.  Such efforts have not been very widely adopted.
+
+The main simplification that makes management of external resources
+tractable is insisting on a single "name" for the resources (such as a
+file path).  Adding the ability to make multiple aliases to a single
+resource complicates the allocation and deallocation process
+dramatically.
+
+The main simplification that makes management of internal resources
+(i.e. memory) tractable is insisting on the ability to track all aliases
+to a single memory location.  It is occasionally useful to make "secret"
+aliases (i.e. "weak" pointers).
+
+
+-----
+
+Concurrency is an important part of how software operates.  Concurrency
+can be divided fairly cleanly into two categories: internal and
+external.  External concurrency is the appearance that an application is
+carrying out multiple tasks simultaneously, for example reading and
+writing files while listening on a network port and updating a display.
+External concurrency is directly visible to other applications and the
+general environment.  "Internal concurrency" is really just one thing:
+parallel execution on multiple processors.
+
+The environment generally does not care how an application manages
+parallel execution, with a couple of exceptions.  The effectiveness of
+an application's parallel execution management can impact its speed and
+reliability.  If an application tries to use too much parallelism, it
+can have an impact on the performance of other applications.  However,
+operating systems provide processor virtualization and do their best to
+get applications to share physical processors fairly.
+
+Sharing of the instruction execution stream on a processor between
+different applications or an application and the environment is very
+unusual (though possible).  When it does happen, it must be handled with
+extreme care.
+
+The difference between internal and external concurrency is not as
+widely appreciated as the resource allocation case.  There are
+frameworks, such as event dispatchers, that deal exclusively with
+external concurrency.  However threads, which can be used to implement
+both external and internal concurrency, are also widely used.
+
+The main simplification that makes management of external concurrency
+tractable is insisting on serial execution.  Adding the ability to
+perform externally visible actions in parallel dramatically complicates
+the job of ensuring that those actions appear in a sensible order.
+
+The main simplification that makes management of internal concurrency
+(i.e. parallelism) tractable is insisting that actions performed in one
+parallel task are not visible to another (i.e. no sharing/coordination).
+In practice, sometimes sharing is worth the complexity that it brings,
+but it must be handled with extreme caution.

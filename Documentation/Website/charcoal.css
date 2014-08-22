@@ -64,23 +64,23 @@ pre { display:inline }
 }
 
 .color_bad {
-  background-color:lightcoral;
+  background-color:rgb(252,99,104);
 }
 
 .color_pretty_bad {
-  background-color:orange;
+  background-color:rgb(255,193,105);
 }
 
 .color_okay {
-  background-color:yellow;
-}
-
-.color_good {
-  background-color:lightskyblue;
+  background-color:rgb(237,255,124);
 }
 
 .color_pretty_good {
-  background-color:greenyellow;
+  background-color:rgb(179,255,155);
+}
+
+.color_good {
+  background-color:rgb(211,226,255);
 }
 
 h1,
