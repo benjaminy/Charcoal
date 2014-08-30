@@ -196,12 +196,12 @@ pretty reasonable interop story, but it's not trivial.
 
 <p>
 Charcoal code runs in one of two modes: unyielding or might-yield.  In
-unyielding mode, it should run as quickly/<wbr>efficiently as equivalent
-C code.  However, in might-yield mode things slow down quite a bit.
-It's not hard to tune CPU-bound code to be in unyielding mode most of
-the time, but it does take some effort.  This is never catastrophic, it
-just means that untuned CPU-bound code is somewhat less efficient than
-it should be.
+unyielding mode, it runs as quickly/<wbr>efficiently as equivalent C
+code.  However, in might-yield mode things slow down quite a bit.  It's
+not hard to tune CPU-bound code to be in unyielding mode most of the
+time, but it does take some effort.  This is never catastrophic, it just
+means that untuned CPU-bound code is somewhat less efficient than it
+should be.
 </p>
 
 </div>
