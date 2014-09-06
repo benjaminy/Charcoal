@@ -201,8 +201,8 @@ One technique for avoiding references is making copies of data where one
 might otherwise pass around references.  This is obviously not always
 practical: what if the referred-to data is enormous?  Even worse,
 copying breaks programs that intend for modifications made through one
-reference to be observed by observations made through another reference.
-Nevertheless, copying is sometimes a good choice.
+reference to be observed through another reference.  Nevertheless,
+copying is sometimes a good choice.
 </p>
 
 </div>
@@ -239,7 +239,10 @@ the other.  Nevertheless, copying is sometimes a good choice.
 I think an interesting way forward for concurrent software is to admit
 that it's simply too hard (at least for now) to make a single framework
 for both parallel and interactive software that can be used effectively
-by regular programmers.  This thought leads to three questions:
+by regular programmers.  In other words, instead of thinking of
+concurrent <em>tasks</em> as a single concept, we should think about
+parallel <em>workers</em> and interactive <em>activities</em> as
+distinct things.  This thought leads to three questions:
 <ul>
 <li>What is the most convenient and efficient framework for interactive
 software we can make if we explicitly exclude parallelism?</li>
