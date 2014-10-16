@@ -93,10 +93,25 @@ concurrency issues much more than in the past.  I would love to know if
 anyone has actually studied these trends.</p>
 </div>
 
+<a id="endgame">
+
+<div class="qanda">
+<h4 class="question">Q06: What is the endgame?</h4>
+
+<p>
+My ambition for Charcoal is <em>Not</em> that it become an independently
+successful programming language.  It is a testbed for activities and
+that's it.  I'm not using it to work on any other PL ideas.  It is so
+closely related to C, that if the activities idea is wildly successful,
+it could be rolled into a future version of the C standard.  Similarly,
+just about any other language under the sun could add activities.
+</p>
+</div>
+
 <a id="github">
 
 <div class="qanda">
-<h4 class="question">Q06: Is there code available for this project?</h4>
+<h4 class="question">Q07: Is there code available for this project?</h4>
 
 <p>Yes.  My github name
 is <span style="font-family:monospace;">benjaminy</span>.  Search for
