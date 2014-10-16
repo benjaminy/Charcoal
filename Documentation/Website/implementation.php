@@ -22,26 +22,36 @@
 
 <h1>Charcoal Implementation</h1>
 
-<p>The current Charcoal implementation consists of three pieces:
+<p>
+The current Charcoal implementation consists of three pieces:
+</p>
 <ul>
 <li>Translation</li>
 <li>Runtime System</li>
 <li>Standard Library</li>
 </ul>
+
+<p>
+The target of the translation is plain C.  In principle the Charcoal
+compiler could generate machine code (or some intermediate code like
+LLVM), but there is nothing particularly unusual about code generation
+for Charcoal.  During the translation, calls to some special runtime
+system procedures are added so compiled Charcoal applications needs to
+be linked with the Charcoal runtime.  Finally, Charcoal code can call
+regular C libraries, but we provide slightly tweaked versions that are
+better organized for interactive software.
 </p>
 
-<p>The target of the translation is C, since there is nothing
-particularly novel about the machine code generation for Charcoal.</p>
-
-<p>The most interesting features of Charcoal from an implementation
+<p>
+The most interesting features of Charcoal from an implementation
 perspective are:
+</p>
 <ul>
 <li>Call frame management (a.k.a. coroutinization)</li>
 <li>Activity extraction</li>
 <li>Yield implementation</li>
 <li>System interface</li>
 </ul>
-</p>
 
 <div class="hblock2">
 <a id="call_frames"/>
@@ -64,9 +74,9 @@ The classical approach to call frame management is to use a single large
 contiguous region of memory (often half of the entire virtual address
 space) for <em>the stack</em>.  When one procedure calls another, the
 callee's frame is allocated (pushed) directly adjacent to the caller's.
-This strategy works well when there is only a single thread of control,
-because we know that a given call will never return (thus making its
-frame dead) until any procedure call it made has returned.
+This strategy works well with a single thread of control, because if a
+given call frame is still live that means its caller's frame (and its
+caller's caller's &hellip;) must still be live.
 </p>
 
 <p>
@@ -76,7 +86,7 @@ deallocation can be implemented with a single instruction: incrementing
 or decrementing the <em>stack pointer</em> by the appropriate number of
 bytes.  Space overhead is low because there is no need for allocation
 metadata; the size of a frame can be encoded in the instruction stream.
-Perhaps more importantly, for most intents and purposes there is no
+More importantly, for most intents and purposes there is no
 fragmentation.  Call frames use exactly the amount of space they need
 and the frames are packed next to each other with no space in between.
 </p>
@@ -186,28 +196,28 @@ blocking I/O operations).
 </p>
 
 <p>
-It's not immediately obvious how to handle such fast/slow procedures in
-light of the "declare fast procedures to be unyielding" guideline.
-Simply declaring them unyielding is not good, because an uncommon path
-might cause an activity to go an unacceptably long time without
-yielding.  On the other hand, <em>not</em> declaring such procedures
-unyielding might represent a non-trivial performance loss in the common
-case.
+It's not immediately obvious what the "declare fast procedures
+unyielding" guideline means for such fast/slow procedures.  Simply
+declaring them unyielding is not good, because hitting the uncommon slow
+path might cause unresponsiveness.  On the other hand, <em>not</em>
+declaring such procedures unyielding might add non-trivial overhead in
+the common case.
 </p>
 
 <p>
-Perhaps it's better to refactor APIs in such cases so that one procedure
-is always fast, but might return an exception code of some kind.  The
-caller would then be responsible for calling a separate procedure to
-handle the uncommon case.  I'm not sure that this pattern is a good idea
-in general, but it's worth investigating.
+Perhaps it's better to refactor such API procedures into two: One "best
+effort" version that is unyielding and always fast, but might fail.  And
+one "always works" version that client code can call when the best
+effort version fails.  In fact, maybe there should be a macro that
+automates the "if best-effort fails, call always-works" pattern.  I'm
+not certain this pattern is a good idea, but it's worth investigating.
 </p>
 
 <p>
-A simple example of this pattern shows up in mutex APIs.  It is common
-to have both a "might block" version that absolutely won't return until
-the mutex is acquired and a "try" version that is guaranteed to return
-very quickly, but might not actually acquire the mutex.
+A simple example of this pattern shows up in many mutex APIs.  It is
+common to have both a "might block" version that absolutely won't return
+until the mutex is acquired and a "try" version that is guaranteed to
+return very quickly, but might not actually acquire the mutex.
 </p>
 
 </div> <!-- API design -->
