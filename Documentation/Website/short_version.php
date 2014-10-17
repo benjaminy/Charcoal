@@ -69,7 +69,7 @@ Color code:
 </tr>
 <tr>
 <td>Atomicity</td>
-<td class="color_bad">Data races :(</td>
+<td class="color_bad">Data races <span style="font-size:200%;">&#9785;</span></td>
 <td class="color_pretty_good">Trivial within a single handler; totally
 up to the application for tasks that span multiple handlers</td>
 <td class="color_okay">Will that procedure Joe wrote
