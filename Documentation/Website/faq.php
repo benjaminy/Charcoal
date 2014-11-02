@@ -13,6 +13,8 @@ h4.question {
 </head>
 <body style="background-color:darkgray">
 
+<?php include "google_analytics_script.html"; ?>
+
 <?php include 'side_bar_basic.html'; ?>
 
 <div class="main_div">

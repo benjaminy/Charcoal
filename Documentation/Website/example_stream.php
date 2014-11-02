@@ -7,6 +7,8 @@
 </head>
 <body style="background-color:darkgray">
 
+<?php include "google_analytics_script.html"; ?>
+
 <?php include 'code_examples.php'; ?>
 
 <?php include 'side_bar_examples.html'; ?>

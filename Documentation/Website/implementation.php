@@ -5,6 +5,8 @@
 </head>
 <body style="background-color:darkgray">
 
+<?php include "google_analytics_script.html"; ?>
+
 <div class="side_links">
 <a href="index.html">Charcoal</a><br/>
 - <a href="short_version.html">Why Charcoal?</a><br/>
