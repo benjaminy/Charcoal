@@ -24,6 +24,12 @@ $(BUILD_DIR)/just_calling: just_calling.c
 $(BUILD_DIR)/just_calling_coro: just_calling_coro.c
 	$(CC) -O1 -g -o $@ $<
 
+$(BUILD_DIR)/just_calling_coro_goto: just_calling_coro_goto.c
+	$(CC) -O1 -g -o $@ $<
+
+$(BUILD_DIR)/just_calling_final_maybe: just_calling_final_maybe.c
+	$(CC) -O1 -g -o $@ $<
+
 $(BUILD_DIR)/just_calling_coro2: just_calling_coro2.c
 	$(CC) -O1 -g -o $@ $<
 
