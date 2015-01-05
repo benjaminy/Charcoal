@@ -1,0 +1,32 @@
+Interactive software:
+
+Any software that gives the appearance of having logically distinct
+tasks advancing simultaneously.
+
+- User interface
+- Network
+- Pipelines/phases
+
+Note on terminology: Sometimes people call this "concurrent software".
+This isn't wrong, but it's a larger category than I'm interested in.
+Concurrency also includes parallel software that uses multiple
+processors to make a single task complete faster, and I am not talking
+about that kind of software.  For my purposes there is no reason to
+distinguish between tasks running physically simultaneously versus
+switching back and forth rapidly.
+
+Give away the punchline: In general software is getting increasingly
+interactive and our existing abstractions for interactivity leave
+something to be desired.  I'm working on a new one called "activities"
+or "pseudo-preemptive threads".  But first let's survey the
+state-of-the-art in interactive software.
+
+- Event handling.
+- Threads.
+- Coroutines.
+  - .NET async/await
+  - JavaScript generators/promises
+- Cooperative threads.
+- Processes.
+- Functional reactive programming.
+
