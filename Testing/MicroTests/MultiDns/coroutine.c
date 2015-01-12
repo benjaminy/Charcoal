@@ -4,6 +4,17 @@
 #include <urls.h>
 #include <multi_dns_utils.h>
 
+typedef struct coroutine coroutine, *coroutine_p;
+
+struct coroutine
+{
+};
+
+int coroutine_start( coroutine_p coro, void *(*f)( coroutine_p, void * ), void * )
+{
+    
+}
+
 int error_count = 0;
 
 void *getaddrinfo_entry( void *p )
