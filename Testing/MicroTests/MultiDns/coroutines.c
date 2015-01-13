@@ -15,6 +15,10 @@ int coroutine_start( coroutine_p coro, void *(*f)( coroutine_p, void * ), void *
     
 }
 
+int yield( coroutine_p ctx )
+{
+}
+
 int error_count = 0;
 
 void *getaddrinfo_entry( void *p )

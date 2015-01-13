@@ -1,4 +1,5 @@
 #include <pthread.h>
+#include <errno.h>
 #include <assert.h>
 #include <stdio.h>
 #include <urls.h>
@@ -6,7 +7,7 @@
 
 int error_count = 0;
 
-void *getaddrinfo_entry( void *p )
+void *get_one( void *p )
 {
     const char *name = (const char *)p;
     struct addrinfo *info;
@@ -14,8 +15,8 @@ void *getaddrinfo_entry( void *p )
     if( !rc )
     {
         print_dns_info( name, info );
+        freeaddrinfo( info );
     }
-    freeaddrinfo( info );
     return (void *)((long)rc);
 }
 
@@ -29,27 +30,26 @@ int main( int argc, char **argv, char **env )
     {
         int idx = ( i + start_idx ) % NUM_URLs;
         const char *name = URLs[ idx ];
-        int rc = pthread_create( &thread_handles[i], NULL, getaddrinfo_entry, (void *)name );
+        int rc = pthread_create( &thread_handles[i], NULL, get_one, (void *)name );
         if( rc )
         {
-            printf( "ERROR IN THREAD CREATION %d %d %s\n", rc, idx, name );
+            printf( "Error creating thread %d %d %s\n", rc, idx, name );
             ++error_count;
         }
     }
-    printf( "\nErrors in thread creation? %d\n", error_count );
 
     for( int i = 0; i < urls_to_get; ++i )
     {
-        int thread_return;
+        long thread_return;
         int rc = pthread_join( thread_handles[i], (void **)(&thread_return) );
         if( rc )
         {
-            printf( "ERROR IN THREAD JOIN %d\n", rc );
+            printf( "Error joining thread %d %d\n", i, rc );
             ++error_count;
         }
         else if( thread_return )
         {
-            printf( "ERROR CODE FROM THREAD %d\n", thread_return );
+            printf( "Error returned by thread %d\n", (int)thread_return );
             ++error_count;
         }
     }

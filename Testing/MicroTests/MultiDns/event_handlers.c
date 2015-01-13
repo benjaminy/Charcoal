@@ -6,11 +6,12 @@
 
 int error_count = 0;
 
-void getaddrinfo_callback( uv_getaddrinfo_t *resolver, int status, struct addrinfo *res )
+void got_one( uv_getaddrinfo_t *resolver, int status, struct addrinfo *res )
 {
     if( status )
     {
-        fprintf( stderr, "getaddrinfo callback error %s\n", uv_err_name( status ) );
+        fprintf( stderr, "Error passed to callback %s\n", uv_err_name( status ) );
+        ++error_count;
         return;
     }
     const char *name = (const char *)resolver->data;
@@ -37,11 +38,11 @@ int main( int argc, char **argv, char **env )
         int idx = ( i + start_idx ) % NUM_URLs;
         resolvers[i].data = (void *)URLs[ idx ];
         int rc = uv_getaddrinfo(
-            loop, &resolvers[i], getaddrinfo_callback, URLs[ idx ], NULL, &hints );
+            loop, &resolvers[i], got_one, URLs[ idx ], NULL, &hints );
 
         if( rc )
         {
-            fprintf( stderr, "getaddrinfo call error %s\n", uv_err_name( rc ) );
+            fprintf( stderr, "Error registering callback: %s\n", uv_err_name( rc ) );
             ++error_count;
         }
     }
