@@ -3,8 +3,6 @@
 #include <urls.h>
 #include <multi_dns_utils.h>
 
-int error_count = 0;
-
 void get_one( int idx );
 
 int main( int argc, char **argv, char **env )
@@ -17,19 +15,19 @@ int main( int argc, char **argv, char **env )
         get_one( ( i + start_idx ) % NUM_URLs );
     }
 
-    printf( "\nERROR COUNT: %d\n", error_count );
-    return 0;
+    FINISH_DNS( 0 );
 }
 
 void get_one( int idx )
 {
     const char *name = URLs[ idx ];
     struct addrinfo *info;
+
     int rc = getaddrinfo( name, NULL, NULL, &info );
     if( rc )
     {
         printf( "ERROR ERROR ERROR %d %d %s\n", rc, idx, name );
-        ++error_count;
+        ++dns_error_count;
         return;
     }
     print_dns_info( name, info );

@@ -5,9 +5,9 @@
 #include <urls.h>
 #include <multi_dns_utils.h>
 
-int error_count = 0;
-
+void launch_one( int idx, pthread_t *thread_handle );
 void *get_one( void *p );
+void wait_one( pthread_t thread_handle );
 
 int main( int argc, char **argv, char **env )
 {
@@ -18,34 +18,26 @@ int main( int argc, char **argv, char **env )
 
     for( int i = 0; i < urls_to_get; ++i )
     {
-        int idx = ( i + start_idx ) % NUM_URLs;
-        const char *name = URLs[ idx ];
-        int rc = pthread_create( &thread_handles[i], NULL, get_one, (void *)name );
-        if( rc )
-        {
-            printf( "Error creating thread %d %d %s\n", rc, idx, name );
-            ++error_count;
-        }
+        launch_one( ( i + start_idx ) % NUM_URLs, &thread_handles[i] );
     }
 
     for( int i = 0; i < urls_to_get; ++i )
     {
-        size_t thread_return;
-        int rc = pthread_join( thread_handles[i], (void **)(&thread_return) );
-        if( rc )
-        {
-            printf( "Error joining thread %d %d\n", i, rc );
-            ++error_count;
-        }
-        else if( thread_return )
-        {
-            printf( "Error returned by thread %d\n", (int)thread_return );
-            ++error_count;
-        }
+        wait_one( thread_handles[i] );
     }
 
-    printf( "\nERROR COUNT: %d\n", error_count );
-    return 0;
+    FINISH_DNS( 0 );
+}
+
+void launch_one( int idx, pthread_t *thread_handle )
+{
+    const char *name = URLs[ idx ];
+    int rc = pthread_create( thread_handle, NULL, get_one, (void *)name );
+    if( rc )
+    {
+        printf( "Error creating thread %d %d %s\n", rc, idx, name );
+        ++dns_error_count;
+    }
 }
 
 void *get_one( void *p )
@@ -59,4 +51,20 @@ void *get_one( void *p )
         freeaddrinfo( info );
     }
     return (void *)((long)rc);
+}
+
+void wait_one( pthread_t thread_handle )
+{
+    size_t thread_return;
+    int rc = pthread_join( thread_handle, (void **)(&thread_return) );
+    if( rc )
+    {
+        printf( "Error joining thread %p %d\n", thread_handle, rc );
+        ++dns_error_count;
+    }
+    else if( thread_return )
+    {
+        printf( "Error returned by thread %d\n", (int)thread_return );
+        ++dns_error_count;
+    }
 }

@@ -2,6 +2,10 @@
 #include <stdio.h>
 #include <multi_dns_utils.h>
 
+int dns_error_count;
+
+struct addrinfo hints;
+
 void print_dns_info( const char *name, struct addrinfo *info )
 {
     printf( "%20s %20s: %x\n", name, "flags",     info->ai_flags );
@@ -16,6 +20,11 @@ void print_dns_info( const char *name, struct addrinfo *info )
 
 void get_cmd_line_args( int argc, char **argv, int *urls, int *idx )
 {
+    hints.ai_family   = PF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_protocol = IPPROTO_TCP;
+    hints.ai_flags    = 0;
+
     *urls = DEFAULT_URLS_TO_GET;
     *idx  = DEFAULT_START_IDX;
     if( argc > 1 )
@@ -31,3 +40,4 @@ void get_cmd_line_args( int argc, char **argv, int *urls, int *idx )
             *urls = 1;
     }
 }
+
