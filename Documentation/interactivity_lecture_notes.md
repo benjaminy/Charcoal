@@ -16,8 +16,6 @@ In this talk we will discuss the existing approaches to interactivity;
 especially their weaknesses.  Then we will look at a new altnerative:
 activities (a.k.a. pseudo-preemptive threads).
 
-/Abstract
-
 ## Outline:
 
 - Intro
@@ -33,39 +31,59 @@ activities (a.k.a. pseudo-preemptive threads).
 - Research project opportunities
 
 ### Interactive software def'n:
-Software that _gives the appearance_ of multiple tasks making progress
-simultaneously.
+
+Software that _gives the appearance_ of multiple _active_ (in-progress)
+tasks existing simultaneously.
 
 ###Examples of interactive software:
 - Anything with a graphical user interface
 - Anything that talks to a network
 - Pipelines/phases (e.g. parsing a large log file)
-(A common user-level model: a single "foreground" task and any number of
-"background" tasks.)
 
-Another way to say interactivity: _virtual simultaneity_.  _physical
-simultaneity_ (a.k.a. parallelism) is using multiple processors to make
-a single task go faster.  I'm not going to talk about parallelism today.
-Brief side note on terminology (warning: a lot of this jargon is used
-inconsistently by different people): Interactivity and parallelism
-together make up concurrency.  A pet peeve of mine is people muddling
-concurrency, parallelism and interactivity together.
+(A common model at the user interface layer: a single "foreground" task
+and any number of "background" tasks.)
+
+Another way to say interactivity: _virtual simultaneity_.  "Virtual"
+because for the purposes of interactivity it does not matter whether any
+of the tasks are ever physically executing simultaneously.  Computers
+can switch between tasks at the microsecond granularity.  This is way
+beyond sufficient for giving humans the illusion of simultaneity.
+
+_physical simultaneity_ (a.k.a. parallelism) is using multiple
+processors to make a single task go faster.  I'm not going to talk about
+parallelism today.  Brief side note on terminology (warning: a lot of
+this jargon is used inconsistently by different people): Interactivity
+and parallelism together make up concurrency.  A pet peeve of mine is
+people muddling concurrency, parallelism and interactivity together.
 
 A surprising fact: Interactivity is important and has existed for a long
 time (relative to computing as a field), yet we still do not have
-programming language-level frameworks for interactive software that get
-consensus approval from software engineers and researchers.  Contrast
-this with primitives for non-interactive software:
+programming language-level frameworks for interactive software that are
+generally considered "right" by software engineers and researchers.
+Contrast this with primitives for non-interactive software:
+
 - Sequencing. "Do action X, then action Y"
 - Decisions. "Do action X or action Y, depending on condition Z"
 - Loops and recursion. "Repeat action X until condition Y"
 - Procedure calling. "Do a bunch of stuff, then come back here"
 - Exceptional case handling. "Try action X, but if it fails do Y"
 
-Quick historical note: The first substantial interactive software
-demonstration was Ivan Sutherland's Sketchpad in the mid-1960s.
-However, interactivity didn't go mainstream until the Macintosh and
-Amiga in the 1980s.
+Quick historical perspective: Three eras of interactivity in
+(mainstream) computing.
+
+- Early research.  The first substantial interactive software
+  demonstration was Ivan Sutherland's Sketchpad in the mid-1960s.  Most
+  mainstream software was still very batch/command line.
+
+- Desktop.  Starting with the Macintosh and Amiga in the 1980s
+  interactive desktop applications became mainstream.  Interactivity
+  existed in lots of apps, but was of modest complexity.
+  Keyboard-and-mouse UI; limited network interaction.
+
+- Web and mobile.  iPhone 2007  Google Maps 2005
+
+The consequences of the third era of interactivity are still very much
+working their way through the software world.
 
 Give away the punchline: Mainstream software today is substantially more
 interactive than it was 10 years ago and I believe that trend will
