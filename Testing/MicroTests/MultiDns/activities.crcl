@@ -1,0 +1,51 @@
+#include <charcoal_base.h>
+#include <assert.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <charcoal_std_lib.h>
+#include <multi_dns_utils.h>
+
+void get_one( int idx );
+
+crcl(application_main)( int argc, char **argv, char **env )
+{
+    int urls_to_get, start_idx;
+    get_cmd_line_args( argc, argv, &urls_to_get, &start_idx );
+    activity_t *as = (activity_t *)malloc( urls_to_get * sizeof( as[0] ) );
+
+    for( int i = 0; i < urls_to_get; ++i )
+    {
+        activate{ &as[i] }( i )
+        {
+            get_one( ( i + start_idx ) % NUM_URLs );
+        };
+    }
+
+    for( int i = 0; i < urls_to_get; ++i )
+    {
+        int rc = crcl(activity_join)( &as[i], NULL );
+        if( rc )
+        {
+            printf( "Error joining thread %p %d\n", thread_handle, rc );
+            ++dns_error_count;
+        }
+    }
+
+    FINISH_DNS( 0 );
+}
+
+void get_one( int idx )
+{
+    const char *name = URLS[ idx ];
+    struct addrinfo *info;
+
+    int rc = getaddrinfo_crcl( name, NULL, NULL, &info );
+    if( rc )
+    {
+        printf( "ERROR ERROR ERROR %d %d %s\n", rc, i + j, name );
+        ++dns_error_count;
+        return;
+    }
+    print_dns_info( name, info );
+    freeaddrinfo( info );
+}

@@ -26,7 +26,7 @@ void get_one( int idx )
     int rc = getaddrinfo( name, NULL, NULL, &info );
     if( rc )
     {
-        printf( "ERROR ERROR ERROR %d %d %s\n", rc, idx, name );
+        printf( "Error %d %d %s\n", rc, idx, name );
         ++dns_error_count;
         return;
     }
