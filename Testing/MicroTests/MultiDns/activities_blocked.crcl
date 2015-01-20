@@ -1,0 +1,65 @@
+#include <charcoal_base.h>
+#include <assert.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <charcoal_std_lib.h>
+#include <multi_dns_utils.h>
+
+#define BLOCK_SIZE 2
+
+#define N 40
+
+void get_one( int idx );
+
+crcl(application_main)( int argc, char **argv, char **env )
+{
+    activity_t *as = (activity_t *)malloc( N * sizeof( as[0] ) );
+    size_t url_count = sizeof( urls ) / sizeof( urls[0] );
+    printf( "%lu  %lu \n", sizeof( urls ), url_count );
+    unsigned i;
+    int multi = 1;
+    for( i = 0; i < N; i += BLOCK_SIZE )
+    {
+        activate{ &as[i] }( i )
+        {
+            unsigned j;
+            for( j = 0; j < BLOCK_SIZE; ++j )
+            {
+            }
+        };
+    }
+    for( i = 0; i < N; ++i )
+    {
+        if( multi )
+        {
+            assert( !crcl(activity_join)( &as[i], NULL ) );
+        }
+    }
+    printf( "\nERROR COUNT: %d\n", dns_error_count );
+    return 0;
+}
+
+void get_one( int idx )
+{
+    const char *name = urls[ i + j ];
+    struct addrinfo *info;
+    int rc = getaddrinfo_crcl( name, NULL, NULL, &info );
+    if( rc )
+    {
+        printf( "ERROR ERROR ERROR %d %d %s\n", rc, i + j, name );
+        ++dns_error_count;
+    }
+    else
+    {
+        printf( "%-20s: %x\n", "flags",     info->ai_flags );
+        printf( "%-20s: %d\n", "family",    info->ai_family );
+        printf( "%-20s: %d\n", "socktype",  info->ai_socktype );
+        printf( "%-20s: %d\n", "protocol",  info->ai_protocol );
+        printf( "%-20s: %d\n", "addrlen",   info->ai_addrlen ); /* socklen_t ??? */
+        printf( "%-20s: %p\n", "sockaddr",  info->ai_addr ); /* struct sockaddr * ??? */
+        printf( "%-20s: %s\n", "canonname", info->ai_canonname );
+        printf( "%-20s: %p\n", "next",      info->ai_next );
+    }
+    printf( "%d\n", rc );
+    /* XXX leak! freeaddrinfo( info ); */
+}

@@ -50,7 +50,7 @@ void *get_one( void *p )
         print_dns_info( name, info );
         freeaddrinfo( info );
     }
-    return (void *)((long)rc);
+    return (void *)((size_t)rc);
 }
 
 void wait_one( pthread_t thread_handle )

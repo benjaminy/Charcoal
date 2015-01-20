@@ -128,5 +128,4 @@ static const char *URLs[] = {
     "bloglovin.com","nsw.gov.au","ihg.com","pcworld.com",
 };
 
-static const size_t NUM_URLs            = sizeof( URLs ) / sizeof( URLs[0] );
- 
+static const size_t NUM_URLs = sizeof( URLs ) / sizeof( URLs[0] );

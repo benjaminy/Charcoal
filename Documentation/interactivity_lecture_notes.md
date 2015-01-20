@@ -1,6 +1,15 @@
-# Interactive Software
+# Software Primitives for Multitasking
 
 ## Abstract
+
+Most introductory programming courses focus on _procedural_ software.
+Procedural software has a single task: it starts, reads some input, does
+some work, produces some output, then finishes.  In contrast, the vast
+majority of software we use on a daily basis is interactive.
+Interactive software reacts to user input, communicates with other
+machines over the network, controls hardware devices, etc.  Interactive
+software is also called multitasking software; it has to keep multiple
+balls in the air at the same time.
 
 Modern mainstream software is substantially more interactive than its
 forbears.  Even as recently as 10 years ago it was much more common to
@@ -8,13 +17,23 @@ see applications that ran entirely locally and used simple
 keyboard-and-mouse UI.  This change can mostly be chalked up to the rise
 of the internet as a software platform and mobile devices with rich user
 interfaces.  A lot of smart money is on this trend continuing for the
-foreseeable future.  Existing frameworks for making software interactive
-(most commonly event handlers and threads) have serious weaknesses that
-have become painful to software developers.
+foreseeable future.  Existing frameworks for multitasking (most
+commonly event handlers and threads) have serious weaknesses that have
+become painful to software developers.
 
-In this talk we will discuss the existing approaches to interactivity;
-especially their weaknesses.  Then we will look at a new altnerative:
-activities (a.k.a. pseudo-preemptive threads).
+In this talk we will survey and critique existing primitives for
+interactivity.  Then we will look at a new alternative:
+pseudo-preemptive threads (a.k.a. activities).
+
+[Short version]
+
+Most introductory programming courses focus on software that does one
+task: get input, compute, produce output, done.  But most of the
+software we use is multitasking (also called reactive or interactive).
+Surprisingly, the software engineering community is not yet settled on
+what the "right" framework for building multitasking software is.  In
+this talk we will survey and critique the existing options and introduce
+a new alternative: pseudo-preemptive threads (a.k.a. activities).
 
 ## Outline:
 
@@ -38,6 +57,7 @@ tasks existing simultaneously.
 ###Examples of interactive software:
 - Anything with a graphical user interface
 - Anything that talks to a network
+- Embedded systems (e.g. self-driving cars)
 - Pipelines/phases (e.g. parsing a large log file)
 
 (A common model at the user interface layer: a single "foreground" task
@@ -62,18 +82,23 @@ programming language-level frameworks for interactive software that are
 generally considered "right" by software engineers and researchers.
 Contrast this with primitives for non-interactive software:
 
-- Sequencing. "Do action X, then action Y"
-- Decisions. "Do action X or action Y, depending on condition Z"
-- Loops and recursion. "Repeat action X until condition Y"
-- Procedure calling. "Do a bunch of stuff, then come back here"
-- Exceptional case handling. "Try action X, but if it fails do Y"
+| Primitive           | Description                                         |
+|---------------------|-----------------------------------------------------|
+| [Sequencing](http://media02.hongkiat.com/action-sequence-photography/Snowboard-Sequence-Photography.jpg)          | "Do action X, then action Y"                        |
+| [Decisions](http://svprojectmanagement.com/wp-content/uploads/Taming_Email_Decision_Tree.jpg)           | "Do action X or action Y, depending on condition Z" |
+| [Loops and recursion](http://creativegibberishcom.ipage.com/wpfiles/wp-content/uploads/2011/08/creative-repetition-andy-monroe.jpg) | "Repeat action X until condition Y"                 |
+| [Procedure calling](?)   | "Do a bunch of stuff, then come back here"          |
+| [Exception handling](?)  | "Try action X, but if it fails do Y"                |
 
 Quick historical perspective: Three eras of interactivity in
 (mainstream) computing.
 
 - Early research.  The first substantial interactive software
   demonstration was Ivan Sutherland's Sketchpad in the mid-1960s.  Most
-  mainstream software was still very batch/command line.
+  mainstream software was still very batch/command line.  One of the
+  most forward-looking demonstrations of interactive software was
+  Douglas Engelbart' "[mother of all
+  demos](https://www.youtube.com/watch?v=yJDv-zdhzMY)".
 
 - Desktop.  Starting with the Macintosh and Amiga in the 1980s
   interactive desktop applications became mainstream.  Interactivity
@@ -83,7 +108,6 @@ Quick historical perspective: Three eras of interactivity in
 - Web and mobile.  iPhone 2007  Google Maps 2005
 
 The consequences of the third era of interactivity are still very much
-working their way through the software world.
 
 Give away the punchline: Mainstream software today is substantially more
 interactive than it was 10 years ago and I believe that trend will
