@@ -49,10 +49,11 @@ a new alternative: pseudo-preemptive threads (a.k.a. activities).
 - Activities compared to events, threads, ...
 - Research project opportunities
 
-### Interactive software def'n:
+### Multitasking/interactive software def'n:
 
-Software that _gives the appearance_ of multiple _active_ (in-progress)
-tasks existing simultaneously.
+Software that _gives the appearance_ of performing multiple tasks
+simultaneously.  (Being ready to react quickly to an event like a mouse
+click counts as "performing a task".)
 
 ###Examples of interactive software:
 - Anything with a graphical user interface
@@ -80,7 +81,8 @@ A surprising fact: Interactivity is important and has existed for a long
 time (relative to computing as a field), yet we still do not have
 programming language-level frameworks for interactive software that are
 generally considered "right" by software engineers and researchers.
-Contrast this with primitives for non-interactive software:
+Contrast this with primitives for non-interactive (i.e. sequential)
+software:
 
 | Primitive           | Description                                         |
 |---------------------|-----------------------------------------------------|
@@ -97,7 +99,7 @@ Quick historical perspective: Three eras of interactivity in
   demonstration was Ivan Sutherland's Sketchpad in the mid-1960s.  Most
   mainstream software was still very batch/command line.  One of the
   most forward-looking demonstrations of interactive software was
-  Douglas Engelbart' "[mother of all
+  Douglas Engelbart's "[mother of all
   demos](https://www.youtube.com/watch?v=yJDv-zdhzMY)".
 
 - Desktop.  Starting with the Macintosh and Amiga in the 1980s
@@ -105,23 +107,18 @@ Quick historical perspective: Three eras of interactivity in
   existed in lots of apps, but was of modest complexity.
   Keyboard-and-mouse UI; limited network interaction.
 
-- Web and mobile.  iPhone 2007  Google Maps 2005
+- Web and mobile.  Examples: iPhone 2007 Google Docs 2006.  In the
+  mid-aughts our current era began.  It's characterized by applications
+  that have rich network interactions built in from the very beginning.
+  And devices that have many interaction modalities (video, audio,
+  touch, wireless networks, GPS, haptic, ...).
 
-The consequences of the third era of interactivity are still very much
-
-Give away the punchline: Mainstream software today is substantially more
-interactive than it was 10 years ago and I believe that trend will
-continue for a while.  Most applications have richer user interfaces and
-more network integration.  This has exposed the weaknesses of the
-frameworks we use to build interactive software.  I'm working on an
-alternative called "activities" or "pseudo-preemptive threads" that I
-claim addresses those weaknesses.
-
-Software is getting increasingly interactive
-and our existing abstractions for interactivity leave something to be
-desired.  I'm working on a new one called "activities" or
-"pseudo-preemptive threads".  But first let's survey the
-state-of-the-art in interactive software.
+First claim: In the desktop era event handlers (and a couple threads)
+was a good enough model.  In the web-and-mobile era the concensus around
+that model is eroding and we have seen renewed interest in coroutines.
+But coroutines are no panecea.  I am working on a new framework called
+"pseudo-preemptive threads" (or "activities" for people who prefer fewer
+syllables).
 
 - Event handling. (~All GUI frameworks; esp. JavaScript)
   - Strength: Simple.  Great for basic interaction patterns.
