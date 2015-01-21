@@ -35,6 +35,8 @@ what the "right" framework for building multitasking software is.  In
 this talk we will survey and critique the existing options and introduce
 a new alternative: pseudo-preemptive threads (a.k.a. activities).
 
+[tiny.cc/ff_multitasking_notes](tiny.cc/ff_multitasking_notes)
+
 ## Outline:
 
 - Intro
@@ -49,13 +51,16 @@ a new alternative: pseudo-preemptive threads (a.k.a. activities).
 - Activities compared to events, threads, ...
 - Research project opportunities
 
+## Background
+
 ### Multitasking/interactive software def'n:
 
 Software that _gives the appearance_ of performing multiple tasks
 simultaneously.  (Being ready to react quickly to an event like a mouse
 click counts as "performing a task".)
 
-###Examples of interactive software:
+### Examples of interactive software:
+
 - Anything with a graphical user interface
 - Anything that talks to a network
 - Embedded systems (e.g. self-driving cars)
@@ -63,6 +68,31 @@ click counts as "performing a task".)
 
 (A common model at the user interface layer: a single "foreground" task
 and any number of "background" tasks.)
+
+Quick historical perspective: Three eras of interactivity in
+(mainstream) computing.
+
+- -&infin; &rarr; ~1980: __Mainstream software sequential; early
+  multitasking research__.  The first substantial interactive software
+  demonstration was Ivan Sutherland's Sketchpad in the mid-1960s.  Most
+  mainstream software was still very batch/command line.  One of the
+  most forward-looking demonstrations of interactive software was
+  Douglas Engelbart's "[mother of all
+  demos](https://www.youtube.com/watch?v=yJDv-zdhzMY)". (1:15:30)
+
+- ~1980 &rarr; ~2005: __Desktop__.  Starting with the Macintosh and
+  Amiga in the 1980s interactive desktop applications became mainstream.
+  Interactivity existed in lots of apps, but was of modest complexity.
+  Keyboard-and-mouse UI; limited network interaction.
+
+- ~2005 &rarr; ???: __Web and mobile__.  Examples: iPhone 2007 Google
+  Docs 2006.  In the mid-aughts our current era began.  It's
+  characterized by applications that have rich network interactions
+  built in from the very beginning.  And devices that have many
+  interaction modalities (video, audio, touch, wireless networks, GPS,
+  haptic, ...).
+
+### Multitasking/Interactivity vs Parallelism vs Concurrency
 
 Another way to say interactivity: _virtual simultaneity_.  "Virtual"
 because for the purposes of interactivity it does not matter whether any
@@ -76,6 +106,8 @@ parallelism today.  Brief side note on terminology (warning: a lot of
 this jargon is used inconsistently by different people): Interactivity
 and parallelism together make up concurrency.  A pet peeve of mine is
 people muddling concurrency, parallelism and interactivity together.
+
+### No "Right" Way to do Interactivity (Yet)
 
 A surprising fact: Interactivity is important and has existed for a long
 time (relative to computing as a field), yet we still do not have
@@ -92,26 +124,32 @@ software:
 | [Procedure calling](?)   | "Do a bunch of stuff, then come back here"          |
 | [Exception handling](?)  | "Try action X, but if it fails do Y"                |
 
-Quick historical perspective: Three eras of interactivity in
-(mainstream) computing.
 
-- Early research.  The first substantial interactive software
-  demonstration was Ivan Sutherland's Sketchpad in the mid-1960s.  Most
-  mainstream software was still very batch/command line.  One of the
-  most forward-looking demonstrations of interactive software was
-  Douglas Engelbart's "[mother of all
-  demos](https://www.youtube.com/watch?v=yJDv-zdhzMY)".
+## Survey and Critique
 
-- Desktop.  Starting with the Macintosh and Amiga in the 1980s
-  interactive desktop applications became mainstream.  Interactivity
-  existed in lots of apps, but was of modest complexity.
-  Keyboard-and-mouse UI; limited network interaction.
+![Multitasking Space](./multitasking_space.png "Multitasking Space")
 
-- Web and mobile.  Examples: iPhone 2007 Google Docs 2006.  In the
-  mid-aughts our current era began.  It's characterized by applications
-  that have rich network interactions built in from the very beginning.
-  And devices that have many interaction modalities (video, audio,
-  touch, wireless networks, GPS, haptic, ...).
+All the code for this presentation can be found
+[HERE](../Testing/MicroTests/MultiDns).
+
+### Event Handlers
+
+![Event Loop](./event_loop.png "Event Loop")
+
+Event handling. (~All GUI frameworks; esp. JavaScript)
+
+- Strength: Simple.  Great for basic interaction patterns.
+- Weakness: Starvation; "callback hell".
+
+### (Preemptive) Threads
+
+![Threads](./threads.png "Threads")
+
+-  Threads. (~All systems; interestingly not JavaScript)
+  - Strength: Write each task using non-interactive control flow.
+  - Weakness: Concurrency bugs galore (races, deadlocks, etc.).
+
+### Interlude #1: The Desktop Era Concensus
 
 First claim: In the desktop era event handlers (and a couple threads)
 was a good enough model.  In the web-and-mobile era the concensus around
@@ -120,38 +158,42 @@ But coroutines are no panecea.  I am working on a new framework called
 "pseudo-preemptive threads" (or "activities" for people who prefer fewer
 syllables).
 
-- Event handling. (~All GUI frameworks; esp. JavaScript)
-  - Strength: Simple.  Great for basic interaction patterns.
-  - Weakness: Starvation; "callback hell".
-- (Preemptive) Threads. (~All systems; interestingly not JavaScript)
-  - Strength: Write each task using non-interactive control flow.
-  - Weakness: Concurrency bugs galore (races, deadlocks, etc.).
+### Processes
+
+Conceptually processes are very similar to threads.  The only difference
+(which happens to have profound consequences) is that all the threads in
+an application can access the same memory, whereas processes all have
+their own memory space.
+
+- Strength: Strong concurrency bug resistance.
+- Weakness: No shared state!!!
+
+In practice processes are not a very good primitive for implementing
+tasks in interactive applications.
+
+Interesting tangent: "web workers" are a new and evolving part of the
+web browser programming ecosystem.  They are more like processes than
+threads.
+
+### Coroutines
+
 - Coroutines. (.NET async/await, JavaScript generators/promises)
   - Strength: A sliver of threads' natural control flow.
   - Weakness: Same as event handlers; just pushed back a bit.
+
+  - .NET async/await
+  - JavaScript generators/promises
+
+### Cooperative Threads
+
 - Cooperative threads. Like threads, with yield
   - Strength: More like threads than coroutines in programming style.
   - Weakness: Where should the yields go???
-- Processes. Isolated threads.
-  - Strength: Strong concurrency bug resistance.
-  - Weakness: Most applications want shared state.
+
+### Functional Reactive Programming
+
 - Functional reactive programming. Wacky.
   - Strength: Solid formal model.
   - Weakness: Lots of practical questions; still a research topic.
 
-
-
-- Event handling.
-
-- Threads.
-
-- Coroutines.
-  - .NET async/await
-  - JavaScript generators/promises
-
-- Cooperative threads.
-
-- Processes.
-
-- Functional reactive programming.
-
+## Pseudo-Preemptive Threads (Activities)
