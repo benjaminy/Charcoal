@@ -8,7 +8,7 @@ include $(CRCL_ROOT)/Testing/generic.mk
 
 CC=clang
 
-TARGETS=sequential event_handlers threads processes
+TARGETS=sequential event_handlers threads processes coroutines
 
 all: $(addprefix $(BUILD_DIR)/, $(TARGETS))
 
@@ -22,4 +22,7 @@ $(BUILD_DIR)/threads: threads.c multi_dns_utils.c
 	$(CC) -I. -o $@ $^
 
 $(BUILD_DIR)/processes: processes.c multi_dns_utils.c
+	$(CC) -I. -o $@ $^
+
+$(BUILD_DIR)/coroutines: coroutines.c pcoroutine.c multi_dns_utils.c
 	$(CC) -I. -o $@ $^

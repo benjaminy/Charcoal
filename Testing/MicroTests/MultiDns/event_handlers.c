@@ -32,16 +32,16 @@ void register_one( int idx, uv_loop_t *dispatcher, uv_getaddrinfo_t *resolver )
 
     if( rc )
     {
-        fprintf( stderr, "Error registering callback: %s\n", uv_err_name( rc ) );
+        fprintf( stderr, "Error registering callback: %d\n", rc );
         ++dns_error_count;
     }
 }
 
-void got_one( uv_getaddrinfo_t *resolver, int status, struct addrinfo *res )
+void got_one( uv_getaddrinfo_t *resolver, int rc, struct addrinfo *res )
 {
-    if( status )
+    if( rc )
     {
-        fprintf( stderr, "Error passed to callback %s\n", uv_err_name( status ) );
+        fprintf( stderr, "Error passed to callback %d\n", rc );
         ++dns_error_count;
         return;
     }

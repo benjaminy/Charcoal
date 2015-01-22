@@ -12,12 +12,12 @@ int main( int argc, char **argv, char **env )
     int urls_to_get, start_idx;
     get_cmd_line_args( argc, argv, &urls_to_get, &start_idx );
     pcoroutine_p coro_handles =
-        (pcoutine_p)malloc( urls_to_get * sizeof(coro_handles[0]) );
+        (pcoroutine_p)malloc( urls_to_get * sizeof(coro_handles[0]) );
 
     for( int i = 0; i < urls_to_get; ++i )
     {
         int idx = ( i + start_idx ) % NUM_URLs;
-        pcoutine_p coro_handle = &coro_handles[i];
+        pcoroutine_p coro_handle = &coro_handles[i];
         const char *name = URLs[ idx ];
         int rc = pcoro_create( coro_handle, NULL, PCORO(get_one), (void *)name );
         if( rc )
@@ -29,17 +29,17 @@ int main( int argc, char **argv, char **env )
 
     for( int i = 0; i < urls_to_get; ++i )
     {
-        pcoroutine_p = &coro_handles[i];
+        pcoroutine_p coro_handle = &coro_handles[i];
         size_t coro_return_val;
-        int rc = pcoro_join( thread_handle, (void **)(&coro_return_val) );
+        int rc = pcoro_join( coro_handle, (void **)(&coro_return_val) );
         if( rc )
         {
-            printf( "Error joining thread %p %d\n", thread_handle, rc );
+            printf( "Error joining coro %p %d\n", coro_handle, rc );
             ++dns_error_count;
         }
-        else if( thread_return )
+        else if( coro_return_val )
         {
-            printf( "Error returned by thread %d\n", (int)thread_return );
+            printf( "Error returned by coro %d\n", (int)coro_return_val );
             ++dns_error_count;
         }
     }
@@ -47,15 +47,14 @@ int main( int argc, char **argv, char **env )
     FINISH_DNS( 0 );
 }
 
-PCORO_DEF(get_one, p,
+PCORO_DEF(get_one, const char *, name,
 {
-    const char *name = (const char *)p;
     struct addrinfo *info;
     pcoroutine_t getaddr_coro;
-    size_t rc = pcoro_getaddrinfo( name, NULL, NULL, &info, &getaddr_coro );
+    size_t rc = (size_t)pcoro_getaddrinfo( name, NULL, NULL, &info, &getaddr_coro );
     if( rc )
     {
-        fprintf( stderr, "Error starting getaddr: %d\n", rc );
+        fprintf( stderr, "Error starting getaddr: %ld\n", rc );
         ++dns_error_count;
         pcoro_return( rc );
     }
@@ -63,7 +62,7 @@ PCORO_DEF(get_one, p,
     rc = pcoro_join( &getaddr_coro, &coro_return_val );
     if( rc )
     {
-        fprintf( stderr, "Error waiting for getaddr: %d\n", rc );
+        fprintf( stderr, "Error waiting for getaddr: %ld\n", rc );
         ++dns_error_count;
         pcoro_return( rc );
     }

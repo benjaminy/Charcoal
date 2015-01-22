@@ -1,36 +1,42 @@
 #include <pthread.h>
+#include <netdb.h>
 
-typedef struct coroutine coroutine, *coroutine_p;
+typedef struct pcoroutine_t pcoroutine_t, *pcoroutine_p;
 
-struct coroutine
+struct pcoroutine_t
 {
     pthread_t tid;
 };
 
 struct __pcoro_start_record
 {
-    coroutine_p coro;
+    pcoroutine_p coro;
     void *param;
 };
 
-extern coroutine_p __pcoro_self_global;
+extern pcoroutine_p __pcoro_self_global;
 
 #define PCORO_DECL(coro_name, param_name) \
     void *__pcoro_##coro_name( void *__pcoro_param );
 
 #define PCORO(coro_name) __pcoro_##coro_name
 
-#define PCORO_DEF(coro_name, param_name, body)       \
+#define PCORO_DEF(coro_name, param_type, param_name, body)       \
     void *__pcoro_##coro_name( void *__pcoro_param ) \
     { \
-        struct __pcoro_start_record *s = (__pcoro_start_record *)__pcoro_param; \
-        __pcoro_self = s->coro; \
-        __pcoro_self_global = __pcoro_self; \
-        void *__pcoro_return_value = 0;
-        param_name = s->param; \
+        pcoroutine_p __pcoro_self; \
+        param_type param_name; \
+        { \
+            struct __pcoro_start_record *s = (struct __pcoro_start_record *)__pcoro_param; \
+            param_name = ((param_type)(s->param));                      \
+            __pcoro_self = s->coro; \
+            __pcoro_self_global = __pcoro_self; \
+        } \
+        void *__pcoro_return_value = 0; \
         { body } \
         __pcoro_after_body_label: \
-        pcoroutine_end; \
+        /* set status and release waiters */; \
+        return __pcoro_return_value; \
     }
 
 #define pcoro_return(rv) \
@@ -39,16 +45,29 @@ extern coroutine_p __pcoro_self_global;
         goto __pcoro_after_body_label; \
     } while( 0 )
 
-int pcoroutine_init( void )
-{
-}
+#define PCORO_MAIN_INIT \
+    pcoroutine_p __pcoro_self; \
+    do { \
+        pcoroutine_t main_coro; \
+        __pcoro_self = &main_coro; \
+        __pcoro_self_global = __pcoro_self; \
+    } while( 0 )
 
-int coroutine_start( coroutine_p coro, void *(*f)( coroutine_p, void * ), void * )
-{
-    
-}
+int pcoroutine_init( void );
 
-int yield( coroutine_p ctx )
-{
-}
+int pcoro_create(
+    pcoroutine_p coro,
+    void *(*f)( pcoroutine_p, void * ),
+    void *options,
+    void *p );
 
+int pcoro_join( pcoroutine_p c, void **res );
+
+int pcoro_getaddrinfo(
+    const char *hostname,
+    const char *servname,
+    const struct addrinfo *hints,
+    struct addrinfo **res,
+    pcoroutine_p coro );
+
+int yield( pcoroutine_p ctx );
