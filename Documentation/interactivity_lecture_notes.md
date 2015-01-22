@@ -39,17 +39,19 @@ a new alternative: pseudo-preemptive threads (a.k.a. activities).
 
 ## Outline:
 
-- Intro
-- Background: strengths and weaknesses of existing frameworks
+- Background
+  - Multitasking/Interactive Software
+  - Examples
+  - Jargon: Concurrency, Parallelism, Multitasking/Interactivity
+  - No "Right" Way to Structure Multitasking Software
+- Survey and Critique
   - Event handling
   - Threads
+  - Processes
   - Coroutines
   - Cooperative threads
-  - Processes
   - Functional reactive programming
-- Activities (pseudo-preemptive threads) def'n
-- Activities compared to events, threads, ...
-- Research project opportunities
+- Pseudo-Preemptive Threads (Activities)
 
 ## Background
 
@@ -172,10 +174,12 @@ In practice processes are not a very good primitive for implementing
 tasks in interactive applications.
 
 Interesting tangent: "web workers" are a new and evolving part of the
-web browser programming ecosystem.  They are more like processes than
-threads.
+web browser programming ecosystem.  Many authors compare them to
+threads, but they're really much more like processes.
 
 ### Coroutines
+
+![Coroutines](./coroutines.png "Coroutines")
 
 - Coroutines. (.NET async/await, JavaScript generators/promises)
   - Strength: A sliver of threads' natural control flow.
@@ -186,14 +190,37 @@ threads.
 
 ### Cooperative Threads
 
-- Cooperative threads. Like threads, with yield
-  - Strength: More like threads than coroutines in programming style.
-  - Weakness: Where should the yields go???
+Syntactically cooperative threading implementations usually look very
+much like regular (preemptive) threads.  However, ther behave more like
+coroutines.  Like coroutines, the active cooperative thread cannot be
+interrupted except by explicitly yielding control.  Unlike coroutines,
+any procedure is allowed to invoke yield/wait.
+
+The primary weakness of cooperative threads is a bit subtle but hugely
+consequential.  The placement of yield invocations has a big impact on
+the behavior of the program.  If a program runs too long without
+invoking yield it might become unresponsive.  On the other hand if a
+procedure invokes yield when its caller isn't expecting it, that might
+cause concurrency bugs by violating atomicity assumptions.
+
+The result of this trickiness about yield placement is that applications
+become very brittle.  It's hard to add or remove yields.
+
+- Strength: Programming style more like threads than coroutines.
+- Weakness: Where should the yields go???
 
 ### Functional Reactive Programming
 
-- Functional reactive programming. Wacky.
-  - Strength: Solid formal model.
-  - Weakness: Lots of practical questions; still a research topic.
+![FRP](./frp.png "FRP")
+
+This one is so different from all the rest that it doesn't even fit into
+the same categorization scheme.  A common theme of all the other
+frameworks: _in response to event E, run code C_.  In FRP the whole
+application is a function (a real mathematical function) from the state
+of all the inputs that the program cares about to the state of all the
+outputs that the program controls.
+
+- Strength: Solid formal model.
+- Weakness: Hard open practical questions; still a research topic.
 
 ## Pseudo-Preemptive Threads (Activities)
