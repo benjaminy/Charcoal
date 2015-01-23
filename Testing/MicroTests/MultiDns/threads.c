@@ -1,8 +1,8 @@
 #include <pthread.h>
 #include <errno.h>
 #include <assert.h>
+#include <stdlib.h>
 #include <stdio.h>
-#include <urls.h>
 #include <multi_dns_utils.h>
 
 void launch_one( int idx, pthread_t *thread_handle );
@@ -13,8 +13,8 @@ const char *slow_one;
 
 int main( int argc, char **argv, char **env )
 {
-    int urls_to_get, start_idx;
-    get_cmd_line_args( argc, argv, &urls_to_get, &start_idx );
+    int urls_to_get;
+    get_cmd_line_args( argc, argv, &urls_to_get );
     pthread_t *thread_handles =
         (pthread_t *)malloc( urls_to_get * sizeof(thread_handles[0]) );
 
@@ -23,7 +23,7 @@ int main( int argc, char **argv, char **env )
 
     for( int i = 0; i < urls_to_get; ++i )
     {
-        launch_one( ( i + start_idx ) % NUM_URLs, &thread_handles[i] );
+        launch_one( i, &thread_handles[i] );
     }
 
     for( int i = 0; i < urls_to_get; ++i )
@@ -36,7 +36,7 @@ int main( int argc, char **argv, char **env )
 
 void launch_one( int idx, pthread_t *thread_handle )
 {
-    const char *name = URLs[ idx ];
+    const char *name = pick_name( idx );
     int rc = pthread_create( thread_handle, NULL, get_one, (void *)name );
     if( rc )
     {

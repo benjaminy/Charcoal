@@ -35,7 +35,7 @@ what the "right" framework for building multitasking software is.  In
 this talk we will survey and critique the existing options and introduce
 a new alternative: pseudo-preemptive threads (a.k.a. activities).
 
-[tiny.cc/ff_multitasking_notes](tiny.cc/ff_multitasking_notes)
+[tiny.cc/ff_multitasking](http://tiny.cc/ff_multitasking)
 
 ## Outline:
 
@@ -68,7 +68,7 @@ click counts as "performing a task".)
 |--------------------------------------------------------|-------------------|
 | <span>L<sup style="text-transform: uppercase;font-size: 0.85em;vertical-align: 0.15em; margin-left: -0.36em; margin-right: -0.15em;">a</sup>T<sub style="text-transform: uppercase;font-size:1em">e</sub>X</span> | Word              |
 | Matlab                                                 | Excel             |
-| Adventure                                              | World of Warcraft |
+| Colossal Cave Adventure                                | World of Warcraft |
 | batch                                                  | incremental       |
 
 (A common model at the user interface layer: a single "foreground" task
@@ -142,6 +142,9 @@ All the code for this presentation can be found
 ![Event Loop](./event_loop.png "Event Loop")
 
 Event handling. (~All GUI frameworks; esp. JavaScript)
+
+Most important thing about the code: explicitly split tasks at points
+where the code has to wait for something.
 
 - Strength: Simple.  Great for basic interaction patterns.
 - Weakness: Starvation; "callback hell".

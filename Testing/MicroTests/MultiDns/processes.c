@@ -1,15 +1,15 @@
 #include <errno.h>
 #include <assert.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
-#include <urls.h>
 #include <multi_dns_utils.h>
 
 int error_count = 0;
 
 pid_t get_one( int idx )
 {
-    const char *name = URLs[ idx ];
+    const char *name = pick_name( idx );
     pid_t child = fork();
     if( !child )
     {
@@ -33,14 +33,14 @@ pid_t get_one( int idx )
 
 int main( int argc, char **argv, char **env )
 {
-    int urls_to_get, start_idx;
-    get_cmd_line_args( argc, argv, &urls_to_get, &start_idx );
+    int urls_to_get;
+    get_cmd_line_args( argc, argv, &urls_to_get );
     pid_t *child_handles =
         (pid_t *)malloc( urls_to_get * sizeof(child_handles[0]) );
 
     for( int i = 0; i < urls_to_get; ++i )
     {
-        child_handles[i] = get_one( ( i + start_idx ) % NUM_URLs );
+        child_handles[i] = get_one( i );
     }
     printf( "\nErrors in thread creation? %d\n", error_count );
 

@@ -12,6 +12,9 @@ TARGETS=sequential event_handlers threads processes coroutines
 
 all: $(addprefix $(BUILD_DIR)/, $(TARGETS))
 
+clean:
+	rm $(addprefix $(BUILD_DIR)/, $(TARGETS))
+
 $(BUILD_DIR)/sequential: sequential.c multi_dns_utils.c
 	$(CC) -I. -o $@ $^
 

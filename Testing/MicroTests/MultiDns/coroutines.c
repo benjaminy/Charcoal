@@ -1,7 +1,7 @@
 #include <pcoroutine.h>
 #include <assert.h>
+#include <stdlib.h>
 #include <stdio.h>
-#include <urls.h>
 #include <multi_dns_utils.h>
 
 PCORO_DECL(get_one, p );
@@ -9,20 +9,19 @@ PCORO_DECL(get_one, p );
 int main( int argc, char **argv, char **env )
 {
     PCORO_MAIN_INIT;
-    int urls_to_get, start_idx;
-    get_cmd_line_args( argc, argv, &urls_to_get, &start_idx );
+    int urls_to_get;
+    get_cmd_line_args( argc, argv, &urls_to_get );
     pcoroutine_p coro_handles =
         (pcoroutine_p)malloc( urls_to_get * sizeof(coro_handles[0]) );
 
     for( int i = 0; i < urls_to_get; ++i )
     {
-        int idx = ( i + start_idx ) % NUM_URLs;
         pcoroutine_p coro_handle = &coro_handles[i];
-        const char *name = URLs[ idx ];
+        const char *name = pick_name( i );
         int rc = pcoro_create( coro_handle, NULL, PCORO(get_one), (void *)name );
         if( rc )
         {
-            printf( "Error creating coroutine %d %d %s\n", rc, idx, name );
+            printf( "Error creating coroutine %d %d %s\n", rc, i, name );
             ++dns_error_count;
         }
     }

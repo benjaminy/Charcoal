@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <urls.h>
 #include <multi_dns_utils.h>
 
 int dns_error_count;
@@ -18,7 +19,9 @@ void print_dns_info( const char *name, struct addrinfo *info )
     printf( "%20s %20s: %p\n", name, "next",      info->ai_next );
 }
 
-void get_cmd_line_args( int argc, char **argv, int *urls, int *idx )
+static int start_idx;
+
+void get_cmd_line_args( int argc, char **argv, int *urls )
 {
     hints.ai_family   = PF_INET;
     hints.ai_socktype = SOCK_STREAM;
@@ -26,12 +29,12 @@ void get_cmd_line_args( int argc, char **argv, int *urls, int *idx )
     hints.ai_flags    = 0;
 
     *urls = DEFAULT_URLS_TO_GET;
-    *idx  = DEFAULT_START_IDX;
+    start_idx  = DEFAULT_START_IDX;
     if( argc > 1 )
     {
-        *idx = strtol( argv[ 1 ], NULL, 10 );
-        if( *idx < 0 )
-            *idx = 0;
+        start_idx = strtol( argv[ 1 ], NULL, 10 );
+        if( start_idx < 0 )
+            start_idx = 0;
     }
     if( argc > 2 )
     {
@@ -41,3 +44,7 @@ void get_cmd_line_args( int argc, char **argv, int *urls, int *idx )
     }
 }
 
+const char *pick_name( int idx )
+{
+    return URLs[ ( idx + start_idx ) % NUM_URLs ];
+}
