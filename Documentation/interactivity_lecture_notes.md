@@ -63,12 +63,10 @@ click counts as "performing a task".)
 
 ### Examples of interactive software:
 
-<link href="./latex.css" type="text/css" rel="stylesheet"></link>
-
 
 | Less Interactive                                       | More Interactive  |
 |--------------------------------------------------------|-------------------|
-| <span class="latex">L<sup>a</sup>T<sub>e</sub>X</span> | Word              |
+| <span>L<sup style="text-transform: uppercase;font-size: 0.85em;vertical-align: 0.15em; margin-left: -0.36em; margin-right: -0.15em;">a</sup>T<sub style="text-transform: uppercase;font-size:1em">e</sub>X</span> | Word              |
 | Matlab                                                 | Excel             |
 | Adventure                                              | World of Warcraft |
 | batch                                                  | incremental       |
