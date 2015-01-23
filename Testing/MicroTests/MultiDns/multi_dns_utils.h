@@ -1,3 +1,5 @@
+#include <unistd.h>
+#include <string.h>
 #include <netdb.h>
 
 static const int DEFAULT_URLS_TO_GET = 10;

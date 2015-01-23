@@ -37,6 +37,7 @@ int main( int argc, char **argv, char **env )
     get_cmd_line_args( argc, argv, &urls_to_get, &start_idx );
     pid_t *child_handles =
         (pid_t *)malloc( urls_to_get * sizeof(child_handles[0]) );
+
     for( int i = 0; i < urls_to_get; ++i )
     {
         child_handles[i] = get_one( ( i + start_idx ) % NUM_URLs );

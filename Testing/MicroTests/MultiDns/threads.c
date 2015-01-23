@@ -9,12 +9,17 @@ void launch_one( int idx, pthread_t *thread_handle );
 void *get_one( void *p );
 void wait_one( pthread_t thread_handle );
 
+const char *slow_one;
+
 int main( int argc, char **argv, char **env )
 {
     int urls_to_get, start_idx;
     get_cmd_line_args( argc, argv, &urls_to_get, &start_idx );
     pthread_t *thread_handles =
         (pthread_t *)malloc( urls_to_get * sizeof(thread_handles[0]) );
+
+    slow_one = "";
+    // slow_one = URLs[ ( 3 + start_idx ) % NUM_URLs ];
 
     for( int i = 0; i < urls_to_get; ++i )
     {
@@ -43,6 +48,10 @@ void launch_one( int idx, pthread_t *thread_handle )
 void *get_one( void *p )
 {
     const char *name = (const char *)p;
+    if( !strcmp( name, slow_one ) )
+    {
+        sleep( 3 );
+    }
     struct addrinfo *info;
     int rc = getaddrinfo( name, NULL, NULL, &info );
     if( !rc )

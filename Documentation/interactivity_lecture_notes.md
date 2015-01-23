@@ -63,16 +63,21 @@ click counts as "performing a task".)
 
 ### Examples of interactive software:
 
-- Anything with a graphical user interface
-- Anything that talks to a network
-- Embedded systems (e.g. self-driving cars)
-- Pipelines/phases (e.g. parsing a large log file)
+<link href="latex.css" type="text/css" rel="stylesheet"></link>
+
+
+| Less Interactive                                       | More Interactive  |
+|--------------------------------------------------------|-------------------|
+| <span class="latex">L<sup>a</sup>T<sub>e</sub>X</span> | Word              |
+| Matlab                                                 | Excel             |
+| Adventure                                              | World of Warcraft |
+| batch                                                  | incremental       |
 
 (A common model at the user interface layer: a single "foreground" task
 and any number of "background" tasks.)
 
-Quick historical perspective: Three eras of interactivity in
-(mainstream) computing.
+Historical perspective: Three eras of interactivity in (mainstream)
+computing.
 
 - -&infin; &rarr; ~1980: __Mainstream software sequential; early
   multitasking research__.  The first substantial interactive software
@@ -147,16 +152,17 @@ Event handling. (~All GUI frameworks; esp. JavaScript)
 
 ![Threads](./threads.png "Threads")
 
--  Threads. (~All systems; interestingly not JavaScript)
-  - Strength: Write each task using non-interactive control flow.
-  - Weakness: Concurrency bugs galore (races, deadlocks, etc.).
+ Threads. (~All systems; interestingly not JavaScript)
 
-### Interlude #1: The Desktop Era Concensus
+- Strength: Write each task using non-interactive control flow.
+- Weakness: Concurrency bugs galore (races, deadlocks, etc.).
+
+### Interlude #1: The Desktop Era Consensus
 
 First claim: In the desktop era event handlers (and a couple threads)
-was a good enough model.  In the web-and-mobile era the concensus around
+was a good enough model.  In the web-and-mobile era the consensus around
 that model is eroding and we have seen renewed interest in coroutines.
-But coroutines are no panecea.  I am working on a new framework called
+But coroutines are no panacea.  I am working on a new framework called
 "pseudo-preemptive threads" (or "activities" for people who prefer fewer
 syllables).
 
@@ -181,17 +187,25 @@ threads, but they're really much more like processes.
 
 ![Coroutines](./coroutines.png "Coroutines")
 
-- Coroutines. (.NET async/await, JavaScript generators/promises)
-  - Strength: A sliver of threads' natural control flow.
-  - Weakness: Same as event handlers; just pushed back a bit.
+Recent implementations:
 
-  - .NET async/await
-  - JavaScript generators/promises
+- .NET async/await
+- JavaScript generators
+
+Coroutines are kind of like threads, except only one coroutine can run
+at a time.  Switching from one coroutine to another happens explicitly
+with yield/wait invocations.  The weirdest feature of coroutine
+frameworks is that the programmer has to explicitly partition methods
+into regular methods and coroutines.  Yield/wait can only be invoked
+from coroutines, not regular methods.
+
+- Strength: A sliver of threads' natural control flow.
+- Weakness: Same as event handlers; just pushed back a bit.
 
 ### Cooperative Threads
 
 Syntactically cooperative threading implementations usually look very
-much like regular (preemptive) threads.  However, ther behave more like
+much like regular (preemptive) threads.  However, they behave more like
 coroutines.  Like coroutines, the active cooperative thread cannot be
 interrupted except by explicitly yielding control.  Unlike coroutines,
 any procedure is allowed to invoke yield/wait.
@@ -224,3 +238,15 @@ outputs that the program controls.
 - Weakness: Hard open practical questions; still a research topic.
 
 ## Pseudo-Preemptive Threads (Activities)
+
+Activities are my own invention.  They are a very early-stage research
+project.  They are are non-parallel framework that is yet closer to
+regular threads.  Activities are like cooperative threads, but the
+language implementation implicitly inserts yields in every loop in the
+program.
+
+Doesn't frequent implicit yielding imply exactly the same problems that
+threads.  No!
+
+- There are no data races with activities.
+- Any block of code can easily be made atomic with unyielding.

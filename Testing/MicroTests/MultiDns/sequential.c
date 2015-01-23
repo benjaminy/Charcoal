@@ -12,6 +12,10 @@ int main( int argc, char **argv, char **env )
 
     for( int i = 0; i < urls_to_get; ++i )
     {
+        if( i == 3 )
+        {
+            // sleep( 3 );
+        }
         get_one( ( i + start_idx ) % NUM_URLs );
     }
 
