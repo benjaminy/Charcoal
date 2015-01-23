@@ -63,7 +63,7 @@ click counts as "performing a task".)
 
 ### Examples of interactive software:
 
-<link href="latex.css" type="text/css" rel="stylesheet"></link>
+<link href="./latex.css" type="text/css" rel="stylesheet"></link>
 
 
 | Less Interactive                                       | More Interactive  |
