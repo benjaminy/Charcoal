@@ -17,8 +17,8 @@ int main( int argc, char **argv, char **env )
     uv_getaddrinfo_t *resolvers =
         (uv_getaddrinfo_t *)malloc( urls_to_get * sizeof(resolvers[0]) );
 
-    slow_one = NULL;
-    // slow_one = &resolvers[3];
+    // slow_one = NULL;
+    slow_one = &resolvers[3];
 
     for( int i = 0; i < urls_to_get; ++i )
     {

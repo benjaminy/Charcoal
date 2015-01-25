@@ -18,8 +18,8 @@ int main( int argc, char **argv, char **env )
     pthread_t *thread_handles =
         (pthread_t *)malloc( urls_to_get * sizeof(thread_handles[0]) );
 
-    slow_one = "";
-    // slow_one = URLs[ ( 3 + start_idx ) % NUM_URLs ];
+    // slow_one = "";
+    slow_one = pick_name( 3 );
 
     for( int i = 0; i < urls_to_get; ++i )
     {

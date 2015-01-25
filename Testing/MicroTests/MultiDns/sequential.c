@@ -13,7 +13,7 @@ int main( int argc, char **argv, char **env )
     {
         if( i == 3 )
         {
-            // sleep( 3 );
+            sleep( 3 );
         }
         get_one( i );
     }
