@@ -30,17 +30,26 @@
 
 static crcl(thread_t) *crcl(threads);
 static pthread_key_t crcl(self_key);
-static timer_t crcl(heartbeat_timer);
+// XXX static timer_t crcl(heartbeat_timer);
+static int crcl(heartbeat_timer);
 
 activity_t *crcl(get_self_activity)( void )
 {
     return (activity_t *)pthread_getspecific( crcl(self_key) );
 }
 
+void crcl(stack_monster)( crcl(frame_p) the_frame )
+{
+    while( the_frame )
+    {
+        the_frame = the_frame->fn( the_frame );
+    }
+}
+
 static int crcl(start_stop_heartbeat)( int start )
 {
     /* XXX I think 'its' can be stack alloc'ed.  Check this. */
-    struct itimerspec its;
+    // struct itimerspec its;
     /* XXX Think about what the interval should be. */
     long long freq_nanosecs;
     if( start )
@@ -51,12 +60,12 @@ static int crcl(start_stop_heartbeat)( int start )
     {
         freq_nanosecs = 0;
     }
-    its.it_value.tv_sec     = freq_nanosecs / 1000000000;
-    its.it_value.tv_nsec    = freq_nanosecs % 1000000000;
-    its.it_interval.tv_sec  = its.it_value.tv_sec;
-    its.it_interval.tv_nsec = its.it_value.tv_nsec;
+    // its.it_value.tv_sec     = freq_nanosecs / 1000000000;
+    // its.it_value.tv_nsec    = freq_nanosecs % 1000000000;
+    // its.it_interval.tv_sec  = its.it_value.tv_sec;
+    // its.it_interval.tv_nsec = its.it_value.tv_nsec;
 
-    RET_IF_ERROR( timer_settime( crcl(heartbeat_timer), 0, &its, NULL ) );
+    // RET_IF_ERROR( timer_settime( crcl(heartbeat_timer), 0, &its, NULL ) );
     return 0;
 }
 
@@ -123,7 +132,8 @@ static void crcl(activity_start_resume)( activity_t *self )
     /* XXX: start heartbeat if runnable > 1 */
     ABORT_ON_FAIL( uv_async_send( &crcl(io_cmd) ) );
     assert( !pthread_setspecific( crcl(self_key), self ) );
-    alarm((int) self->container->max_time);
+    // XXX don't think we're using alarm anymore
+    // XXX alarm((int) self->container->max_time);
     // crcl(atomic_store_int)(&self->container->timeout, 0);
     self->yield_attempts = 0;
     /* XXX: Lots to fix here. */
@@ -292,11 +302,17 @@ int crcl(activity_blocked)( activity_t *self )
     activity_t *to = crcl(pop_special_queue)(
         CRCL(ACTF_READY_QUEUE), thd, NULL );
     RET_IF_ERROR( pthread_mutex_unlock( &thd->thd_management_mtx ) );
+#if __CHARCOAL_ACTIVITY_IMPL == __CHARCOAL_IMPL_SETCONTEXT
     if( !setjmp( self->jmp ) )
     {
         crcl(activity_start_resume)( to );
         _longjmp( to->jmp, 1 );
     }
+#elif __CHARCOAL_ACTIVITY_IMPL == __CHARCOAL_IMPL_COROUTINE
+    sdf
+#else
+        sdf
+#endif
     return 0;
 }
 
@@ -338,6 +354,24 @@ void crcl(switch_to)( activity_t *act )
 }
 
 void yield(){
+#if 0
+    // XXX new idea: Counters
+    //
+    // The other idea requires performing a thread local read, _then_ an
+    // atomic read on the pointer that comes back from that.  This idea
+    // has a thread-local read and an atomic read as well, but they're
+    // in parallel.  Might make a big difference.  Or it might not.
+    // Maybe do an experiment some day.
+
+    activity_t *self = crcl(get_self_activity)();
+    size_t current_yield_tick = crcl(atomic_load_size_t)( crcl(yield_ticker) );
+    ssize_t diff = self->interrupt_tick - current_yield_tick;
+    if( diff < 0 )
+    {
+        ...
+    }
+    
+#endif
     activity_t *self = crcl(get_self_activity)();
 
     /* XXX DEBUG foo->yield_attempts++; */
@@ -498,7 +532,8 @@ int crcl(activate_in_thread)(crcl(thread_t) *thd, activity_t *act,
     act->container = thd;
     act->yield_attempts = 0;
     act->snext = act->sprev = act->joining = NULL;
-    alarm((int) act->container->max_time);
+    // XXX don't think we're using alarm anymore
+    // XXX alarm((int) act->container->max_time);
     crcl(atomic_store_int)(&(act->container->timeout), 0);
     pthread_mutex_lock( &thd->thd_management_mtx );
     crcl(insert_activity_into_thread)( act, thd );
@@ -690,8 +725,8 @@ static int crcl(create_thread)(
     thd->timer_req.data = thd;
     /* XXX Does timer_init have to be called from the I/O thread? */
     uv_timer_init( crcl(io_loop), &thd->timer_req );
-    thd->start_time = 0.0;
-    thd->max_time = 0.0;
+    // XXX thd->start_time = 0.0;
+    // XXX thd->max_time = 0.0;
 
     RET_IF_ERROR( pthread_mutex_init( &thd->thd_management_mtx, NULL /* XXX attrs? */ ) );
     RET_IF_ERROR( pthread_cond_init( &thd->thd_management_cond, NULL /* XXX attrs? */ ) );
@@ -761,7 +796,7 @@ static int crcl(create_thread)(
  * threads with more than one ready (or running) activity. */
 static void crcl(yield_heartbeat)( int sig, siginfo_t *info, void *uc )
 {
-    if( sig != SIG )
+    if( sig != 0 /*XXX SIG*/ )
     {
         /* XXX Very weird */
         exit( sig );
@@ -790,14 +825,14 @@ static int crcl(init_yield_heartbeat)()
     sa.sa_flags     = SA_SIGINFO;
     sa.sa_sigaction = crcl(yield_heartbeat);
     sigemptyset( &sa.sa_mask );
-    RET_IF_ERROR( sigaction( SIG, &sa, NULL ) );
+    RET_IF_ERROR( sigaction( 0 /*SIG*/, &sa, NULL ) );
 
     /* Create the timer */
     struct sigevent sev;
     sev.sigev_notify = SIGEV_SIGNAL;
-    sev.sigev_signo  = SIG;
+    sev.sigev_signo  = 0 /*XXX SIG*/;
     sev.sigev_value.sival_ptr = &crcl(threads);
-    RET_IF_ERROR( timer_create( CLOCKID, &sev, &crcl(heartbeat_timer) ) );
+    RET_IF_ERROR( timer_create( 0 /*CLOCKID*/, &sev, &crcl(heartbeat_timer) ) );
 
     /* printf( "timer ID is 0x%lx\n", (long) crcl(heartbeat_timer) ); */
     return 0;
@@ -865,7 +900,12 @@ static void crcl(main_activity_entry)( void *p )
  * lovely if we could "embed" libuv's event loop in the yield logic.
  * Unfortunately, libuv embedding is not totally solidified yet.  So
  * we're going to have a separate thread for running the I/O event
- * loop.  Eventually we should be able to get rid of that. */
+ * loop.  Eventually we should be able to get rid of that.
+ * ... On the other hand, having a separate thread for the event loop
+ * means that we can do the heartbeat timer there and not have to worry
+ * about signal handling junk.  Seems like that might be a nicer way to
+ * go for many systems.  In the long term, probably should support
+ * both. */
 int main( int argc, char **argv, char **env )
 {
     printf( "PTHREAD_STACK_MIN: %d\n", PTHREAD_STACK_MIN );
