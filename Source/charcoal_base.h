@@ -12,7 +12,9 @@
 #define RET_IF_ERROR(cmd) \
     do { int rc; if( ( rc = cmd ) ) { return rc; } } while( 0 )
 
-typedef struct crcl(thread_t)   crcl(thread_t);
-typedef struct activity_t activity_t;
+/* XXX super annoying name collision on thread_t with Mach header.
+ * Look into it more some day. */
+typedef struct  cthread_t  cthread_t,   *thread_p;
+typedef struct activity_t activity_t, *activity_p;
 
 #endif /* __CHARCOAL_BASE */
