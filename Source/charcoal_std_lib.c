@@ -145,7 +145,7 @@ int release( mutex m )
 /* XXX the semaphore implementation is not thread-safe yet.  Fix
  * eventually. */
 
-int semaphore_open( semaphore_t *s, unsigned i )
+int semaphore_open( semaphore_p s, unsigned i )
 {
     if( !s )
     {
@@ -156,7 +156,7 @@ int semaphore_open( semaphore_t *s, unsigned i )
     return 0;
 }
 
-int semaphore_close( semaphore_t *s )
+int semaphore_close( semaphore_p s )
 {
     if( !s )
     {
@@ -169,7 +169,7 @@ int semaphore_close( semaphore_t *s )
     return 0;
 }
 
-int semaphore_incr( semaphore_t *s )
+int semaphore_incr( semaphore_p s )
 {
     if( !s )
     {
@@ -186,7 +186,7 @@ int semaphore_incr( semaphore_t *s )
     return 0;
 }
 
-int semaphore_decr( semaphore_t *s )
+int semaphore_decr( semaphore_p s )
 {
     if( !s )
     {
@@ -215,7 +215,7 @@ int semaphore_decr( semaphore_t *s )
     return 0;
 }
 
-int semaphore_try_decr( semaphore_t *s )
+int semaphore_try_decr( semaphore_p s )
 {
     if( !s )
     {
@@ -268,7 +268,7 @@ int getaddrinfo_crcl(
 }
 
 #if 0
-void sem_inc( semaphore *s )
+void sem_inc( semaphore_p s )
 {
     if( pseudo_multithreaded_check(
             __crcl_atomic_int *iptr, __crcl_atomic_ptr *ptr, void *thread ) )

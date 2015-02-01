@@ -6,6 +6,9 @@
 
 /* Using the C11 API where appropriate */
 
+/* Here's a weird idea. The thread creation API makes an "empty"
+ * thread.  To use it, you have to move activities into it. */
+
 #if 0
 /* Thread and activity types */
 typedef struct *thread_t;
@@ -26,7 +29,8 @@ _Noreturn void thrd_exit( int res );
 int thrd_detach( thrd_t thr );
 int thrd_join( thrd_t thr, int *res );
 #endif
-typedef struct semaphore_t semaphore_t;
+/* XXX name colision with semaphore_t in Mach */
+typedef struct semaphore_t semaphore_t, *semaphore_p;
 
 struct semaphore_t
 {
@@ -34,11 +38,11 @@ struct semaphore_t
     activity_t *waiters;
 };
 
-int semaphore_open    ( semaphore_t *s, unsigned i );
-int semaphore_close   ( semaphore_t *s );
-int semaphore_incr    ( semaphore_t *s );
-int semaphore_decr    ( semaphore_t *s );
-int semaphore_try_decr( semaphore_t *s );
+int semaphore_open    ( semaphore_p s, unsigned i );
+int semaphore_close   ( semaphore_p s );
+int semaphore_incr    ( semaphore_p s );
+int semaphore_decr    ( semaphore_p s );
+int semaphorery_decr( semaphore_p s );
 
 int getaddrinfo_crcl(
     const char *node,
