@@ -6,6 +6,10 @@
  * not supported in OS-X, which is why this library exists.  In the
  * future it should be changed to trivial wrappers for the system's
  * anonymous semaphores, if they exist.
+ *
+ * This is different from the standard library semaphore because that
+ * deals with activities in a smart way.  This is just a plain
+ * multithreading seamphore.
  */
 
 #include <pthread.h>
