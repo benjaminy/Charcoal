@@ -36,12 +36,12 @@ The current Charcoal implementation consists of three pieces:
 <p>
 The target of the translation is plain C.  In principle the Charcoal
 compiler could generate machine code (or some intermediate code like
-LLVM), but there is nothing particularly unusual about code generation
-for Charcoal.  During the translation, calls to some special runtime
-system procedures are added so compiled Charcoal applications needs to
-be linked with the Charcoal runtime.  Finally, Charcoal code can call
-regular C libraries, but we provide slightly tweaked versions that are
-better organized for interactive software.
+LLVM), but code generation is not the focus of this project.  During the
+translation, calls to some special runtime system procedures are added
+so compiled Charcoal applications needs to be linked with the Charcoal
+runtime.  Finally, some of the Charcoal standard library is trivial
+wrappers around the C standard library; some of it is a little bit more
+involved.
 </p>
 
 <p>
@@ -226,8 +226,8 @@ return very quickly, but might not actually acquire the mutex.
 
 </div> <!-- Hybrid heap/stack -->
 
-<div class="hblock4">
-<h4>Implementing procedure calls in Charcoal</h4>
+<div class="hblock3">
+<h3>Implementing procedure calls in Charcoal</h3>
 
 <p>
 The compiler automatically translates procedures in to a
@@ -235,6 +235,55 @@ The compiler automatically translates procedures in to a
 transformation as a "finite state machine", which seems like an odd use
 of that term to me, but whatever.
 </p>
+
+int foo( int a, int b )
+{
+    // S1
+    // S2
+}
+
+struct __charcoal_foo_locals
+{
+    int a, b;
+    // ...
+}
+
+__charcoal_frame *_charcoal_foo_init( __charcoal_frame *prev, int a, int b )
+{
+    __charcoal_frame *f = (__charcoal_frame *)malloc( sizeof( f[0] ) + ... );
+    f->fn = __charcoal_foo_yielding;
+    f->goto_address = NULL;
+    f->caller = prev;
+    prev->callee = f;
+    f->callee = NULL;
+    struct __charcoal_foo_locals *locals = &f->locals;
+    locals->a = a;
+    locals->b = b;
+}
+
+__charcoal_frame *__charcoal_foo_yielding( __charcoal_frame *f )
+{
+    struct __charcoal_foo_locals *locals = &f->locals;
+    if( f->goto_address )
+        goto f->goto_address;
+    // S1 (replace LOC with locals->LOC)
+    // S2
+}
+
+    ...
+    x = foo( y, z );
+    ...
+
+    ...
+    f->goto_address = &__charcoal_after_call;
+    return __charcoal_foo_init( f, y, z );
+    __charcoal_after_call:
+    x = (cast?)f->next->return_value;
+    free( f->callee );
+    f->callee = NULL; /* unnecessary? good for debugging at least */
+    ...
+
+
 
 </div> <!-- Call protocol implementation -->
 
