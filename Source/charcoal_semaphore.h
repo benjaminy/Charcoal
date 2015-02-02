@@ -12,16 +12,14 @@
  * multithreading seamphore.
  */
 
-#include <pthread.h>
-
 /* This struct is defined concretely so that client code can get the
  * proper size for allocation.  Should be treated as abstract. */
 typedef struct
 {
-    int             value;
-    pthread_mutex_t m;
-    pthread_cond_t  c;
-    unsigned int    waiters;
+    int          value;
+    uv_mutex_t   m;
+    uv_cond_t    c;
+    unsigned int waiters;
 } crcl(sem_t);
 
 extern int foo;

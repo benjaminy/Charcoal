@@ -68,10 +68,10 @@ static int crcl(wake_up_requester)( activity_t *a )
 {
     a->flags &= ~CRCL(ACTF_BLOCKED);
     crcl(thread_t) *thd = a->container;
-    RET_IF_ERROR( pthread_mutex_lock( &thd->thd_management_mtx ) );
+    uv_mutex_lock( &thd->thd_management_mtx );
     crcl(push_special_queue)( CRCL(ACTF_READY_QUEUE), a, thd, NULL );
-    RET_IF_ERROR( pthread_mutex_unlock( &thd->thd_management_mtx ) );
-    RET_IF_ERROR( pthread_cond_signal( &thd->thd_management_cond ) );
+    uv_mutex_unlock( &thd->thd_management_mtx );
+    uv_cond_signal( &thd->thd_management_cond );
     return 0;
 }
 

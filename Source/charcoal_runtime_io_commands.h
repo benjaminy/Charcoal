@@ -1,7 +1,7 @@
 #ifndef __CHARCOAL_RUNTIME_IO_COMMANDS
 #define __CHARCOAL_RUNTIME_IO_COMMANDS
 
-#include <charcoal_runtime.h>
+#include <charcoal_runtime_common.h>
 
 extern uv_loop_t *crcl(io_loop);
 extern uv_async_t crcl(io_cmd);
@@ -22,7 +22,7 @@ struct crcl(io_cmd_t)
     activity_t *activity;
     union
     {
-        crcl(thread_t) *thread;
+        cthread_p thread;
         struct
         {
             uv_getaddrinfo_t *resolver;

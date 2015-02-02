@@ -14,7 +14,7 @@
 
 /* XXX super annoying name collision on thread_t with Mach header.
  * Look into it more some day. */
-typedef struct  cthread_t  cthread_t,   *thread_p;
+typedef struct  cthread_t  cthread_t,  *cthread_p;
 typedef struct activity_t activity_t, *activity_p;
 
 #endif /* __CHARCOAL_BASE */
