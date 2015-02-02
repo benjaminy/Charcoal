@@ -111,7 +111,7 @@ int main( int argc, char **argv )
     f->status = CORO_CALL;
     f->prev = NULL;
     f->return_val_ptr = &return_val;
-    f->fn = f33;
+    f->fn = f25;
     while( f )
     {
         frame next = f->fn( f );
