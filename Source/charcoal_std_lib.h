@@ -1,7 +1,7 @@
 #ifndef __CHARCOAL_STD_LIB_H
 #define __CHARCOAL_STD_LIB_H
 
-#include <charcoal_runtime.h>
+#include <charcoal_runtime_coroutine.h>
 #include <netdb.h>
 
 /* Using the C11 API where appropriate */
@@ -30,9 +30,9 @@ int thrd_detach( thrd_t thr );
 int thrd_join( thrd_t thr, int *res );
 #endif
 /* XXX name colision with semaphore_t in Mach */
-typedef struct semaphore_t semaphore_t, *semaphore_p;
+typedef struct csemaphore_t csemaphore_t, *semaphore_p;
 
-struct semaphore_t
+struct csemaphore_t
 {
     unsigned value;
     activity_t *waiters;

@@ -1,8 +1,9 @@
-#include <charcoal_base.h>
+#include <assert.h>
+#include <charcoal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <charcoal_runtime_io_commands.h>
-#include <charcoal_runtime.h>
+#include <charcoal_runtime_coroutine.h>
 
 uv_loop_t *crcl(io_loop);
 uv_async_t crcl(io_cmd);
@@ -67,7 +68,7 @@ static void crcl(io_cmd_close)( uv_handle_t *h )
 static int crcl(wake_up_requester)( activity_t *a )
 {
     a->flags &= ~CRCL(ACTF_BLOCKED);
-    crcl(thread_t) *thd = a->container;
+    cthread_p thd = a->thread;
     uv_mutex_lock( &thd->thd_management_mtx );
     crcl(push_special_queue)( CRCL(ACTF_READY_QUEUE), a, thd, NULL );
     uv_mutex_unlock( &thd->thd_management_mtx );
@@ -100,7 +101,7 @@ void crcl(io_cmd_cb)( uv_async_t *handle, int status /*UNUSED*/ )
         {
         case CRCL(IO_CMD_START):
             /* XXX this should go in the start_resume function */
-            uv_timer_start( &cmd.activity->container->timer_req,
+            uv_timer_start( &cmd.activity->thread->timer_req,
                             the_thing, 5000, 2000);
             break;
         case CRCL(IO_CMD_JOIN_THREAD):
@@ -137,3 +138,34 @@ void crcl(io_cmd_cb)( uv_async_t *handle, int status /*UNUSED*/ )
     }
 }
 
+/*
+ * The initial thread that exists when a Charcoal program starts will
+ * be the I/O thread.  Before it starts its I/O duties it launches
+ * another thread that will call the application's main procedure.
+ */
+int crcl(init_io_loop)( cthread_p t, activity_p a )
+{
+    crcl(threads) = t;
+
+    RET_IF_ERROR(
+        pthread_key_create( &crcl(self_key), NULL /* XXX destructor */ ) );
+
+    /* Most of the thread and activity fields are not relevant to the I/O thread */
+    t->activities     = a;
+    t->ready          = NULL;
+    t->next           = crcl(threads);
+    t->prev           = crcl(threads);
+    /* XXX Not sure about the types of self: */
+    // XXX t->sys            = uv_thread_self();
+    a->thread         = t;
+
+    crcl(io_loop) = uv_default_loop();
+    RET_IF_ERROR(
+        uv_async_init( crcl(io_loop), &crcl(io_cmd), crcl(io_cmd_cb) ) );
+
+    crcl(cmd_queue).front = NULL;
+    crcl(cmd_queue).back = NULL;
+    assert( !uv_mutex_init( &crcl(cmd_queue).mtx ) );
+
+    return 0;
+}

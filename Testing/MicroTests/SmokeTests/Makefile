@@ -15,6 +15,12 @@ clean:
 
 include $(CRCL_ROOT)/Testing/cil_rules.mk
 
+
+hello_world_coroutine_manual: $(BUILD_DIR)/hello_world_coroutine_manual
+
+$(BUILD_DIR)/hello_world_coroutine_manual: hello_world_coroutine_manual.c
+	$(CC) -o $@ $(FLAGS) $< $(LIBUV_FLAGS)
+
 $(BUILD_DIR)/hello_world_crcl: $(BUILD_DIR)/hello_world$(CIL_C_EXT)
 	$(CC) -o $(BUILD_DIR)/hello_world_crcl $(FLAGS) $< $(LIBUV_FLAGS)
 

@@ -1,6 +1,8 @@
 #ifndef __CHARCOAL_SEMAPHORE
 #define __CHARCOAL_SEMAPHORE
 
+#include <charcoal_runtime_common.h>
+
 /*
  * A simple little semaphore library.  Anonymous POSIX semaphores are
  * not supported in OS-X, which is why this library exists.  In the

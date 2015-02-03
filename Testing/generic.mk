@@ -33,4 +33,5 @@ CC=gcc
 INCLUDE_DIRS = -I$(CRCL_ROOT)/Install/include -I$(CRCL_ROOT)/ThirdParty/OpenPA/Releases/1.0.4/Install/include -I$(CRCL_ROOT)/ThirdParty/libuv/Releases/0.10.25/include
 LIB_DIRS =  -L$(CRCL_ROOT)/Install/lib
 # FLAGS = $(INCLUDE_DIRS) $(LIB_DIRS) -lcharcoal_sys -lpthread -pg -lrt
-FLAGS = -g $(INCLUDE_DIRS) $(LIB_DIRS) -lcharcoal_sys -lpthread -lrt
+# FLAGS = -g $(INCLUDE_DIRS) $(LIB_DIRS) -lcharcoal_sys -lpthread -lrt
+FLAGS = -g $(INCLUDE_DIRS) $(LIB_DIRS) -lcharcoal_sys

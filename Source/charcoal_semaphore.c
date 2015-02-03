@@ -1,6 +1,6 @@
 /* XXX Unresolved: use errno or return value for error code? */
 
-#include<charcoal_base.h>
+#include<charcoal.h>
 #include<charcoal_semaphore.h>
 #include<stdlib.h>
 #include<errno.h>
@@ -12,11 +12,11 @@ int crcl(sem_init)( crcl(sem_t) *s, int pshared, unsigned int value )
         return EINVAL;
     }
     int rc;
-    if( ( rc = uv_mutex_init( &s->m, NULL ) ) )
+    if( ( rc = uv_mutex_init( &s->m ) ) )
     {
         return rc;
     }
-    if( ( rc = uv_cond_init( &s->c, NULL ) ) )
+    if( ( rc = uv_cond_init( &s->c ) ) )
     {
         return rc;
     }
@@ -31,15 +31,8 @@ int crcl(sem_destroy)( crcl(sem_t) *s )
     {
         return EINVAL;
     }
-    int rc;
-    if( ( rc = uv_mutex_destroy( &s->m ) ) )
-    {
-        return rc;
-    }
-    if( ( rc = uv_cond_destroy( &s->c ) ) )
-    {
-        return rc;
-    }
+    uv_mutex_destroy( &s->m );
+    uv_cond_destroy( &s->c );
     if( s->waiters )
     {
         /* Destroying a semaphore while someone is still waiting on
@@ -56,7 +49,6 @@ int crcl(sem_get_value)( crcl(sem_t) * __restrict s, int * __restrict vp )
     {
         return EINVAL;
     }
-    int rc;
     uv_mutex_lock( &s->m );
     *vp = s->value;
     uv_mutex_unlock( &s->m );
@@ -70,7 +62,6 @@ int crcl(sem_incr)( crcl(sem_t) *s )
         return EINVAL;
     }
     unsigned waiters = 0;
-    int rc;
     uv_mutex_lock( &s->m );
     unsigned old_val = s->value;
     ++s->value;
@@ -124,5 +115,5 @@ int crcl(sem_decr)( crcl(sem_t) *s )
     }
     --s->value;
     uv_mutex_unlock( &s->m );
-    return 0
+    return 0;
 }

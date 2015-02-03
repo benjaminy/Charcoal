@@ -1,7 +1,8 @@
-#include <charcoal_base.h>
+#include <charcoal.h>
 #include <charcoal_std_lib.h>
 #include <errno.h>
 #include <stdlib.h>
+#include <charcoal_runtime_io_commands.h>
 
 /*
  * TetraStak
@@ -181,7 +182,7 @@ int semaphore_incr( semaphore_p s )
         activity_t *a = crcl(pop_special_queue)(
             CRCL(ACTF_BLOCKED), NULL, &s->waiters );
         crcl(push_special_queue)(
-            CRCL(ACTF_READY_QUEUE), a, a->container, NULL );
+            CRCL(ACTF_READY_QUEUE), a, a->thread, NULL );
     }
     return 0;
 }
@@ -210,7 +211,7 @@ int semaphore_decr( semaphore_p s )
         activity_t *a = crcl(pop_special_queue)(
             CRCL(ACTF_BLOCKED), NULL, &s->waiters );
         crcl(push_special_queue)(
-            CRCL(ACTF_READY_QUEUE), a, a->container, NULL );
+            CRCL(ACTF_READY_QUEUE), a, a->thread, NULL );
     }
     return 0;
 }

@@ -1,26 +1,26 @@
 #ifndef __CHARCOAL_RUNTIME_COROUTINE
 #define __CHARCOAL_RUNTIME_COROUTINE
 
-#include <uv.h>
 #include <charcoal_runtime_common.h>
 #include <charcoal_runtime_atomics.h>
 #include <charcoal_semaphore.h>
+#include <stdlib.h>
 
 typedef struct crcl(frame_t) crcl(frame_t), *crcl(frame_p);
 
 struct cthread_t
 {
     /* atomic */ size_t tick;
-    uv_thread_t sys;
-    crcl(atomic_int) unyield_depth, keep_going;
-    uv_timer_t timer_req;
-    activity_p activities, ready;
-    uv_mutex_t thd_management_mtx;
-    uv_cond_t thd_management_cond;
-    unsigned flags;
-    unsigned runnable_activities;
+    unsigned            flags;
+    uv_thread_t         sys;
+    crcl(atomic_int)    unyield_depth, keep_going;
+    uv_timer_t          timer_req;
+    activity_p          activities, ready;
+    uv_mutex_t          thd_management_mtx;
+    uv_cond_t           thd_management_cond;
+    unsigned            runnable_activities;
     /* Linked list of all threads */
-    cthread_p next, prev;
+    cthread_p           next, prev;
 };
 
 struct crcl(frame_t)
@@ -80,12 +80,11 @@ struct crcl(coroutine_fn_ptr_generic)
     };
 
 
-#define __CHARCOAL_GENERIC_INIT(locals_size) \
+#define __CHARCOAL_GENERIC_INIT(locals_size, f, name)        \
     do { \
         size_t ls = locals_size; \
-        __charcoal_frame *f = (__charcoal_frame *)malloc( \
-            sizeof( f[0] ) + ls ); \
-        f->fn = crcl(YYY_yielding); \
+        f = (__charcoal_frame_p)malloc( sizeof( f[0] ) + ls ); \
+        f->fn = crcl(fn_##name##_yielding); \
         f->goto_address = NULL; \
         f->caller = caller; \
         f->activity = NULL; \
