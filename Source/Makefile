@@ -1,10 +1,8 @@
 # _very_ incomplete
 
-# INCLUDE_DIRS = -I. -I../ThirdParty/OpenPA/Releases/1.0.4/Install/include
-# INCLUDE_DIRS = -I. -I /usr/local/stow/openpa-1.0.4/include
-INCLUDE_DIRS = -I. -I../ThirdParty/libuv/Releases/0.10.25/include
 BUILD_DIR = ../Build
 INSTALL_DIR = ../Install
+INCLUDE_DIRS = -I. -I$(INSTALL_DIR)/include
 HEADER_INSTALL_DIR = $(INSTALL_DIR)/include
 CFLAGS += -Wall -O1 -g
 

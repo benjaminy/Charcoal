@@ -147,8 +147,7 @@ int crcl(init_io_loop)( cthread_p t, activity_p a )
 {
     crcl(threads) = t;
 
-    RET_IF_ERROR(
-        pthread_key_create( &crcl(self_key), NULL /* XXX destructor */ ) );
+    assert( !uv_key_create( &crcl(self_key) ) );
 
     /* Most of the thread and activity fields are not relevant to the I/O thread */
     t->activities     = a;

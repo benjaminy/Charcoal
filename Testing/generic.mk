@@ -1,4 +1,9 @@
 
+BUILD_DIR=$(CRCL_ROOT)/Testing/Build
+# XXX replace cil dir with install
+CIL_DIR=$(CRCL_ROOT)/ThirdParty/cil/Charcoal-1.7.3
+INSTALL_DIR=$(CRCL_ROOT)/Install
+
 ifeq ($(OS),Windows_NT)
 else
     UNAME_S := $(shell uname -s)
@@ -13,7 +18,7 @@ endif
 ifeq ($(OS),Windows_NT)
     CCFLAGS += -D WIN32
 else
-    LIBUV_FLAGS = $(CRCL_ROOT)/Build/libuv/libuv.a
+    LIBUV_FLAGS = $(INSTALL_DIR)/lib/libuv.a
 endif
 ifeq ($(OS),Linux)
     CCFLAGS += -D LINUX
@@ -23,15 +28,12 @@ ifeq ($(OS),Darwin)
     CCFLAGS += -D OSX
 endif
 
-BUILD_DIR=$(CRCL_ROOT)/Testing/Build
-CIL_DIR=$(CRCL_ROOT)/ThirdParty/cil/Charcoal-1.7.3
 CRCL_CPP_EXT=.crcl.cpp.c
 CIL_C_EXT=.crcl.cil.c
 CC=gcc
 
-# INCLUDE_DIRS = -I$(CRCL_ROOT)/Install/include -I$(CRCL_ROOT)/ThirdParty/OpenPA/Releases/1.0.4/Install/include
-INCLUDE_DIRS = -I$(CRCL_ROOT)/Install/include -I$(CRCL_ROOT)/ThirdParty/OpenPA/Releases/1.0.4/Install/include -I$(CRCL_ROOT)/ThirdParty/libuv/Releases/0.10.25/include
-LIB_DIRS =  -L$(CRCL_ROOT)/Install/lib
+INCLUDE_DIRS = -I$(INSTALL_DIR)/include
+LIB_DIRS =  -L$(INSTALL_DIR)/lib
 # FLAGS = $(INCLUDE_DIRS) $(LIB_DIRS) -lcharcoal_sys -lpthread -pg -lrt
 # FLAGS = -g $(INCLUDE_DIRS) $(LIB_DIRS) -lcharcoal_sys -lpthread -lrt
 FLAGS = -g $(INCLUDE_DIRS) $(LIB_DIRS) -lcharcoal_sys

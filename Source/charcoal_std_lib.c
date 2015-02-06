@@ -27,11 +27,11 @@ struct _TET_TASK
     TET_THREAD container;
 };
 
-pthread_key_t crcl(current_activity);
+uv_key_t crcl(current_activity);
 
 activity_t activity_self( void )
 {
-    (activity_t)pthread_getspecific( crcl(current_activity) );
+    (activity_t)uv_key_get( crcl(current_activity) );
 }
 
 typedef enum

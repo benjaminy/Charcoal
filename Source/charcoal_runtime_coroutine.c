@@ -23,13 +23,13 @@
     } while( 0 )
 
 cthread_p crcl(threads);
-pthread_key_t crcl(self_key);
+uv_key_t crcl(self_key);
 // XXX static timer_t crcl(heartbeat_timer);
 static int crcl(heartbeat_timer);
 
 activity_t *crcl(get_self_activity)( void )
 {
-    return (activity_t *)pthread_getspecific( crcl(self_key) );
+    return (activity_t *)uv_key_get( crcl(self_key) );
 }
 
 static int crcl(start_stop_heartbeat)( int start )
@@ -110,7 +110,7 @@ void crcl(activity_start_resume)( activity_p activity )
     /* XXX: enqueue command */
     /* XXX: start heartbeat if runnable > 1 */
     ABORT_ON_FAIL( uv_async_send( &crcl(io_cmd) ) );
-    assert( !pthread_setspecific( crcl(self_key), activity ) );
+    uv_key_set( crcl(self_key), activity );
     // XXX don't think we're using alarm anymore
     // XXX alarm((int) self->container->max_time);
     // crcl(atomic_store_int)(&self->container->timeout, 0);

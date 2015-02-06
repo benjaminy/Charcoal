@@ -40,7 +40,7 @@ union crcl(io_response_t)
 #define __CHARCOAL_ACTF_DONE        (1 << 4)
 
 extern cthread_p crcl(threads);
-extern pthread_key_t crcl(self_key);
+extern uv_key_t crcl(self_key);
 
 void crcl(push_special_queue)(
     unsigned queue_flag, activity_p a, cthread_p t, activity_p *qp );
