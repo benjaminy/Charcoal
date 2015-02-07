@@ -19,6 +19,7 @@ Cilutil
 Cilversion
 Clexer
 Clist
+Coroutinify
 Cparser
 Cprint
 Dataflow

@@ -36,6 +36,7 @@
  *)
 
 (* Keep here the globally-visible flags *)
+let doCoroutinify = ref true (* Necessary step in Charcoal compilation *)
 let doCheck= ref false   (* Whether to check CIL *)
 let strictChecking= ref false   (* If doCheck is true and warnings are found,
                                 * treat them as errors. *)

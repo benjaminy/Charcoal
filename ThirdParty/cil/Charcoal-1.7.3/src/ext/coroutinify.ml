@@ -16,23 +16,28 @@ module C = Cil
 module E = Errormsg
 
 class bar( newname: string ) = object( self )
-  inherit C.copyFunctionVisitor
-             
-class foo = object(self)
+                                       (*inherit C.copyFunctionVisitor*)
+end
+
+class coroutinifyVisitor = object(self)
   inherit C.nopCilVisitor
   method vglob g =
     match g with
-      GVarDecl( vinfo, loc ) -> E.s( E.unimp "funs?" )
-    | GFun( fdec, loc ) -> E.s( E.unimp "funs!" )
-        
-    C.ChangeDoChildrenPost( [g], fn g -> g )
-             
-let feature : featureDescr =
+    | GFun( fdec, loc ) ->
+       let () = E.s( E.unimp "funs!" ) in
+       C.ChangeDoChildrenPost ( [g], fun g -> g )
+end
+
+let do_coroutinify( f : C.file ) =
+  let () = C.visitCilFile (new coroutinifyVisitor) f in
+  ()
+
+let feature : C.featureDescr =
   { fd_name = "coroutinify";
     fd_enabled = Cilutil.doCoroutinify;
     fd_description = "heap-allocate call frames";
     fd_extraopt = [];
-    fd_doit = ();
+    fd_doit = do_coroutinify;
     fd_post_check = true ;
   }
 
