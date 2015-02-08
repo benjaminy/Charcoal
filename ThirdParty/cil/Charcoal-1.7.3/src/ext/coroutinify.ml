@@ -74,13 +74,12 @@ class coroutinifyYieldingVisitor fdec locals frame_info free_fn = object(self)
 
   (* It's tempting to use vvrbl, because we're only interested in uses
    * of locals.  However, we need to replace them with a more complex
-   * expression, so we need the method that lets us return
-   * expressions. *)
-  method vexpr e =
-    match e with
-      C.Lval( C.Var v, offset ) ->
+   * lval, so we need the method that lets us return lvals. *)
+  method vlval( lhost, offset ) =
+    match lhost with
+      C.Var v ->
       ( match IH.tryfind locals v.C.vid with
-          Some e -> change_do_children_no_post( C.Lval( C.Mem e, offset ) )
+          Some e -> change_do_children_no_post( C.Mem e, offset )
         | None -> C.DoChildren )
     (* We can ignore the Mem case because we'll get it later in the visit *)
     | _ -> C.DoChildren
