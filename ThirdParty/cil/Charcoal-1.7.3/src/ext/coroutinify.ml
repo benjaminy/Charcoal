@@ -83,6 +83,90 @@ let fooo (v : C.varinfo) =
     let () = IH.replace function_vars v.C.vid (i, y, u) in
     (i, y, u)
 
+(* Translate calls from:
+ *     lhs = f( p1, p2, p3 );
+ * to:
+ *     frame->return_pointer = &__charcoal_return_N;
+ *     /* allocates callee frame: */
+ *     return __charcoal_fn_init_f( frame, p1, p2, p3 );
+ *   __charcoal_return_N:
+ *     lhs = *( ( return type * ) &( frame->callee->locals ) );
+ *     free( frame->callee );
+ *     /* TODO: maybe add for debugging: */
+ *     frame->callee = 0xJUNK;
+ *)
+let coroutinify_call fdec free_fn frame_exp frame_type
+                     frame_callee_field frame_locals_field frame_return_field
+                     instr =
+  match instr with
+    C.Call( lhs_opt, fn_exp, params_exps, loc ) ->
+    let (i, y, u) = match fn_exp with
+        C.Lval( C.Var v, C.NoOffset ) -> fooo v
+      | _ -> E.s( E.unimp "Oh noes; indirect calls" )
+    in
+    let callee_lval = ( C.Mem frame_exp, C.Field( frame_callee_field, C.NoOffset ) ) in
+    let return =
+      let after =
+        let free_callee : C.instr =
+          C.Call( None, C.Lval( C.var free_fn ), [ C.Lval callee_lval ], loc ) in
+        match lhs_opt with
+          Some lhs ->
+          let locals_lval =
+            ( C.Mem( C.Lval callee_lval ), C.Field( frame_locals_field, C.NoOffset ) )
+          in
+          let return_type =
+            match C.typeOf fn_exp with
+              C.TFun( r, _, _, _ ) -> r
+            | _ -> E.s( E.error "Function with non-function type?!?" )
+          in
+          let lhost = C.Mem( C.mkCast ( C.mkAddrOf locals_lval ) return_type ) in
+          [ C.Set( lhs, C.Lval( lhost, C.NoOffset ), loc ); free_callee ]
+        | _ -> [ free_callee ]
+      in
+      let r = C.mkStmt( C.Instr after ) in
+      let () = r.C.labels <- [ fresh_return_label loc ] in
+      r
+    in
+    let save_goto =
+      let s = C.Set( ( C.Mem frame_exp, C.Field( frame_return_field, C.NoOffset ) ),
+                     C.AddrOfLabel( ref return ), loc ) in
+      C.mkStmt( C.Instr[ s ] )
+    in
+    let temp_callee = C.var( C.makeTempVar fdec frame_type ) in
+    let init_call =
+      let ic = C.Call( Some temp_callee, C.Lval( C.var i ), frame_exp::params_exps, loc ) in
+      C.mkStmt( C.Instr[ ic ] )
+    in
+    let init_return = C.mkStmt( C.Return( Some( C.Lval temp_callee ), loc ) )  in
+    [save_goto; init_call; init_return; return]
+  (* Anything other than a call *)
+  | _ -> [C.mkStmt( C.Instr[ instr ] )]
+
+(* Translate returns from:
+ *     return exp;
+ * to:
+ *     *( ( return type * ) &( frame->locals ) ) = exp;
+ *     return frame->caller;
+ *)
+let coroutinify_return fdec rval_opt loc frame_exp frame_lval
+                       frame_caller_field frame_locals_field =
+  let caller_lval = ( C.Mem frame_exp, C.Field( frame_caller_field, C.NoOffset ) ) in
+  let return_stmt = C.mkStmt( C.Return( Some( C.Lval caller_lval ), loc ) ) in
+  (match rval_opt with
+   | None -> change_do_children return_stmt
+   | Some rval ->
+      let locals_lval =
+        ( C.Mem( C.Lval frame_lval ), C.Field( frame_locals_field, C.NoOffset ) )
+      in
+      let return_type =
+        match fdec.C.svar.C.vtype with
+          C.TFun( r, _, _, _ ) -> r
+        | _ -> E.s( E.error "Function with non-function type?!?" )
+      in
+      let lhs = ( C.Mem( C.mkCast ( C.mkAddrOf locals_lval ) return_type ), C.NoOffset ) in
+      let set_return = C.mkStmt( C.Instr[ C.Set( lhs, rval, loc ) ] ) in
+      change_do_children( C.mkStmt( C.Block( C.mkBlock[ set_return; return_stmt ] ) ) ) )
+
 class coroutinifyYieldingVisitor fdec locals frame_info free_fn = object(self)
   inherit C.nopCilVisitor
 
@@ -98,10 +182,9 @@ class coroutinifyYieldingVisitor fdec locals frame_info free_fn = object(self)
     (* We can ignore the Mem case because we'll get it later in the visit *)
     | _ -> C.DoChildren
 
-  (* It's tempting to use vinstr, because we're only interested in
-   * calls.  However, we need to replace them with a sequence that has
-   * returns and labels, so we need the method that lets us return
-   * statements. *)
+  (* It's tempting to use vinstr for calls.  However, we need to replace
+   * them with a sequence that has returns and labels, so we need the
+   * method that lets us return statements. *)
   method vstmt s =
     let ( frame_type, frame_var, frame_return_field, frame_locals_field,
           frame_callee_field, frame_caller_field ) =
@@ -114,96 +197,23 @@ class coroutinifyYieldingVisitor fdec locals frame_info free_fn = object(self)
         C.Call _ -> false
       | _ -> true
     in
-    (* Translate calls from:
-     *     lhs = f( p1, p2, p3 );
-     * to:
-     *     frame->return_pointer = &__charcoal_return_N;
-     *     /* allocates callee frame: */
-     *     return __charcoal_fn_init_f( frame, p1, p2, p3 );
-     *   __charcoal_return_N:
-     *     lhs = *( ( return type * ) &( frame->callee->locals ) );
-     *     free( frame->callee );
-     *     /* TODO: maybe add for debugging: */
-     *     frame->callee = 0xJUNK;
-     *)
-    let coroutinify_call instr =
-      match instr with
-        C.Call( lhs_opt, fn_exp, params_exps, loc ) ->
-        let (i, y, u) = match fn_exp with
-            C.Lval( C.Var v, C.NoOffset ) -> fooo v
-          | _ -> E.s( E.unimp "Oh noes; indirect calls" )
-        in
-        let callee_lval = ( C.Mem frame_exp, C.Field( frame_callee_field, C.NoOffset ) ) in
-        let return =
-          let after =
-            let free_callee : C.instr =
-              C.Call( None, C.Lval( C.var free_fn ), [ C.Lval callee_lval ], loc ) in
-            match lhs_opt with
-              Some lhs ->
-              let locals_lval =
-                ( C.Mem( C.Lval callee_lval ), C.Field( frame_locals_field, C.NoOffset ) )
-              in
-              let return_type =
-                match C.typeOf fn_exp with
-                  C.TFun( r, _, _, _ ) -> r
-                | _ -> E.s( E.error "Function with non-function type?!?" )
-              in
-              let lhost = C.Mem( C.mkCast ( C.mkAddrOf locals_lval ) return_type ) in
-              [ C.Set( lhs, C.Lval( lhost, C.NoOffset ), loc ); free_callee ]
-            | _ -> [ free_callee ]
-          in
-          let r = C.mkStmt( C.Instr after ) in
-          let () = r.C.labels <- [ fresh_return_label loc ] in
-          r
-        in
-        let save_goto =
-          let s = C.Set( ( C.Mem frame_exp, C.Field( frame_return_field, C.NoOffset ) ),
-                         C.AddrOfLabel( ref return ), loc ) in
-          C.mkStmt( C.Instr[ s ] )
-        in
-        let temp_callee = C.var( C.makeTempVar fdec frame_type ) in
-        let init_call =
-          let ic = C.Call( Some temp_callee, C.Lval( C.var i ), frame_exp::params_exps, loc ) in
-          C.mkStmt( C.Instr[ ic ] )
-        in
-        let init_return = C.mkStmt( C.Return( Some( C.Lval temp_callee ), loc ) )  in
-        [save_goto; init_call; init_return; return]
-      | _ -> [C.mkStmt( C.Instr[ instr ] )]
-    in
-
-    (* Translate returns from:
-     *     return exp;
-     * to:
-     *     *( ( return type * ) &( frame->locals ) ) = exp;
-     *     return frame->caller;
-     *)
-    let coroutinify_return rval_opt loc =
-      let caller_lval = ( C.Mem frame_exp, C.Field( frame_caller_field, C.NoOffset ) ) in
-      let return_stmt = C.mkStmt( C.Return( Some( C.Lval caller_lval ), loc ) ) in
-      (match rval_opt with
-       | None -> change_do_children return_stmt
-       | Some rval ->
-          let locals_lval =
-            ( C.Mem( C.Lval frame_lval ), C.Field( frame_locals_field, C.NoOffset ) )
-          in
-          let return_type =
-            match fdec.C.svar.C.vtype with
-              C.TFun( r, _, _, _ ) -> r
-            | _ -> E.s( E.error "Function with non-function type?!?" )
-          in
-          let lhs = ( C.Mem( C.mkCast ( C.mkAddrOf locals_lval ) return_type ), C.NoOffset ) in
-          let set_return = C.mkStmt( C.Instr[ C.Set( lhs, rval, loc ) ] ) in
-          change_do_children( C.mkStmt( C.Block( C.mkBlock[ set_return; return_stmt ] ) ) ) )
-    in
 
     match s.C.skind with
       (C.Instr instrs) ->
       if List.for_all is_not_call instrs then
         C.DoChildren
       else
-        let stmts = List.concat (List.map coroutinify_call instrs) in
+        let coroutinify_call_here =
+          coroutinify_call fdec free_fn frame_exp frame_type
+                           frame_callee_field frame_locals_field frame_return_field
+        in
+        let stmts = List.concat( List.map coroutinify_call_here instrs ) in
         change_do_children( C.mkStmt( C.Block( C.mkBlock stmts ) ) )
-    | (C.Return( rval_opt, loc )) -> coroutinify_return rval_opt loc
+
+    | (C.Return( rval_opt, loc )) ->
+       coroutinify_return fdec rval_opt loc frame_exp frame_lval
+                          frame_caller_field frame_locals_field
+
     | _ -> C.DoChildren
 end
 
