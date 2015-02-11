@@ -64,6 +64,18 @@ let crcl_fun_kind name =
   else
     CRCL_FUN_OTHER
 
+
+type frame_info =
+    {
+      caller_fld : C.fieldinfo;
+      callee_fld : C.fieldinfo;
+      locals_fld : C.fieldinfo;
+      return_fld : C.fieldinfo;
+      lval : C.lval;
+      exp : C.exp;
+      typ : C.typ;
+    }
+
 class bar( newname: string ) = object( self )
                                        (*inherit C.copyFunctionVisitor*)
 end
@@ -77,9 +89,10 @@ let fooo (v : C.varinfo) =
   try IH.find function_vars v.C.vid
   with Not_found ->
     (* XXX fix types: *)
-    let i = C.makeVarinfo true (spf "%s%s" crcl_init_prefix       v.C.vname) C.voidType in
-    let y = C.makeVarinfo true (spf "%s%s" crcl_yielding_prefix   v.C.vname) C.voidType in
-    let u = C.makeVarinfo true (spf "%s%s" crcl_unyielding_prefix v.C.vname) C.voidType in
+    let mvi = C.makeVarinfo true in
+    let i = mvi (spf "%s%s" crcl_init_prefix       v.C.vname) C.voidType in
+    let y = mvi (spf "%s%s" crcl_yielding_prefix   v.C.vname) C.voidType in
+    let u = mvi (spf "%s%s" crcl_unyielding_prefix v.C.vname) C.voidType in
     let () = IH.replace function_vars v.C.vid (i, y, u) in
     (i, y, u)
 
@@ -95,24 +108,23 @@ let fooo (v : C.varinfo) =
  *     /* TODO: maybe add for debugging: */
  *     frame->callee = 0xJUNK;
  *)
-let coroutinify_call fdec free_fn frame_exp frame_type
-                     frame_callee_field frame_locals_field frame_return_field
-                     instr =
+let coroutinify_call fdec free_fn frame instr =
   match instr with
-    C.Call( lhs_opt, fn_exp, params_exps, loc ) ->
+    C.Call( lhs_opt, fn_exp, params, loc ) ->
     let (i, y, u) = match fn_exp with
         C.Lval( C.Var v, C.NoOffset ) -> fooo v
       | _ -> E.s( E.unimp "Oh noes; indirect calls" )
     in
-    let callee_lval = ( C.Mem frame_exp, C.Field( frame_callee_field, C.NoOffset ) ) in
-    let return =
-      let after =
+    let callee_lval = ( C.Mem frame.exp, C.Field( frame.callee_fld, C.NoOffset ) ) in
+    let after_call =
+      let after_instr =
         let free_callee : C.instr =
-          C.Call( None, C.Lval( C.var free_fn ), [ C.Lval callee_lval ], loc ) in
+          C.Call( None, C.Lval( C.var free_fn ), [ C.Lval callee_lval ], loc )
+        in
         match lhs_opt with
           Some lhs ->
           let locals_lval =
-            ( C.Mem( C.Lval callee_lval ), C.Field( frame_locals_field, C.NoOffset ) )
+            ( C.Mem( C.Lval callee_lval ), C.Field( frame.locals_fld, C.NoOffset ) )
           in
           let return_type =
             match C.typeOf fn_exp with
@@ -123,22 +135,22 @@ let coroutinify_call fdec free_fn frame_exp frame_type
           [ C.Set( lhs, C.Lval( lhost, C.NoOffset ), loc ); free_callee ]
         | _ -> [ free_callee ]
       in
-      let r = C.mkStmt( C.Instr after ) in
+      let r = C.mkStmt( C.Instr after_instr ) in
       let () = r.C.labels <- [ fresh_return_label loc ] in
       r
     in
     let save_goto =
-      let s = C.Set( ( C.Mem frame_exp, C.Field( frame_return_field, C.NoOffset ) ),
-                     C.AddrOfLabel( ref return ), loc ) in
+      let s = C.Set( ( C.Mem frame.exp, C.Field( frame.return_fld, C.NoOffset ) ),
+                     C.AddrOfLabel( ref after_call ), loc ) in
       C.mkStmt( C.Instr[ s ] )
     in
-    let temp_callee = C.var( C.makeTempVar fdec frame_type ) in
+    let callee = C.var( C.makeTempVar fdec frame.typ ) in
     let init_call =
-      let ic = C.Call( Some temp_callee, C.Lval( C.var i ), frame_exp::params_exps, loc ) in
+      let ic = C.Call( Some callee, C.Lval( C.var i ), frame.exp::params, loc ) in
       C.mkStmt( C.Instr[ ic ] )
     in
-    let init_return = C.mkStmt( C.Return( Some( C.Lval temp_callee ), loc ) )  in
-    [save_goto; init_call; init_return; return]
+    let init_return = C.mkStmt( C.Return( Some( C.Lval callee ), loc ) )  in
+    [save_goto; init_call; init_return; after_call]
   (* Anything other than a call *)
   | _ -> [C.mkStmt( C.Instr[ instr ] )]
 
@@ -148,26 +160,26 @@ let coroutinify_call fdec free_fn frame_exp frame_type
  *     *( ( return type * ) &( frame->locals ) ) = exp;
  *     return frame->caller;
  *)
-let coroutinify_return fdec rval_opt loc frame_exp frame_lval
-                       frame_caller_field frame_locals_field =
-  let caller_lval = ( C.Mem frame_exp, C.Field( frame_caller_field, C.NoOffset ) ) in
+let coroutinify_return fdec rval_opt loc frame =
+  let caller_lval = ( C.Mem frame.exp, C.Field( frame.caller_fld, C.NoOffset ) ) in
   let return_stmt = C.mkStmt( C.Return( Some( C.Lval caller_lval ), loc ) ) in
   (match rval_opt with
    | None -> change_do_children return_stmt
    | Some rval ->
       let locals_lval =
-        ( C.Mem( C.Lval frame_lval ), C.Field( frame_locals_field, C.NoOffset ) )
+        ( C.Mem( C.Lval frame.lval ), C.Field( frame.locals_fld, C.NoOffset ) )
       in
       let return_type =
         match fdec.C.svar.C.vtype with
           C.TFun( r, _, _, _ ) -> r
         | _ -> E.s( E.error "Function with non-function type?!?" )
       in
-      let lhs = ( C.Mem( C.mkCast ( C.mkAddrOf locals_lval ) return_type ), C.NoOffset ) in
+      let addr_of_locals = C.mkCast ( C.mkAddrOf locals_lval ) return_type in
+      let lhs = ( C.Mem addr_of_locals, C.NoOffset ) in
       let set_return = C.mkStmt( C.Instr[ C.Set( lhs, rval, loc ) ] ) in
       change_do_children( C.mkStmt( C.Block( C.mkBlock[ set_return; return_stmt ] ) ) ) )
 
-class coroutinifyYieldingVisitor fdec locals frame_info free_fn = object(self)
+class coroutinifyYieldingVisitor fdec locals frame free_fn = object(self)
   inherit C.nopCilVisitor
 
   (* It's tempting to use vvrbl, because we're only interested in uses
@@ -186,12 +198,6 @@ class coroutinifyYieldingVisitor fdec locals frame_info free_fn = object(self)
    * them with a sequence that has returns and labels, so we need the
    * method that lets us return statements. *)
   method vstmt s =
-    let ( frame_type, frame_var, frame_return_field, frame_locals_field,
-          frame_callee_field, frame_caller_field ) =
-      frame_info
-    in
-    let frame_lval = C.var frame_var in
-    let frame_exp = C.Lval( frame_lval ) in
     let is_not_call i =
       match i with
         C.Call _ -> false
@@ -204,15 +210,13 @@ class coroutinifyYieldingVisitor fdec locals frame_info free_fn = object(self)
         C.DoChildren
       else
         let coroutinify_call_here =
-          coroutinify_call fdec free_fn frame_exp frame_type
-                           frame_callee_field frame_locals_field frame_return_field
+          coroutinify_call fdec free_fn frame
         in
         let stmts = List.concat( List.map coroutinify_call_here instrs ) in
         change_do_children( C.mkStmt( C.Block( C.mkBlock stmts ) ) )
 
     | (C.Return( rval_opt, loc )) ->
-       coroutinify_return fdec rval_opt loc frame_exp frame_lval
-                          frame_caller_field frame_locals_field
+       coroutinify_return fdec rval_opt loc frame
 
     | _ -> C.DoChildren
 end
