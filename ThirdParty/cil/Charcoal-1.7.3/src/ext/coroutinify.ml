@@ -74,6 +74,7 @@ type frame_info =
       lval : C.lval;
       exp : C.exp;
       typ : C.typ;
+      yielding : C.varinfo;
     }
 
 class bar( newname: string ) = object( self )
@@ -85,6 +86,7 @@ class coroutinifyUnyieldingVisitor = object(self)
 end
 
 let function_vars = IH.create 42
+
 let fooo (v : C.varinfo) =
   try IH.find function_vars v.C.vid
   with Not_found ->
@@ -95,6 +97,40 @@ let fooo (v : C.varinfo) =
     let u = mvi (spf "%s%s" crcl_unyielding_prefix v.C.vname) C.voidType in
     let () = IH.replace function_vars v.C.vid (i, y, u) in
     (i, y, u)
+
+(* Translate from:
+ *     rt f( p1, p2, p3 ) { ... }
+ * to:
+ *     frame_p __charcoal_fn_init_f( frame_p caller, p1, p2, p3 )
+ *     {
+ *        size_t locals_size = sizeof( f struct );
+ *        /* using a call here to reduce code explosion: */
+ *        frame_p frame = __crcl_generic_init( caller, locals_size, __crcl_fn_yielding_f );
+ *        ( f struct ) *locals = &frame->locals;
+ *        locals->p1 = p1;
+ *        locals->p2 = p2;
+ *        locals->p3 = p3;
+ *        locals->l1 = init1;
+ *        locals->l2 = init2;
+ *        locals->l3 = init3;
+ *        return frame;
+ *     }
+ *)
+let make_init_version name original frame generic_init =
+  let i = C.emptyFunction( spf "%s%s" crcl_init_prefix name ) in
+  let () = C.setFormals i original.C.sformals in
+  let caller = C.makeFormalVar i ~where:"^" "caller" frame.typ in
+  let sz_init =
+    C.SingleInit( C.SizeOf frame.typ (* XXX locals struct *) )
+  in
+  let sz = C.makeLocalVar i "locals_size" ~init:sz_init !C.typeOfSizeOf in
+  let this = C.makeLocalVar i "frame" !C.typeOfSizeOf in
+  let params = List.map ( fun v -> C.Lval( C.var v ) )
+                        [ caller; sz; frame.yielding ]
+  in
+  let call_to_generic =
+    C.Call( Some ( C.var this ), generic_init, params, original.C.svar.C.vdecl ) in
+  i
 
 (* Translate calls from:
  *     lhs = f( p1, p2, p3 );
@@ -182,6 +218,11 @@ let coroutinify_return fdec rval_opt loc frame =
 class coroutinifyYieldingVisitor fdec locals frame free_fn = object(self)
   inherit C.nopCilVisitor
 
+  (* Translate uses of local variables from:
+   *     x
+   * to:
+   *     locals->x
+   *)
   (* It's tempting to use vvrbl, because we're only interested in uses
    * of locals.  However, we need to replace them with a more complex
    * lval, so we need the method that lets us return lvals. *)
@@ -189,7 +230,7 @@ class coroutinifyYieldingVisitor fdec locals frame free_fn = object(self)
     match lhost with
       C.Var v ->
       ( match IH.tryfind locals v.C.vid with
-          Some e -> change_do_children( C.Mem e, offset )
+          Some l -> change_do_children l
         | None -> C.DoChildren )
     (* We can ignore the Mem case because we'll get it later in the visit *)
     | _ -> C.DoChildren
@@ -220,27 +261,6 @@ class coroutinifyYieldingVisitor fdec locals frame free_fn = object(self)
 
     | _ -> C.DoChildren
 end
-
-(* Translate from:
- *     rt f( p1, p2, p3 ) { ... }
- * to:
- *     frame_p __charcoal_fn_init_f( frame_p caller, p1, p2, p3 )
- *     {
- *        size_t locals_size = sizeof( f struct );
- *        /* using a call here to reduce explosion down: */
- *        frame_p frame = __crcl_generic_init( caller, locals_size, __crcl_fn_yielding_f );
- *        ( f struct ) *locals = &frame->locals;
- *        locals->p1 = p1;
- *        locals->p2 = p2;
- *        locals->p3 = p3;
- *        locals->l1 = init1;
- *        locals->l2 = init2;
- *        locals->l3 = init3;
- *        return frame;
- *     }
- *)
-let make_init_version () =
-  ()
 
 let make_yielding_version fdec =
   let new_name = spf "%s%s" crcl_yielding_prefix fdec.C.svar.C.vname in
