@@ -33,16 +33,16 @@ let fresh_return_label loc =
 type crcl_fun_kind =
   | CRCL_FUN_YIELDING
   | CRCL_FUN_UNYIELDING
-  | CRCL_FUN_INIT
+  | CRCL_FUN_PROLOGUE
   | CRCL_FUN_OTHER
 
 let crcl_yielding_prefix   = "__charcoal_fn_yielding_"
 let crcl_unyielding_prefix = "__charcoal_fn_unyielding_"
-let crcl_init_prefix       = "__charcoal_fn_init_"
+let crcl_prologue_prefix   = "__charcoal_fn_prologue_"
 let crcl_locals_prefix     = "__charcoal_fn_locals_"
-let (crcl_yielding, crcl_unyielding, crcl_init, crcl_locals) =
+let (crcl_yielding, crcl_unyielding, crcl_prologue, crcl_locals) =
   let ps = [ crcl_yielding_prefix; crcl_unyielding_prefix;
-             crcl_init_prefix; crcl_locals_prefix; ]
+             crcl_prologue_prefix; crcl_locals_prefix; ]
   in
   let ps_lens = List.map ( fun p -> ( p, String.length p ) ) ps in
   let comp( p, l ) =
@@ -59,8 +59,8 @@ let crcl_fun_kind name =
     CRCL_FUN_YIELDING
   else if fst( crcl_unyielding name ) then
     CRCL_FUN_UNYIELDING
-  else if fst( crcl_init name ) then
-    CRCL_FUN_INIT
+  else if fst( crcl_prologue name ) then
+    CRCL_FUN_PROLOGUE
   else
     CRCL_FUN_OTHER
 
@@ -74,6 +74,7 @@ type frame_info =
       lval : C.lval;
       exp : C.exp;
       typ : C.typ;
+      locals_typ : C.typ;
       yielding : C.varinfo;
     }
 
@@ -92,57 +93,77 @@ let fooo (v : C.varinfo) =
   with Not_found ->
     (* XXX fix types: *)
     let mvi = C.makeVarinfo true in
-    let i = mvi (spf "%s%s" crcl_init_prefix       v.C.vname) C.voidType in
+    let i = mvi (spf "%s%s" crcl_prologue_prefix   v.C.vname) C.voidType in
     let y = mvi (spf "%s%s" crcl_yielding_prefix   v.C.vname) C.voidType in
     let u = mvi (spf "%s%s" crcl_unyielding_prefix v.C.vname) C.voidType in
     let () = IH.replace function_vars v.C.vid (i, y, u) in
     (i, y, u)
 
-(* Translate from:
+(* For this function definition:
  *     rt f( p1, p2, p3 ) { ... }
- * to:
- *     frame_p __charcoal_fn_init_f( frame_p caller, p1, p2, p3 )
+ * Generate this prologue:
+ *     frame_p __charcoal_fn_prologue_f( frame_p caller, void *ret_ptr, p1, p2, p3 )
  *     {
- *        size_t locals_size = sizeof( f struct );
+ *        /* XXX make sure it's big enough for the return value too: */
  *        /* using a call here to reduce code explosion: */
- *        frame_p frame = __crcl_generic_init( caller, locals_size, __crcl_fn_yielding_f );
+ *        frame_p frame = __crcl_generic_prologue(
+ *           sizeof( f struct ), ret_ptr, caller, __crcl_fn_yielding_f );
  *        ( f struct ) *locals = &frame->locals;
  *        locals->p1 = p1;
  *        locals->p2 = p2;
  *        locals->p3 = p3;
+ *        /* XXX not totally sure if these inits exist: */
  *        locals->l1 = init1;
  *        locals->l2 = init2;
  *        locals->l3 = init3;
  *        return frame;
  *     }
  *)
-let make_init_version name original frame generic_init =
-  let i = C.emptyFunction( spf "%s%s" crcl_init_prefix name ) in
-  let () = C.setFormals i original.C.sformals in
-  let caller = C.makeFormalVar i ~where:"^" "caller" frame.typ in
-  let sz_init =
-    C.SingleInit( C.SizeOf frame.typ (* XXX locals struct *) )
-  in
-  let sz = C.makeLocalVar i "locals_size" ~init:sz_init !C.typeOfSizeOf in
-  let this = C.makeLocalVar i "frame" !C.typeOfSizeOf in
-  let params = List.map ( fun v -> C.Lval( C.var v ) )
-                        [ caller; sz; frame.yielding ]
+let make_prologue original frame generic_prologue params =
+  let orig_var = original.C.svar in
+  let fdef_loc = orig_var.C.vdecl in
+  let prefun   = C.emptyFunction( spf "%s%s" crcl_prologue_prefix orig_var.C.vname ) in
+  let ()       = C.setFormals prefun original.C.sformals in
+  let this     = C.makeLocalVar prefun "frame" !C.typeOfSizeOf in
+  let generic_params =
+    let caller   = C.makeFormalVar prefun ~where:"^" "caller" frame.typ in
+    let ps = List.map ( fun v -> C.Lval( C.var v ) ) [ caller; frame.yielding ] in
+    ( C.SizeOf frame.locals_typ )::ps
   in
   let call_to_generic =
-    C.Call( Some ( C.var this ), generic_init, params, original.C.svar.C.vdecl ) in
-  i
+    C.Call( Some( C.var this ), generic_prologue, generic_params, fdef_loc )
+  in
+  (* XXX small optimization: Don't need this business, if zero params *)
+  let locals_val = ( C.Mem( C.Lval( C.var this ) ),
+                     C.Field( frame.locals_fld, C.NoOffset ) )
+  in
+  let locals =
+    let locals_init = C.SingleInit( C.AddrOf locals_val ) in
+    let locals_type = C.TPtr( frame.locals_typ, [(*attrs*)] ) in
+    C.makeLocalVar prefun "locals" ~init:locals_init locals_type
+  in
+  let param_assignments =
+    let assign_param v =
+      let local_var =
+        match IH.tryfind params v.C.vid with
+          Some f -> f locals
+        | _ -> E.s( E.error "Unpossible" )
+      in
+      C.Set( local_var, C.Lval( C.var v ), fdef_loc )
+    in
+    List.map assign_param original.C.sformals
+  in
+  let instrs = call_to_generic::param_assignments in
+  let body = C.mkBlock[ C.mkStmt( C.Instr instrs ) ] in
+  let () = prefun.sbody <- body in
+  prefun
 
 (* Translate calls from:
  *     lhs = f( p1, p2, p3 );
  * to:
- *     frame->return_pointer = &__charcoal_return_N;
- *     /* allocates callee frame: */
- *     return __charcoal_fn_init_f( frame, p1, p2, p3 );
- *   __charcoal_return_N:
- *     lhs = *( ( return type * ) &( frame->callee->locals ) );
- *     free( frame->callee );
- *     /* TODO: maybe add for debugging: */
- *     frame->callee = 0xJUNK;
+ *     return __crcl_fn_prologue_f( frame, &__crcl_return_N, p1, p2, p3 );
+ *   __crcl_return_N:
+ *      __crcl_fn_return_from_f( frame, &lhs );
  *)
 let coroutinify_call fdec free_fn frame instr =
   match instr with
@@ -181,18 +202,19 @@ let coroutinify_call fdec free_fn frame instr =
       C.mkStmt( C.Instr[ s ] )
     in
     let callee = C.var( C.makeTempVar fdec frame.typ ) in
-    let init_call =
+    let prologue_call =
       let ic = C.Call( Some callee, C.Lval( C.var i ), frame.exp::params, loc ) in
       C.mkStmt( C.Instr[ ic ] )
     in
-    let init_return = C.mkStmt( C.Return( Some( C.Lval callee ), loc ) )  in
-    [save_goto; init_call; init_return; after_call]
+    let prologue_return = C.mkStmt( C.Return( Some( C.Lval callee ), loc ) )  in
+    [save_goto; prologue_call; prologue_return; after_call]
   (* Anything other than a call *)
   | _ -> [C.mkStmt( C.Instr[ instr ] )]
 
 (* Translate returns from:
  *     return exp;
  * to:
+ *     return __
  *     *( ( return type * ) &( frame->locals ) ) = exp;
  *     return frame->caller;
  *)
@@ -301,6 +323,8 @@ let make_yielding_version fdec =
 class findFunctionsVisitor = object(self)
   inherit C.nopCilVisitor
   method vglob g =
+    (* XXX somewhere in here for prologue
+      ( C.Mem( C.Lval( C.var locals ) ), C.Field( f, C.NoOffset ) ) *)
     match g with
     | C.GFun( fdec, loc ) ->
        let kind = crcl_fun_kind fdec.C.svar.C.vname in

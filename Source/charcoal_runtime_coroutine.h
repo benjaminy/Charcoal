@@ -105,4 +105,37 @@ struct crcl(coroutine_fn_ptr_generic)
 int crcl(activate)( crcl(frame_p) caller, activity_p activity, crcl(frame_p) f );
 crcl(frame_p) crcl(activity_blocked)( crcl(frame_p) frame );
 
+static frame_p crcl(generic_fn_prologue)(
+    size_t sz, void *return_ptr, frame_p caller, frame_p (*fn)( frame_p ) )
+{
+    /* XXX make malloc/free configurable? */
+    frame_p f = (frame_p)malloc( sz + sizeof( f[0] ) );
+    if( !f )
+    {
+        /* XXX die */
+    }
+    f->fn = fn;
+    f->goto_address = NULL;
+    f->caller = caller;
+    f->activity = NULL;
+    if( caller )
+    {
+        caller->callee = f;
+        caller->goto_address = return_ptr;
+        f->activity = caller->activity;
+    }
+    return f;
+}
+
+/* XXX Not sure if it's sensible to be generic about epilogue */
+static void crcl(generic_fn_return_from)( frame_p frame )
+{
+    free( frame->callee );
+    /* NOTE Zeroing the callee field is not strictly necessary, and
+     * therefore might be wasteful.  However, one should not be
+     * nickel-and-diming the performance of yielding calls anyway (use
+     * unyielding calls instead). */
+    frame->callee = NULL;
+}
+
 #endif /* __CHARCOAL_RUNTIME_COROUTINE */
