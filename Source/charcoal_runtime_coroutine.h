@@ -71,41 +71,20 @@ struct crcl(coroutine_fn_ptr_generic)
     void * (*unyielding)( int dummy, ... );
 };
 
-#define __CHARCOAL_COROUTINE_FN_PTR_SPECIFIC(name, ...) \
+#define __CHARCOAL_COROUTINE_FN_PTR_SPECIFIC(name, ret_type, ...) \
     struct crcl(coroutine_fn_ptr_##name) \
     { \
-        frame_p (*init)( frame_p caller, ... ); \
-        frame_p (*yielding)( frame_p self ); \
-        void * (*unyielding)( ... ); \
+        frame_p (*prologue)( frame_p caller, void *ret_ptr, ... ); \
+        void (*after_return)( frame_p frame, ret_type *lhs ); \
+        ret_type (*unyielding)( ... ); \
     };
-
-
-#define __CHARCOAL_GENERIC_INIT(locals_size, f, name)        \
-    do { \
-        size_t ls = locals_size; \
-        f = (__charcoal_frame_p)malloc( sizeof( f[0] ) + ls ); \
-        f->fn = crcl(fn_##name##_yielding); \
-        f->goto_address = NULL; \
-        f->caller = caller; \
-        f->activity = NULL; \
-        if( caller ) \
-        { \
-            caller->callee = f; \
-            f->activity = caller->activity; \
-        } \
-    } while( 0 ) \
-
-/*
-  return x ->
-
-  self->locals = x;
-  return self->caller;
-*/
 
 int crcl(activate)( crcl(frame_p) caller, activity_p activity, crcl(frame_p) f );
 crcl(frame_p) crcl(activity_blocked)( crcl(frame_p) frame );
 
-static frame_p crcl(generic_fn_prologue)(
+/* NOTE: It might make good performance sense to inline this, but I'm
+ * going to leave that decision to the system for now. */
+static frame_p crcl(fn_generic_prologue)(
     size_t sz, void *return_ptr, frame_p caller, frame_p (*fn)( frame_p ) )
 {
     /* XXX make malloc/free configurable? */
@@ -114,10 +93,11 @@ static frame_p crcl(generic_fn_prologue)(
     {
         /* XXX die */
     }
-    f->fn = fn;
+    f->activity     = NULL;
+    f->fn           = fn;
+    f->caller       = caller;
+    f->callee       = NULL;
     f->goto_address = NULL;
-    f->caller = caller;
-    f->activity = NULL;
     if( caller )
     {
         caller->callee = f;
@@ -127,15 +107,22 @@ static frame_p crcl(generic_fn_prologue)(
     return f;
 }
 
-/* XXX Not sure if it's sensible to be generic about epilogue */
-static void crcl(generic_fn_return_from)( frame_p frame )
+/* XXX Not sure if it's sensible to be generic about after-return */
+static void crcl(fn_generic_after_return)( frame_p frame )
 {
+    /* XXX make malloc/free configurable? */
     free( frame->callee );
     /* NOTE Zeroing the callee field is not strictly necessary, and
      * therefore might be wasteful.  However, one should not be
      * nickel-and-diming the performance of yielding calls anyway (use
      * unyielding calls instead). */
     frame->callee = NULL;
+}
+
+/* XXX Not sure if it's sensible to be generic about epilogue */
+static frame_p crcl(fn_generic_epilogue)( frame_p frame )
+{
+    return frame->caller;
 }
 
 #endif /* __CHARCOAL_RUNTIME_COROUTINE */

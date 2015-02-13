@@ -71,11 +71,11 @@ type frame_info =
       callee_fld : C.fieldinfo;
       locals_fld : C.fieldinfo;
       return_fld : C.fieldinfo;
-      lval : C.lval;
-      exp : C.exp;
-      typ : C.typ;
+      lval       : C.lval;
+      exp        : C.exp;
+      typ        : C.typ;
       locals_typ : C.typ;
-      yielding : C.varinfo;
+      yielding   : C.varinfo;
     }
 
 class bar( newname: string ) = object( self )
@@ -102,10 +102,10 @@ let fooo (v : C.varinfo) =
 (* For this function definition:
  *     rt f( p1, p2, p3 ) { ... }
  * Generate this prologue:
- *     frame_p __charcoal_fn_prologue_f( frame_p caller, void *ret_ptr, p1, p2, p3 )
+ *     frame_p __crcl_fn_prologue_f( frame_p caller, void *ret_ptr, p1, p2, p3 )
  *     {
- *        /* XXX make sure it's big enough for the return value too: */
- *        /* using a call here to reduce code explosion: */
+ *        /* NOTE: Using a call here to keep code size down.  The system is 
+ *         * welcome to inline it, if that's a good idea. */
  *        frame_p frame = __crcl_generic_prologue(
  *           sizeof( f struct ), ret_ptr, caller, __crcl_fn_yielding_f );
  *        ( f struct ) *locals = &frame->locals;
@@ -122,64 +122,62 @@ let fooo (v : C.varinfo) =
 let make_prologue original frame generic_prologue params =
   let orig_var = original.C.svar in
   let fdef_loc = orig_var.C.vdecl in
-  let prefun   = C.emptyFunction( spf "%s%s" crcl_prologue_prefix orig_var.C.vname ) in
-  let ()       = C.setFormals prefun original.C.sformals in
-  let this     = C.makeLocalVar prefun "frame" !C.typeOfSizeOf in
+  let prologue =
+    C.emptyFunction( spf "%s%s" crcl_prologue_prefix orig_var.C.vname )
+  in
+  let () = C.setFormals prologue original.C.sformals in
   let generic_params =
-    let caller   = C.makeFormalVar prefun ~where:"^" "caller" frame.typ in
-    let ps = List.map ( fun v -> C.Lval( C.var v ) ) [ caller; frame.yielding ] in
+    let ret_ptr = C.makeFormalVar prologue ~where:"^" "ret_ptr" C.voidPtrType in
+    let caller  = C.makeFormalVar prologue ~where:"^" "caller"  frame.typ in
+    let ps = List.map ( fun v -> C.Lval( C.var v ) )
+                      [ ret_ptr; caller; frame.yielding ]
+    in
     ( C.SizeOf frame.locals_typ )::ps
   in
+  let this = C.makeLocalVar prologue "frame" frame.typ in
   let call_to_generic =
     C.Call( Some( C.var this ), generic_prologue, generic_params, fdef_loc )
   in
-  (* XXX small optimization: Don't need this business, if zero params *)
-  let locals_val = ( C.Mem( C.Lval( C.var this ) ),
-                     C.Field( frame.locals_fld, C.NoOffset ) )
-  in
-  let locals =
-    let locals_init = C.SingleInit( C.AddrOf locals_val ) in
-    let locals_type = C.TPtr( frame.locals_typ, [(*attrs*)] ) in
-    C.makeLocalVar prefun "locals" ~init:locals_init locals_type
-  in
-  let param_assignments =
-    let assign_param v =
-      let local_var =
-        match IH.tryfind params v.C.vid with
-          Some f -> f locals
-        | _ -> E.s( E.error "Unpossible" )
-      in
-      C.Set( local_var, C.Lval( C.var v ), fdef_loc )
-    in
-    List.map assign_param original.C.sformals
+  (* If the original function has any parameters, assign them *)
+  let param_assignments = match original.C.sformals with
+      [] -> []
+    | fs ->
+       let locals =
+         let locals_val = ( C.Mem( C.Lval( C.var this ) ),
+                            C.Field( frame.locals_fld, C.NoOffset ) )
+         in
+         let locals_init = C.SingleInit( C.AddrOf locals_val ) in
+         let locals_type = C.TPtr( frame.locals_typ, [(*attrs*)] ) in
+         C.makeLocalVar prologue "locals" ~init:locals_init locals_type
+       in
+       let assign_param v =
+         let local_var =
+           match IH.tryfind params v.C.vid with
+             Some f -> f locals
+           | _ -> E.s( E.error "Unpossible" )
+         in
+         C.Set( local_var, C.Lval( C.var v ), fdef_loc )
+       in
+       List.map assign_param fs
   in
   let instrs = call_to_generic::param_assignments in
   let body = C.mkBlock[ C.mkStmt( C.Instr instrs ) ] in
-  let () = prefun.sbody <- body in
-  prefun
+  let () = prologue.C.sbody <- body in
+  prologue
 
-(* Translate calls from:
- *     lhs = f( p1, p2, p3 );
- * to:
- *     return __crcl_fn_prologue_f( frame, &__crcl_return_N, p1, p2, p3 );
- *   __crcl_return_N:
- *      __crcl_fn_return_from_f( frame, &lhs );
+(* For this function definition:
+ *     rt f( p1, p2, p3 ) { ... }
+ * Generate this after-return:
+ *     void __crcl_fn_after_return_f( frame_p frame, rt *lhs )
+ *     {
+ *         if( lhs )
+ *             *lhs = *((rt * )(&frame->callee->locals));
+ *         __crcl_fn_generic_after_return( frame );
+ *     }
  *)
-let coroutinify_call fdec free_fn frame instr =
-  match instr with
-    C.Call( lhs_opt, fn_exp, params, loc ) ->
-    let (i, y, u) = match fn_exp with
-        C.Lval( C.Var v, C.NoOffset ) -> fooo v
-      | _ -> E.s( E.unimp "Oh noes; indirect calls" )
-    in
-    let callee_lval = ( C.Mem frame.exp, C.Field( frame.callee_fld, C.NoOffset ) ) in
-    let after_call =
-      let after_instr =
-        let free_callee : C.instr =
-          C.Call( None, C.Lval( C.var free_fn ), [ C.Lval callee_lval ], loc )
-        in
-        match lhs_opt with
-          Some lhs ->
+let make_after_call x =
+  (* C.Set( lhs, C.Lval( lhost, C.NoOffset ), loc )
+
           let locals_lval =
             ( C.Mem( C.Lval callee_lval ), C.Field( frame.locals_fld, C.NoOffset ) )
           in
@@ -189,34 +187,76 @@ let coroutinify_call fdec free_fn frame instr =
             | _ -> E.s( E.error "Function with non-function type?!?" )
           in
           let lhost = C.Mem( C.mkCast ( C.mkAddrOf locals_lval ) return_type ) in
-          [ C.Set( lhs, C.Lval( lhost, C.NoOffset ), loc ); free_callee ]
-        | _ -> [ free_callee ]
+
+    let callee_lval = ( C.Mem frame.exp, C.Field( frame.callee_fld, C.NoOffset ) ) in
+
+
+ *)
+  x
+
+(* For this return statement:
+ *     return exp;
+ * Generate this epilogue:
+ *     frame_p __crcl_fn_epilogue( frame_p frame, ret type v )
+ *     {
+ *         *( ( return type * ) &( frame->locals ) ) = v;
+ *         return __crcl_fn_generic_epilogue( frame );
+ *     }
+ *)
+let make_epilogue x =
+  x
+
+
+(* Translate direct calls from:
+ *     lhs = f( p1, p2, p3 );
+ * to:
+ *     return __crcl_fn_prologue_f( frame, &__crcl_return_N, p1, p2, p3 );
+ *   __crcl_return_N:
+ *     __crcl_fn_after_return_f( frame, &lhs );
+ *)
+(* XXX unimp  Translate indirect calls from:
+ *     lhs = exp( p1, p2, p3 );
+ * to:
+ *     return exp.prologue( frame, &__crcl_return_N, p1, p2, p3 );
+ *   __crcl_return_N:
+ *     exp.after_return( frame, &lhs );
+ *)
+let coroutinify_call fdec frame instr =
+  match instr with
+    C.Call( lhs_opt, fn_exp, params, loc ) ->
+    let (prologue, after_return, _) = match fn_exp with
+        C.Lval( C.Var v, C.NoOffset ) -> fooo v
+      | _ -> E.s( E.unimp "Oh noes; indirect calls" )
+    in
+    let after_call =
+      let params =
+        match ( C.typeOf fn_exp, lhs_opt ) with
+          ( C.TFun( C.TVoid _, _, _, _ ), _ ) -> [ frame.exp ]
+        | ( C.TFun _, None )                  -> [ frame.exp; C.zero ]
+        | ( C.TFun _, Some lhs )              -> [ frame.exp; C.AddrOf lhs ]
+        | _ -> E.s( E.error "Function with non-function type?!?" )
       in
-      let r = C.mkStmt( C.Instr after_instr ) in
+      let after_instr = C.Call( None, C.Lval( C.var after_return ), params, loc ) in
+      let r = C.mkStmt( C.Instr[ after_instr ] ) in
       let () = r.C.labels <- [ fresh_return_label loc ] in
       r
     in
-    let save_goto =
-      let s = C.Set( ( C.Mem frame.exp, C.Field( frame.return_fld, C.NoOffset ) ),
-                     C.AddrOfLabel( ref after_call ), loc ) in
-      C.mkStmt( C.Instr[ s ] )
-    in
     let callee = C.var( C.makeTempVar fdec frame.typ ) in
+    let ps = frame.exp::( C.AddrOfLabel( ref after_call ) )::params in
     let prologue_call =
-      let ic = C.Call( Some callee, C.Lval( C.var i ), frame.exp::params, loc ) in
-      C.mkStmt( C.Instr[ ic ] )
+      C.mkStmt( C.Instr[ C.Call( Some callee, C.Lval( C.var prologue ), ps, loc ) ] )
     in
     let prologue_return = C.mkStmt( C.Return( Some( C.Lval callee ), loc ) )  in
-    [save_goto; prologue_call; prologue_return; after_call]
+    [prologue_call; prologue_return; after_call]
+
   (* Anything other than a call *)
-  | _ -> [C.mkStmt( C.Instr[ instr ] )]
+  | _ -> [ C.mkStmt( C.Instr[ instr ] ) ]
+
 
 (* Translate returns from:
  *     return exp;
  * to:
- *     return __
- *     *( ( return type * ) &( frame->locals ) ) = exp;
- *     return frame->caller;
+ *     return __crcl_fn_epilogue_f( frame, exp );
  *)
 let coroutinify_return fdec rval_opt loc frame =
   let caller_lval = ( C.Mem frame.exp, C.Field( frame.caller_fld, C.NoOffset ) ) in
@@ -272,9 +312,7 @@ class coroutinifyYieldingVisitor fdec locals frame free_fn = object(self)
       if List.for_all is_not_call instrs then
         C.DoChildren
       else
-        let coroutinify_call_here =
-          coroutinify_call fdec free_fn frame
-        in
+        let coroutinify_call_here = coroutinify_call fdec frame in
         let stmts = List.concat( List.map coroutinify_call_here instrs ) in
         change_do_children( C.mkStmt( C.Block( C.mkBlock stmts ) ) )
 
@@ -323,6 +361,7 @@ let make_yielding_version fdec =
 class findFunctionsVisitor = object(self)
   inherit C.nopCilVisitor
   method vglob g =
+    (* XXX Somewhere. make sure it's big enough for the return value too: *)
     (* XXX somewhere in here for prologue
       ( C.Mem( C.Lval( C.var locals ) ), C.Field( f, C.NoOffset ) ) *)
     match g with
