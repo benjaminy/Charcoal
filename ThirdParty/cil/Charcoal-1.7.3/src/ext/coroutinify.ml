@@ -107,7 +107,7 @@ let fooo (v : C.varinfo) =
  *     rt f( p1, p2, p3 ) { ... }
  * Generate this type:
  *     union {
- *         struct
+ *         struct /* no params or locals -> char[0] */
  *         {
  *             p1;
  *             p2;
@@ -120,8 +120,67 @@ let fooo (v : C.varinfo) =
  *     }
  *)
 (* XXX GCompTag??? *)
-let make_locals_struct x =
-  x
+let make_locals_struct fdec =
+  let sanity v =
+    let () = match v.C.vstorage with
+        C.NoStorage | C.Register -> ()
+        | C.Static | C.Extern -> E.s( E.error "static or extern local?!?" )
+    in
+    let () = if v.C.vglob then E.s( E.error "global local?!?" ) in
+    let () = if v.C.vinline then E.s( E.error "inline local?!?" ) in
+    let () = match v.C.vinit.C.init with
+        None -> ()
+      | Some _ ->  E.s( E.error "init of local?!?" )
+    in
+    ()
+  in
+
+  let fname = fdec.C.svar in
+  let fdef_loc = fname.C.vdecl in
+  let unit_type = C.TArray( C.charType, Some( C.zero ), [(*attrs*)] ) in
+  let locals_type =
+    match fdec.C.sformals @ fdec.C.slocals with
+      [] -> unit_type
+    | all ->
+       let field v =
+         let () = sanity v in
+         (* TODO: maybe drop if unused *)
+         ( v.C.vname, v.C.vtype, None, [(*attrs*)], v.C.vdecl )
+       in
+       let fields = List.map field all in
+       let struct_name = spf "%s%s_%s" crcl_locals_prefix fname.C.vname "struct" in
+       let ci = C.mkCompInfo true struct_name ( fun _ -> fields ) [(*attrs*)] in
+       let field_select t v =
+         let field =
+           { C.fcomp = ci; C.fname = v.C.vname; C.ftype = v.C.vtype;
+             C.fbitfield = None; C.fattr = [(*attrs*)]; C.floc = v.C.vdecl }
+         in
+         IH.replace t v.C.vid ( fun e -> ( C.Mem e, C.Field( field, C.NoOffset ) ) )
+       in
+       let locals = IH.create( List.length all ) in
+       let () = List.iter field_select in
+       C.TComp( ci, [(*attrs*)] )
+  in
+  let return_type =
+    match fname.C.vtype with
+      C.TFun( C.TVoid _, _, _, _ ) -> unit_type
+    | C.TFun( rt, _, _, _ ) -> rt
+    | _ -> E.s( E.error "Function with non-function type?!?" )
+  in
+  let locals_field = ( "L", locals_type, None, [(*attrs*)], fdef_loc ) in
+  let ret_field    = ( "R", return_type, None, [(*attrs*)], fdef_loc ) in
+  let fields = [ locals_field; ret_field ] in
+  let union_name = spf "%s%s_%s" crcl_locals_prefix fname.C.vname "union" in
+  let union = C.mkCompInfo false union_name ( fun _ -> fields ) [(*attrs*)] in
+  let locals_field =
+    { C.fcomp = union; C.fname = "L"; C.ftype = locals_type;
+      C.fbitfield = None; C.fattr = [(*attrs*)]; C.floc = fdef_loc }
+  in
+  let ret_field =
+    { C.fcomp = union; C.fname = "R"; C.ftype = ret_type;
+      C.fbitfield = None; C.fattr = [(*attrs*)]; C.floc = fdef_loc }
+  in
+  fdec
 
 
 (* For this function definition:
