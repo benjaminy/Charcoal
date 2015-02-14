@@ -115,12 +115,12 @@ let fooo (v : C.varinfo) =
  *             l1;
  *             l2;
  *             l3;
- *         } locals;
- *         rt return_value; /* void -> char[0] */
+ *         } L;
+ *         rt R; /* void -> char[0] */
  *     }
  *)
 (* XXX GCompTag??? *)
-let make_locals_struct fdec =
+let make_specific_struct fdec =
   let sanity v =
     let () = match v.C.vstorage with
         C.NoStorage | C.Register -> ()
@@ -138,9 +138,9 @@ let make_locals_struct fdec =
   let fname = fdec.C.svar in
   let fdef_loc = fname.C.vdecl in
   let unit_type = C.TArray( C.charType, Some( C.zero ), [(*attrs*)] ) in
-  let locals_type =
+  let ( locals_type, locals, globs ) =
     match fdec.C.sformals @ fdec.C.slocals with
-      [] -> unit_type
+      [] -> ( unit_type, IH.create 0, [] )
     | all ->
        let field v =
          let () = sanity v in
@@ -155,11 +155,11 @@ let make_locals_struct fdec =
            { C.fcomp = ci; C.fname = v.C.vname; C.ftype = v.C.vtype;
              C.fbitfield = None; C.fattr = [(*attrs*)]; C.floc = v.C.vdecl }
          in
-         IH.replace t v.C.vid ( fun e -> ( C.Mem e, C.Field( field, C.NoOffset ) ) )
+         IH.replace t v.C.vid ( fun e o -> ( C.Mem e, C.Field( field, o ) ) )
        in
        let locals = IH.create( List.length all ) in
-       let () = List.iter field_select in
-       C.TComp( ci, [(*attrs*)] )
+       let () = List.iter ( field_select locals ) all in
+       ( C.TComp( ci, [(*attrs*)] ), locals, [ C.GCompTag( ci, fdef_loc ) ] )
   in
   let return_type =
     match fname.C.vtype with
@@ -177,10 +177,16 @@ let make_locals_struct fdec =
       C.fbitfield = None; C.fattr = [(*attrs*)]; C.floc = fdef_loc }
   in
   let ret_field =
-    { C.fcomp = union; C.fname = "R"; C.ftype = ret_type;
+    { C.fcomp = union; C.fname = "R"; C.ftype = return_type;
       C.fbitfield = None; C.fattr = [(*attrs*)]; C.floc = fdef_loc }
   in
-  fdec
+  let union_glob = C.GCompTag( union, fdef_loc ) in
+  ( C.TComp( union, [(*attrs*)] ),
+    locals_type,
+    union_glob::globs,
+    locals_field,
+    ret_field,
+    locals )
 
 
 (* For this function definition:
@@ -193,6 +199,9 @@ let make_locals_struct fdec =
  *        frame_p frame = __crcl_generic_prologue(
  *           sizeof( f struct ), ret_ptr, caller, __crcl_fn_yielding_f );
  *        ( f struct ) *locals = &frame->locals;
+ *        XXX should be:
+ *        ( f specific * ) specific = ( f specific * )&frame->specific;
+ *        ( f locals * ) locals = &specific->L;
  *        locals->p1 = p1;
  *        locals->p2 = p2;
  *        locals->p3 = p3;
@@ -225,13 +234,14 @@ let make_prologue original frame generic params =
   let param_assignments = match original.C.sformals with
       [] -> []
     | fs ->
-       let locals =
+       let ( locals, locals_init ) =
          let locals_val = ( C.Mem( C.Lval( C.var this ) ),
                             C.Field( frame.locals_fld, C.NoOffset ) )
          in
-         let locals_init = C.SingleInit( C.AddrOf locals_val ) in
          let locals_type = C.TPtr( frame.locals_typ, [(*attrs*)] ) in
-         C.makeLocalVar prologue "locals" ~init:locals_init locals_type
+         let locals = C.makeLocalVar prologue "locals" locals_type in
+         let locals_init = C.Set( C.var locals, C.AddrOf locals_val, fdef_loc ) in
+         ( locals, locals_init )
        in
        let assign_param v =
          let local_var =
@@ -274,12 +284,12 @@ let make_epilogue original frame generic =
   let this = C.Lval( C.var( C.makeFormalVar epilogue "frame" frame.typ ) ) in
   let caller = C.var( C.makeTempVar epilogue frame.typ ) in
   let instrs =
-    let call_instr = C.Call( Some caller, generic, [ frame.exp ], fdef_loc ) in
+    let call_instr = C.Call( Some caller, generic, [ this ], fdef_loc ) in
     match return_type with
       C.TVoid _ -> [ call_instr ]
     | _ ->
        let rval = C.Lval( C.var( C.makeFormalVar epilogue "v" return_type ) ) in
-       let locals = ( C.Mem frame.exp, C.Field( frame.locals_fld, C.NoOffset ) ) in
+       let locals = ( C.Mem this, C.Field( frame.locals_fld, C.NoOffset ) ) in
        let locals_cast = C.mkCast ( C.mkAddrOf locals ) return_type in
        [ C.Set( ( C.Mem locals_cast, C.NoOffset ), rval, fdef_loc ); call_instr ]
   in
@@ -441,7 +451,19 @@ class coroutinifyYieldingVisitor fdec locals frame epilogue = object(self)
     | _ -> C.DoChildren
 end
 
-let make_yielding_version fdec =
+(* Translate:
+ *     rt f( p1, p2, p3 ) { ... }
+ * to:
+ *     frame_p __crcl_fn_yielding_f( frame_p frame )
+ *     {
+ *         __crcl_locals_f_struct *locals =
+ *             &(((__crcl_locals_f_union * )&frame->_)->L);
+ *         if( frame->goto_address )
+ *             goto frame->goto_address;
+ *         coroutinify( ... )
+ *     }
+ *)
+let make_yielding fdec =
   let new_name = spf "%s%s" crcl_yielding_prefix fdec.C.svar.C.vname in
   let yielding_version = C.copyFunction fdec new_name in
   let fields =
@@ -488,6 +510,16 @@ class findFunctionsVisitor = object(self)
        let kind = crcl_fun_kind fdec.C.svar.C.vname in
        (match kind with
           CRCL_FUN_OTHER ->
+          let ( locals_union_type,
+                locals_struct_type,
+                globs,
+                locals_field,
+                ret_field,
+                locals_table ) = make_locals_struct fdec
+          in
+          let p = make_prologue fdec in (*frame generic params =*)
+          let a = make_after_return fdec in (*frame generic_after*)
+          let e = make_epilogue fdec in (* frame generic =*)
           let xxx = make_yielding_version fdec in
           change_do_children [g]
         | _ -> C.SkipChildren

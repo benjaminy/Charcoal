@@ -27,9 +27,21 @@ struct crcl(frame_t)
 {
     activity_p activity;
     crcl(frame_p) (*fn)( crcl(frame_p) );
+    /* NOTE: It's probably not necessary to have the callee link, but it
+     * seems nice for debugging. */
     crcl(frame_p) caller, callee;
     void *goto_address;
-    char locals[0]; /* ... and return value? */
+
+    /* Using the variable-sized last field trick.
+     * The last field is for procedure-specific storage (parameters,
+     * local variables, and the return value).
+     * union {
+     *     struct {
+     *         params and local vars
+     *     } L;
+     *     return type R;
+     * } */
+    char specific[0];
 };
 
 /* I think the Charcoal type for activities and the C type need to be
