@@ -97,8 +97,12 @@ struct crcl(coroutine_fn_ptr_generic)
 int crcl(activate)( crcl(frame_p) caller, activity_p activity, crcl(frame_p) f );
 crcl(frame_p) crcl(activity_blocked)( crcl(frame_p) frame );
 
-/* NOTE: It might make good performance sense to inline this, but I'm
- * going to leave that decision to the system for now. */
+/* NOTE: It might make good performance sense to inline all these
+ * generic yielding call helper functions.  I'm going to leave that
+ * decision to the system for now. */
+/* NOTE: These generic helpers would be a convenient place to put in
+ * debugging stuff. */
+
 static frame_p crcl(fn_generic_prologue)(
     size_t sz, void *return_ptr, frame_p caller, frame_p (*fn)( frame_p ) )
 {
@@ -122,7 +126,11 @@ static frame_p crcl(fn_generic_prologue)(
     return f;
 }
 
-/* XXX Not sure if it's sensible to be generic about after-return */
+static frame_p crcl(fn_generic_epilogue)( frame_p frame )
+{
+    return frame->caller;
+}
+
 static void crcl(fn_generic_after_return)( frame_p frame )
 {
     /* XXX make malloc/free configurable? */
@@ -132,12 +140,6 @@ static void crcl(fn_generic_after_return)( frame_p frame )
      * nickel-and-diming the performance of yielding calls anyway (use
      * unyielding calls instead). */
     frame->callee = NULL;
-}
-
-/* XXX Not sure if it's sensible to be generic about epilogue */
-static frame_p crcl(fn_generic_epilogue)( frame_p frame )
-{
-    return frame->caller;
 }
 
 #endif /* __CHARCOAL_RUNTIME_COROUTINE */
