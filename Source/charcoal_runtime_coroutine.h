@@ -23,6 +23,9 @@ struct cthread_t
     cthread_p           next, prev;
 };
 
+/* This is a silly little helper for Cil */
+extern int crcl(dummy_variable);
+
 struct crcl(frame_t)
 {
     activity_p activity;

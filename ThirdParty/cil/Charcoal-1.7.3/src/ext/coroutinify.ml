@@ -36,16 +36,17 @@ type crcl_fun_kind =
   | CRCL_FUN_PROLOGUE
   | CRCL_FUN_OTHER
 
-let crcl_yielding_prefix     = "__charcoal_fn_yielding_"
-let crcl_unyielding_prefix   = "__charcoal_fn_unyielding_"
-let crcl_prologue_prefix     = "__charcoal_fn_prologue_"
-let crcl_epilogue_prefix     = "__charcoal_fn_epilogue_"
-let crcl_after_return_prefix = "__charcoal_fn_after_return_"
-let crcl_locals_prefix       = "__charcoal_fn_locals_"
-let (crcl_yielding, crcl_unyielding, crcl_prologue,
-     crcl_epilogue, crcl_after_return, crcl_locals) =
-  let ps = [ crcl_yielding_prefix; crcl_unyielding_prefix; crcl_prologue_prefix;
-             crcl_epilogue_prefix; crcl_after_return_prefix; crcl_locals_prefix; ]
+let unyielding_pfx   = "__charcoal_fn_unyielding_"
+let locals_pfx       = "__charcoal_fn_locals_"
+let specific_pfx     = "__charcoal_fn_specific_"
+let prologue_pfx     = "__charcoal_fn_prologue_"
+let yielding_pfx     = "__charcoal_fn_yielding_"
+let epilogue_pfx     = "__charcoal_fn_epilogue_"
+let after_return_pfx = "__charcoal_fn_after_return_"
+let (crcl_unyielding, crcl_locals, crcl_specific, crcl_prologue,
+     crcl_yielding, crcl_epilogue, crcl_after_return) =
+  let ps = [ unyielding_pfx; locals_pfx; specific_pfx;
+             prologue_pfx; yielding_pfx; epilogue_pfx; after_return_pfx; ]
   in
   let ps_lens = List.map ( fun p -> ( p, String.length p ) ) ps in
   let comp( p, l ) =
@@ -54,7 +55,7 @@ let (crcl_yielding, crcl_unyielding, crcl_prologue,
     ( m, if m then Str.string_after s l else "" )
   in
   ( match List.map comp ps_lens with
-      [y;u;p;e;a;l] -> (y,u,p,e,a,l)
+      [u;l;s;p;y;a;e] -> (u,l,s,p,y,a,e)
     | _ -> E.s( E.error "Unpossible!!!" ) )
 
 let crcl_fun_kind name =
@@ -70,15 +71,16 @@ let crcl_fun_kind name =
 
 type frame_info =
     {
-      caller_fld : C.fieldinfo;
-      callee_fld : C.fieldinfo;
-      locals_fld : C.fieldinfo;
-      return_fld : C.fieldinfo;
-      lval       : C.lval;
-      exp        : C.exp;
-      typ        : C.typ;
-      locals_typ : C.typ;
-      yielding   : C.varinfo;
+      specific_cast : C.typ -> C.varinfo -> C.exp;
+      caller_fld    : C.fieldinfo;
+      callee_sel    : C.exp -> C.lval;
+      locals_fld    : C.fieldinfo;
+      return_fld    : C.fieldinfo;
+      lval          : C.lval;
+      exp           : C.exp;
+      typ           : C.typ;
+      locals_typ    : C.typ;
+      yielding      : C.varinfo;
     }
 
 class bar( newname: string ) = object( self )
@@ -96,9 +98,9 @@ let fooo (v : C.varinfo) =
   with Not_found ->
     (* XXX fix types: *)
     let mvi = C.makeVarinfo true in
-    let i = mvi (spf "%s%s" crcl_prologue_prefix   v.C.vname) C.voidType in
-    let y = mvi (spf "%s%s" crcl_yielding_prefix   v.C.vname) C.voidType in
-    let u = mvi (spf "%s%s" crcl_unyielding_prefix v.C.vname) C.voidType in
+    let i = mvi (spf "%s%s" prologue_pfx   v.C.vname) C.voidType in
+    let y = mvi (spf "%s%s" yielding_pfx   v.C.vname) C.voidType in
+    let u = mvi (spf "%s%s" unyielding_pfx v.C.vname) C.voidType in
     let () = IH.replace function_vars v.C.vid (i, y, u) in
     (i, y, u)
 
@@ -120,7 +122,7 @@ let fooo (v : C.varinfo) =
  *     }
  *)
 (* XXX GCompTag??? *)
-let make_specific_struct fdec =
+let make_specific fdec specific_ptr =
   let sanity v =
     let () = match v.C.vstorage with
         C.NoStorage | C.Register -> ()
@@ -138,17 +140,17 @@ let make_specific_struct fdec =
   let fname = fdec.C.svar in
   let fdef_loc = fname.C.vdecl in
   let unit_type = C.TArray( C.charType, Some( C.zero ), [(*attrs*)] ) in
-  let ( locals_type, locals, globs ) =
+  let ( locals_type, locals, tags ) =
     match fdec.C.sformals @ fdec.C.slocals with
       [] -> ( unit_type, IH.create 0, [] )
     | all ->
        let field v =
          let () = sanity v in
-         (* TODO: maybe drop if unused *)
          ( v.C.vname, v.C.vtype, None, [(*attrs*)], v.C.vdecl )
        in
-       let fields = List.map field all in
-       let struct_name = spf "%s%s_%s" crcl_locals_prefix fname.C.vname "struct" in
+       let used_vars = List.filter ( fun v -> v.C.vreferenced ) all in
+       let fields = List.map field used_vars in
+       let struct_name = spf "%s%s" locals_pfx fname.C.vname in
        let ci = C.mkCompInfo true struct_name ( fun _ -> fields ) [(*attrs*)] in
        let field_select t v =
          let field =
@@ -157,8 +159,8 @@ let make_specific_struct fdec =
          in
          IH.replace t v.C.vid ( fun e o -> ( C.Mem e, C.Field( field, o ) ) )
        in
-       let locals = IH.create( List.length all ) in
-       let () = List.iter ( field_select locals ) all in
+       let locals = IH.create( List.length used_vars ) in
+       let () = List.iter ( field_select locals ) used_vars in
        ( C.TComp( ci, [(*attrs*)] ), locals, [ C.GCompTag( ci, fdef_loc ) ] )
   in
   let return_type =
@@ -167,41 +169,39 @@ let make_specific_struct fdec =
     | C.TFun( rt, _, _, _ ) -> rt
     | _ -> E.s( E.error "Function with non-function type?!?" )
   in
-  let locals_field = ( "L", locals_type, None, [(*attrs*)], fdef_loc ) in
-  let ret_field    = ( "R", return_type, None, [(*attrs*)], fdef_loc ) in
-  let fields = [ locals_field; ret_field ] in
-  let union_name = spf "%s%s_%s" crcl_locals_prefix fname.C.vname "union" in
-  let union = C.mkCompInfo false union_name ( fun _ -> fields ) [(*attrs*)] in
-  let locals_field =
-    { C.fcomp = union; C.fname = "L"; C.ftype = locals_type;
-      C.fbitfield = None; C.fattr = [(*attrs*)]; C.floc = fdef_loc }
+  let specific =
+    let f n t = ( n, t, None, [(*attrs*)], fdef_loc ) in
+    let fields = [ f "L" locals_type; f "R" return_type ] in
+    let specific_name = spf "%s%s" specific_pfx fname.C.vname in
+    C.mkCompInfo false specific_name ( fun _ -> fields ) [(*attrs*)]
   in
-  let ret_field =
-    { C.fcomp = union; C.fname = "R"; C.ftype = return_type;
-      C.fbitfield = None; C.fattr = [(*attrs*)]; C.floc = fdef_loc }
+  let select name ftype =
+    let specific_foo = specific_ptr( C.TComp( specific, [(*attrs*)] ) ) in
+    let field =
+      { C.fcomp = specific; C.fname = name; C.ftype = ftype;
+        C.fbitfield = None; C.fattr = [(*attrs*)]; C.floc = fdef_loc }
+    in
+    fun frame ->
+      ( C.Mem( specific_foo frame ), C.Field( field, C.NoOffset ) )
   in
-  let union_glob = C.GCompTag( union, fdef_loc ) in
-  ( C.TComp( union, [(*attrs*)] ),
-    locals_type,
-    union_glob::globs,
-    locals_field,
-    ret_field,
+  let specific_tag = C.GCompTag( specific, fdef_loc ) in
+  ( locals_type,
+    tags @ [ specific_tag ],
+    select "L" locals_type,
+    select "R" return_type,
     locals )
 
 
 (* For this function definition:
  *     rt f( p1, p2, p3 ) { ... }
  * Generate this prologue:
- *     frame_p __crcl_fn_prologue_f( frame_p caller, void *ret_ptr, p1, p2, p3 )
+ *     frame_p __prologue_f( frame_p caller, void *ret_ptr, p1, p2, p3 )
  *     {
  *        /* NOTE: Using a call here to keep code size down.  The system is 
  *         * welcome to inline it, if that's a good idea. */
- *        frame_p frame = __crcl_generic_prologue(
- *           sizeof( f struct ), ret_ptr, caller, __crcl_fn_yielding_f );
- *        ( f struct ) *locals = &frame->locals;
- *        XXX should be:
- *        ( f specific * ) specific = ( f specific * )&frame->specific;
- *        ( f locals * ) locals = &specific->L;
+ *        frame_p frame = __generic_prologue(
+ *           sizeof( __specific_f ), ret_ptr, caller, __yielding_f );
+ *        ( __specific_f ) *locals = &locals_cast( frame );
  *        locals->p1 = p1;
  *        locals->p2 = p2;
  *        locals->p3 = p3;
@@ -217,7 +217,7 @@ let make_prologue original frame generic params =
   let fdef_loc = orig_var.C.vdecl in
   (* XXX function type? *)
   let prologue =
-    C.emptyFunction( spf "%s%s" crcl_prologue_prefix orig_var.C.vname )
+    C.emptyFunction( spf "%s%s" prologue_pfx orig_var.C.vname )
   in
   let () = C.setFormals prologue original.C.sformals in
   let generic_params =
@@ -262,11 +262,10 @@ let make_prologue original frame generic params =
 (* For this function definition:
  *     rt f( p1, p2, p3 ) { ... }
  * Generate this epilogue:
- *     frame_p __crcl_fn_epilogue( frame_p frame, rt v )
+ *     frame_p __epilogue( frame_p frame, rt v )
  *     {
- *         *( ( return type * ) &( frame->locals ) ) = v;
- *         XXX OR ( ( f struct * ) &( frame->locals ) )->_.ret_val = v;
- *         return __crcl_fn_generic_epilogue( frame );
+ *         return_cast( frame ) = v;
+ *         return __generic_epilogue( frame );
  *     }
  *)
 (* XXX  Mind the generated function's return type *)
@@ -274,7 +273,7 @@ let make_epilogue original frame generic =
   let orig_var = original.C.svar in
   let fdef_loc = orig_var.C.vdecl in
   let epilogue =
-    C.emptyFunction( spf "%s%s" crcl_epilogue_prefix orig_var.C.vname )
+    C.emptyFunction( spf "%s%s" epilogue_pfx orig_var.C.vname )
   in
   let return_type =
     match orig_var.C.vtype with
@@ -302,19 +301,19 @@ let make_epilogue original frame generic =
 (* For this function definition:
  *     rt f( p1, p2, p3 ) { ... }
  * Generate this after-return:
- *     void __crcl_fn_after_return_f( frame_p frame, rt *lhs )
+ *     void __after_return_f( frame_p frame, rt *lhs )
  *     {
- *         /* sequence is important because generic frees callee */
+ *         /* sequence is important because generic frees the callee */
  *         if( lhs )
- *             *lhs = *((rt * )(&(frame->callee->locals)));
- *         __crcl_fn_generic_after_return( frame );
+ *             *lhs = return_cast( frame );
+ *         __generic_after_return( frame );
  *     }
  *)
 let make_after_return original frame generic_after =
   let orig_var = original.C.svar in
   let fdef_loc = orig_var.C.vdecl in
   let after_ret =
-    C.emptyFunction( spf "%s%s" crcl_after_return_prefix orig_var.C.vname )
+    C.emptyFunction( spf "%s%s" after_return_pfx orig_var.C.vname )
   in
   let return_type =
     match orig_var.C.vtype with
@@ -330,7 +329,7 @@ let make_after_return original frame generic_after =
                             ( C.TPtr( return_type, [(*attrs*)] ) ) in
     C.Lval( C.var l )
   in
-  let callee = C.Lval( C.Mem this, C.Field( frame.callee_fld, C.NoOffset ) ) in
+  let callee = C.Lval( frame.callee_sel this ) in
   let locals = ( C.Mem callee, C.Field( frame.locals_fld, C.NoOffset ) ) in
   let locals_cast = C.mkCast ( C.mkAddrOf locals ) return_type in
   let lhs = ( C.Mem lhsp, C.NoOffset ) in
@@ -347,15 +346,15 @@ let make_after_return original frame generic_after =
 (* Translate direct calls from:
  *     lhs = f( p1, p2, p3 );
  * to:
- *     return __crcl_fn_prologue_f( frame, &__crcl_return_N, p1, p2, p3 );
- *   __crcl_return_N:
- *     __crcl_fn_after_return_f( frame, &lhs );
+ *     return __prologue_f( frame, &__return_N, p1, p2, p3 );
+ *   __return_N:
+ *     __after_return_f( frame, &lhs );
  *
  * XXX unimp  Translate indirect calls from:
  *     lhs = exp( p1, p2, p3 );
  * to:
- *     return exp.prologue( frame, &__crcl_return_N, p1, p2, p3 );
- *   __crcl_return_N:
+ *     return exp.prologue( frame, &__return_N, p1, p2, p3 );
+ *   __return_N:
  *     exp.after_return( frame, &lhs );
  *)
 let coroutinify_call fdec frame instr =
@@ -393,7 +392,7 @@ let coroutinify_call fdec frame instr =
 (* Translate returns from:
  *     return exp;
  * to:
- *     return __crcl_fn_epilogue_f( frame, exp );
+ *     return __epilogue_f( frame, exp );
  *)
 let coroutinify_return fdec rval_opt loc frame epilogue =
   let caller = C.var( C.makeTempVar fdec frame.typ ) in
@@ -454,23 +453,22 @@ end
 (* Translate:
  *     rt f( p1, p2, p3 ) { ... }
  * to:
- *     frame_p __crcl_fn_yielding_f( frame_p frame )
+ *     frame_p __yielding_f( frame_p frame )
  *     {
- *         __crcl_locals_f_struct *locals =
- *             &(((__crcl_locals_f_union * )&frame->_)->L);
+ *         __locals_f *locals = &locals_cast( frame );
  *         if( frame->goto_address )
  *             goto frame->goto_address;
  *         coroutinify( ... )
  *     }
  *)
 let make_yielding fdec =
-  let new_name = spf "%s%s" crcl_yielding_prefix fdec.C.svar.C.vname in
+  let new_name = spf "%s%s" yielding_pfx fdec.C.svar.C.vname in
   let yielding_version = C.copyFunction fdec new_name in
   let fields =
     let f v = (v.C.vname, v.C.vtype, None (* bitfield *), [(*attrs*)], v.C.vdecl) in
     (List.map f fdec.C.sformals) @ (List.map f fdec.C.slocals)
   in
-  let struct_name = spf "%s%s" crcl_locals_prefix fdec.C.svar.C.vname in
+  let struct_name = spf "%s%s" locals_pfx fdec.C.svar.C.vname in
   let locals_struct = C.mkCompInfo true struct_name (fun _ -> fields) [(* attrs *)] in
   let locals_type = C.TPtr( C.TComp( locals_struct, [(*attrs*)] ), [(*attrs*)] ) in
   let locals_init =
@@ -499,38 +497,90 @@ let make_yielding fdec =
   in
   yielding_version
 
+let extract_frame_fields ci dummy_var =
+  let a = ref None in
+  let s = ref None in
+  let cr = ref None in
+  let ce = ref None in
+  let extract f =
+    if f.C.fname == "activity" then
+      a := Some f
+    else if f.C.fname == "specific" then
+      s := Some f
+    else if f.C.fname == "caller" then
+      cr := Some f
+    else if f.C.fname == "callee" then
+      ce := Some f
+    else
+      ()
+  in
+  let () = List.iter extract ci.C.cfields in
+  match ( !a, !s, !cr, !ce ) with
+    Some a, Some s, Some cr, Some ce ->
+    let dummy_field = a in
+    let dummy_lval  = ( C.Var dummy_var, C.NoOffset ) in
+    let dummy_exp   = C.zero in
+    let dummy_type  = C.voidType in
+    let specific_cast specific_type frame =
+      let t = C.TPtr( specific_type, [(*attrs*)] ) in
+      let e = C.AddrOf( C.Mem( C.Lval( C.var frame ) ), C.Field( s, C.NoOffset ) )
+      in
+      C.mkCast e t
+    in
+    {
+      specific_cast = specific_cast;
+      caller_fld    = cr;
+      callee_sel    = ( fun e -> dummy_lval );
+      locals_fld    = dummy_field;
+      return_fld    = dummy_field;
+      lval          = dummy_lval;
+      exp           = dummy_exp;
+      typ           = C.TComp( ci, [(*attrs*)] );
+      locals_typ    = dummy_type;
+      yielding      = dummy_var;
+    }
+  | _ -> E.s( E.error "frame struct missing fields?!?" )
+
 class findFunctionsVisitor = object(self)
   inherit C.nopCilVisitor
+
+  val mutable frame_opt = None
+  val mutable dummy_var = None
+
   method vglob g =
-    (* XXX Somewhere. make sure it's big enough for the return value too: *)
     (* XXX somewhere in here for prologue
       ( C.Mem( C.Lval( C.var locals ) ), C.Field( f, C.NoOffset ) ) *)
     match g with
     | C.GFun( fdec, loc ) ->
        let kind = crcl_fun_kind fdec.C.svar.C.vname in
-       (match kind with
-          CRCL_FUN_OTHER ->
-          let ( locals_union_type,
-                locals_struct_type,
-                globs,
-                locals_field,
-                ret_field,
-                locals_table ) = make_locals_struct fdec
+       (match (kind, frame_opt) with
+          ( CRCL_FUN_OTHER, None ) -> E.s( E.error "No specific field?!?" )
+        | ( CRCL_FUN_OTHER, Some frameinfo ) ->
+          let ( locals_type, tags, locals_cast, ret_cast, locals_table ) =
+            make_specific fdec frameinfo.specific_cast
           in
-          let p = make_prologue fdec in (*frame generic params =*)
-          let a = make_after_return fdec in (*frame generic_after*)
-          let e = make_epilogue fdec in (* frame generic =*)
-          let xxx = make_yielding_version fdec in
+          let p = make_prologue fdec frameinfo in (* generic params =*)
+          let a = make_after_return fdec frameinfo in (* generic_after*)
+          let e = make_epilogue fdec frameinfo in (*  generic =*)
+          let xxx = make_yielding fdec in
           change_do_children [g]
         | _ -> C.SkipChildren
        )
 
     (* We need to find various struct definitions *)
-    | C.GCompTag( compinfo, location ) ->
-       (* XXX NO NO NO. We make the locals *)
-       let (is_locals, locals_name) = crcl_locals compinfo.C.cname in
-       C.SkipChildren
-       (*  if crcl_yielding_prefix = Str.string_before name crcl_yielding_prefix_len then*)
+    | C.GCompTag( ci, loc ) ->
+       if ci.C.cname == "__charcoal_frame_t" then
+         match dummy_var with
+           None -> E.s( E.error "Must be var?!?" )
+         | Some v ->
+            let () = frame_opt <- Some( extract_frame_fields ci v ) in
+            C.DoChildren
+       else
+         C.DoChildren
+
+    | GVarDecl( v, _ ) ->
+       let () = dummy_var <- Some v in
+       C.DoChildren
 
     | _ -> C.SkipChildren
 end
