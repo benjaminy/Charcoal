@@ -1,5 +1,6 @@
-#include <charcoal_base.h>
-#include <charcoal_runtime.h>
+#include <charcoal_runtime_common.h>
+#include <charcoal.h>
+#include <charcoal_runtime_coroutine.h>
 
 #include <stdio.h>
 
