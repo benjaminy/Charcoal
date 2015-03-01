@@ -339,25 +339,49 @@ void crcl(switch_to)( activity_t *act )
 
 crcl(atomic_int) *crcl(yield_ticker);
 
-crcl(frame_p) crcl(yield_impl)( crcl(frame_p) frame ){
-    activity_p activity           = frame->activity;
+/*
+ * The current implementation strategy for yield is to put almost all of
+ * the logic into the library code, as opposed to in generated code at
+ * yield invocation sites.  A yield in Charcoal source should translate
+ * to:
+ *
+ *     frame_p next_frame = yield_impl( frame, &after_yield_N );
+ *     return next_frame;
+ *     after_yield_N:
+ *     ...
+ *
+ * In the common case that the current activity's quantum has not
+ * expired, yield_impl will return the current frame, which will be
+ * returned to the main loop.  Therefore the cost of a yield that keeps
+ * going will be roughly:
+ *  1 - Call yield_impl
+ *  2 - Compute tick diff, branch (highly predictable)
+ *  3 - Return (to yield site)
+ *  4 - Return (to main loop)
+ *  5 - Indirect call (to yield site function)
+ *  6 - Indirect branch (to after yield site)
+ * This will probably cost at least a couple dozen clock cycles, which
+ * seems high.  However:
+ * 1) In well-tuned Charcoal code, yield frequency should be in the
+ *    microseconds to milliseconds range, so a couple dozen clock cycles
+ *    is very small, relatively speaking.
+ * 2) The worst case is not catastrophic.  We're only talking about
+ *    slowing down CPU-bound code by a modest factor.
+ * 3) This scheme will hopefully pollute processor resources like the
+ *    branch predictor and instruction cache as little as possible.
+ *    These factors can have a surprisingly large impact on
+ *    whole-application performance
+ */
+crcl(frame_p) crcl(yield_impl)( crcl(frame_p) frame, void *ret_addr ){
+    frame->goto_address = ret_addr;
     size_t     current_yield_tick = crcl(atomic_load_int)( crcl(yield_ticker) );
+    activity_p activity           = frame->activity;
     ssize_t    diff               = activity->thread->tick - current_yield_tick;
     if( diff < 0 )
     {
-        // ...
+        return frame;
     }
-#if 0
-    // XXX new idea: Counters
-    //
-    // The other idea requires performing a thread local read, _then_ an
-    // atomic read on the pointer that comes back from that.  This idea
-    // has a thread-local read and an atomic read as well, but they're
-    // in parallel.  Might make a big difference.  Or it might not.
-    // Maybe do an experiment some day.
-
-    
-#endif
+    /* "else": The current activity's quantum has expired. */
     activity_t *self = crcl(get_self_activity)();
 
     /* XXX DEBUG foo->yield_attempts++; */

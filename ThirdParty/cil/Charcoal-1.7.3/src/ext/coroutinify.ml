@@ -15,6 +15,7 @@
 module C  = Cil
 module E  = Errormsg
 module IH = Inthash
+module Pf = Printf
 
 let spf = Printf.sprintf
 
@@ -37,6 +38,7 @@ let after_return_pfx = "__charcoal_fn_after_return_"
 let charcoal_pfx_len = String.length charcoal_pfx
 
 let crcl_fun_kind name =
+  let () = Pf.printf "FFFFOOOO\n" in
   let c = ( charcoal_pfx = Str.string_before name charcoal_pfx_len ) in
   ( c, if c then Str.string_after name charcoal_pfx_len else name )
 
@@ -103,6 +105,7 @@ let add_fn_translation v u p a = IH.replace function_vars v.C.vid ( u, p, a )
  *     }
  *)
 let make_specific fdec frame_info =
+  (* Crash if v doesn't have the properties expected of locals. *)
   let sanity v =
     let () = match v.C.vstorage with
         C.NoStorage | C.Register -> ()
@@ -117,8 +120,8 @@ let make_specific fdec frame_info =
     ()
   in
 
-  let fname = fdec.C.svar in
-  let fdef_loc = fname.C.vdecl in
+  let fname     = fdec.C.svar in
+  let fdef_loc  = fname.C.vdecl in
   let unit_type = C.TArray( C.charType, Some( C.zero ), [(*attrs*)] ) in
   let ( locals_type, locals, tags ) =
     match List.filter ( fun v -> v.C.vreferenced )
@@ -143,6 +146,7 @@ let make_specific fdec frame_info =
        in
        let locals = IH.create( List.length all ) in
        let () = List.iter ( field_select locals ) all in
+       (* Given exp, an expression for a locals pointer, map variable x to exp->x *)
        let locals_gen l =
          let () = locals_ptr := l in
          locals
@@ -199,19 +203,23 @@ let make_specific fdec frame_info =
  *        locals->p1 = p1;
  *        locals->p2 = p2;
  *        locals->p3 = p3;
- *        /* XXX not totally sure if these inits exist: */
- *        locals->l1 = init1;
- *        locals->l2 = init2;
- *        locals->l3 = init3;
+ *        /* TODO: Verify that Cil doesn't use inits on local variables (i.e. an
+ *         * init in source will turn into expressions) */
  *        return frame;
  *     }
  *)
 let make_prologue original frame =
   let orig_var = original.C.svar in
   let fdef_loc = orig_var.C.vdecl in
-  (* XXX function type? *)
   let prologue = C.emptyFunction( spf "%s%s" prologue_pfx orig_var.C.vname ) in
   let () = C.setFormals prologue original.C.sformals in
+  let () =
+    match prologue.C.svar.C.vtype with
+      C.TFun( _, params, vararg, attrs ) ->
+      prologue.C.svar.C.vtype <-
+        C.TFun( C.TPtr( frame.typ, [(*attrs*)] ), params, vararg, attrs )
+    | _ -> E.s( E.error "Prologue must be function" )
+  in
   let this = C.makeLocalVar prologue "frame" frame.typ in
   let call =
     let ret_ptr = C.makeFormalVar prologue ~where:"^" "ret_ptr" C.voidPtrType in
@@ -257,12 +265,18 @@ let make_prologue original frame =
  *         return __generic_epilogue( frame );
  *     }
  *)
-(* XXX  Mind the generated function's return type *)
 let make_epilogue original frame =
   let orig_var = original.C.svar in
   let fdef_loc = orig_var.C.vdecl in
   let epilogue =
     C.emptyFunction( spf "%s%s" epilogue_pfx orig_var.C.vname )
+  in
+  let () =
+    match epilogue.C.svar.C.vtype with
+      C.TFun( _, params, vararg, attrs ) ->
+      epilogue.C.svar.C.vtype <-
+        C.TFun( C.TPtr( frame.typ, [(*attrs*)] ), params, vararg, attrs )
+    | _ -> E.s( E.error "Epilogue must be function" )
   in
   let return_type =
     match orig_var.C.vtype with
@@ -408,7 +422,7 @@ class coroutinifyYieldingVisitor fdec locals frame = object(self)
     match lhost with
       C.Var v ->
       ( match IH.tryfind locals v.C.vid with
-          Some l -> change_do_children l
+          Some l -> change_do_children ( l offset )
         | None -> C.DoChildren )
     (* We can ignore the Mem case because we'll get it later in the visit *)
     | _ -> C.DoChildren
@@ -456,6 +470,13 @@ let make_yielding fdec frame_info =
     let new_name = spf "%s%s" yielding_pfx fdef_var.C.vname in
     C.copyFunction fdec new_name
   in
+  let () =
+    match yielding.C.svar.C.vtype with
+      C.TFun( _, params, vararg, attrs ) ->
+      yielding.C.svar.C.vtype <-
+        C.TFun( C.TPtr( frame_info.typ, [(*attrs*)] ), params, vararg, attrs )
+    | _ -> E.s( E.error "Yielding must be function" )
+  in
   let () = C.setFormals yielding [] in
   let () = yielding.C.slocals <- [] in
   let this = C.makeFormalVar yielding "frame" frame_info.typ in
@@ -465,15 +486,15 @@ let make_yielding fdec frame_info =
     let locals_init = C.Set( locals, locals_val, fdef_loc ) in
     ( frame_info.locals( C.Lval( locals ) ), locals_init )
   in
+  (* XXX UNUSED *)
   let goto_stmt =
     let goto_field = C.Lval( frame_info.goto_sel( C.Lval( C.var this ) ) ) in
     let empty_block = C.mkBlock( [ C.mkEmptyStmt() ] ) in
     let goto = C.mkStmt( C.ComputedGoto( goto_field, fdef_loc ) ) in
     C.mkStmt( C.If( goto_field, C.mkBlock( [ goto ] ), empty_block, fdef_loc ) )
   in
-  (* XXX coroutinify!!! *)
-  (* XXX return type *)
-  yielding
+  let v = new coroutinifyYieldingVisitor yielding locals_tbl frame_info in
+  C.visitCilFunction v yielding
 
 
 (* In the body of f, change calls to unyielding versions *)
@@ -535,13 +556,27 @@ class findFunctionsVisitor = object(self)
   inherit C.nopCilVisitor
 
   val mutable frame_opt = None
-  val mutable dummy_var = None
+  val mutable frame_struct = None
 
   method vglob g =
     (* XXX somewhere in here for prologue
       ( C.Mem( C.Lval( C.var locals ) ), C.Field( f, C.NoOffset ) ) *)
+    (* let () = match g with *)
+    (*   | C.GType( t, l )    -> Pf.printf "T %s\n" t.C.tname *)
+    (*   | C.GCompTag( c, l ) -> Pf.printf "CT %s\n" c.C.cname *)
+    (*   | C.GCompTagDecl( c, l ) -> Pf.printf "CTD %s\n" c.C.cname *)
+    (*   | C.GEnumTag( e, l ) -> Pf.printf "ET\n" *)
+    (*   | C.GEnumTagDecl( e, l ) -> Pf.printf "ETD\n" *)
+    (*   | C.GVarDecl( v, l ) -> ()(\*Pf.printf "VD %s\n" v.C.vname*\) *)
+    (*   | C.GVar( v, i, l ) -> Pf.printf "V %s\n" v.C.vname *)
+    (*   | C.GFun( f, l ) -> Pf.printf "F\n" *)
+    (*   | C.GAsm( s, l ) -> Pf.printf "A\n" *)
+    (*   | C.GPragma( a, l ) -> Pf.printf "P\n" *)
+    (*   | C.GText( s ) -> Pf.printf "T\n" *)
+    (* in *)
     match g with
     | C.GFun( fdec, loc ) ->
+       (* let () = Pf.printf "ffv - vg - %s\n" fdec.C.svar.C.vname in *)
        let kind = crcl_fun_kind fdec.C.svar.C.vname in
        (match (kind, frame_opt) with
           ( _, None ) -> E.s( E.error "frame_t should come before any fdefs!" )
@@ -584,18 +619,22 @@ class findFunctionsVisitor = object(self)
 
     (* We need to find various struct definitions *)
     | C.GCompTag( ci, loc ) ->
+       (* let () = Pf.printf "ffv - gct - %s\n" ci.C.cname in *)
        if ci.C.cname = "__charcoal_frame_t" then
-         match dummy_var with
-           None -> E.s( E.error "Must be var?!?" )
-         | Some v ->
-            let () = frame_opt <- Some( process_generic_frame ci v ) in
-            C.DoChildren
+         let () = frame_struct <- Some ci in
+         C.DoChildren
        else
          C.DoChildren
 
-    | C.GVarDecl( v, _ ) ->
-       let () = dummy_var <- Some v in
-       C.DoChildren
+    | C.GVar( v, _, _ ) ->
+       let () =
+         match frame_struct with
+           None -> E.s( E.error "Must be frame?!?" )
+         | Some ci ->
+            let () = frame_opt <- Some( process_generic_frame ci v ) in
+            frame_struct <- None
+       in
+            C.DoChildren
 
     | _ -> C.SkipChildren
 end

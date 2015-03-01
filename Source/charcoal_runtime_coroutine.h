@@ -1,6 +1,9 @@
 #ifndef __CHARCOAL_RUNTIME_COROUTINE
 #define __CHARCOAL_RUNTIME_COROUTINE
 
+/* This is a silly little helper for Cil */
+static int crcl(dummy_variable);
+
 #include <charcoal_runtime_common.h>
 #include <charcoal_runtime_atomics.h>
 #include <charcoal_semaphore.h>
@@ -23,9 +26,6 @@ struct cthread_t
     cthread_p           next, prev;
 };
 
-/* This is a silly little helper for Cil */
-extern int crcl(dummy_variable);
-
 struct crcl(frame_t)
 {
     activity_p activity;
@@ -47,12 +47,16 @@ struct crcl(frame_t)
     char specific[0];
 };
 
+/* This is a silly little helper for Cil */
+static crcl(frame_t) crcl(dummy_frame);
+
 /* I think the Charcoal type for activities and the C type need to be
  * different.  The Charcoal type should have the return type as a
  * parameter. */
 struct activity_t
 {
     cthread_p thread;
+    /* TODO: add a bit to indicate if a yield caused an activity switch */
     unsigned flags;
     /* Every activity is in the (thread-local) list of all activities.
      * An activity may be in another "special" list, of which there
@@ -83,7 +87,7 @@ struct crcl(coroutine_fn_ptr_generic)
 {
     crcl(frame_p) (*init)( crcl(frame_p) caller, ... );
     crcl(frame_p) (*yielding)( crcl(frame_p) self );
-    void * (*unyielding)( int dummy, ... );
+    void * (*unyieldin)( int dummy, ... );
 };
 
 #define __CHARCOAL_COROUTINE_FN_PTR_SPECIFIC(name, ret_type, ...) \
@@ -103,11 +107,11 @@ crcl(frame_p) crcl(activity_blocked)( crcl(frame_p) frame );
 /* NOTE: These generic helpers would be a convenient place to put in
  * debugging stuff. */
 
-static frame_p crcl(fn_generic_prologue)(
-    size_t sz, void *return_ptr, frame_p caller, frame_p (*fn)( frame_p ) )
+static crcl(frame_p) crcl(fn_generic_prologue)(
+    size_t sz, void *return_ptr, crcl(frame_p) caller, crcl(frame_p) (*fn)( crcl(frame_p) ) )
 {
     /* XXX make malloc/free configurable? */
-    frame_p f = (frame_p)malloc( sz + sizeof( f[0] ) );
+    crcl(frame_p) f = (crcl(frame_p))malloc( sz + sizeof( f[0] ) );
     if( !f )
     {
         /* XXX die */
@@ -126,12 +130,12 @@ static frame_p crcl(fn_generic_prologue)(
     return f;
 }
 
-static frame_p crcl(fn_generic_epilogue)( frame_p frame )
+static crcl(frame_p) crcl(fn_generic_epilogue)( crcl(frame_p) frame )
 {
     return frame->caller;
 }
 
-static void crcl(fn_generic_after_return)( frame_p frame )
+static void crcl(fn_generic_after_return)( crcl(frame_p) frame )
 {
     /* XXX make malloc/free configurable? */
     free( frame->callee );

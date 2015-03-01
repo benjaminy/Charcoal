@@ -103,6 +103,7 @@ static void generic_charcoal_thread( void *p )
         crcl(frame_p) the_frame = a->top;
         CRCL(CLEAR_FLAG)( thread.flags, CRCL(THDF_IDLE) );
         uv_mutex_unlock( &thread.thd_management_mtx );
+        /* The main loop!!! */
         do
         {
             the_frame = the_frame->fn( the_frame );
