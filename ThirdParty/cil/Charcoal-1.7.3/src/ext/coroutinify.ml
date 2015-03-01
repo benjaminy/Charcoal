@@ -19,6 +19,8 @@ module Pf = Printf
 
 let spf = Printf.sprintf
 
+let opt_map f x = match x with None -> None | Some y -> Some( f y )
+
 let change_do_children x = C.ChangeDoChildrenPost( x, fun e -> e )
 
 let label_counter = ref 1
@@ -37,9 +39,10 @@ let epilogue_pfx     = "__charcoal_fn_epilogue_"
 let after_return_pfx = "__charcoal_fn_after_return_"
 let charcoal_pfx_len = String.length charcoal_pfx
 
+let charcoal_pfx_regex = Str.regexp charcoal_pfx
+
 let crcl_fun_kind name =
-  let () = Pf.printf "FFFFOOOO\n" in
-  let c = ( charcoal_pfx = Str.string_before name charcoal_pfx_len ) in
+  let c = Str.string_match charcoal_pfx_regex name 0 in
   ( c, if c then Str.string_after name charcoal_pfx_len else name )
 
 
@@ -48,6 +51,7 @@ type frame_info =
     (* generic: *)
     specific_cast   : C.typ -> C.lval -> C.exp;
     typ             : C.typ;
+    typ_ptr         : C.typ;
     callee_sel      : C.exp -> C.lval;
     goto_sel        : C.exp -> C.lval;
     gen_prologue    : C.varinfo;
@@ -124,7 +128,7 @@ let make_specific fdec frame_info =
   let fdef_loc  = fname.C.vdecl in
   let unit_type = C.TArray( C.charType, Some( C.zero ), [(*attrs*)] ) in
   let ( locals_type, locals, tags ) =
-    match List.filter ( fun v -> v.C.vreferenced )
+    match List.filter ( fun v -> (* XXX always false??? v.C.vreferenced *) true )
                       ( fdec.C.sformals @ fdec.C.slocals )
     with
       [] -> ( unit_type, ( fun _ -> IH.create 0 ), [] )
@@ -217,13 +221,13 @@ let make_prologue original frame =
     match prologue.C.svar.C.vtype with
       C.TFun( _, params, vararg, attrs ) ->
       prologue.C.svar.C.vtype <-
-        C.TFun( C.TPtr( frame.typ, [(*attrs*)] ), params, vararg, attrs )
+        C.TFun( frame.typ_ptr, params, vararg, attrs )
     | _ -> E.s( E.error "Prologue must be function" )
   in
-  let this = C.makeLocalVar prologue "frame" frame.typ in
+  let this = C.makeLocalVar prologue "frame" frame.typ_ptr in
   let call =
     let ret_ptr = C.makeFormalVar prologue ~where:"^" "ret_ptr" C.voidPtrType in
-    let caller  = C.makeFormalVar prologue ~where:"^" "caller"  frame.typ in
+    let caller  = C.makeFormalVar prologue ~where:"^" "caller"  frame.typ_ptr in
     let ps = List.map ( fun v -> C.Lval( C.var v ) )
                       [ ret_ptr; caller; frame.yielding ]
     in
@@ -244,11 +248,11 @@ let make_prologue original frame =
          let local_var =
            match IH.tryfind locals v.C.vid with
              Some f -> f C.NoOffset
-           | _ -> E.s( E.error "Unpossible" )
+           | _ -> E.s( E.error "Missing local %s" v.C.vname )
          in
          C.Set( local_var, C.Lval( C.var v ), fdef_loc )
        in
-       List.map assign_param fs
+       locals_init::( List.map assign_param fs )
   in
   let instrs = call::param_assignments in
   let body = C.mkBlock[ C.mkStmt( C.Instr instrs ) ] in
@@ -275,7 +279,7 @@ let make_epilogue original frame =
     match epilogue.C.svar.C.vtype with
       C.TFun( _, params, vararg, attrs ) ->
       epilogue.C.svar.C.vtype <-
-        C.TFun( C.TPtr( frame.typ, [(*attrs*)] ), params, vararg, attrs )
+        C.TFun( frame.typ_ptr, params, vararg, attrs )
     | _ -> E.s( E.error "Epilogue must be function" )
   in
   let return_type =
@@ -283,8 +287,8 @@ let make_epilogue original frame =
       C.TFun( r, _, _, _ ) -> r
     | _ -> E.s( E.error "Function with non-function type?!?" )
   in
-  let this = C.var( C.makeFormalVar epilogue "frame" frame.typ ) in
-  let caller = C.var( C.makeTempVar epilogue frame.typ ) in
+  let this = C.var( C.makeFormalVar epilogue "frame" frame.typ_ptr ) in
+  let caller = C.var( C.makeTempVar epilogue frame.typ_ptr ) in
   let instrs =
     let ge = C.Lval( C.var frame.gen_epilogue ) in
     let call_instr = C.Call( Some caller, ge, [ C.Lval this ], fdef_loc ) in
@@ -322,7 +326,7 @@ let make_after_return original frame =
       C.TFun( r, _, _, _ ) -> r
     | _ -> E.s( E.error "Function with non-function type?!?" )
   in
-  let this = C.var( C.makeFormalVar after_ret "frame" frame.typ ) in
+  let this = C.var( C.makeFormalVar after_ret "frame" frame.typ_ptr ) in
   let lhsp =
     let l = C.makeFormalVar after_ret "lhs"
                             ( C.TPtr( return_type, [(*attrs*)] ) ) in
@@ -361,7 +365,8 @@ let coroutinify_call fdec frame instr =
         C.Lval( C.Var v, C.NoOffset ) ->
         (match lookup_fn_translation v with
            Some x -> x
-         | None -> E.s( E.unimp "Oh noes; indirect calls" ) )
+         | None -> E.s( E.unimp "Failed lookup %s -> %s"
+                                fdec.C.svar.C.vname v.C.vname ) )
       | _ -> E.s( E.unimp "Oh noes; indirect calls" )
     in
     let after_call =
@@ -377,7 +382,7 @@ let coroutinify_call fdec frame instr =
       let () = r.C.labels <- [ fresh_return_label loc ] in
       r
     in
-    let callee = C.var( C.makeTempVar fdec frame.typ ) in
+    let callee = C.var( C.makeTempVar fdec frame.typ_ptr ) in
     let ps = frame.exp::( C.AddrOfLabel( ref after_call ) )::params in
     let prologue_call =
       let call = C.Call( Some callee, prologue, ps, loc ) in
@@ -394,9 +399,11 @@ let coroutinify_call fdec frame instr =
  *     return exp;
  * to:
  *     return __epilogue_f( frame, exp );
+ *
+ * Prereq: exp should be coroutinified already
  *)
 let coroutinify_return fdec rval_opt loc frame =
-  let caller = C.var( C.makeTempVar fdec frame.typ ) in
+  let caller = C.var( C.makeTempVar fdec frame.typ_ptr ) in
   let params = match rval_opt with
       None ->   [ frame.exp ]
     | Some e -> [ frame.exp; e ]
@@ -404,7 +411,7 @@ let coroutinify_return fdec rval_opt loc frame =
   let ep = C.Lval( C.var frame.epilogue ) in
   let call = C.mkStmt( C.Instr[ C.Call( Some caller, ep, params, loc ) ] ) in
   let return_stmt = C.mkStmt( C.Return( Some( C.Lval caller ), loc ) ) in
-  change_do_children( C.mkStmt( C.Block( C.mkBlock[ call; return_stmt ] ) ) )
+  C.ChangeTo( C.mkStmt( C.Block( C.mkBlock[ call; return_stmt ] ) ) )
 
 
 class coroutinifyYieldingVisitor fdec locals frame = object(self)
@@ -421,6 +428,7 @@ class coroutinifyYieldingVisitor fdec locals frame = object(self)
   method vlval( lhost, offset ) =
     match lhost with
       C.Var v ->
+      let () = Pf.printf "Trying to change %s\n" v.C.vname in
       ( match IH.tryfind locals v.C.vid with
           Some l -> change_do_children ( l offset )
         | None -> C.DoChildren )
@@ -446,8 +454,9 @@ class coroutinifyYieldingVisitor fdec locals frame = object(self)
         let stmts = List.concat( List.map coroutinify_call_here instrs ) in
         change_do_children( C.mkStmt( C.Block( C.mkBlock stmts ) ) )
 
-    | (C.Return( rval_opt, loc )) ->
-       coroutinify_return fdec rval_opt loc frame
+    | ( C.Return( rval_opt, loc ) ) ->
+       let x = opt_map ( C.visitCilExpr ( self :> C.cilVisitor ) ) rval_opt in
+       coroutinify_return fdec x loc frame
 
     | _ -> C.DoChildren
 end
@@ -474,12 +483,12 @@ let make_yielding fdec frame_info =
     match yielding.C.svar.C.vtype with
       C.TFun( _, params, vararg, attrs ) ->
       yielding.C.svar.C.vtype <-
-        C.TFun( C.TPtr( frame_info.typ, [(*attrs*)] ), params, vararg, attrs )
+        C.TFun( frame_info.typ_ptr, params, vararg, attrs )
     | _ -> E.s( E.error "Yielding must be function" )
   in
   let () = C.setFormals yielding [] in
   let () = yielding.C.slocals <- [] in
-  let this = C.makeFormalVar yielding "frame" frame_info.typ in
+  let this = C.makeFormalVar yielding "frame" frame_info.typ_ptr in
   let ( locals_tbl, locals_init ) =
     let locals = C.var( C.makeTempVar yielding frame_info.locals_type ) in
     let locals_val = C.AddrOf( frame_info.locals_sel( C.var this ) ) in
@@ -534,6 +543,7 @@ let process_generic_frame ci dummy_var =
     (* generic: *)
     specific_cast   = specific_cast;
     typ             = C.TComp( ci, [(*attrs*)] );
+    typ_ptr         = C.TPtr( C.TComp( ci, [(*attrs*)] ), [(*attrs*)] );
     callee_sel      = ( fun e -> ( C.Mem e, C.Field( ce, C.NoOffset ) ) );
     goto_sel        = ( fun e -> ( C.Mem e, C.Field( g, C.NoOffset ) ) );
     gen_prologue    = dummy_var;
@@ -558,6 +568,13 @@ class findFunctionsVisitor = object(self)
   val mutable frame_opt = None
   val mutable frame_struct = None
 
+  method fill_in_frame v =
+    match frame_struct with
+      None -> ()
+    | Some ci ->
+       let () = frame_opt <- Some( process_generic_frame ci v ) in
+       frame_struct <- None
+
   method vglob g =
     (* XXX somewhere in here for prologue
       ( C.Mem( C.Lval( C.var locals ) ), C.Field( f, C.NoOffset ) ) *)
@@ -577,31 +594,36 @@ class findFunctionsVisitor = object(self)
     match g with
     | C.GFun( fdec, loc ) ->
        (* let () = Pf.printf "ffv - vg - %s\n" fdec.C.svar.C.vname in *)
+       let () = self#fill_in_frame fdec.C.svar in
        let kind = crcl_fun_kind fdec.C.svar.C.vname in
        (match (kind, frame_opt) with
-          ( _, None ) -> E.s( E.error "frame_t should come before any fdefs!" )
+          ( _, None ) -> E.s( E.error "frame_t should come before any fdefs %s!"
+                                      fdec.C.svar.C.vname )
         | ( ( false, _ ), Some generic_frame_info ) ->
-(* XXX GCompTag??? *)
-          let ( tags, frame_info ) =
+          let ( tags, specific_frame_info ) =
             make_specific fdec generic_frame_info
           in
-          let e = make_epilogue fdec frame_info in
-          let frame_info =
-            { frame_info with epilogue = e.C.svar }
+          let e = make_epilogue fdec specific_frame_info in
+          let epilogue_frame_info =
+            { specific_frame_info with epilogue = e.C.svar }
           in
-          let y = make_yielding fdec frame_info in
-          let frame_info =
-            { frame_info with yielding = y.C.svar }
+          let y = make_yielding fdec epilogue_frame_info in
+          let yielding_frame_info =
+            { epilogue_frame_info with yielding = y.C.svar }
           in
-          let p = make_prologue     fdec frame_info in
-          let a = make_after_return fdec frame_info in
+          let p = make_prologue     fdec yielding_frame_info in
+          let a = make_after_return fdec yielding_frame_info in
           let u = make_unyielding   fdec in
           let () =
             let e fdec = C.Lval( C.var( fdec.C.svar ) ) in
             add_fn_translation fdec.C.svar ( e u ) ( e p ) ( e a )
           in
-          (* make fn ptr struct *)
-          change_do_children [g]
+          (* XXX make fn ptr struct *)
+          (* XXX GCompTag??? *)
+          let funs = List.map ( fun f -> C.GFun( f, loc ) )
+                              [ p; y; e; a; u ]
+          in
+          change_do_children funs
         | ( ( true, crcl_runtime_fn_name ), Some frame ) ->
            let () =
              if crcl_runtime_fn_name = "fn_generic_prologue" then
@@ -627,20 +649,14 @@ class findFunctionsVisitor = object(self)
          C.DoChildren
 
     | C.GVar( v, _, _ ) ->
-       let () =
-         match frame_struct with
-           None -> E.s( E.error "Must be frame?!?" )
-         | Some ci ->
-            let () = frame_opt <- Some( process_generic_frame ci v ) in
-            frame_struct <- None
-       in
-            C.DoChildren
+       let () = self#fill_in_frame v in
+       C.DoChildren
 
     | _ -> C.SkipChildren
 end
 
 let do_coroutinify( f : C.file ) =
-  let () = C.visitCilFile (new findFunctionsVisitor) f in
+  let () = C.visitCilFile (new findFunctionsVisitor :> C.cilVisitor) f in
   ()
 
 let feature : C.featureDescr =
