@@ -70,10 +70,6 @@ type frame_info =
     exp             : C.exp;
   }
 
-class coroutinifyUnyieldingVisitor = object(self)
-  inherit C.nopCilVisitor
-end
-
 let function_vars : ( C.exp * C.exp * C.exp ) IH.t = IH.create 42
 let lookup_fn_translation v = IH.tryfind function_vars v.C.vid
 let add_fn_translation v u p a = IH.replace function_vars v.C.vid ( u, p, a )
@@ -250,10 +246,12 @@ let make_prologue yielding fname frame =
        in
        locals_init::( List.map assign_param fs )
   in
-  let instrs = call::param_assignments in
-  let body = C.mkBlock[ C.mkStmt( C.Instr instrs ) ] in
+  let body =
+    let instrs = call::param_assignments in
+    let r = C.mkStmt( C.Return( Some( C.Lval( C.var this ) ), fdef_loc ) ) in
+    C.mkBlock[ C.mkStmt( C.Instr instrs ); r ]
+  in
   let () = prologue.C.sbody <- body in
-  (* XXX return frame *)
   prologue
 
 
@@ -469,18 +467,22 @@ end
  *         coroutinify( ... )
  *     }
  *)
-let make_yielding yielding fname frame_info =
+let make_yielding yielding fname frame_info_spec =
   let fdef_loc = fname.C.vdecl in
   let () =
     match yielding.C.svar.C.vtype with
       C.TFun( _, params, vararg, attrs ) ->
       yielding.C.svar.C.vtype <-
-        C.TFun( frame_info.typ_ptr, params, vararg, attrs )
+        C.TFun( frame_info_spec.typ_ptr, params, vararg, attrs )
     | _ -> E.s( E.error "Yielding must be function" )
   in
   let () = C.setFormals yielding [] in
   let () = yielding.C.slocals <- [] in
-  let this = C.makeFormalVar yielding "frame" frame_info.typ_ptr in
+  let this = C.makeFormalVar yielding "frame" frame_info_spec.typ_ptr in
+  let frame_info = {
+      frame_info_spec with lval = C.var this;
+                           exp = C.Lval( C.var this ); }
+  in
   let ( locals_tbl, locals_init ) =
     let locals = C.var( C.makeTempVar yielding ~name:"locals" frame_info.locals_type ) in
     let locals_val = C.AddrOf( frame_info.locals_sel( C.var this ) ) in
@@ -500,8 +502,76 @@ let make_yielding yielding fname frame_info =
   y
 
 (* In the body of f, change calls to unyielding versions *)
+class coroutinifyUnyieldingVisitor frame = object(self)
+  inherit C.nopCilVisitor
+
+  method vinst i =
+    match i with
+      (* XXX Direct call: *)
+      C.Call( lval_opt, C.Lval( C.Var fname, C.NoOffset ), params, loc ) ->
+      C.SkipChildren
+      (* Indirect call: *)
+    | C.Call( lval_opt, fn, params, loc ) ->
+       let lval_param = match lval_opt with
+           None -> C.zero
+         | Some lval -> C.AddrOf lval
+       in
+       C.ChangeTo[ C.Call( None, fn, C.zero::C.zero::lval_param::params, loc ) ]
+    | _ -> C.SkipChildren
+end
+
 let make_unyielding fdec =
-  fdec
+  fdec (* XXX *)
+
+(* XXX Need to replace &fn with &__indirect_fn *)
+
+(* For this function definition
+ *     rt f( p1, p2, p3 ) { ... }
+ * Generate this function:
+ *     frame_p __indirect_f( frame_p caller, void *ret, rt *lhs, p1, p2, p3 )
+ *     {
+ *         assert( lhs ==> !( caller && ret ) );
+ *         assert( ret ==> caller );
+ *         rt temp;
+ *         if( caller ) /* Caller in yielding mode */
+ *         {
+ *     #if yielding version exists
+ *             if( ret )
+ *                 return __prologue_f( caller, ret, p1, p2, p3 );
+ *             else
+ *                 __after_return_f( caller, lhs );
+ *             return 0;
+ *     #else
+ *             if( ret )
+ *             {
+ *                 frame_p frame = __generic_prologue(
+ *                     sizeof( __specific_f ), ret, caller, 0 );
+ *                 return_cast( frame ) = __unyielding_f( p1, p2, p3 );
+ *             }
+ *             else
+ *             {
+ *                 temp = return_cast( caller->callee );
+ *                 __generic_after_return( caller );
+ *             }
+ *     #endif
+ *         }
+ *         else /* Caller in unyielding mode */
+ *         {
+ *     #if unyielding version exists
+ *             temp = __unyielding_f( p1, p2, p3 );
+ *     #else
+ *             ERROR Cannot call deinitely yielding functions in unyielding mode!!!
+ *             exit();
+ *     #endif
+ *         }
+ *         if( lhs )
+ *             *lhs = temp;
+ *         return caller;
+ *     }
+ *)
+let make_call_through_pointer fdec =
+  fdec (* XXX *)
+
 
 (* When we find the definition of the generic frame type, examine it and
  * record some stuff. *)
@@ -607,6 +677,7 @@ class findFunctionsVisitor = object(self)
           in
           let p = make_prologue yielding_pre fdec.C.svar epilogue_frame_info in
           (* NOTE: Tricky ordering to get the formals right *)
+          (* crcl_fn_ptr_foo { prologue = x; after_return = x; unyielding = x; } *)
           let y = make_yielding yielding_pre fdec.C.svar epilogue_frame_info in
           let a = make_after_return fdec epilogue_frame_info in
           let u = make_unyielding   fdec in
@@ -616,9 +687,10 @@ class findFunctionsVisitor = object(self)
           in
           (* XXX make fn ptr struct *)
           let funs = List.map ( fun f -> C.GFun( f, loc ) )
-                              [ p; e; a; y; u ]
+                              [ e; y; p; a; u; ]
           in
           C.ChangeTo ( tags @ funs )
+
         | ( ( true, crcl_runtime_fn_name ), Some frame ) ->
            let () =
              if crcl_runtime_fn_name = "fn_generic_prologue" then
