@@ -55,7 +55,7 @@ int dequeue( crcl(io_cmd_t) *cmd_ref )
     }
 }
 
-void the_thing( uv_timer_t* handle, int status )
+void the_thing( uv_timer_t* handle )
 {
 }
 
@@ -86,7 +86,7 @@ static void crcl(getaddrinfo_callback)(
     crcl(wake_up_requester)( a );
 }
 
-void crcl(io_cmd_cb)( uv_async_t *handle, int status /*UNUSED*/ )
+void crcl(io_cmd_cb)( uv_async_t *handle )
 {
     /* fprintf( stderr, "IO THING\n" ); */
     crcl(io_cmd_t) cmd;
@@ -96,13 +96,15 @@ void crcl(io_cmd_cb)( uv_async_t *handle, int status /*UNUSED*/ )
      * signnificantly.) */
     while( !dequeue( &cmd ) )
     {
+        int rc;
         /* XXX implement stuff */
         switch( cmd.command )
         {
         case CRCL(IO_CMD_START):
             /* XXX this should go in the start_resume function */
-            uv_timer_start( &cmd.activity->thread->timer_req,
-                            the_thing, 5000, 2000);
+            rc = uv_timer_start(
+                &cmd.activity->thread->timer_req, the_thing, 5000, 2000);
+            assert( !rc );
             break;
         case CRCL(IO_CMD_JOIN_THREAD):
             if( crcl(join_thread)( cmd._.thread ) )

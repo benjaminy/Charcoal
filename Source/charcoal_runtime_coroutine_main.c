@@ -1,3 +1,5 @@
+#include <charcoal.h>
+
 #include <assert.h>
 #include <charcoal_runtime_coroutine.h>
 #include <charcoal_runtime_io_commands.h>
@@ -13,6 +15,8 @@
 
 #define CLOCKID CLOCK_MONOTONIC
 #define SIG SIGRTMIN
+
+#define app_main_prologue crcl(fn_prologue___charcoal_application_main)
 
 /* yield_heartbeat is the signal handler that should run every few
  * milliseconds (give or take) when any activity is running.  It
@@ -55,12 +59,14 @@ static int crcl(init_yield_heartbeat)()
     sigemptyset( &sa.sa_mask );
     // RET_IF_ERROR( sigaction( 0 /*SIG*/, &sa, NULL ) );
 
-    /* Create the timer */
+#if 0
+    /* XXX deprecated??? Create the timer */
     struct sigevent sev;
     sev.sigev_notify = SIGEV_SIGNAL;
     sev.sigev_signo  = 0 /*XXX SIG*/;
     sev.sigev_value.sival_ptr = &crcl(threads);
     // XXX RET_IF_ERROR( timer_create( 0 /*CLOCKID*/, &sev, &crcl(heartbeat_timer) ) );
+#endif
 
     printf( "timer ID is 0x%lx\n", (long) 42 /*crcl(heartbeat_timer)*/ );
     return 0;
@@ -68,7 +74,7 @@ static int crcl(init_yield_heartbeat)()
 
 static int process_return_value;
 
-crcl(frame_p) crcl(fn_main_init)(
+crcl(frame_p) app_main_prologue(
     crcl(frame_p) caller,
     int argc,
     char **argv,
@@ -132,14 +138,15 @@ static void crcl(remove_activity_from_thread)( activity_p a, cthread_p t)
     a->prev->next = a->next;
     a->next = NULL;
     a->prev = NULL;
-        
+
     // printf( "f:%p  r:%p\n", t->activities, t->activities->prev );
 }
 
 static crcl(frame_p) after_main( crcl(frame_p) frame )
 {
     printf( "[CRCL_RT] after_main %p\n", frame );
-    int *p = (int *)frame->callee->locals;
+    /* XXX call epilogueB */
+    int *p = (int *)frame->callee->specific;
     process_return_value = *p;
     free( frame->callee );
     free( frame );
@@ -156,7 +163,7 @@ static void initialize_after_main( activity_p activity, crcl(frame_p) frame )
     frame->callee       = NULL;
     frame->goto_address = NULL;
 }
-                     
+
 static void start_application_main( int argc, char **argv, char **env )
 {
     /* There's nothing particularly special about the thread that runs
@@ -172,7 +179,7 @@ static void start_application_main( int argc, char **argv, char **env )
     crcl(frame_p) after_main_frame = (crcl(frame_p))malloc( sizeof( after_main_frame[0] ) );
     assert( after_main_frame );
     initialize_after_main( main_activity, after_main_frame );
-    crcl(frame_p) main_frame = crcl(fn_main_init)( after_main_frame, argc, argv, env );
+    crcl(frame_p) main_frame = app_main_prologue( after_main_frame, argc, argv, env );
     assert( main_frame );
     assert( !activate_in_thread( main_thread, main_activity, main_frame ) );
     uv_cond_signal( &main_thread->thd_management_cond );

@@ -39,6 +39,8 @@ void enqueue( crcl(io_cmd_t) *cmd );
 
 int dequeue( crcl(io_cmd_t) *cmd_ref );
 
-void crcl(io_cmd_cb)( uv_async_t *handle, int status /*UNUSED*/ );
+void crcl(io_cmd_cb)( uv_async_t *handle );
+
+int crcl(init_io_loop)( cthread_p t, activity_p a );
 
 #endif /* __CHARCOAL_RUNTIME_IO_COMMANDS */

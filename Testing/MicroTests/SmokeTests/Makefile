@@ -18,6 +18,8 @@ include $(CRCL_ROOT)/Testing/cil_rules.mk
 
 hello_world_coroutine_manual: $(BUILD_DIR)/hello_world_coroutine_manual
 
+foo : $(BUILD_DIR)/just_main.crcl.cil.c
+
 $(BUILD_DIR)/hello_world_coroutine_manual: hello_world_coroutine_manual.c
 	$(CC) -o $@ $(FLAGS) $< $(LIBUV_FLAGS)
 

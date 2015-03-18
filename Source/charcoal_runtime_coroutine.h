@@ -1,8 +1,13 @@
 #ifndef __CHARCOAL_RUNTIME_COROUTINE
 #define __CHARCOAL_RUNTIME_COROUTINE
 
-/* This is a silly little helper for Cil */
-static int crcl(dummy_variable);
+#ifdef __CHARCOAL_CIL
+/* #pragma cilnoremove("func1", "var2", "type foo", "struct bar") */
+#pragma cilnoremove( "struct __charcoal_frame_t" )
+#pragma cilnoremove( "__charcoal_fn_generic_prologue" )
+#pragma cilnoremove( "__charcoal_fn_generic_epilogueA" )
+#pragma cilnoremove( "__charcoal_fn_generic_epilogueB" )
+#endif
 
 #include <charcoal_runtime_common.h>
 #include <charcoal_runtime_atomics.h>
@@ -47,9 +52,6 @@ struct crcl(frame_t)
     char specific[0];
 };
 
-/* This is a silly little helper for Cil */
-static crcl(frame_t) crcl(dummy_frame);
-
 /* I think the Charcoal type for activities and the C type need to be
  * different.  The Charcoal type should have the return type as a
  * parameter. */
@@ -80,70 +82,18 @@ struct activity_t
     char return_value[ sizeof( int ) ];
 };
 
-typedef struct crcl(coroutine_fn_ptr_generic) crcl(coroutine_fn_ptr_generic),
-    *crcl(coroutine_fn_ptr_generic_p);
-
-struct crcl(coroutine_fn_ptr_generic)
-{
-    crcl(frame_p) (*init)( crcl(frame_p) caller, ... );
-    crcl(frame_p) (*yielding)( crcl(frame_p) self );
-    void * (*unyieldin)( int dummy, ... );
-};
-
-#define __CHARCOAL_COROUTINE_FN_PTR_SPECIFIC(name, ret_type, ...) \
-    struct crcl(coroutine_fn_ptr_##name) \
-    { \
-        frame_p (*prologue)( frame_p caller, void *ret_ptr, ... ); \
-        void (*after_return)( frame_p frame, ret_type *lhs ); \
-        ret_type (*unyielding)( ... ); \
-    };
-
+void crcl(activity_start_resume)( activity_p activity );
+int activate_in_thread(
+    cthread_p thread, activity_p activity, crcl(frame_p) frame );
 int crcl(activate)( crcl(frame_p) caller, activity_p activity, crcl(frame_p) f );
 crcl(frame_p) crcl(activity_blocked)( crcl(frame_p) frame );
 
-/* NOTE: It might make good performance sense to inline all these
- * generic yielding call helper functions.  I'm going to leave that
- * decision to the system for now. */
-/* NOTE: These generic helpers would be a convenient place to put in
- * debugging stuff. */
+crcl(frame_p) crcl(fn_generic_prologue)(
+    size_t sz, void *return_ptr, crcl(frame_p) caller,
+    crcl(frame_p) (*fn)( crcl(frame_p) ) );
 
-static crcl(frame_p) crcl(fn_generic_prologue)(
-    size_t sz, void *return_ptr, crcl(frame_p) caller, crcl(frame_p) (*fn)( crcl(frame_p) ) )
-{
-    /* XXX make malloc/free configurable? */
-    crcl(frame_p) f = (crcl(frame_p))malloc( sz + sizeof( f[0] ) );
-    if( !f )
-    {
-        /* XXX die */
-    }
-    f->activity     = NULL;
-    f->fn           = fn;
-    f->caller       = caller;
-    f->callee       = NULL;
-    f->goto_address = NULL;
-    if( caller )
-    {
-        caller->callee = f;
-        caller->goto_address = return_ptr;
-        f->activity = caller->activity;
-    }
-    return f;
-}
+crcl(frame_p) crcl(fn_generic_epilogueA)( crcl(frame_p) frame );
 
-static crcl(frame_p) crcl(fn_generic_epilogue)( crcl(frame_p) frame )
-{
-    return frame->caller;
-}
-
-static void crcl(fn_generic_after_return)( crcl(frame_p) frame )
-{
-    /* XXX make malloc/free configurable? */
-    free( frame->callee );
-    /* NOTE Zeroing the callee field is not strictly necessary, and
-     * therefore might be wasteful.  However, one should not be
-     * nickel-and-diming the performance of yielding calls anyway (use
-     * unyielding calls instead). */
-    frame->callee = NULL;
-}
+void crcl(fn_generic_epilogueB)( crcl(frame_p) frame );
 
 #endif /* __CHARCOAL_RUNTIME_COROUTINE */

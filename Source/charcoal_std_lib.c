@@ -196,13 +196,16 @@ int semaphore_decr( semaphore_p s )
     activity_t *self = crcl(get_self_activity)();
     while( s->value < 1 )
     {
-        int rc;
+        // XXX int rc;
         crcl(push_special_queue)(CRCL(ACTF_BLOCKED),
             self, NULL, &s->waiters );
-        if( ( rc = crcl(activity_blocked)( self ) ) )
+#if 0
+        XXX
+        if( ( rc = crcl(activity_blocked)( /* XXX bad cast */(crcl(frame_p))self ) ) )
         {
             return rc;
         }
+#endif
     }
     --s->value;
     /* XXX maybe this isn't necessary?  */
@@ -239,7 +242,7 @@ static int crcl(send_io_cmd)( crcl(io_cmd_t) *cmd, activity_t *a )
     a->flags |= CRCL(ACTF_BLOCKED);
     /* XXX Race between the next two lines??? */
     RET_IF_ERROR( uv_async_send( &crcl(io_cmd) ) );
-    RET_IF_ERROR( crcl(activity_blocked)( a ) );
+    // XXX??? RET_IF_ERROR( crcl(activity_blocked)( /* XXX bad cast */(crcl(frame_p))a ) );
     return 0;
 }
 

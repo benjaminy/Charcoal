@@ -25,13 +25,15 @@
 cthread_p crcl(threads);
 uv_key_t crcl(self_key);
 // XXX static timer_t crcl(heartbeat_timer);
-static int crcl(heartbeat_timer);
+// XXX deprecated??? static int crcl(heartbeat_timer);
 
 activity_t *crcl(get_self_activity)( void )
 {
-    return (activity_t *)uv_key_get( crcl(self_key) );
+    return (activity_t *)uv_key_get( &crcl(self_key) );
 }
 
+#if 0
+    deprecated?
 static int crcl(start_stop_heartbeat)( int start )
 {
     /* XXX I think 'its' can be stack alloc'ed.  Check this. */
@@ -54,6 +56,7 @@ static int crcl(start_stop_heartbeat)( int start )
     // RET_IF_ERROR( timer_settime( crcl(heartbeat_timer), 0, &its, NULL ) );
     return 0;
 }
+#endif
 
 int crcl(choose_next_activity)( activity_p *p )
 {
@@ -110,7 +113,7 @@ void crcl(activity_start_resume)( activity_p activity )
     /* XXX: enqueue command */
     /* XXX: start heartbeat if runnable > 1 */
     ABORT_ON_FAIL( uv_async_send( &crcl(io_cmd) ) );
-    uv_key_set( crcl(self_key), activity );
+    uv_key_set( &crcl(self_key), activity );
     // XXX don't think we're using alarm anymore
     // XXX alarm((int) self->container->max_time);
     // crcl(atomic_store_int)(&self->container->timeout, 0);
@@ -128,6 +131,8 @@ void crcl(pop_yield_switch_listener)()
 {
 }
 
+#if 0
+    deprecated?
 /* XXX must fix.  Still assuming activities implemented as threads */
 static int crcl(yield_try_switch)( activity_t *self )
 {
@@ -142,7 +147,10 @@ static int crcl(yield_try_switch)( activity_t *self )
     }
     return 0;
 }
+#endif
 
+#if 0
+    deprecated?
 static void crcl(print_special_queue)( activity_t **q )
 {
     assert( q );
@@ -161,6 +169,7 @@ static void crcl(print_special_queue)( activity_t **q )
         printf( "Special queue empty\n" );
     }
 }
+#endif
 
 /* Precondition: The thread mgmt mutex is held. */
 activity_p crcl(pop_special_queue)(
@@ -211,10 +220,13 @@ activity_p crcl(pop_ready_queue)( cthread_p t )
     return crcl(pop_special_queue)( CRCL(ACTF_READY_QUEUE), t, NULL );
 }
 
+#if 0
+    deprecated?
 static activity_p crcl(pop_blocked_queue)( cthread_p t )
 {
     return crcl(pop_special_queue)( CRCL(ACTF_BLOCKED), t, NULL ); /* XXX */
 }
+#endif
 
 /* Precondition: The thread mgmt mutex is held. */
 void crcl(push_special_queue)(
@@ -436,6 +448,8 @@ int crcl(activity_detach)( activity_t *a )
     return 0;
 }
 
+#if 0
+    deprecated?
 /* compiler inserts call to this fn at the end of each activity */
 static crcl(frame_p) crcl(activity_finished)( crcl(frame_p) frame )
 {
@@ -462,6 +476,7 @@ static crcl(frame_p) crcl(activity_finished)( crcl(frame_p) frame )
     /* LOG: Actual activity complete. */
     return frame;
 }
+#endif
 
 /* XXX Still have to think more about signal handling (and masking)??? */
 
@@ -533,7 +548,55 @@ int crcl(join_thread)( cthread_p t )
     return crcl(threads) == crcl(threads)->next;
 }
 
+#if 0
+    deprecated?
 static void crcl(report_thread_done)( activity_t *a )
 {
     /* printf( "XXX Thread is done!!!\n" ); */
+}
+#endif
+
+/* NOTE: It might make good performance sense to inline all these
+ * generic yielding call helper functions.  I'm going to leave that
+ * decision to the system for now. */
+/* NOTE: These generic helpers would be a convenient place to put in
+ * debugging stuff. */
+
+crcl(frame_p) crcl(fn_generic_prologue)(
+    size_t sz, void *return_ptr, crcl(frame_p) caller, crcl(frame_p) (*fn)( crcl(frame_p) ) )
+{
+    /* XXX make malloc/free configurable? */
+    crcl(frame_p) f = (crcl(frame_p))malloc( sz + sizeof( f[0] ) );
+    if( !f )
+    {
+        /* XXX die */
+    }
+    f->activity     = NULL;
+    f->fn           = fn;
+    f->caller       = caller;
+    f->callee       = NULL;
+    f->goto_address = NULL;
+    if( caller )
+    {
+        caller->callee = f;
+        caller->goto_address = return_ptr;
+        f->activity = caller->activity;
+    }
+    return f;
+}
+
+crcl(frame_p) crcl(fn_generic_epilogueA)( crcl(frame_p) frame )
+{
+    return frame->caller;
+}
+
+void crcl(fn_generic_epilogueB)( crcl(frame_p) frame )
+{
+    /* XXX make malloc/free configurable? */
+    free( frame->callee );
+    /* NOTE Zeroing the callee field is not strictly necessary, and
+     * therefore might be wasteful.  However, one should not be
+     * nickel-and-diming the performance of yielding calls anyway (use
+     * unyielding calls instead). */
+    frame->callee = NULL;
 }

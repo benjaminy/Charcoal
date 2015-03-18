@@ -28,6 +28,7 @@ ifeq ($(OS),Darwin)
     CCFLAGS += -D OSX
 endif
 
+CRCL_DOT_H_EXT=.crcl.with.h.c
 CRCL_CPP_EXT=.crcl.cpp.c
 CIL_C_EXT=.crcl.cil.c
 CC=gcc

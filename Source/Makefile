@@ -22,7 +22,7 @@ all: install_headers $(RUNTIME_OBJS) std_lib
 clean:
 	rm -f ../Build/*.o
 	rm -f ../Install/lib/libcharcoal_sys.a
-	rm -f ../Install/include/*
+	rm -fr ../Install/include/*
 
 install_headers: $(addprefix $(HEADER_INSTALL_DIR)/, $(HEADERS))
 

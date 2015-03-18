@@ -6,14 +6,11 @@
 #include <charcoal_runtime_io_commands.h>
 #endif
 
-#include <charcoal.h>
 #include <uv.h>
 
 #define __CHARCOAL_SET_FLAG(x,f)   do { (x) |=  (f); } while( 0 )
 #define __CHARCOAL_CLEAR_FLAG(x,f) do { (x) &= ~(f); } while( 0 )
 #define __CHARCOAL_CHECK_FLAG(x,f) ( !!( (x) & (f) ) )
-
-typedef void (*crcl(entry_t))( void *formals );
 
 /* Thread flags */
 #define __CHARCOAL_THDF_IDLE       (1 << 0)

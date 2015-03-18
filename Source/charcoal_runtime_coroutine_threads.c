@@ -2,6 +2,7 @@
  * This is the thread stuff for the coroutine-based implementation
  */
 
+#include <charcoal.h>
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -43,7 +44,7 @@ static void thread_init(
     // thread->sys initialized in thread_start
     CRCL(SET_FLAG)( thread->flags, CRCL(THDF_IDLE) );
     CRCL(SET_FLAG)( thread->flags, CRCL(THDF_NEVER_RUN) );
-    
+
     /* XXX: pthread attributes */
     // detachstate guardsize inheritsched schedparam schedpolicy scope
 
@@ -126,7 +127,7 @@ int thread_start( cthread_p *thd, void *options )
 {
     int rc;
     printf( "[CRCL_RT] thread_start %p %p\n", thd, options );
-    
+
     // pthread_attr_t attr;
     // ABORT_ON_FAIL( pthread_attr_init( &attr ) );
     /* Because yielding call frames are heap-allocated, the thread's
