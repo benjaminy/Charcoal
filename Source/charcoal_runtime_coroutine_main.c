@@ -149,8 +149,8 @@ static crcl(frame_p) after_main( crcl(frame_p) frame )
     int *p = (int *)frame->callee->specific;
     process_return_value = *p;
     free( frame->callee );
-    free( frame );
     crcl(remove_activity_from_thread)( frame->activity, frame->activity->thread );
+    free( frame );
     printf( "[CRCL_RT] after_main finished %d\n", process_return_value );
     return NULL;
 }

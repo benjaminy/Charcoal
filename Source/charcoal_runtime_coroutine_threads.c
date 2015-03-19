@@ -51,8 +51,8 @@ static void thread_init(
     /* XXX Surely this handshake could be more elegant */
     assert( !crcl(sem_incr)( &params->s1 ) );
     assert( !crcl(sem_decr)( &params->s2 ) );
+    printf( "Spawnee released\n" );
     assert( !crcl(sem_incr)( &params->s1 ) );
-    assert( !crcl(sem_destroy)( &params->s2 ) );
     add_to_threads_list( thread );
 }
 
@@ -153,10 +153,13 @@ int thread_start( cthread_p *thd, void *options )
     }
     /* Wait for thread initialization to complete. */
     crcl(sem_decr)( &params.s1 );
+    printf( "Spawner released\n" );
     (*thd)->sys = thread_id;
     crcl(sem_incr)( &params.s2 );
     crcl(sem_decr)( &params.s1 );
+    printf( "Spawner released\n" );
     assert( !crcl(sem_destroy)( &params.s1 ) );
+    assert( !crcl(sem_destroy)( &params.s2 ) );
     // assert( !pthread_attr_destroy( &attr ) );
 
     printf( "[CRCL_RT] thread_start finished\n" );

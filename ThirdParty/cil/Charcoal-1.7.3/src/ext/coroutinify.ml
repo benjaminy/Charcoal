@@ -633,6 +633,9 @@ let make_indirect original frame_info =
 
 (* let locals = C.var( C.makeTempVar yielding ~name:"locals" frame_info.locals_type ) in *)
 
+  let return_stmt = C.mkStmt( C.Return( Some( C.Lval( C.var caller ) ),
+                                        original.C.svar.C.vdecl ) ) in
+  let () = original.C.sbody.C.bstmts <- [ return_stmt ] in
   original (* XXX *)
 
 

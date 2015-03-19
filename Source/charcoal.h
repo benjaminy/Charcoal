@@ -17,4 +17,6 @@
 typedef struct  cthread_t  cthread_t,  *cthread_p;
 typedef struct activity_t activity_t, *activity_p;
 
+#define assert_impl(a,b) assert( ( !( a ) ) || ( b ) )
+
 #endif /* __CHARCOAL_BASE */
