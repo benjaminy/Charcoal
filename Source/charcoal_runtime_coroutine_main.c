@@ -17,6 +17,7 @@
 #define SIG SIGRTMIN
 
 #define app_main_prologue crcl(fn_prologue___charcoal_application_main)
+#define app_main_epilogueB crcl(fn_epilogueB___charcoal_application_main)
 
 /* yield_heartbeat is the signal handler that should run every few
  * milliseconds (give or take) when any activity is running.  It
@@ -74,8 +75,13 @@ static int crcl(init_yield_heartbeat)()
 
 static int process_return_value;
 
+crcl(frame_p) app_main_epilogueB(
+    crcl(frame_p) caller,
+    int *lhs );
+
 crcl(frame_p) app_main_prologue(
     crcl(frame_p) caller,
+    void *ret_addr,
     int argc,
     char **argv,
     char **env );
@@ -119,7 +125,7 @@ int main( int argc, char **argv, char **env )
         exit( rc );
     }
 
-    // printf( "Charcoal program finished!!! return code:%d\n", process_return_value );
+    printf( "Charcoal program finished!!! return code:%d\n", process_return_value );
     return process_return_value;
 }
 
@@ -146,9 +152,7 @@ static crcl(frame_p) after_main( crcl(frame_p) frame )
 {
     printf( "[CRCL_RT] after_main %p\n", frame );
     /* XXX call epilogueB */
-    int *p = (int *)frame->callee->specific;
-    process_return_value = *p;
-    free( frame->callee );
+    app_main_epilogueB( frame, &process_return_value );
     crcl(remove_activity_from_thread)( frame->activity, frame->activity->thread );
     free( frame );
     printf( "[CRCL_RT] after_main finished %d\n", process_return_value );
@@ -179,7 +183,8 @@ static void start_application_main( int argc, char **argv, char **env )
     crcl(frame_p) after_main_frame = (crcl(frame_p))malloc( sizeof( after_main_frame[0] ) );
     assert( after_main_frame );
     initialize_after_main( main_activity, after_main_frame );
-    crcl(frame_p) main_frame = app_main_prologue( after_main_frame, argc, argv, env );
+    printf( "start_app_main %d\n", argc );
+    crcl(frame_p) main_frame = app_main_prologue( after_main_frame, 0, argc, argv, env );
     assert( main_frame );
     assert( !activate_in_thread( main_thread, main_activity, main_frame ) );
     uv_cond_signal( &main_thread->thd_management_cond );

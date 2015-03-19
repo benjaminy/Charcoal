@@ -532,7 +532,7 @@ int crcl(activate)(
 
 int crcl(join_thread)( cthread_p t )
 {
-    assert( !uv_thread_join( &t->sys ) );
+    printf( "join_thread %p n:%p p:%p ts:%p\n", t, t->next, t->prev, crcl(threads) );
     if( t == t->next )
     {
         /* XXX Trying to remove the last thread. */
@@ -545,6 +545,7 @@ int crcl(join_thread)( cthread_p t )
     }
     t->next->prev = t->prev;
     t->prev->next = t->next;
+    assert( !uv_thread_join( &t->sys ) );
     return crcl(threads) == crcl(threads)->next;
 }
 
