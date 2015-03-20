@@ -18,7 +18,7 @@ endif
 ifeq ($(OS),Windows_NT)
     CCFLAGS += -D WIN32
 else
-    LIBUV_FLAGS = $(INSTALL_DIR)/lib/libuv.a
+    LIBUV_FLAGS = $(INSTALL_DIR)/lib/libuv.a -pthread
 endif
 ifeq ($(OS),Linux)
     CCFLAGS += -D LINUX
@@ -32,6 +32,8 @@ CRCL_DOT_H_EXT=.crcl.with.h.c
 CRCL_CPP_EXT=.crcl.cpp.c
 CIL_C_EXT=.crcl.cil.c
 CC=gcc
+
+CRCL_RUNTIME = $(INSTALL_DIR)/lib/libcharcoal_sys.a
 
 INCLUDE_DIRS = -I$(INSTALL_DIR)/include
 LIB_DIRS =  -L$(INSTALL_DIR)/lib

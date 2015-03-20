@@ -15,5 +15,10 @@ $(BUILD_DIR)/%$(CRCL_DOT_H_EXT): %.crcl
 	echo "BLAH"
 	$(CIL_DIR)/bin/cilly.native --out $@ $<
 
+# Generic rule for building a single file program
+$(BUILD_DIR)/% : $(BUILD_DIR)/%.crcl.cil.c
+	$(CC) -o $@ $< $(CRCL_RUNTIME) $(LIBUV_FLAGS)
+
+# Generic rule for building in the build directory
 %: $(BUILD_DIR)/%
-	echo "Find it in $(BUILD_DIR)"
+	echo "Built \"$@\" by building \"$<\""

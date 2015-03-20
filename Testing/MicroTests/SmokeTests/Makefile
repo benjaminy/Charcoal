@@ -1,6 +1,6 @@
 # TODO: Header
-# 
-# 
+#
+#
 
 CRCL_ROOT=../../..
 
@@ -13,12 +13,7 @@ TARGETS = hello_world one_activity activate_loop
 clean:
 	rm -f $(BUILD_DIR)/*
 
-include $(CRCL_ROOT)/Testing/cil_rules.mk
-
-
 hello_world_coroutine_manual: $(BUILD_DIR)/hello_world_coroutine_manual
-
-foo : $(BUILD_DIR)/just_main.crcl.cil.c
 
 $(BUILD_DIR)/hello_world_coroutine_manual: hello_world_coroutine_manual.c
 	$(CC) -o $@ $(FLAGS) $< $(LIBUV_FLAGS)
@@ -45,3 +40,5 @@ one_activity: one_activity.c
 
 activate_loop: activate_loop.c
 	gcc -g -o activate_loop $(FLAGS) -DYIELDING activate_loop.c $(LIBUV_FLAGS)
+
+include $(CRCL_ROOT)/Testing/cil_rules.mk

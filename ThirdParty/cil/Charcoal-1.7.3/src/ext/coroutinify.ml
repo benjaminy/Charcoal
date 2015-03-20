@@ -12,6 +12,7 @@
  * 3) Put labels everywhere and use computed gotos.
  *)
 
+module L  = List
 module C  = Cil
 module E  = Errormsg
 module IH = Inthash
@@ -130,7 +131,7 @@ let make_specific fdec fname frame_info =
   let fdef_loc  = fname.C.vdecl in
   let unit_type = C.TArray( C.charType, Some( C.zero ), [(*attrs*)] ) in
   let ( locals_type, locals, tags ) =
-    match List.filter ( fun v -> (* XXX always false??? v.C.vreferenced *) true )
+    match L.filter ( fun v -> (* XXX always false??? v.C.vreferenced *) true )
                       ( fdec.C.sformals @ fdec.C.slocals )
     with
       [] -> ( unit_type, ( fun _ -> IH.create 0 ), [] )
@@ -139,7 +140,7 @@ let make_specific fdec fname frame_info =
          let () = sanity v in
          ( v.C.vname, v.C.vtype, None, [(*attrs*)], v.C.vdecl )
        in
-       let fields = List.map field all in
+       let fields = L.map field all in
        let struct_name = spf "%s%s" locals_pfx fname.C.vname in
        let ci = C.mkCompInfo true struct_name ( fun _ -> fields ) [(*attrs*)] in
        let locals_ptr = ref C.zero in
@@ -151,8 +152,8 @@ let make_specific fdec fname frame_info =
          let () = Pf.printf "Adding %d %s\n" v.C.vid v.C.vname in
          IH.replace t v.C.vid ( fun o -> ( C.Mem !locals_ptr, C.Field( field, o ) ) )
        in
-       let locals = IH.create( List.length all ) in
-       let () = List.iter ( field_select locals ) all in
+       let locals = IH.create( L.length all ) in
+       let () = L.iter ( field_select locals ) all in
        (* Given exp, an expression for a locals pointer, map variable x to exp->x *)
        let locals_gen l =
          let () = locals_ptr := l in
@@ -229,7 +230,7 @@ let make_prologue prologue frame original_formals =
   let call =
     let ret_ptr = C.makeFormalVar prologue ~where:"^" "ret_ptr" C.voidPtrType in
     let caller  = C.makeFormalVar prologue ~where:"^" "caller"  frame.typ_ptr in
-    let ps = List.map ( fun v -> C.Lval( C.var v ) )
+    let ps = L.map ( fun v -> C.Lval( C.var v ) )
                       [ ret_ptr; caller; frame.yielding ]
     in
     let gp = C.Lval( C.var frame.gen_prologue ) in
@@ -253,7 +254,7 @@ let make_prologue prologue frame original_formals =
          in
          C.Set( local_var, C.Lval( C.var v ), fdef_loc )
        in
-       locals_init::( List.map assign_param fs )
+       locals_init::( L.map assign_param fs )
   in
   let body =
     let instrs = call::param_assignments in
@@ -360,9 +361,13 @@ type dir_indir =
     CDirect of C.exp * C.exp
   | CIndirect of C.exp
 
-let coroutinify_call fdec frame instr =
+let coroutinify_call visitor fdec frame instr =
+  let () = Pf.printf "coroutinify_call %s\n%!" fdec.C.svar.C.vname in
   match instr with
-    C.Call( lhs_opt, fn_exp, params, loc ) ->
+    C.Call( lhs_opt_previs, fn_exp_previs, params_previs, loc ) ->
+    let lhs_opt = opt_map (C.visitCilLval visitor) lhs_opt_previs in
+    let fn_exp = C.visitCilExpr visitor fn_exp_previs in
+    let params = L.map (C.visitCilExpr visitor) params_previs in
     let call_stuff = match fn_exp with
         C.Lval( C.Var v, C.NoOffset ) ->
         ( match lookup_fn_translation v with
@@ -460,12 +465,14 @@ class coroutinifyYieldingVisitor fdec locals frame = object(self)
 
     match s.C.skind with
       (C.Instr instrs) ->
-      if List.for_all is_not_call instrs then
+      if L.for_all is_not_call instrs then
         C.DoChildren
       else
-        let coroutinify_call_here = coroutinify_call fdec frame in
-        let stmts = List.concat( List.map coroutinify_call_here instrs ) in
-        change_do_children( C.mkStmt( C.Block( C.mkBlock stmts ) ) )
+        let coroutinify_call_here =
+          coroutinify_call ( self :> C.cilVisitor ) fdec frame
+        in
+        let stmts = L.concat( L.map coroutinify_call_here instrs ) in
+        C.ChangeTo( C.mkStmt( C.Block( C.mkBlock stmts ) ) )
 
     | ( C.Return( rval_opt, loc ) ) ->
        let x = opt_map ( C.visitCilExpr ( self :> C.cilVisitor ) ) rval_opt in
@@ -495,6 +502,7 @@ end
 (* XXX Also some day we can do register allocation style optimizations to
  * share slots in the locals struct *)
 let make_yielding yielding frame_info_spec =
+  let () = Pf.printf "make_yielding %s\n" yielding.C.svar.C.vname in
   let fdef_loc = yielding.C.svar.C.vdecl in
   let () =
     match yielding.C.svar.C.vtype with
@@ -655,9 +663,9 @@ let examine_frame_t_struct ci dummy_var =
         if field.C.fname = name then
           field_ref := Some field
       in
-      List.iter find_field fields
+      L.iter find_field fields
     in
-    let () = List.iter extract ci.C.cfields in
+    let () = L.iter extract ci.C.cfields in
     match ( !ar, !sr, !gr, !cer ) with
       Some a, Some s, Some g, Some ce -> a, s, g, ce
     | _ -> E.s( E.error "frame struct missing fields?!?" )
@@ -727,18 +735,18 @@ class globals_visitor = object(self)
 
   method vglob g =
     let () = let p () = match g with
-      | C.GType( t, l )    -> Pf.printf "T %s\n" t.C.tname
-      | C.GCompTag( c, l ) -> Pf.printf "CT %s\n" c.C.cname
-      | C.GCompTagDecl( c, l ) -> Pf.printf "CTD %s\n" c.C.cname
-      | C.GEnumTag( e, l ) -> Pf.printf "ET\n"
-      | C.GEnumTagDecl( e, l ) -> Pf.printf "ETD\n"
-      | C.GVarDecl( v, l ) -> ()(*Pf.printf "VD %s\n" v.C.vname*)
-      | C.GVar( v, i, l ) -> Pf.printf "V %s\n" v.C.vname
-      | C.GFun( f, l ) -> Pf.printf "F %s\n" f.C.svar.C.vname
-      | C.GAsm( s, l ) -> Pf.printf "A\n"
-      | C.GPragma( a, l ) -> Pf.printf "P\n"
-      | C.GText( s ) -> Pf.printf "T\n"
-    in (*p*) () in
+      | C.GType( t, l )    -> Pf.printf "T %s\n%!" t.C.tname
+      | C.GCompTag( c, l ) -> Pf.printf "CT %s\n%!" c.C.cname
+      | C.GCompTagDecl( c, l ) -> Pf.printf "CTD %s\n%!" c.C.cname
+      | C.GEnumTag( e, l ) -> Pf.printf "ET\n%!"
+      | C.GEnumTagDecl( e, l ) -> Pf.printf "ETD\n%!"
+      | C.GVarDecl( v, l ) -> ()(*Pf.printf "VD %s\n%!" v.C.vname*)
+      | C.GVar( v, i, l ) -> Pf.printf "V %s\n%!" v.C.vname
+      | C.GFun( f, l ) -> Pf.printf "F %s\n%!" f.C.svar.C.vname
+      | C.GAsm( s, l ) -> Pf.printf "A\n%!"
+      | C.GPragma( a, l ) -> Pf.printf "P\n%!"
+      | C.GText( s ) -> Pf.printf "T\n%!"
+    in (* p *) () in
     match g with
     | C.GFun( original, loc ) ->
        let orig_var  = original.C.svar in
@@ -772,11 +780,11 @@ class globals_visitor = object(self)
             let e f = C.Lval( C.var( f.C.svar ) ) in
             add_fn_translation orig_var ( e u ) ( e p ) ( e a )
           in
-          let decls = List.map ( fun f -> C.GVarDecl( f.C.svar, loc ) )
-                               [ y; u; e; p; a; i ]
+          let decls = L.map ( fun f -> C.GVarDecl( f.C.svar, loc ) )
+                            [ y; u; e; p; a; i ]
           in
-          let funs = List.map ( fun f -> C.GFun( f, loc ) )
-                              [ y; u; e; p; a; i ]
+          let funs = L.map ( fun f -> C.GFun( f, loc ) )
+                           [ y; u; e; p; a; i ]
           in
           C.ChangeTo ( tags @ decls @ funs )
 
