@@ -1836,6 +1836,8 @@ val typeAddAttributes: attribute list -> typ -> typ
     their uses *)
 val typeRemoveAttributes: string list -> typ -> typ
 
+val linkage_charcoal: attributes -> bool
+val linkage_c: attributes -> bool
 
 (** Convert an expression into an attrparam, if possible. Otherwise raise
     NotAnAttrParam with the offending subexpression *)

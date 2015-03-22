@@ -247,8 +247,35 @@ let interpret_character_constant char_list =
                                         (* We collect here the program *)
 let theFile : global list ref = ref []
 let theFileTypes : global list ref = ref []
+let linkage_stack : ( string * location ) list ref = ref []
 
-let initGlobals () = theFile := []; theFileTypes := []
+let push_linkage x = linkage_stack := x::!linkage_stack
+let pop_linkage () =
+  match !linkage_stack with
+    [] -> None
+  | x::l -> linkage_stack := l; Some x
+let peak_linkage () =
+  match !linkage_stack with
+    [] -> None
+  | x::l -> Some x
+let in_c_mode () =
+  match peak_linkage () with
+    None -> false
+  | Some( n, _ ) -> n = "C"
+let just_crcl_linkage = [ Attr( "linkage_charcoal", [] ) ]
+let linkage_attrs () =
+  if in_c_mode () then
+    []
+  else
+    just_crcl_linkage
+
+let add_linkage attrs =
+  if in_c_mode () || linkage_charcoal attrs then
+    attrs (* XXX filter out Charcoal? *)
+  else
+    Attr( "linkage_charcoal", [] )::attrs
+
+let initGlobals () = theFile := []; theFileTypes := []; linkage_stack := []
 
     
 let cabsPushGlobal (g: global) = 
@@ -1651,6 +1678,8 @@ let rec combineTypes (what: combineWhat) (oldt: typ) (t: typ) : typ =
   | TFun (oldrt, oldargs, oldva, olda), TFun (rt, args, va, a) ->
       if oldva != va then 
         raise (Failure "diferent vararg specifiers");
+      if linkage_charcoal olda <> linkage_charcoal a then
+        raise (Failure "different linkage (C vs Charcoal)");
       let defrt = combineTypes 
           (if what = CombineFundef then CombineFunret else CombineOther) 
           oldrt rt in
@@ -2966,7 +2995,7 @@ and doType (nameortype: attributeClass) (* This is AttrName if we are doing
             TArray(t,lo,attr) -> turnArrayIntoPointer t lo attr
           | _ -> bt
         in
-        doDeclType (TFun (tres, args, isva', [])) acc d
+        doDeclType (TFun ( tres, args, isva', linkage_attrs() )) acc d
 
   in
   doDeclType bt [] dt
@@ -4007,8 +4036,9 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
                                                  * AExp None  *)
               with Not_found -> begin
                 ignore (warnOpt "Calling function %s without prototype." n);
+                let attrs = linkage_attrs() in
                 let ftype = TFun(intType, None, false, 
-                                 [Attr("missingproto",[])]) in
+                                 (Attr("missingproto",[]))::attrs) in
                 (* Add a prototype to the environment *)
                 let proto, _ = 
                   makeGlobalVarinfo false (makeGlobalVar n ftype) in
@@ -5873,7 +5903,7 @@ and doDecl (isglobal: bool) : A.definition -> chunk = function
                                Some (Util.list_map (fun f -> (f.vname,
                                                          f.vtype, 
                                                          f.vattr)) formals), 
-                               isvararg, funta) in
+                               isvararg, add_linkage( funta )) in
               (*
               ignore (E.log "Funtype of %s: %a\n" n' d_type ftype);
               *)
@@ -6154,12 +6184,20 @@ and doDecl (isglobal: bool) : A.definition -> chunk = function
       if not isglobal then 
         E.s (error "Encountered linkage specification in local scope");
       (* For now drop the linkage on the floor !!! *)
+      let cilloc = !currentLoc in
+      let () = push_linkage( n, cilloc ) in
       List.iter 
         (fun d -> 
           let s = doDecl isglobal d in
           if isNotEmpty s then 
             E.s (bug "doDecl returns non-empty statement for global"))
         dl;
+      let () = match pop_linkage () with
+          None -> E.s( error "Missing linkage" )
+        | Some( n', loc' ) when n <> n' || cilloc <> loc' ->
+           E.s( error "Corrupt linkage" )
+        | _ -> ()
+      in
       empty
 
   | _ -> E.s (error "unexpected form of declaration")
@@ -6967,7 +7005,7 @@ let convFile (f : A.file) : Cil.file =
       makeGlobalVar name (TFun(resTyp, 
                                Some (Util.list_map (fun at -> ("", at, [])) 
                                        argTypes),
-                               isva, [])) in
+                               isva, linkage_attrs() )) in
     ignore (alphaConvertVarAndAddToEnv true v);
     (* Add it to the file as well *)
     cabsPushGlobal (GVarDecl (v, Cil.builtinLoc))

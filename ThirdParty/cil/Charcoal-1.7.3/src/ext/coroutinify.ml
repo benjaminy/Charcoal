@@ -17,6 +17,7 @@ module C  = Cil
 module E  = Errormsg
 module IH = Inthash
 module Pf = Printf
+module T  = Trace
 
 let spf = Printf.sprintf
 
@@ -51,6 +52,28 @@ let crcl_fun_kind name =
     let c = Str.string_match charcoal_pfx_regex name 0 in
     ( c, if c then Str.string_after name charcoal_pfx_len else name )
 
+let remove_charcoal_linkage fdec =
+  let v = fdec.C.svar in
+  match v.C.vtype with
+    C.TFun( rt, ps, va, attrs ) ->
+    let foo attr = attr = C.Attr( "linkage_charcoal", [] ) in
+    ( match L.partition foo attrs with
+        ( [_], others ) -> v.C.vtype <- C.TFun( rt, ps, va, others )
+      | _ -> E.s( E.error "Linkage angry?!?" ) )
+  | _ -> E.s( E.error "Remove linkage from non-function?!?" )
+
+let add_charcoal_linkage fdec =
+  let v = fdec.C.svar in
+  match v.C.vtype with
+    C.TFun( rt, ps, va, attrs ) ->
+    v.C.vtype <- C.TFun( rt, ps, va, C.Attr( "linkage_charcoal", [] )::attrs )
+  | _ -> E.s( E.error "Add linkage to non-function?!?" )
+
+let is_charcoal_fn exp =
+  match C.typeOf exp with
+    C.TFun( _, _, _, attrs )
+  | C.TPtr( C.TFun( _, _, _, attrs ), _) -> C.linkage_charcoal attrs
+  | _ -> false
 
 type frame_info =
   {
@@ -364,7 +387,13 @@ type dir_indir =
 let coroutinify_call visitor fdec frame instr =
   let () = Pf.printf "coroutinify_call %s\n%!" fdec.C.svar.C.vname in
   match instr with
-    C.Call( lhs_opt_previs, fn_exp_previs, params_previs, loc ) ->
+    C.Call( lhs_opt_previs, fn_exp_previs, params_previs, loc )
+       when is_charcoal_fn fn_exp_previs ->
+    let () = T.trace "coroutinify"
+                     (Pretty.dprintf "entering function %a\n%a\n"
+                                     C.d_exp fn_exp_previs
+                                     C.d_type( C.typeOf fn_exp_previs ) )
+    in
     let lhs_opt = opt_map (C.visitCilLval visitor) lhs_opt_previs in
     let fn_exp = C.visitCilExpr visitor fn_exp_previs in
     let params = L.map (C.visitCilExpr visitor) params_previs in
@@ -409,8 +438,8 @@ let coroutinify_call visitor fdec frame instr =
     let return_callee = C.mkStmt( C.Return( Some( C.Lval callee ), loc ) )  in
     [ prologue_call; return_callee; after_call ]
 
-  (* Something other than a call *)
-  | _ -> [ C.mkStmt( C.Instr[ instr ] ) ]
+  (* Something other than a call to a Charcoal function *)
+  | _ -> [ C.mkStmt( C.Instr( C.visitCilInstr visitor instr ) ) ]
 
 
 (* Translate returns from:
@@ -549,14 +578,16 @@ class coroutinifyUnyieldingVisitor = object(self)
 
   method vinst i =
     match i with
-      C.Call( lval_opt, ( C.Lval( C.Var fname, C.NoOffset ) as f), params, loc ) ->
+      C.Call( lval_opt, ( C.Lval( C.Var fname, C.NoOffset ) as f), params, loc )
+         when is_charcoal_fn f ->
       (match lookup_fn_translation fname with
          Some( u, _ , _ ) ->
          C.ChangeTo[ C.Call( lval_opt, u, params, loc ) ]
        | None -> self#indirect_call lval_opt f params loc )
 
       (* Indirect call: *)
-    | C.Call( lval_opt, fn, params, loc ) ->
+    | C.Call( lval_opt, fn, params, loc )
+         when is_charcoal_fn fn ->
        self#indirect_call lval_opt fn params loc
 
     | _ -> C.SkipChildren
@@ -625,8 +656,15 @@ let make_unyielding unyielding =
 let make_indirect original frame_info =
   let return_type_opt =
     match original.C.svar.C.vtype with
-      C.TFun( C.TVoid _, _, _, _ ) -> None
-    | C.TFun( r, _, _, _ ) -> Some r
+      C.TFun( rt, params, vararg, attrs ) ->
+      let () =
+        original.C.svar.C.vtype <-
+          C.TFun( frame_info.typ_ptr, params, vararg, attrs )
+      in
+      ( match rt with
+          C.TVoid _ -> None
+        | r -> Some r
+      )
     | _ -> E.s( E.error "Function with non-function type?!?" )
   in
   let original_formals = original.C.sformals in
@@ -700,11 +738,13 @@ let examine_frame_t_struct ci dummy_var =
   }
 
 let make_function_skeletons f n =
+  let () = remove_charcoal_linkage f in
   let y = C.copyFunction f ( spf "%s%s"   yielding_pfx n ) in
   let u = C.copyFunction f ( spf "%s%s" unyielding_pfx n ) in
   let c = C.copyFunction f ( spf "%s%s"   prologue_pfx n ) in
   let e = C.copyFunction f ( spf "%s%s"  epilogueA_pfx n ) in
   let a = C.copyFunction f ( spf "%s%s"  epilogueB_pfx n ) in
+  let () = add_charcoal_linkage f in
   ( y, u, c, e, a )
 
 class globals_visitor = object(self)

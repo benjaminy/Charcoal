@@ -1,8 +1,10 @@
 # Prepend the Charcoal runtime headers
 $(BUILD_DIR)/%$(CRCL_DOT_H_EXT): %.crcl
 	echo "#define __CHARCOAL_CIL" > $@
-	echo "#include <charcoal.h>" >> $@
-	echo "#include <charcoal_runtime_coroutine.h>" >> $@
+	echo "extern \"C\" {" >> $@
+	echo "    #include <charcoal.h>" >> $@
+	echo "    #include <charcoal_runtime_coroutine.h>" >> $@
+	echo "}" >> $@
 	echo "#line 1 " \"$<\" >> $@
 	cat $< >> $@
 
@@ -13,7 +15,7 @@ $(BUILD_DIR)/%$(CRCL_DOT_H_EXT): %.crcl
 # Invoke Cil to translate Charcoal to plain C.
 %$(CIL_C_EXT): %$(CRCL_CPP_EXT)
 	echo "BLAH"
-	$(CIL_DIR)/bin/cilly.native --out $@ $<
+	$(CIL_DIR)/bin/cilly.native --tr coroutinify --out $@ $<
 
 # Generic rule for building a single file program
 $(BUILD_DIR)/% : $(BUILD_DIR)/%.crcl.cil.c

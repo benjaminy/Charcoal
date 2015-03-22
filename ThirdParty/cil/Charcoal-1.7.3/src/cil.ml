@@ -1566,6 +1566,15 @@ let typeRemoveAttributes (anl: string list) t =
   | TNamed (t, a) -> TNamed (t, drop a)
   | TBuiltin_va_list a -> TBuiltin_va_list (drop a)
 
+let linkage_charcoal =
+  let lcrcl a =
+    match a with
+      Attr( astr, [] ) -> astr = "linkage_charcoal"
+    | _ -> false
+  in
+  List.exists lcrcl
+let linkage_c attrs = not( linkage_charcoal attrs )
+
 let unrollType (t: typ) : typ = 
   let rec withAttrs (al: attributes) (t: typ) : typ =     
     match t with 
