@@ -1,3 +1,5 @@
+.PRECIOUS: %$(CRCL_DOT_H_EXT)
+
 # Prepend the Charcoal runtime headers
 $(BUILD_DIR)/%$(CRCL_DOT_H_EXT): %.crcl
 	echo "#define __CHARCOAL_CIL" > $@

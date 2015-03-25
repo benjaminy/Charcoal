@@ -23,6 +23,8 @@ let spf = Printf.sprintf
 
 let opt_map f x = match x with None -> None | Some y -> Some( f y )
 
+let trc = T.trace "coroutinify"
+
 let change_do_children x = C.ChangeDoChildrenPost( x, fun e -> e )
 
 let label_counter = ref 1
@@ -389,10 +391,9 @@ let coroutinify_call visitor fdec frame instr =
   match instr with
     C.Call( lhs_opt_previs, fn_exp_previs, params_previs, loc )
        when is_charcoal_fn fn_exp_previs ->
-    let () = T.trace "coroutinify"
-                     (Pretty.dprintf "entering function %a\n%a\n"
-                                     C.d_exp fn_exp_previs
-                                     C.d_type( C.typeOf fn_exp_previs ) )
+    let () = trc (Pretty.dprintf "entering function %a\n%a\n"
+                                 C.d_exp fn_exp_previs
+                                 C.d_type( C.typeOf fn_exp_previs ) )
     in
     let lhs_opt = opt_map (C.visitCilLval visitor) lhs_opt_previs in
     let fn_exp = C.visitCilExpr visitor fn_exp_previs in
@@ -475,7 +476,9 @@ class coroutinifyYieldingVisitor fdec locals frame = object(self)
   method vlval( lhost, offset ) =
     match lhost with
       C.Var v ->
-      let () = Pf.printf "Trying to change %s %d\n" v.C.vname v.C.vid in
+      let () = trc
+          (Pretty.dprintf "Replace local var? %s %d\n" v.C.vname v.C.vid )
+      in
       ( match IH.tryfind locals v.C.vid with
           Some l -> let () = Pf.printf "  ...Yup\n" in change_do_children ( l offset )
         | None -> let () = Pf.printf "  ...Nope\n" in C.DoChildren )
