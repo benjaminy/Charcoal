@@ -65,7 +65,7 @@ static void crcl(io_cmd_close)( uv_handle_t *h )
     /* printf( "CLOSE %p\n", a ); fflush(stdout); */
 }
 
-static int crcl(wake_up_requester)( activity_t *a )
+static int crcl(wake_up_requester)( activity_p a )
 {
     a->flags &= ~CRCL(ACTF_BLOCKED);
     cthread_p thd = a->thread;
@@ -79,7 +79,7 @@ static int crcl(wake_up_requester)( activity_t *a )
 static void crcl(getaddrinfo_callback)(
     uv_getaddrinfo_t* req, int status, struct addrinfo* res )
 {
-    activity_t *a = (activity_t *)req->data;
+    activity_p a = (activity_p)req->data;
     a->io_response.addrinfo.rc   = status;
     a->io_response.addrinfo.info = res;
     /* XXX handle errors? */
@@ -124,7 +124,7 @@ void crcl(io_cmd_cb)( uv_async_t *handle )
                                       cmd._.addrinfo.service,
                                       cmd._.addrinfo.hints ) ) )
             {
-                activity_t *a = (activity_t *)cmd._.addrinfo.resolver->data;
+                activity_p a = (activity_p)cmd._.addrinfo.resolver->data;
                 a->io_response.addrinfo.rc = rc;
                 crcl(wake_up_requester)( a );
             }

@@ -91,21 +91,21 @@ union crcl(io_response_t)
 #define __CHARCOAL_ACTF_DONE        (1 << 4)
 
 void crcl(push_special_queue)(
-    unsigned queue_flag, activity_t *a,
-    crcl(thread_t) *t, activity_t **qp );
-activity_t *crcl(pop_special_queue)(
-    unsigned queue_flag, crcl(thread_t) *t, activity_t **qp );
+    unsigned queue_flag, activity_p a,
+    crcl(thread_t) *t, activity_p *qp );
+activity_p crcl(pop_special_queue)(
+    unsigned queue_flag, crcl(thread_t) *t, activity_p *qp );
 
-int crcl(activity_blocked)( activity_t *self );
+int crcl(activity_blocked)( activity_p self );
 
 /* join thread t.  Return True if t was the last application
  * thread. */
 int crcl(join_thread)( crcl(thread_t) *t );
-int crcl(activate)( activity_t *act, crcl(entry_t) f, void *args );
+int crcl(activate)( activity_p act, crcl(entry_t) f, void *args );
 
-activity_t *crcl(get_self_activity)( void );
-void crcl(set_self_activity)( activity_t *a );
-int crcl(activity_join)( activity_t *, void * );
-int crcl(activity_detach)( activity_t * );
+activity_p crcl(get_self_activity)( void );
+void crcl(set_self_activity)( activity_p a );
+int crcl(activity_join)( activity_p , void * );
+int crcl(activity_detach)( activity_p );
 
 #endif /* __CHARCOAL_RUNTIME */

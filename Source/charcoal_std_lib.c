@@ -179,7 +179,7 @@ int semaphore_incr( semaphore_p s )
     ++s->value;
     if( s->waiters )
     {
-        activity_t *a = crcl(pop_special_queue)(
+        activity_p a = crcl(pop_special_queue)(
             CRCL(ACTF_BLOCKED), NULL, &s->waiters );
         crcl(push_special_queue)(
             CRCL(ACTF_READY_QUEUE), a, a->thread, NULL );
@@ -193,7 +193,7 @@ int semaphore_decr( semaphore_p s )
     {
         return EINVAL;
     }
-    activity_t *self = crcl(get_self_activity)();
+    activity_p self = crcl(get_self_activity)();
     while( s->value < 1 )
     {
         // XXX int rc;
@@ -211,7 +211,7 @@ int semaphore_decr( semaphore_p s )
     /* XXX maybe this isn't necessary?  */
     if( s->value > 0 && s->waiters )
     {
-        activity_t *a = crcl(pop_special_queue)(
+        activity_p a = crcl(pop_special_queue)(
             CRCL(ACTF_BLOCKED), NULL, &s->waiters );
         crcl(push_special_queue)(
             CRCL(ACTF_READY_QUEUE), a, a->thread, NULL );
@@ -236,7 +236,7 @@ int semaphore_try_decr( semaphore_p s )
     }
 }
 
-static int crcl(send_io_cmd)( crcl(io_cmd_t) *cmd, activity_t *a )
+static int crcl(send_io_cmd)( crcl(io_cmd_t) *cmd, activity_p a )
 {
     enqueue( cmd );
     a->flags |= CRCL(ACTF_BLOCKED);
@@ -254,7 +254,7 @@ int getaddrinfo_crcl(
 {
     /* XXX if unyielding, just call directly */
     uv_getaddrinfo_t resolver;
-    activity_t *self = crcl(get_self_activity)();
+    activity_p self = crcl(get_self_activity)();
     resolver.data = self;
     crcl(io_cmd_t) *cmd = (crcl(io_cmd_t) *)malloc( sizeof( cmd[0] ) );
     if( !cmd )

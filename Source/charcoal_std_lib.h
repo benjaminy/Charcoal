@@ -35,7 +35,7 @@ typedef struct csemaphore_t csemaphore_t, *semaphore_p;
 struct csemaphore_t
 {
     unsigned value;
-    activity_t *waiters;
+    activity_p waiters;
 };
 
 int semaphore_open    ( semaphore_p s, unsigned i );

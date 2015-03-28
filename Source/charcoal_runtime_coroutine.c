@@ -27,9 +27,9 @@ uv_key_t crcl(self_key);
 // XXX static timer_t crcl(heartbeat_timer);
 // XXX deprecated??? static int crcl(heartbeat_timer);
 
-activity_t *crcl(get_self_activity)( void )
+activity_p crcl(get_self_activity)( void )
 {
-    return (activity_t *)uv_key_get( &crcl(self_key) );
+    return (activity_p)uv_key_get( &crcl(self_key) );
 }
 
 #if 0
@@ -121,7 +121,7 @@ void crcl(activity_start_resume)( activity_p activity )
     /* XXX: Lots to fix here. */
 }
 
-typedef void (*crcl(switch_listener))(activity_t *from, activity_t *to, void *ctx);
+typedef void (*crcl(switch_listener))(activity_p from, activity_p to, void *ctx);
 
 void crcl(push_yield_switch_listener)( crcl(switch_listener) pre, void *pre_ctx, crcl(switch_listener) post, void *post_ctx )
 {
@@ -134,9 +134,9 @@ void crcl(pop_yield_switch_listener)()
 #if 0
     deprecated?
 /* XXX must fix.  Still assuming activities implemented as threads */
-static int crcl(yield_try_switch)( activity_t *self )
+static int crcl(yield_try_switch)( activity_p self )
 {
-    activity_t *to;
+    activity_p to;
     /* XXX error check */
     crcl(choose_next_activity)( &to );
     if( to )
@@ -151,10 +151,10 @@ static int crcl(yield_try_switch)( activity_t *self )
 
 #if 0
     deprecated?
-static void crcl(print_special_queue)( activity_t **q )
+static void crcl(print_special_queue)( activity_p *q )
 {
     assert( q );
-    activity_t *a = *q, *first = a;
+    activity_p a = *q, first = a;
     if( a )
     {
         printf( "Special queue: " );
@@ -177,7 +177,7 @@ activity_p crcl(pop_special_queue)(
 {
     // assert( t || qp );
     // assert( !( t && qp ) );
-    activity_t **q = NULL;
+    activity_p *q = NULL;
     switch( queue_flag )
     {
     case CRCL(ACTF_READY_QUEUE):
@@ -193,7 +193,7 @@ activity_p crcl(pop_special_queue)(
     /* crcl(print_special_queue)( q ); */
     if( *q )
     {
-        activity_t *a = *q;
+        activity_p a = *q;
         if( a->snext == a )
         {
             *q = NULL;
@@ -240,7 +240,7 @@ void crcl(push_special_queue)(
         return;
     }
     a->flags |= queue_flag;
-    activity_t **q = NULL;
+    activity_p *q = NULL;
     switch( queue_flag )
     {
     case CRCL(ACTF_READY_QUEUE):
@@ -256,7 +256,7 @@ void crcl(push_special_queue)(
     /* crcl(print_special_queue)( q ); */
     if( *q )
     {
-        activity_t *front = *q, *rear = front->sprev;
+        activity_p front = *q, rear = front->sprev;
         /* printf( "Front: %p(n:%p p:%p)  Rear:%p(n:%p p:%p)\n", */
         /*         front, front->snext, front->sprev, */
         /*         rear , rear ->snext, rear ->sprev ); */
@@ -315,17 +315,17 @@ crcl(frame_p) crcl(activity_blocked)( crcl(frame_p) frame )
     return rv;
 }
 
-void crcl(activity_set_return_value)( activity_t *a, void *ret_val_ptr )
+void crcl(activity_set_return_value)( activity_p a, void *ret_val_ptr )
 {
     memcpy( a->return_value, ret_val_ptr, a->ret_size );
 }
 
-void crcl(activity_get_return_value)( activity_t *a, void **ret_val_ptr )
+void crcl(activity_get_return_value)( activity_p a, void **ret_val_ptr )
 {
     memcpy( ret_val_ptr, a->return_value, a->ret_size );
 }
 
-void crcl(switch_from_to)( activity_t *from, activity_t *to )
+void crcl(switch_from_to)( activity_p from, activity_p to )
 {
     /* XXX assert from is the currently running activity? */
     cthread_p thd = from->thread;
@@ -344,7 +344,7 @@ void crcl(switch_from_to)( activity_t *from, activity_t *to )
     /* check if anybody should be deallocated (int sem_destroy(sem_t *);) */
 }
 
-void crcl(switch_to)( activity_t *act )
+void crcl(switch_to)( activity_p act )
 {
     crcl(switch_from_to)( crcl(get_self_activity)(), act );
 }
@@ -394,7 +394,7 @@ crcl(frame_p) crcl(yield_impl)( crcl(frame_p) frame, void *ret_addr ){
         return frame;
     }
     /* "else": The current activity's quantum has expired. */
-    activity_t *self = crcl(get_self_activity)();
+    activity_p self = crcl(get_self_activity)();
 
     /* XXX DEBUG foo->yield_attempts++; */
     int unyield_depth = crcl(atomic_load_int)( &(self->thread->unyield_depth) );
@@ -408,7 +408,7 @@ crcl(frame_p) crcl(yield_impl)( crcl(frame_p) frame, void *ret_addr ){
             uv_mutex_unlock( &thd->thd_management_mtx );
             return NULL /* XXX */;
         }
-        activity_t *to = crcl(pop_special_queue)(
+        activity_p to = crcl(pop_special_queue)(
             CRCL(ACTF_READY_QUEUE), thd, NULL );
         uv_mutex_unlock( &thd->thd_management_mtx );
         crcl(switch_from_to)( self, to );
@@ -417,7 +417,7 @@ crcl(frame_p) crcl(yield_impl)( crcl(frame_p) frame, void *ret_addr ){
 }
 
 /* XXX remove problem!!! */
-int crcl(activity_join)( activity_t *a, void *p )
+int crcl(activity_join)( activity_p a, void *p )
 {
     if( !a )
     {
@@ -427,14 +427,14 @@ int crcl(activity_join)( activity_t *a, void *p )
     {
         return 0;
     }
-    activity_t *self = crcl(get_self_activity)();
+    activity_p self = crcl(get_self_activity)();
     // XXX crcl(push_blocked_queue)( CRCL(ACTF_BLOCKED), self, NULL, &a->joining );
     crcl(push_blocked_queue)( self, NULL );
     // XXX RET_IF_ERROR( crcl(activity_blocked)( self ) );
     return 0;
 }
 
-int crcl(activity_detach)( activity_t *a )
+int crcl(activity_detach)( activity_p a )
 {
     if( !a )
     {
@@ -485,7 +485,7 @@ static void insert_activity_into_thread( activity_p a, cthread_p t )
     /* printf( "Insert activity %p  %p\n", a, t ); */
     if( t->activities )
     {
-        activity_t *rear = t->activities->prev;
+        activity_p rear = t->activities->prev;
         /* printf( "f:%p  r:%p\n", t->activities, rear ); */
         rear->next = a;
         t->activities->prev = a;
@@ -551,7 +551,7 @@ int crcl(join_thread)( cthread_p t )
 
 #if 0
     deprecated?
-static void crcl(report_thread_done)( activity_t *a )
+static void crcl(report_thread_done)( activity_p a )
 {
     /* printf( "XXX Thread is done!!!\n" ); */
 }

@@ -41,14 +41,14 @@ extern uv_key_t crcl(self_key);
 
 void crcl(push_special_queue)(
     unsigned queue_flag, activity_p a, cthread_p t, activity_p *qp );
-activity_t *crcl(pop_special_queue)(
+activity_p crcl(pop_special_queue)(
     unsigned queue_flag, cthread_p t, activity_p *qp );
 
 /* join thread t.  Return True if t was the last application
  * thread. */
 int crcl(join_thread)( cthread_p t );
 
-activity_t *crcl(get_self_activity)( void );
+activity_p crcl(get_self_activity)( void );
 void crcl(set_self_activity)( activity_p a );
 int crcl(activity_join)( activity_p, void * );
 int crcl(activity_detach)( activity_p );
