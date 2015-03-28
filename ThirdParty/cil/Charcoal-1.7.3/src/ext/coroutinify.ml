@@ -54,14 +54,22 @@ let crcl_fun_kind name =
     let c = Str.string_match charcoal_pfx_regex name 0 in
     ( c, if c then Str.string_after name charcoal_pfx_len else name )
 
-let remove_charcoal_linkage fdec =
-  let v = fdec.C.svar in
-  match v.C.vtype with
+let remove_charcoal_linkage_from_type expect_crcl t =
+  match t with
     C.TFun( rt, ps, va, attrs ) ->
     let foo attr = attr = C.Attr( "linkage_charcoal", [] ) in
     ( match L.partition foo attrs with
-        ( [_], others ) -> v.C.vtype <- C.TFun( rt, ps, va, others )
-      | _ -> E.s( E.error "Linkage angry?!?" ) )
+        ( [_], others ) -> Some( C.TFun( rt, ps, va, others ) )
+      | _ -> if expect_crcl then
+               E.s( E.error "Linkage angry?!?" )
+             else
+               None )
+  | _ -> None
+
+let remove_charcoal_linkage fdec =
+  let v = fdec.C.svar in
+  match remove_charcoal_linkage_from_type true v.C.vtype with
+    Some t' -> v.C.vtype <- t'
   | _ -> E.s( E.error "Remove linkage from non-function?!?" )
 
 let add_charcoal_linkage fdec =
@@ -866,8 +874,18 @@ class globals_visitor = object(self)
     | _ -> C.SkipChildren
 end
 
+class scrub_linkage_visitor = object(self)
+  inherit C.nopCilVisitor
+
+  method vtype t =
+    match remove_charcoal_linkage_from_type false t with
+      None -> C.DoChildren
+    | Some t' -> change_do_children t'
+end
+
 let do_coroutinify( f : C.file ) =
-  let () = C.visitCilFile (new globals_visitor :> C.cilVisitor) f in
+  let () = C.visitCilFile ( new globals_visitor :> C.cilVisitor ) f in
+  let () = C.visitCilFile ( new scrub_linkage_visitor ) f in
   ()
 
 let feature : C.featureDescr =
