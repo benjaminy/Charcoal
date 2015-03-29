@@ -7,6 +7,7 @@ $(BUILD_DIR)/%$(CRCL_DOT_H_EXT): %.crcl
 	echo "    #include <charcoal.h>" >> $@
 	echo "    #include <charcoal_runtime_coroutine.h>" >> $@
 	echo "}" >> $@
+	echo "#include <charcoal_non_c.h>" >> $@
 	echo "#line 1 " \"$<\" >> $@
 	cat $< >> $@
 

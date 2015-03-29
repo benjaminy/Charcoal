@@ -7,6 +7,7 @@
 #pragma cilnoremove( "__charcoal_fn_generic_prologue" )
 #pragma cilnoremove( "__charcoal_fn_generic_epilogueA" )
 #pragma cilnoremove( "__charcoal_fn_generic_epilogueB" )
+#pragma cilnoremove( "__charcoal_activate" )
 #endif
 
 #include <charcoal_runtime_common.h>
@@ -67,9 +68,8 @@ struct activity_t
     crcl(io_response_t) io_response;
     /* NOTE: While an activity is running "top" might be stale.  It
      * gets updated when an activity switches for sure. */
-    /* "bottom" probably isn't necessary.  It might be handy for
-     * debugging, but I'm not sure about that. */
-    crcl(frame_p) bottom, top;
+    crcl(frame_p) top;
+    crcl(frame_t) bottom;
     /* XXX So hard to decide about yield and the predictable branch */
     crcl(frame_t) yield_frame;
     // crcl(sem_t) can_run;
@@ -83,9 +83,13 @@ struct activity_t
 };
 
 void crcl(activity_start_resume)( activity_p activity );
-int activate_in_thread(
+
+crcl(frame_p) activate_in_thread(
     cthread_p thread, activity_p activity, crcl(frame_p) frame );
-int crcl(activate)( crcl(frame_p) caller, activity_p activity, crcl(frame_p) f );
+
+crcl(frame_p) crcl(activate)( crcl(frame_p) caller, void *ret_addr,
+                    activity_p activity, crcl(frame_p) f );
+
 crcl(frame_p) crcl(activity_blocked)( crcl(frame_p) frame );
 
 crcl(frame_p) crcl(fn_generic_prologue)(

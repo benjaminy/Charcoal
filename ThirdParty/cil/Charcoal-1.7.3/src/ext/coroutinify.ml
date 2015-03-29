@@ -47,13 +47,6 @@ let charcoal_pfx_regex = Str.regexp charcoal_pfx
 
 let crcl s = "__charcoal_" ^ s
 
-let crcl_fun_kind name =
-  if name = "__charcoal_application_main" then
-    ( false, name )
-  else
-    let c = Str.string_match charcoal_pfx_regex name 0 in
-    ( c, if c then Str.string_after name charcoal_pfx_len else name )
-
 let remove_charcoal_linkage_from_type expect_crcl t =
   match t with
     C.TFun( rt, ps, va, attrs ) ->
@@ -79,11 +72,13 @@ let add_charcoal_linkage fdec =
     v.C.vtype <- C.TFun( rt, ps, va, C.Attr( "linkage_charcoal", [] )::attrs )
   | _ -> E.s( E.error "Add linkage to non-function?!?" )
 
-let is_charcoal_fn exp =
-  match C.typeOf exp with
+let type_is_charcoal_fn ty =
+  match ty with
     C.TFun( _, _, _, attrs )
   | C.TPtr( C.TFun( _, _, _, attrs ), _) -> C.linkage_charcoal attrs
   | _ -> false
+
+let exp_is_charcoal_fn exp = type_is_charcoal_fn( C.typeOf exp )
 
 type frame_info =
   {
@@ -95,7 +90,9 @@ type frame_info =
     goto_sel        : C.exp -> C.lval;
     gen_prologue    : C.varinfo;
     gen_epilogueA   : C.varinfo;
-    gen_after_ret   : C.varinfo;
+    gen_epilogueB   : C.varinfo;
+    activate        : C.varinfo;
+    act_intermed    : C.varinfo;
     (* function-specific *)
     sizeof_specific : C.exp;
     locals_sel      : C.lval -> C.lval;
@@ -358,21 +355,70 @@ let make_epilogueB after_ret frame =
   let () = C.setFormals after_ret [] in
   let () = after_ret.C.slocals <- [] in
   let this = C.var( C.makeFormalVar after_ret "frame" frame.typ_ptr ) in
-  let lhsp =
-    let l = C.makeFormalVar after_ret "lhs"
-                            ( C.TPtr( return_type, [(*attrs*)] ) ) in
-    C.Lval( C.var l )
-  in
-  let rhs = C.Lval( frame.return_sel( frame.callee_sel( C.Lval this ) ) ) in
-  let assign = C.Set( ( C.Mem lhsp, C.NoOffset ), rhs, fdef_loc ) in
-  let assign_block = C.mkBlock( [ C.mkStmt( C.Instr( [ assign ] ) ) ] ) in
-  let empty_block = C.mkBlock( [ C.mkEmptyStmt() ] ) in
-  let null_check = C.mkStmt( C.If( lhsp, assign_block, empty_block, fdef_loc ) ) in
-  let ga = C.Lval( C.var frame.gen_after_ret ) in
+  let ga = C.Lval( C.var frame.gen_epilogueB ) in
   let call_to_generic = C.Call( None, ga, [ C.Lval this ], fdef_loc ) in
-  let body = C.mkBlock[ null_check; C.mkStmt( C.Instr[ call_to_generic ] ) ] in
+  let body = match return_type with
+      C.TVoid _ -> C.mkBlock[ C.mkStmt( C.Instr[ call_to_generic ] ) ]
+    | _ ->
+       let lhsp =
+         let l = C.makeFormalVar after_ret "lhs"
+                                 ( C.TPtr( return_type, [(*attrs*)] ) ) in
+         C.Lval( C.var l )
+       in
+       let rhs = C.Lval( frame.return_sel( frame.callee_sel( C.Lval this ) ) ) in
+       let assign = C.Set( ( C.Mem lhsp, C.NoOffset ), rhs, fdef_loc ) in
+       let assign_block = C.mkBlock( [ C.mkStmt( C.Instr( [ assign ] ) ) ] ) in
+       let empty_block = C.mkBlock( [ C.mkEmptyStmt() ] ) in
+       let null_check = C.mkStmt( C.If( lhsp, assign_block, empty_block, fdef_loc ) ) in
+       C.mkBlock[ null_check; C.mkStmt( C.Instr[ call_to_generic ] ) ]
+  in
   let () = after_ret.C.sbody <- body in
   after_ret
+
+(*
+ * Translate:
+ *     __activate_intermediate( act, fn, p1, p2, p3 );
+ * to:
+ *     act_frame = __prologue_fn( 0, 0, p1, p2, p3 );
+ *     return __activate( frame, &__return_N, act, act_frame );
+ *   __return_N:
+ *)
+let coroutinify_activate params fdec loc frame =
+  let act, entry_fn, real_params =
+    match params with
+      a::e::r -> a, e, r
+    | _ -> E.s( E.bug "Call to activate_intermediate with too few params" )
+  in
+  let prologue, epilogueB =
+    match entry_fn with
+      C.AddrOf( C.Var v, C.NoOffset ) ->
+      ( match lookup_fn_translation v with
+          Some ( _, p, eB ) -> p, eB
+        | None -> E.s( E.bug "Missing translation for activate entry %a"
+                             C.d_lval( C.var v ) ) )
+    | _ -> E.s( E.bug "Activate entry exp is not a variable! %a" C.d_exp entry_fn )
+  in
+  let after_return =
+    let r = C.mkStmt( C.Block( C.mkBlock [] ) ) in
+    let () = r.C.labels <- [ fresh_return_label loc ] in
+    r
+  in
+  let act_frame = C.var( C.makeTempVar fdec ~name:"act_frame" frame.typ_ptr ) in
+  let prologue_call =
+    let ps = C.zero::C.zero::real_params in
+    C.Call( Some act_frame, prologue, ps, loc )
+  in
+  let next_frame = C.var( C.makeTempVar fdec ~name:"next_frame" frame.typ_ptr ) in
+  let activate_call =
+    let ps = [ frame.exp; C.AddrOfLabel( ref after_return ); act; C.Lval act_frame ] in
+    C.Call( Some next_frame, C.Lval( C.var frame.activate ), ps, loc )
+  in
+  let return_next_frame = C.mkStmt( C.Return( Some( C.Lval next_frame ), loc ) )  in
+  let p, a =
+    C.mkStmt( C.Instr( [ prologue_call ] ) ),
+    C.mkStmt( C.Instr( [ activate_call ] ) )
+  in
+  [ p; a; return_next_frame; after_return ]
 
 
 (* Translate direct calls from:
@@ -388,64 +434,81 @@ let make_epilogueB after_ret frame =
  *     return exp( frame, &__return_N, null, p1, p2, p3 );
  *   __return_N:
  *     exp( frame, null, &lhs );
+ *
  *)
 
 type dir_indir =
-    CDirect of C.exp * C.exp
+    CActivate
+  | CDirect of C.exp * C.exp
   | CIndirect of C.exp
 
-let coroutinify_call visitor fdec frame instr =
-  let () = Pf.printf "coroutinify_call %s\n%!" fdec.C.svar.C.vname in
-  match instr with
-    C.Call( lhs_opt_previs, fn_exp_previs, params_previs, loc )
-       when is_charcoal_fn fn_exp_previs ->
-    let () = trc (Pretty.dprintf "entering function %a\n%a\n"
-                                 C.d_exp fn_exp_previs
-                                 C.d_type( C.typeOf fn_exp_previs ) )
+let coroutinify_normal_call lhs_opt fn_exp params call_stuff fdec loc frame =
+  let epilogueB_call =
+    (* XXX fix to be direct or indirect *)
+    let params =
+      match ( C.typeOf fn_exp, lhs_opt ) with
+        ( C.TFun( C.TVoid _, _, _, _ ), _ ) -> [ frame.exp ]
+      | ( C.TFun _, None )                  -> [ frame.exp; C.zero ]
+      | ( C.TFun _, Some lhs )              -> [ frame.exp; C.AddrOf lhs ]
+      | _ -> E.s( E.error "Function with non-function type?!?" )
     in
-    let lhs_opt = opt_map (C.visitCilLval visitor) lhs_opt_previs in
-    let fn_exp = C.visitCilExpr visitor fn_exp_previs in
-    let params = L.map (C.visitCilExpr visitor) params_previs in
+    let call =
+      let f = match call_stuff with
+          CDirect( _, eB ) -> eB
+        | CIndirect p -> p
+        | CActivate -> E.s( E.bug "Noo act" )
+      in
+      C.Call( None, f, params, loc )
+    in
+    let r = C.mkStmt( C.Instr[ call ] ) in
+    let () = r.C.labels <- [ fresh_return_label loc ] in
+    r
+  in
+  let callee = C.var( C.makeTempVar fdec ~name:"callee" frame.typ_ptr ) in
+  (* XXX fix to be direct or indirect *)
+  let ps = frame.exp::( C.AddrOfLabel( ref epilogueB_call ) )::params in
+  let prologue_call =
+    let f = match call_stuff with
+        CDirect( p, _ ) -> p
+      | CIndirect p -> p
+      | CActivate -> E.s( E.bug "Noooo Act" )
+    in
+    let call = C.Call( Some callee, f, ps, loc ) in
+    C.mkStmt( C.Instr[ call ] )
+  in
+  let return_callee = C.mkStmt( C.Return( Some( C.Lval callee ), loc ) )  in
+  [ prologue_call; return_callee; epilogueB_call ]
+
+let coroutinify_call visitor fdec frame instr =
+  let () = trc( Pretty.dprintf "coroutinify_call %a %a\n"
+                               C.d_lval ( C.var fdec.C.svar )
+                               C.d_instr instr ) in
+  match instr with
+    C.Call( lhs_opt_pre_vis, fn_exp_pre_vis, params_pre_vis, loc )
+       when exp_is_charcoal_fn fn_exp_pre_vis ->
+    let () = trc (Pretty.dprintf "entering function %a\n%a\n"
+                                 C.d_exp fn_exp_pre_vis
+                                 C.d_type( C.typeOf fn_exp_pre_vis ) )
+    in
+    let lhs_opt = opt_map (C.visitCilLval visitor) lhs_opt_pre_vis in
+    let fn_exp = C.visitCilExpr visitor fn_exp_pre_vis in
+    let params = L.map (C.visitCilExpr visitor) params_pre_vis in
     let call_stuff = match fn_exp with
         C.Lval( C.Var v, C.NoOffset ) ->
-        ( match lookup_fn_translation v with
-            Some ( _, c, a ) -> CDirect( c, a )
-          | None -> CIndirect fn_exp )
+        if v.C.vid = frame.act_intermed.C.vid then
+          CActivate
+        else
+          ( match lookup_fn_translation v with
+              Some ( _, p, eB ) -> CDirect( p, eB )
+            | None -> CIndirect fn_exp )
       | _ -> CIndirect fn_exp
     in
-    let after_call =
-      (* XXX fix to be direct or indirect *)
-      let params =
-        match ( C.typeOf fn_exp, lhs_opt ) with
-          ( C.TFun( C.TVoid _, _, _, _ ), _ ) -> [ frame.exp ]
-        | ( C.TFun _, None )                  -> [ frame.exp; C.zero ]
-        | ( C.TFun _, Some lhs )              -> [ frame.exp; C.AddrOf lhs ]
-        | _ -> E.s( E.error "Function with non-function type?!?" )
-      in
-      let call =
-        let f = match call_stuff with
-            CDirect( _, a ) -> a
-          | CIndirect p -> p
-        in
-        C.Call( None, f, params, loc )
-      in
-      let r = C.mkStmt( C.Instr[ call ] ) in
-      let () = r.C.labels <- [ fresh_return_label loc ] in
-      r
-    in
-    let callee = C.var( C.makeTempVar fdec ~name:"callee" frame.typ_ptr ) in
-    (* XXX fix to be direct or indirect *)
-    let ps = frame.exp::( C.AddrOfLabel( ref after_call ) )::params in
-    let prologue_call =
-      let f = match call_stuff with
-          CDirect( c, _ ) -> c
-        | CIndirect p -> p
-      in
-      let call = C.Call( Some callee, f, ps, loc ) in
-      C.mkStmt( C.Instr[ call ] )
-    in
-    let return_callee = C.mkStmt( C.Return( Some( C.Lval callee ), loc ) )  in
-    [ prologue_call; return_callee; after_call ]
+    ( match call_stuff, lhs_opt with
+        CActivate, Some _ ->
+        E.s( E.bug "ERR 129637" )
+      | CActivate, None -> coroutinify_activate params fdec loc frame
+      | _ -> coroutinify_normal_call lhs_opt fn_exp params call_stuff fdec loc frame
+    )
 
   (* Something other than a call to a Charcoal function *)
   | _ -> [ C.mkStmt( C.Instr( C.visitCilInstr visitor instr ) ) ]
@@ -485,7 +548,7 @@ class coroutinifyYieldingVisitor fdec locals frame = object(self)
     match lhost with
       C.Var v ->
       let () = trc
-          (Pretty.dprintf "Replace local var? %s %d\n" v.C.vname v.C.vid )
+          (Pretty.dprintf "Replace local var? %a %d\n" C.d_lval ( C.var v ) v.C.vid )
       in
       ( match IH.tryfind locals v.C.vid with
           Some l -> let () = Pf.printf "  ...Yup\n" in change_do_children ( l offset )
@@ -576,8 +639,41 @@ let make_yielding yielding frame_info_spec =
   let () = y.C.sbody.C.bstmts <- locals_init :: goto_stmt :: y.C.sbody.C.bstmts in
   y
 
+(*
+ * Translate:
+ *     __activate_intermediate( act, fn, p1, p2, p3 );
+ * to:
+ *     act_frame = __prologue_fn( 0, 0, p1, p2, p3 );
+ *     __activate( 0, 0, act, act_frame );
+ *)
+let unyielding_activate params fdec loc frame =
+  let act, entry_fn, real_params =
+    match params with
+      a::e::r -> a, e, r
+    | _ -> E.s( E.bug "Call to activate_intermediate with too few params" )
+  in
+  let prologue, epilogueB =
+    match entry_fn with
+      C.AddrOf( C.Var v, C.NoOffset ) ->
+      ( match lookup_fn_translation v with
+          Some ( _, p, eB ) -> p, eB
+        | None -> E.s( E.bug "Missing translation for activate entry %a"
+                             C.d_lval( C.var v ) ) )
+    | _ -> E.s( E.bug "Activate entry exp is not a variable! %a" C.d_exp entry_fn )
+  in
+  let act_frame = C.var( C.makeTempVar fdec ~name:"act_frame" frame.typ_ptr ) in
+  let prologue_call =
+    let ps = C.zero::C.zero::real_params in
+    C.Call( Some act_frame, prologue, ps, loc )
+  in
+  let activate_call =
+    let ps = [ C.zero; C.zero; act; C.Lval act_frame ] in
+    C.Call( None, C.Lval( C.var frame.activate ), ps, loc )
+  in
+  [ prologue_call; activate_call ]
+
 (* In the body of f, change calls to unyielding versions *)
-class coroutinifyUnyieldingVisitor = object(self)
+class coroutinifyUnyieldingVisitor fdec frame_info = object(self)
   inherit C.nopCilVisitor
 
   method indirect_call lval f ps loc =
@@ -590,22 +686,25 @@ class coroutinifyUnyieldingVisitor = object(self)
   method vinst i =
     match i with
       C.Call( lval_opt, ( C.Lval( C.Var fname, C.NoOffset ) as f), params, loc )
-         when is_charcoal_fn f ->
-      (match lookup_fn_translation fname with
-         Some( u, _ , _ ) ->
-         C.ChangeTo[ C.Call( lval_opt, u, params, loc ) ]
-       | None -> self#indirect_call lval_opt f params loc )
+         when exp_is_charcoal_fn f ->
+      if fname.C.vid = frame_info.act_intermed.C.vid then
+        C.ChangeTo( unyielding_activate params fdec loc frame_info )
+      else
+        (match lookup_fn_translation fname with
+           Some( u, _ , _ ) ->
+           C.ChangeTo[ C.Call( lval_opt, u, params, loc ) ]
+         | None -> self#indirect_call lval_opt f params loc )
 
       (* Indirect call: *)
     | C.Call( lval_opt, fn, params, loc )
-         when is_charcoal_fn fn ->
+         when exp_is_charcoal_fn fn ->
        self#indirect_call lval_opt fn params loc
 
     | _ -> C.SkipChildren
 end
 
-let make_unyielding unyielding =
-  let v = new coroutinifyUnyieldingVisitor in
+let make_unyielding unyielding frame_info =
+  let v = new coroutinifyUnyieldingVisitor unyielding frame_info in
   C.visitCilFunction ( v :> C.cilVisitor ) unyielding
 
 (* XXX Need to replace &fn with &__indirect_fn ... Maybe not ... *)
@@ -734,7 +833,9 @@ let examine_frame_t_struct ci dummy_var =
     goto_sel        = ( fun e -> ( C.Mem e, C.Field( g, C.NoOffset ) ) );
     gen_prologue    = dummy_var;
     gen_epilogueA   = dummy_var;
-    gen_after_ret   = dummy_var;
+    gen_epilogueB   = dummy_var;
+    activate        = dummy_var;
+    act_intermed    = dummy_var;
     (* function-specific *)
     sizeof_specific = dummy_exp;
     locals_sel      = ( fun e -> dummy_lval );
@@ -745,7 +846,7 @@ let examine_frame_t_struct ci dummy_var =
     locals          = ( fun _ -> IH.create 0 );
     (* context-specific *)
     lval            = dummy_lval;
-    exp             = dummy_exp;
+    exp             = C.zero;
   }
 
 let make_function_skeletons f n =
@@ -779,7 +880,11 @@ class globals_visitor = object(self)
          if name = crcl "fn_generic_epilogueA" then
            frame_opt <- Some{ frame_info with gen_epilogueA = v };
          if name = crcl "fn_generic_epilogueB" then
-           frame_opt <- Some{ frame_info with gen_after_ret = v };
+           frame_opt <- Some{ frame_info with gen_epilogueB = v };
+         if name = crcl "activate_intermediate" then
+           frame_opt <- Some{ frame_info with act_intermed = v };
+         if name = crcl "activate" then
+           frame_opt <- Some{ frame_info with activate = v };
        in
        ()
     | ( Some _, Some _ ) -> E.s( E.error "Too much frame" )
@@ -804,43 +909,46 @@ class globals_visitor = object(self)
        let orig_name = orig_var.C.vname in
        (* let () = Pf.printf "ffv - vg - %s\n" orig_name in *)
        let () = self#fill_in_frame orig_var in
-       let kind = crcl_fun_kind orig_name in
-       (match (kind, frame_opt) with
-          ( _, None ) ->
-          E.s( E.error "GFun before frame_t def  :(  %s!" orig_name )
-        | ( ( false, _ ), Some generic_frame_info ) ->
-          (* NOTE: These are modified below. *)
-          let( yielding, unyielding, prologue, epilogueA, epilogueB ) =
-            make_function_skeletons original orig_name
-          in
-          let ( tags, specific_frame_info ) =
-            make_specific yielding orig_var generic_frame_info
-          in
-          let frame_info =
-            { specific_frame_info with epilogueA = epilogueA.C.svar;
-                                       yielding = yielding.C.svar}
-          in
-          (* "p" before "y" *)
-          let p = make_prologue     prologue frame_info yielding.C.sformals in
-          let y = make_yielding     yielding frame_info in
-          let u = make_unyielding unyielding in
-          let e = make_epilogueA   epilogueA frame_info in
-          let a = make_epilogueB   epilogueB frame_info in
-          let i = make_indirect     original frame_info in
-          let () =
-            let e f = C.Lval( C.var( f.C.svar ) ) in
-            add_fn_translation orig_var ( e u ) ( e p ) ( e a )
-          in
-          let decls = L.map ( fun f -> C.GVarDecl( f.C.svar, loc ) )
-                            [ y; u; e; p; a; i ]
-          in
-          let funs = L.map ( fun f -> C.GFun( f, loc ) )
-                           [ y; u; e; p; a; i ]
-          in
-          C.ChangeTo ( tags @ decls @ funs )
+       let generic_frame_info =
+         match frame_opt with
+           Some f -> f
+         | None ->
+            E.s( E.error "GFun before frame_t def  :(  %s !" orig_name )
+       in
+       if type_is_charcoal_fn original.C.svar.C.vtype then
+         (* NOTE: These are modified below. *)
+         let( yielding, unyielding, prologue, epilogueA, epilogueB ) =
+           make_function_skeletons original orig_name
+         in
+         let ( tags, specific_frame_info ) =
+           make_specific yielding orig_var generic_frame_info
+         in
+         let frame_info =
+           { specific_frame_info with epilogueA = epilogueA.C.svar;
+                                      yielding = yielding.C.svar}
+         in
+         (* "p" before "y" *)
+         let p  = make_prologue     prologue frame_info yielding.C.sformals in
+         let y  = make_yielding     yielding frame_info in
+         let u  = make_unyielding unyielding frame_info in
+         let eA = make_epilogueA   epilogueA frame_info in
+         let eB = make_epilogueB   epilogueB frame_info in
+         let i  = make_indirect     original frame_info in
+         let () =
+           let e f = C.Lval( C.var( f.C.svar ) ) in
+           add_fn_translation orig_var ( e u ) ( e p ) ( e eB )
+         in
+         let decls = L.map ( fun f -> C.GVarDecl( f.C.svar, loc ) )
+                           [ y; u; eA; p; eB; i ]
+         in
+         let funs = L.map ( fun f -> C.GFun( f, loc ) )
+                          [ y; u; eA; p; eB; i ]
+         in
+         C.ChangeTo ( tags @ decls @ funs )
 
-        | ( ( true, crcl_runtime_fn_name ), Some frame ) ->
-           let () =
+       else
+         (* XXX is this necessary? what about fill_in_frame? *)
+(*           let () =
              if crcl_runtime_fn_name = "fn_generic_prologue" then
                frame_opt <-
                  Some{ frame with gen_prologue = orig_var };
@@ -849,10 +957,9 @@ class globals_visitor = object(self)
                  Some{ frame with gen_epilogueA = orig_var };
              if crcl_runtime_fn_name = "fn_generic_epilogueB" then
                frame_opt <-
-                 Some{ frame with gen_after_ret = orig_var };
-           in
+                 Some{ frame with gen_epilogueB = orig_var };
+           in*)
            C.SkipChildren
-       )
 
     | C.GVarDecl( var, _ ) ->
        let () = self#fill_in_frame var in

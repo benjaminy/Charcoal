@@ -504,30 +504,47 @@ static void insert_activity_into_thread( activity_p a, cthread_p t )
 
 /* Initialize 'activity' and add it to 'thread'. */
 /* (Do not start the new activity running) */
-int activate_in_thread(
+crcl(frame_p) activate_in_thread(
     cthread_p thread, activity_p activity, crcl(frame_p) frame )
 {
-    activity->thread         = thread;
-    activity->flags          = 0;
-    activity->yield_attempts = 0;
-    activity->bottom         = frame->caller;
-    activity->top            = frame;
-    activity->snext  = activity->sprev = NULL;
+    activity->thread          = thread;
+    activity->flags           = 0;
+    activity->yield_attempts  = 0;
+    activity->top             = frame;
+    activity->snext           = activity->sprev = NULL;
+    activity->bottom.activity = activity;
+    activity->bottom.fn       = 0; /* XXX clean up */
+    activity->bottom.caller   = 0;
+    activity->bottom.callee   = frame;
+    activity->bottom.goto_address = 0;
     uv_mutex_lock( &thread->thd_management_mtx );
     insert_activity_into_thread( activity, thread );
     uv_mutex_unlock( &thread->thd_management_mtx );
-    return 0;
+    return 0; /* XXX TROUBLE */
 }
 
 /*
  * Assume: "activity" is allocated but uninitialized
  * Assume: "f" is the frame returned by the relevant init procedure
  */
-int crcl(activate)(
-    crcl(frame_p) caller, activity_p activity, crcl(frame_p) f )
+crcl(frame_p) crcl(activate)(
+    crcl(frame_p) caller, void *ret_addr, activity_p activity, crcl(frame_p) f )
 {
-    return activate_in_thread(
-        caller->activity->thread, activity, f );
+    assert( !caller == !ret_addr );
+    assert( activity );
+    printf( "crcl(activate) %p %p\n", caller, caller ? caller->activity : 0 );
+    if( caller )
+    { /* Currently in yielding context */
+        caller->goto_address = ret_addr;
+        f->activity = activity;
+        return activate_in_thread(
+            caller->activity->thread, activity, f );
+    }
+    else
+    { /* Currently in unyielding context */
+        printf( "Activation in unyielding context unimplemented\n" );
+        exit( 1 );
+    }
 }
 
 int crcl(join_thread)( cthread_p t )
@@ -577,6 +594,7 @@ crcl(frame_p) crcl(fn_generic_prologue)(
     f->caller       = caller;
     f->callee       = NULL;
     f->goto_address = NULL;
+    printf( "generic_prologue %p %p\n", caller, caller ? caller->activity : 0 );
     if( caller )
     {
         caller->callee = f;

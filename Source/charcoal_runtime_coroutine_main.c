@@ -109,7 +109,12 @@ int main( int argc, char **argv, char **env )
      * TODO: Document why we need these for the I/O thread */
     cthread_t  io_thread;
     activity_t io_activity;
-    assert( !crcl(init_io_loop)( &io_thread, &io_activity ) );
+    int rc;
+    rc = crcl(init_io_loop)( &io_thread, &io_activity );
+    if( rc )
+    {
+        printf( "Error initializing the I/O loop: %d\n", rc );
+    }
 
     start_application_main( argc, argv, env );
 
@@ -117,8 +122,7 @@ int main( int argc, char **argv, char **env )
     crcl(activity_start_resume)( &io_activity );
     // XXX crcl(create_thread)( thd, act, crcl(main_activity_entry), &params );
 
-    int rc = uv_run( crcl(io_loop), UV_RUN_DEFAULT );
-
+    rc = uv_run( crcl(io_loop), UV_RUN_DEFAULT );
     if( rc )
     {
         printf( "Error running the I/O loop: %i", rc );
@@ -183,9 +187,11 @@ static void start_application_main( int argc, char **argv, char **env )
     crcl(frame_p) after_main_frame = (crcl(frame_p))malloc( sizeof( after_main_frame[0] ) );
     assert( after_main_frame );
     initialize_after_main( main_activity, after_main_frame );
-    printf( "start_app_main %d\n", argc );
+    printf( "start_app_main %d %p\n", argc, after_main_frame->activity );
     crcl(frame_p) main_frame = app_main_prologue( after_main_frame, 0, argc, argv, env );
     assert( main_frame );
-    assert( !activate_in_thread( main_thread, main_activity, main_frame ) );
+    /* XXX big trouble */
+    crcl(frame_p) next_frame = activate_in_thread( main_thread, main_activity, main_frame );
+    assert( next_frame );
     uv_cond_signal( &main_thread->thd_management_cond );
 }
