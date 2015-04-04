@@ -1,6 +1,6 @@
 #include <assert.h>
 #include <charcoal.h>
-#include <stdio.h>
+// #include <stdio.h>
 #include <stdlib.h>
 #include <charcoal_runtime_io_commands.h>
 #include <charcoal_runtime_coroutine.h>
@@ -62,7 +62,7 @@ void the_thing( uv_timer_t* handle )
 static void crcl(io_cmd_close)( uv_handle_t *h )
 {
     /* uv_async_t *a = (uv_async_t *)h; */
-    /* printf( "CLOSE %p\n", a ); fflush(stdout); */
+    /* zlog_debug( crcl(c), "CLOSE %p\n", a ); fflush(stdout); */
 }
 
 static int crcl(wake_up_requester)( activity_p a )
@@ -88,7 +88,7 @@ static void crcl(getaddrinfo_callback)(
 
 void crcl(io_cmd_cb)( uv_async_t *handle )
 {
-    /* fprintf( stderr, "IO THING\n" ); */
+    /* zlog_debug( crcl(c), "IO THING\n" ); */
     crcl(io_cmd_t) cmd;
     /* Multiple async_sends might result in a single callback call, so
      * we need to loop until the queue is empty.  (I assume it will be
@@ -109,7 +109,7 @@ void crcl(io_cmd_cb)( uv_async_t *handle )
         case CRCL(IO_CMD_JOIN_THREAD):
             if( crcl(join_thread)( cmd._.thread ) )
             {
-                /* printf( "Close, please\n" ); */
+                /* zlog_debug( stderr, "Close, please\n" ); */
                 /* XXX What about when there are more events???. */
                 uv_close( (uv_handle_t *)handle, crcl(io_cmd_close) );
             }

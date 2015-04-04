@@ -5,7 +5,6 @@
 #include <charcoal.h>
 #include <assert.h>
 #include <stdlib.h>
-#include <stdio.h>
 #include <charcoal_runtime_coroutine.h>
 #include <charcoal_runtime_io_commands.h>
 
@@ -51,7 +50,7 @@ static void thread_init(
     /* XXX Surely this handshake could be more elegant */
     assert( !crcl(sem_incr)( &params->s1 ) );
     assert( !crcl(sem_decr)( &params->s2 ) );
-    printf( "Spawnee released\n" );
+    zlog_debug( crcl(c), "Spawnee released\n" );
     assert( !crcl(sem_incr)( &params->s1 ) );
     add_to_threads_list( thread );
 }
@@ -73,7 +72,7 @@ static void thread_finish( cthread_p thread )
     cmd->_.thread = thread;
     enqueue( cmd );
     assert( !uv_async_send( &crcl(io_cmd) ) );
-    /* printf( "After!!!\n" ); */
+    /* zlog_debug( crcl(c), "After!!!\n" ); */
     /* XXX a ha! we're getting here too soon! */
 }
 
@@ -81,7 +80,7 @@ static void generic_charcoal_thread( void *p )
 {
     assert( p );
     cthread_t thread;
-    printf( "[CRCL_RT] generic_charcoal_thread %p\n", p );
+    zlog_info( crcl(c), "generic_charcoal_thread %p\n", p );
     thread_init( (struct crcl(thread_entry_params) *)p, &thread );
 
     crcl(atomic_int) *keep_going = &thread.keep_going;
@@ -120,13 +119,13 @@ static void generic_charcoal_thread( void *p )
     }
 
     thread_finish( &thread );
-    printf( "[CRCL_RT] generic_charcoal_thread finished\n" );
+    zlog_info( crcl(c), "generic_charcoal_thread finished\n" );
 }
 
 int thread_start( cthread_p *thd, void *options )
 {
     int rc;
-    printf( "[CRCL_RT] thread_start %p %p\n", thd, options );
+    zlog_info( crcl(c), "thread_start %p %p\n", thd, options );
 
     // pthread_attr_t attr;
     // ABORT_ON_FAIL( pthread_attr_init( &attr ) );
@@ -153,15 +152,15 @@ int thread_start( cthread_p *thd, void *options )
     }
     /* Wait for thread initialization to complete. */
     crcl(sem_decr)( &params.s1 );
-    printf( "Spawner released\n" );
+    zlog_debug( crcl(c), "Spawner released\n" );
     (*thd)->sys = thread_id;
     crcl(sem_incr)( &params.s2 );
     crcl(sem_decr)( &params.s1 );
-    printf( "Spawner released\n" );
+    zlog_debug( crcl(c), "Spawner released\n" );
     assert( !crcl(sem_destroy)( &params.s1 ) );
     assert( !crcl(sem_destroy)( &params.s2 ) );
     // assert( !pthread_attr_destroy( &attr ) );
 
-    printf( "[CRCL_RT] thread_start finished\n" );
+    zlog_info( crcl(c), "thread_start finished\n" );
     return 0;
 }

@@ -6,8 +6,8 @@
 #include <assert.h>
 #include <signal.h>
 #include <stdlib.h>
-#include <string.h> /* XXX remove dep eventually */
-#include <stdio.h> /* XXX remove dep eventually */
+// #include <string.h> /* XXX remove dep eventually */
+// #include <stdio.h> /* XXX remove dep eventually */
 #include <errno.h>
 #include <limits.h>
 #include <charcoal_runtime_coroutine.h>
@@ -85,7 +85,7 @@ int crcl(choose_next_activity)( activity_p *p )
             ; // XXX crcl(sem_incr)( &to_run->can_run );
     }
     //commented this out for testing purposes, TODO: put back
-    //printf( "SWITCH from: %p(%i)  to: %p(%i)\n",
+    //zlog_debug( crcl(c), "SWITCH from: %p(%i)  to: %p(%i)\n",
     //        self, sv, to_run, rv );
     if( p )
     {
@@ -157,16 +157,16 @@ static void crcl(print_special_queue)( activity_p *q )
     activity_p a = *q, first = a;
     if( a )
     {
-        printf( "Special queue: " );
+        zlog_info( crcl(c), "Special queue: " );
         do {
-            printf( "%p  ", a );
+            zlog_info( crcl(c), "%p  ", a );
             a = a->snext;
         } while( a != first );
-        printf( "\n" );
+        zlog_info( crcl(c), "\n" );
     }
     else
     {
-        printf( "Special queue empty\n" );
+        zlog_info( crcl(c), "Special queue empty\n" );
     }
 }
 #endif
@@ -189,7 +189,7 @@ activity_p crcl(pop_special_queue)(
     default:
         exit( queue_flag );
     }
-    /* printf( "S-pop pre " ); */
+    /* zlog_info( crcl(c), "S-pop pre " ); */
     /* crcl(print_special_queue)( q ); */
     if( *q )
     {
@@ -211,7 +211,7 @@ activity_p crcl(pop_special_queue)(
     {
         return NULL;
     }
-    /* printf( "S-pop post " ); */
+    /* zlog_info( crcl(c), "S-pop post " ); */
     /* crcl(print_special_queue)( q ); */
 }
 
@@ -236,7 +236,7 @@ void crcl(push_special_queue)(
     assert( !( t && qp ) );
     if( a->flags & queue_flag )
     {
-        /* printf( "Already in queue\n" ); */
+        /* zlog_debug( crcl(c), "Already in queue\n" ); */
         return;
     }
     a->flags |= queue_flag;
@@ -252,12 +252,12 @@ void crcl(push_special_queue)(
     default:
         exit( queue_flag );
     }
-    /* printf( "S-push pre q:%p %p ", q, a ); */
+    /* zlog_debug( crcl(c), "S-push pre q:%p %p ", q, a ); */
     /* crcl(print_special_queue)( q ); */
     if( *q )
     {
         activity_p front = *q, rear = front->sprev;
-        /* printf( "Front: %p(n:%p p:%p)  Rear:%p(n:%p p:%p)\n", */
+        /* zlog_debug( crcl(c), "Front: %p(n:%p p:%p)  Rear:%p(n:%p p:%p)\n", */
         /*         front, front->snext, front->sprev, */
         /*         rear , rear ->snext, rear ->sprev ); */
         rear->snext = a;
@@ -271,7 +271,7 @@ void crcl(push_special_queue)(
         a->snext = a;
         a->sprev = a;
     }
-    /* printf( "S-push post q:%p %p ", q, a ); */
+    /* zlog_debug( crcl(c), "S-push post q:%p %p ", q, a ); */
     /* crcl(print_special_queue)( q ); */
 }
 
@@ -284,7 +284,7 @@ void crcl(push_blocked_queue)( activity_p a, cthread_p t )
 {
     crcl(push_special_queue)( CRCL(ACTF_BLOCKED), a, t, NULL ); /* XXX */
 }
-                                  
+
 /* activity_blocked should be called when an activity has nothing to do
  * right now.  Another activity or thread might switch back to it later.
  * If another activity is ready, run it.  Otherwise wait for a condition
@@ -292,7 +292,7 @@ void crcl(push_blocked_queue)( activity_p a, cthread_p t )
 crcl(frame_p) crcl(activity_blocked)( crcl(frame_p) frame )
 {
     // XXX --thd->runnable_activities;
-    /* printf( "Actvity blocked\n" ); */
+    /* zlog_debug( crcl(c), "Actvity blocked\n" ); */
     crcl(frame_p) rv       = NULL;
     activity_p    activity = frame->activity;
     cthread_p     thd      = activity->thread;
@@ -317,12 +317,12 @@ crcl(frame_p) crcl(activity_blocked)( crcl(frame_p) frame )
 
 void crcl(activity_set_return_value)( activity_p a, void *ret_val_ptr )
 {
-    memcpy( a->return_value, ret_val_ptr, a->ret_size );
+    // XXX memcpy( a->return_value, ret_val_ptr, a->ret_size );
 }
 
 void crcl(activity_get_return_value)( activity_p a, void **ret_val_ptr )
 {
-    memcpy( ret_val_ptr, a->return_value, a->ret_size );
+    // XXX memcpy( ret_val_ptr, a->return_value, a->ret_size );
 }
 
 void crcl(switch_from_to)( activity_p from, activity_p to )
@@ -340,7 +340,7 @@ void crcl(switch_from_to)( activity_p from, activity_p to )
         _longjmp( to->jmp, 1 );
     }
 #endif
-    //printf("Set timeout value to 0 in charcoal_switch_from_to\n");
+    //zlog_debug( crcl(c), "Set timeout value to 0 in charcoal_switch_from_to\n");
     /* check if anybody should be deallocated (int sem_destroy(sem_t *);) */
 }
 
@@ -385,7 +385,7 @@ crcl(atomic_int) *crcl(yield_ticker);
  *    whole-application performance
  */
 crcl(frame_p) crcl(yield_impl)( crcl(frame_p) frame, void *ret_addr ){
-    frame->goto_address = ret_addr;
+    frame->return_addr = ret_addr;
     size_t     current_yield_tick = crcl(atomic_load_int)( crcl(yield_ticker) );
     activity_p activity           = frame->activity;
     ssize_t    diff               = activity->thread->tick - current_yield_tick;
@@ -457,11 +457,11 @@ static crcl(frame_p) crcl(activity_finished)( crcl(frame_p) frame )
      * return value to activity memory. */
     activity_p activity = frame->activity;
     cthread_p thd = activity->thread;
-    /* printf( "Finishing %p\n", a ); */
+    /* zlog_debug( crcl(c), "Finishing %p\n", a ); */
     uv_mutex_lock( &thd->thd_management_mtx );
     activity_p next = crcl(pop_ready_queue)( thd );
     uv_mutex_unlock( &thd->thd_management_mtx );
-    /* printf( "Jumping to %p\n", next ); */
+    /* zlog_debug( crcl(c), "Jumping to %p\n", next ); */
     if( next )
     {
         crcl(activity_start_resume)( next );
@@ -482,11 +482,11 @@ static crcl(frame_p) crcl(activity_finished)( crcl(frame_p) frame )
 
 static void insert_activity_into_thread( activity_p a, cthread_p t )
 {
-    /* printf( "Insert activity %p  %p\n", a, t ); */
+    /* zlog_debug( crcl(c), "Insert activity %p  %p\n", a, t ); */
     if( t->activities )
     {
         activity_p rear = t->activities->prev;
-        /* printf( "f:%p  r:%p\n", t->activities, rear ); */
+        /* zlog_debug( crcl(c), "f:%p  r:%p\n", t->activities, rear ); */
         rear->next = a;
         t->activities->prev = a;
         a->prev = rear;
@@ -516,7 +516,7 @@ crcl(frame_p) activate_in_thread(
     activity->bottom.fn       = 0; /* XXX clean up */
     activity->bottom.caller   = 0;
     activity->bottom.callee   = frame;
-    activity->bottom.goto_address = 0;
+    activity->bottom.return_addr = 0;
     uv_mutex_lock( &thread->thd_management_mtx );
     insert_activity_into_thread( activity, thread );
     uv_mutex_unlock( &thread->thd_management_mtx );
@@ -532,24 +532,24 @@ crcl(frame_p) crcl(activate)(
 {
     assert( !caller == !ret_addr );
     assert( activity );
-    printf( "crcl(activate) %p %p\n", caller, caller ? caller->activity : 0 );
+    zlog_info( crcl(c), "crcl(activate) %p %p\n", caller, caller ? caller->activity : 0 );
     if( caller )
     { /* Currently in yielding context */
-        caller->goto_address = ret_addr;
+        caller->return_addr = ret_addr;
         f->activity = activity;
         return activate_in_thread(
             caller->activity->thread, activity, f );
     }
     else
     { /* Currently in unyielding context */
-        printf( "Activation in unyielding context unimplemented\n" );
+        zlog_info( crcl(c), "Activation in unyielding context unimplemented\n" );
         exit( 1 );
     }
 }
 
 int crcl(join_thread)( cthread_p t )
 {
-    printf( "join_thread %p n:%p p:%p ts:%p\n", t, t->next, t->prev, crcl(threads) );
+    zlog_info( crcl(c), "join_thread %p n:%p p:%p ts:%p\n", t, t->next, t->prev, crcl(threads) );
     if( t == t->next )
     {
         /* XXX Trying to remove the last thread. */
@@ -570,7 +570,7 @@ int crcl(join_thread)( cthread_p t )
     deprecated?
 static void crcl(report_thread_done)( activity_p a )
 {
-    /* printf( "XXX Thread is done!!!\n" ); */
+    /* zlog_info( crcl(c), "XXX Thread is done!!!\n" ); */
 }
 #endif
 
@@ -589,16 +589,16 @@ crcl(frame_p) crcl(fn_generic_prologue)(
     {
         /* XXX die */
     }
-    f->activity     = NULL;
-    f->fn           = fn;
-    f->caller       = caller;
-    f->callee       = NULL;
-    f->goto_address = NULL;
-    printf( "generic_prologue %p %p\n", caller, caller ? caller->activity : 0 );
+    f->activity    = NULL;
+    f->fn          = fn;
+    f->caller      = caller;
+    f->callee      = NULL;
+    f->return_addr = NULL;
+    zlog_info( crcl(c), "generic_prologue %p %p\n", caller, caller ? caller->activity : 0 );
     if( caller )
     {
         caller->callee = f;
-        caller->goto_address = return_ptr;
+        caller->return_addr = return_ptr;
         f->activity = caller->activity;
     }
     return f;

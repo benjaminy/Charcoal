@@ -52,7 +52,7 @@ struct thread
         __charcoal_frame *f = (__charcoal_frame *)malloc( \
             sizeof( f[0] ) + ls ); \
         f->fn = crcl(YYY_yielding); \
-        f->goto_address = NULL; \
+        f->return_addr = NULL; \
         f->caller = caller; \
         f->activity = NULL; \
         if( caller ) \

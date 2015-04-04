@@ -14,6 +14,10 @@
 #include <charcoal_runtime_atomics.h>
 #include <charcoal_semaphore.h>
 #include <stdlib.h>
+/* NOTE: Eventually make different dev/production configs that ifdef logging */
+#include <zlog.h>
+
+zlog_category_t *crcl( c );
 
 typedef struct crcl(frame_t) crcl(frame_t), *crcl(frame_p);
 
@@ -39,7 +43,10 @@ struct crcl(frame_t)
     /* NOTE: It's probably not necessary to have the callee link, but it
      * seems nice for debugging. */
     crcl(frame_p) caller, callee;
-    void *goto_address;
+    /* If return_addr is non-null, it is the label the function should
+     * jump to the next time it resumes execution.  Otherwise, it
+     * should start at the beginning. */
+    void *return_addr;
 
     /* Using the variable-sized last field trick.
      * The last field is for procedure-specific storage (parameters,
@@ -59,20 +66,22 @@ struct crcl(frame_t)
 struct activity_t
 {
     cthread_p thread;
+
     /* TODO: add a bit to indicate if a yield caused an activity switch */
     unsigned flags;
+
     /* Every activity is in the (thread-local) list of all activities.
      * An activity may be in another "special" list, of which there
      * are currently two: Ready and Blocked */
     activity_p next, prev, snext, sprev;
+
     crcl(io_response_t) io_response;
+
     /* NOTE: While an activity is running "top" might be stale.  It
      * gets updated when an activity switches for sure. */
-    crcl(frame_p) top;
-    crcl(frame_t) bottom;
+    crcl(frame_t) yield_frame, bottom, *top;
+
     /* XXX So hard to decide about yield and the predictable branch */
-    crcl(frame_t) yield_frame;
-    // crcl(sem_t) can_run;
 
     /* Debug and profiling stuff */
     int yield_attempts;
