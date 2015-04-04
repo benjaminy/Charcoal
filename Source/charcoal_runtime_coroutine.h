@@ -21,21 +21,6 @@ zlog_category_t *crcl( c );
 
 typedef struct crcl(frame_t) crcl(frame_t), *crcl(frame_p);
 
-struct cthread_t
-{
-    /* atomic */ size_t tick;
-    unsigned            flags;
-    uv_thread_t         sys;
-    crcl(atomic_int)    unyield_depth, keep_going;
-    uv_timer_t          timer_req;
-    activity_p          activities, ready;
-    uv_mutex_t          thd_management_mtx;
-    uv_cond_t           thd_management_cond;
-    unsigned            runnable_activities;
-    /* Linked list of all threads */
-    cthread_p           next, prev;
-};
-
 struct crcl(frame_t)
 {
     activity_p activity;
@@ -89,6 +74,22 @@ struct activity_t
     /* Using the variable-sized last field of the struct hack */
     size_t ret_size;
     char return_value[ sizeof( int ) ];
+};
+
+struct cthread_t
+{
+    /* atomic */ size_t tick;
+    unsigned            flags;
+    uv_thread_t         sys;
+    crcl(atomic_int)    unyield_depth, keep_going;
+    uv_timer_t          timer_req;
+    activity_p          activities, ready;
+    uv_mutex_t          thd_management_mtx;
+    uv_cond_t           thd_management_cond;
+    activity_t          idle;
+    unsigned            runnable_activities;
+    /* Linked list of all threads */
+    cthread_p           next, prev;
 };
 
 void crcl(activity_start_resume)( activity_p activity );
