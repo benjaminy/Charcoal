@@ -14,7 +14,7 @@ extern "C" {
 #endif
 
 #include <stdarg.h> /* for va_list */
-#include <stdio.h> /* for size_t */
+#include <stddef.h> /* for size_t */
 
 # if defined __GNUC__
 #   define ZLOG_CHECK_PRINTF(m,n) __attribute__((format(printf,m,n)))
