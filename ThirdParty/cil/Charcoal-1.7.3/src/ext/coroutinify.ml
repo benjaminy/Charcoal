@@ -87,7 +87,7 @@ type frame_info =
     typ             : C.typ;
     typ_ptr         : C.typ;
     callee_sel      : C.exp -> C.lval;
-    goto_sel        : C.exp -> C.lval;
+    return_addr_sel : C.exp -> C.lval;
     gen_prologue    : C.varinfo;
     gen_epilogueA   : C.varinfo;
     gen_epilogueB   : C.varinfo;
@@ -380,7 +380,7 @@ let make_epilogueB after_ret frame =
  *     __activate_intermediate( act, fn, p1, p2, p3 );
  * to:
  *     act_frame = __prologue_fn( 0, 0, p1, p2, p3 );
- *     return __activate( frame, &__return_N, act, act_frame );
+ *     return __activate( frame, &__return_N, act, act_frame, __epilogueB_fn XXX );
  *   __return_N:
  *)
 let coroutinify_activate params fdec loc frame =
@@ -590,8 +590,8 @@ end
  *     frame_p __yielding_f( frame_p frame )
  *     {
  *         __locals_f *locals = &locals_cast( frame );
- *         if( frame->goto_address )
- *             goto frame->goto_address;
+ *         if( frame->return_addr )
+ *             goto frame->return_addr;
  *         coroutinify( ... )
  *     }
  *)
@@ -629,10 +629,10 @@ let make_yielding yielding frame_info_spec =
     ( frame_info.locals( C.Lval( locals ) ), locals_init )
   in
   let goto_stmt =
-    let goto_field = C.Lval( frame_info.goto_sel( C.Lval( C.var this ) ) ) in
+    let ret_addr_field = C.Lval( frame_info.return_addr_sel( C.Lval( C.var this ) ) ) in
     let empty_block = C.mkBlock( [ C.mkEmptyStmt() ] ) in
-    let goto = C.mkStmt( C.ComputedGoto( goto_field, fdef_loc ) ) in
-    C.mkStmt( C.If( goto_field, C.mkBlock( [ goto ] ), empty_block, fdef_loc ) )
+    let goto = C.mkStmt( C.ComputedGoto( ret_addr_field, fdef_loc ) ) in
+    C.mkStmt( C.If( ret_addr_field, C.mkBlock( [ goto ] ), empty_block, fdef_loc ) )
   in
   let v = new coroutinifyYieldingVisitor yielding locals_tbl frame_info in
   let y = C.visitCilFunction v yielding in
@@ -644,7 +644,7 @@ let make_yielding yielding frame_info_spec =
  *     __activate_intermediate( act, fn, p1, p2, p3 );
  * to:
  *     act_frame = __prologue_fn( 0, 0, p1, p2, p3 );
- *     __activate( 0, 0, act, act_frame );
+ *     __activate( 0, 0, act, act_frame, __epilgoueB_fn );
  *)
 let unyielding_activate params fdec loc frame =
   let act, entry_fn, real_params =
@@ -802,10 +802,10 @@ let examine_frame_t_struct ci dummy_var =
   let dummy_exp   = C.zero in
   let dummy_type  = C.voidType in
 
-  let _, s, g, ce =
-    let ar, sr, gr, cer = ref None, ref None, ref None, ref None in
+  let _, s, r, ce =
+    let ar, sr, ra, cer = ref None, ref None, ref None, ref None in
     let fields = [ ( "activity", ar ); ( "specific", sr );
-                   ( "goto_address", gr ); ( "callee", cer ); ] in
+                   ( "return_addr", ra ); ( "callee", cer ); ] in
     let extract field =
       let find_field ( name, field_ref ) =
         if field.C.fname = name then
@@ -814,8 +814,8 @@ let examine_frame_t_struct ci dummy_var =
       L.iter find_field fields
     in
     let () = L.iter extract ci.C.cfields in
-    match ( !ar, !sr, !gr, !cer ) with
-      Some a, Some s, Some g, Some ce -> a, s, g, ce
+    match ( !ar, !sr, !ra, !cer ) with
+      Some a, Some s, Some r, Some ce -> a, s, r, ce
     | _ -> E.s( E.error "frame struct missing fields?!?" )
   in
   let specific_cast specific_type frame =
@@ -830,7 +830,7 @@ let examine_frame_t_struct ci dummy_var =
     typ             = C.TComp( ci, [(*attrs*)] );
     typ_ptr         = C.TPtr( C.TComp( ci, [(*attrs*)] ), [(*attrs*)] );
     callee_sel      = ( fun e -> ( C.Mem e, C.Field( ce, C.NoOffset ) ) );
-    goto_sel        = ( fun e -> ( C.Mem e, C.Field( g, C.NoOffset ) ) );
+    return_addr_sel = ( fun e -> ( C.Mem e, C.Field( r, C.NoOffset ) ) );
     gen_prologue    = dummy_var;
     gen_epilogueA   = dummy_var;
     gen_epilogueB   = dummy_var;

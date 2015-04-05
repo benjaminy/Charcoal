@@ -315,16 +315,6 @@ crcl(frame_p) crcl(activity_blocked)( crcl(frame_p) frame )
     return rv;
 }
 
-void crcl(activity_set_return_value)( activity_p a, void *ret_val_ptr )
-{
-    // XXX memcpy( a->return_value, ret_val_ptr, a->ret_size );
-}
-
-void crcl(activity_get_return_value)( activity_p a, void **ret_val_ptr )
-{
-    // XXX memcpy( ret_val_ptr, a->return_value, a->ret_size );
-}
-
 void crcl(switch_from_to)( activity_p from, activity_p to )
 {
     /* XXX assert from is the currently running activity? */
@@ -502,21 +492,54 @@ static void insert_activity_into_thread( activity_p a, cthread_p t )
     ++t->runnable_activities;
 }
 
+static void crcl(remove_activity_from_thread)( activity_p a, cthread_p t)
+{
+    /* zlog_debug( crcl(c), "Remove activity %p  %p\n", a, t ); */
+    if( a == a->next )
+    {
+        t->activities = NULL;
+    }
+    if( t->activities == a )
+    {
+        t->activities = a->next;
+    }
+    a->next->prev = a->prev;
+    a->prev->next = a->next;
+    a->next = NULL;
+    a->prev = NULL;
+
+    // zlog_debug( crcl(c), "f:%p  r:%p\n", t->activities, t->activities->prev );
+}
+
+static crcl(frame_p) activity_epilogue( crcl(frame_p) frame )
+{
+    assert( frame );
+    activity_p act = frame->activity;
+    zlog_info( crcl(c) , "Activity finished %p %p\n", frame, act );
+    assert( frame == &act->bottom );
+    act->epilogue( frame, &act->return_value );
+    crcl(remove_activity_from_thread)( act, act->thread );
+    /* XXX invoke some kind of scheduler */
+    return NULL;
+}
+
 /* Initialize 'activity' and add it to 'thread'. */
 /* (Do not start the new activity running) */
 crcl(frame_p) activate_in_thread(
-    cthread_p thread, activity_p activity, crcl(frame_p) frame )
+    cthread_p thread, activity_p activity, crcl(frame_p) frame, crcl(epilogueB_t) epi )
 {
-    activity->thread          = thread;
-    activity->flags           = 0;
-    activity->yield_attempts  = 0;
-    activity->top             = frame;
-    activity->snext           = activity->sprev = NULL;
-    activity->bottom.activity = activity;
-    activity->bottom.fn       = 0; /* XXX clean up */
-    activity->bottom.caller   = 0;
-    activity->bottom.callee   = frame;
+    activity->thread             = thread;
+    activity->flags              = 0;
+    activity->yield_attempts     = 0;
+    activity->top                = frame;
+    activity->snext              = activity->sprev = NULL;
+    activity->bottom.activity    = activity;
+    activity->bottom.fn          = activity_epilogue;
+    activity->bottom.caller      = 0;
+    activity->bottom.callee      = frame;
     activity->bottom.return_addr = 0;
+    activity->epilogue           = epi;
+    frame->caller                = &activity->bottom;
     uv_mutex_lock( &thread->thd_management_mtx );
     insert_activity_into_thread( activity, thread );
     uv_mutex_unlock( &thread->thd_management_mtx );
@@ -528,7 +551,8 @@ crcl(frame_p) activate_in_thread(
  * Assume: "f" is the frame returned by the relevant init procedure
  */
 crcl(frame_p) crcl(activate)(
-    crcl(frame_p) caller, void *ret_addr, activity_p activity, crcl(frame_p) f )
+    crcl(frame_p) caller, void *ret_addr,
+    activity_p activity, crcl(frame_p) f, crcl(epilogueB_t) epi )
 {
     assert( !caller == !ret_addr );
     assert( activity );
@@ -538,32 +562,13 @@ crcl(frame_p) crcl(activate)(
         caller->return_addr = ret_addr;
         f->activity = activity;
         return activate_in_thread(
-            caller->activity->thread, activity, f );
+            caller->activity->thread, activity, f, epi );
     }
     else
     { /* Currently in unyielding context */
         zlog_info( crcl(c), "Activation in unyielding context unimplemented\n" );
         exit( 1 );
     }
-}
-
-int crcl(join_thread)( cthread_p t )
-{
-    zlog_info( crcl(c), "join_thread %p n:%p p:%p ts:%p\n", t, t->next, t->prev, crcl(threads) );
-    if( t == t->next )
-    {
-        /* XXX Trying to remove the last thread. */
-        exit( 1 );
-    }
-    if( t == crcl(threads) )
-    {
-        /* XXX Trying to remove the I/O thread. */
-        exit( 1 );
-    }
-    t->next->prev = t->prev;
-    t->prev->next = t->next;
-    assert( !uv_thread_join( &t->sys ) );
-    return crcl(threads) == crcl(threads)->next;
 }
 
 #if 0

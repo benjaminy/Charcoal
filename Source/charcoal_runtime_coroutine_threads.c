@@ -123,7 +123,6 @@ static crcl(frame_p) thread_init(
     thread->idle.sprev              = NULL;
     thread->idle.top                = &thread->idle.bottom;
     thread->idle.yield_attempts     = 0;
-    thread->idle.ret_size           = 0;
     thread->idle.bottom.activity    = &thread->idle;
     thread->idle.bottom.fn          = idle;
     thread->idle.bottom.caller      = NULL;
@@ -153,6 +152,31 @@ static void thread_finish( cthread_p thread )
     assert( !uv_async_send( &crcl(io_cmd) ) );
     /* zlog_debug( crcl(c), "After!!!\n" ); */
     /* XXX a ha! we're getting here too soon! */
+}
+
+int crcl(join_thread)( cthread_p t )
+{
+    zlog_info( crcl(c), "Joining thread %p n:%p p:%p ts:%p\n",
+               t, t->next, t->prev, crcl(threads) );
+    if( t == crcl(main_thread) )
+    {
+        int *p = (int *)crcl(main_activity).return_value;
+        crcl(process_return_value) = *p;
+    }
+    if( t == t->next )
+    {
+        /* XXX Trying to remove the last thread. */
+        exit( 1 );
+    }
+    if( t == crcl(threads) )
+    {
+        /* XXX Trying to remove the I/O thread. */
+        exit( 1 );
+    }
+    t->next->prev = t->prev;
+    t->prev->next = t->next;
+    assert( !uv_thread_join( &t->sys ) );
+    return crcl(threads) == crcl(threads)->next;
 }
 
 static crcl(frame_p) idle( crcl(frame_p) idle_frame )

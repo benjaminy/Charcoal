@@ -64,15 +64,15 @@ struct activity_t
 
     /* NOTE: While an activity is running "top" might be stale.  It
      * gets updated when an activity switches for sure. */
-    crcl(frame_t) yield_frame, bottom, *top;
-
-    /* XXX So hard to decide about yield and the predictable branch */
+    crcl(frame_t) bottom, *top;
+    void (*epilogue)( crcl(frame_p), void * );
 
     /* Debug and profiling stuff */
     int yield_attempts;
 
     /* Using the variable-sized last field of the struct hack */
-    size_t ret_size;
+    /* Default size is int so that we can globally allocate the main
+     * activity */
     char return_value[ sizeof( int ) ];
 };
 
@@ -94,11 +94,13 @@ struct cthread_t
 
 void crcl(activity_start_resume)( activity_p activity );
 
-crcl(frame_p) activate_in_thread(
-    cthread_p thread, activity_p activity, crcl(frame_p) frame );
+typedef void (*crcl(epilogueB_t))( crcl(frame_p), void * );
 
-crcl(frame_p) crcl(activate)( crcl(frame_p) caller, void *ret_addr,
-                    activity_p activity, crcl(frame_p) f );
+crcl(frame_p) activate_in_thread(
+    cthread_p, activity_p, crcl(frame_p), crcl(epilogueB_t) );
+
+crcl(frame_p) crcl(activate)( crcl(frame_p), void *,
+                    activity_p, crcl(frame_p), crcl(epilogueB_t) );
 
 crcl(frame_p) crcl(activity_blocked)( crcl(frame_p) frame );
 
@@ -109,5 +111,9 @@ crcl(frame_p) crcl(fn_generic_prologue)(
 crcl(frame_p) crcl(fn_generic_epilogueA)( crcl(frame_p) frame );
 
 void crcl(fn_generic_epilogueB)( crcl(frame_p) frame );
+
+extern cthread_p crcl(main_thread);
+extern activity_t crcl(main_activity);
+extern int crcl(process_return_value);
 
 #endif /* __CHARCOAL_RUNTIME_COROUTINE */

@@ -34,6 +34,7 @@ CIL_C_EXT=.crcl.cil.c
 CC=gcc
 
 CRCL_RUNTIME = $(INSTALL_DIR)/lib/libcharcoal_sys.a
+ZLOG_LIB = $(INSTALL_DIR)/lib/libzlog.a
 
 INCLUDE_DIRS = -I$(INSTALL_DIR)/include
 LIB_DIRS =  -L$(INSTALL_DIR)/lib
