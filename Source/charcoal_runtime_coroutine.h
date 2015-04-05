@@ -16,6 +16,7 @@
 #include <stdlib.h>
 /* NOTE: Eventually make different dev/production configs that ifdef logging */
 #include <zlog.h>
+extern char *zlog_config_full_filename;
 
 zlog_category_t *crcl( c );
 

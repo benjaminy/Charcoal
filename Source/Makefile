@@ -3,6 +3,7 @@
 BUILD_DIR = ../Build
 INSTALL_DIR = ../Install
 LIB_DIR = $(INSTALL_DIR)/lib
+ETC_DIR = $(INSTALL_DIR)/etc
 INCLUDE_DIR = $(INSTALL_DIR)/include
 INCLUDE_DIRS = -I. -I$(INCLUDE_DIR)
 CFLAGS += -Wall -O1 -g
@@ -15,19 +16,26 @@ RUNTIME_HEADER_PIECES = common io_commands atomics coroutine
 MORE_HEADER_PIECES = $(addprefix runtime_, $(RUNTIME_HEADER_PIECES)) semaphore non_c
 HEADERS = $(addsuffix .h, $(addprefix charcoal_, $(MORE_HEADER_PIECES)) charcoal application_pre_header)
 
-all: install_headers $(RUNTIME_OBJS) std_lib
+all: install_headers $(RUNTIME_OBJS) std_lib log_conf
 	mkdir -p $(LIB_DIR)
 	ar rcs $(LIB_DIR)/libcharcoal_sys.a $(RUNTIME_OBJS) $(BUILD_DIR)/charcoal_std_lib.o
-	mkdir -p $(INCLUDE_DIR)
 
 clean:
 	rm -rf $(BUILD_DIR)/*
 	rm -f $(addprefix $(INCLUDE_DIR)/, $(HEADERS))
 	rm -f $(LIB_DIR)/libcharcoal_sys.a
+	rm -f $(ETC_DIR)/*
+
+log_conf: $(ETC_DIR)/charcoal_log.conf
+
+$(ETC_DIR)/%.conf : %.conf
+	mkdir -p $(ETC_DIR)
+	cp $< $@
 
 install_headers: $(addprefix $(INCLUDE_DIR)/, $(HEADERS))
 
 $(INCLUDE_DIR)/%.h : %.h
+	mkdir -p $(INCLUDE_DIR)
 	cp $< $@
 
 $(BUILD_DIR)/%.o : %.c $(HEADERS)

@@ -51,7 +51,7 @@ int main( int argc, char **argv, char **env )
     cthread_t  io_thread;
     activity_t io_activity;
     int rc;
-    if( ( rc = zlog_init( "charcoal_log.conf" ) ) )
+    if( ( rc = zlog_init( zlog_config_full_filename ) ) )
     {
         return -1;
     }
@@ -167,7 +167,7 @@ static int start_application_main( int argc, char **argv, char **env )
         (crcl(epilogueB_t))app_main_epilogueB );
     if( !next_frame )
     {
-        return -4;
+        // return -4;
     }
     uv_cond_signal( &crcl(main_thread)->thd_management_cond );
     return 0;
