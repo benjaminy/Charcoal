@@ -592,7 +592,7 @@ crcl(frame_p) crcl(fn_generic_prologue)(
     crcl(frame_p) f = (crcl(frame_p))malloc( sz + sizeof( f[0] ) );
     if( !f )
     {
-        /* XXX die */
+        /* XXX out-of-memory error */
     }
     f->activity    = NULL;
     f->fn          = fn;

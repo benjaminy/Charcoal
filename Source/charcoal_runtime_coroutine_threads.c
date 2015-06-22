@@ -79,15 +79,15 @@ int thread_start( cthread_p *thread, void *options )
 static void thread_main_loop( void *p )
 {
     assert( p );
-    cthread_t thread;
+    cthread_p thread = (cthread_p)malloc( sizeof( thread[0] ) );
     crcl(frame_p) frame =
-        thread_init( (struct thread_entry_params *)p, &thread );
+        thread_init( (struct thread_entry_params *)p, thread );
     do
     {
         frame = frame->fn( frame );
     } while( frame );
 
-    thread_finish( &thread );
+    thread_finish( thread );
 }
 
 static crcl(frame_p) thread_init(
@@ -176,6 +176,7 @@ int crcl(join_thread)( cthread_p t )
     t->next->prev = t->prev;
     t->prev->next = t->next;
     assert( !uv_thread_join( &t->sys ) );
+    /* XXX free t? */
     return crcl(threads) == crcl(threads)->next;
 }
 
