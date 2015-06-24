@@ -162,6 +162,8 @@ static int start_application_main( int argc, char **argv, char **env )
     {
         return -3;
     }
+    /* XXX Cleaner way to set the activity? ... */
+    main_frame->activity = &crcl(main_activity);
     crcl(frame_p) next_frame = activate_in_thread(
         crcl(main_thread), &crcl(main_activity), main_frame,
         (crcl(epilogueB_t))app_main_epilogueB );
