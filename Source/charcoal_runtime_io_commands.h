@@ -37,7 +37,7 @@ struct crcl(io_cmd_t)
 
 void enqueue( crcl(io_cmd_t) *cmd );
 
-int dequeue( crcl(io_cmd_t) *cmd_ref );
+crcl(io_cmd_t) *dequeue( void );
 
 void crcl(io_cmd_cb)( uv_async_t *handle );
 

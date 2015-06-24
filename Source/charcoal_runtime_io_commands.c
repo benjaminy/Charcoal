@@ -8,6 +8,7 @@
 uv_loop_t *crcl(io_loop);
 uv_async_t crcl(io_cmd);
 
+/* NOTE: Using the classic two-stack queue implementation */
 typedef struct
 {
     crcl(io_cmd_t) *front, *back;
@@ -26,10 +27,10 @@ void enqueue( crcl(io_cmd_t) *cmd )
 }
 
 /*
- * Removes an item from the command queue.  Returns 0 on success and 1
- * if the queue is empty.
+ * Removes an item from the command queue.  The caller takes ownership
+ * of the memory.
  */
-int dequeue( crcl(io_cmd_t) *cmd_ref )
+crcl(io_cmd_t) *dequeue( void )
 {
     if( !crcl(cmd_queue).front )
     {
@@ -45,13 +46,13 @@ int dequeue( crcl(io_cmd_t) *cmd_ref )
     }
     if( crcl(cmd_queue).front )
     {
-        *cmd_ref = *crcl(cmd_queue).front;
-        crcl(cmd_queue).front = crcl(cmd_queue).front->next;
-        return 0;
+        crcl(io_cmd_t) *f = crcl(cmd_queue).front;
+        crcl(cmd_queue).front = f->next;
+        return f;
     }
     else
     {
-        return 1;
+        return NULL;
     }
 }
 
@@ -89,25 +90,25 @@ static void crcl(getaddrinfo_callback)(
 void crcl(io_cmd_cb)( uv_async_t *handle )
 {
     /* zlog_debug( crcl(c), "IO THING\n" ); */
-    crcl(io_cmd_t) cmd;
+    crcl(io_cmd_t) *cmd;
     /* Multiple async_sends might result in a single callback call, so
      * we need to loop until the queue is empty.  (I assume it will be
      * extremely uncommon for this queue to actually grow
      * signnificantly.) */
-    while( !dequeue( &cmd ) )
+    while( ( cmd = dequeue() ) )
     {
         int rc;
         /* XXX implement stuff */
-        switch( cmd.command )
+        switch( cmd->command )
         {
         case CRCL(IO_CMD_START):
             /* XXX this should go in the start_resume function */
             rc = uv_timer_start(
-                &cmd.activity->thread->timer_req, the_thing, 5000, 2000);
+                &cmd->activity->thread->timer_req, the_thing, 5000, 2000);
             assert( !rc );
             break;
         case CRCL(IO_CMD_JOIN_THREAD):
-            if( crcl(join_thread)( cmd._.thread ) )
+            if( crcl(join_thread)( cmd->_.thread ) )
             {
                 /* zlog_debug( stderr, "Close, please\n" ); */
                 /* XXX What about when there are more events???. */
@@ -118,13 +119,13 @@ void crcl(io_cmd_cb)( uv_async_t *handle )
         {
             int rc;
             if( ( rc = uv_getaddrinfo(crcl(io_loop),
-                                      cmd._.addrinfo.resolver,
+                                      cmd->_.addrinfo.resolver,
                                       crcl(getaddrinfo_callback),
-                                      cmd._.addrinfo.node,
-                                      cmd._.addrinfo.service,
-                                      cmd._.addrinfo.hints ) ) )
+                                      cmd->_.addrinfo.node,
+                                      cmd->_.addrinfo.service,
+                                      cmd->_.addrinfo.hints ) ) )
             {
-                activity_p a = (activity_p)cmd._.addrinfo.resolver->data;
+                activity_p a = (activity_p)cmd->_.addrinfo.resolver->data;
                 a->io_response.addrinfo.rc = rc;
                 crcl(wake_up_requester)( a );
             }
@@ -135,8 +136,10 @@ void crcl(io_cmd_cb)( uv_async_t *handle )
             break;
         }
         default:
+            /* XXX error message? */
             exit( 1 );
         }
+        free( cmd );
     }
 }
 
