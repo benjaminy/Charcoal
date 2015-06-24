@@ -33,6 +33,11 @@ let fresh_return_label loc =
   let () = label_counter := n + 1 in
   C.Label( spf "__charcoal_return_%d" n, loc, false )
 
+let getTFunInfo t msg =
+  match t with
+    C.TFun( r, ps, v, atts ) -> ( r, ps, v, atts )
+  | _ -> E.s( E.error "Expecting function type; %s" msg )
+
 let charcoal_pfx   = "__charcoal_"
 let unyielding_pfx = "__charcoal_fn_unyielding_"
 let locals_pfx     = "__charcoal_fn_locals_"
@@ -67,10 +72,8 @@ let remove_charcoal_linkage fdec =
 
 let add_charcoal_linkage fdec =
   let v = fdec.C.svar in
-  match v.C.vtype with
-    C.TFun( rt, ps, va, attrs ) ->
-    v.C.vtype <- C.TFun( rt, ps, va, C.Attr( "linkage_charcoal", [] )::attrs )
-  | _ -> E.s( E.error "Add linkage to non-function?!?" )
+  let ( rt, ps, va, attrs ) = getTFunInfo v.C.vtype "Add linkage?!?" in
+  v.C.vtype <- C.TFun( rt, ps, va, C.Attr( "linkage_charcoal", [] )::attrs )
 
 let type_is_charcoal_fn ty =
   match ty with
@@ -86,6 +89,7 @@ type frame_info =
     specific_cast   : C.typ -> C.lval -> C.exp;
     typ             : C.typ;
     typ_ptr         : C.typ;
+    epilogueB_typ   : C.typ;
     callee_sel      : C.exp -> C.lval;
     return_addr_sel : C.exp -> C.lval;
     gen_prologue    : C.varinfo;
@@ -99,6 +103,7 @@ type frame_info =
     return_sel      : C.lval -> C.lval;
     locals_type     : C.typ;
     epilogueA       : C.varinfo;
+    epilogueB       : C.varinfo;
     yielding        : C.varinfo;
     locals          : C.exp -> ( ( C.offset -> C.lval ) IH.t );
     (* context-specific *)
@@ -250,11 +255,8 @@ let make_prologue prologue frame original_formals =
   let fname = prologue.C.svar in
   let fdef_loc = fname.C.vdecl in
   let () =
-    match prologue.C.svar.C.vtype with
-      C.TFun( _, params, vararg, attrs ) ->
-      prologue.C.svar.C.vtype <-
-        C.TFun( frame.typ_ptr, params, vararg, attrs )
-    | _ -> E.s( E.error "Prologue must be function" )
+    let ( _, ps, va, attrs ) = getTFunInfo prologue.C.svar.C.vtype "Pro" in
+    prologue.C.svar.C.vtype <- C.TFun( frame.typ_ptr, ps, va, attrs )
   in
   let this = C.makeLocalVar prologue "frame" frame.typ_ptr in
   let call =
@@ -307,13 +309,11 @@ let make_prologue prologue frame original_formals =
 let make_epilogueA epilogueA frame =
   let fdef_loc = epilogueA.C.svar.C.vdecl in
   let return_type =
-    match epilogueA.C.svar.C.vtype with
-      C.TFun( r, params, vararg, attrs ) ->
-      let () = epilogueA.C.svar.C.vtype <-
-                 C.TFun( frame.typ_ptr, params, vararg, attrs )
-      in
-      r
-    | _ -> E.s( E.error "EpilogueA must be function" )
+    let ( r, ps, va, attrs ) = getTFunInfo epilogueA.C.svar.C.vtype "EpiA" in
+    let () = epilogueA.C.svar.C.vtype <-
+               C.TFun( frame.typ_ptr, ps, va, attrs )
+    in
+    r
   in
   let () = C.setFormals epilogueA [] in
   let () = epilogueA.C.slocals <- [] in
@@ -345,23 +345,26 @@ let make_epilogueA epilogueA frame =
  *         __generic_epilogueB( frame );
  *     }
  *)
-let make_epilogueB after_ret frame =
-  let fdef_loc = after_ret.C.svar.C.vdecl in
+let make_epilogueB epilogueB frame =
+  let fdef_loc = epilogueB.C.svar.C.vdecl in
   let return_type =
-    match after_ret.C.svar.C.vtype with
-      C.TFun( r, _, _, _ ) -> r
-    | _ -> E.s( E.error "Function with non-function type?!?" )
+    let ( r, _, _, _ ) = getTFunInfo epilogueB.C.svar.C.vtype "EpiB" in
+    r
   in
-  let () = C.setFormals after_ret [] in
-  let () = after_ret.C.slocals <- [] in
-  let this = C.var( C.makeFormalVar after_ret "frame" frame.typ_ptr ) in
+  let () =
+    let () = C.setFormals epilogueB [] in
+    C.setFunctionType epilogueB
+        ( C.TFun( C.voidType, Some [], false, [] ) )
+  in
+  let () = epilogueB.C.slocals <- [] in
+  let this = C.var( C.makeFormalVar epilogueB "frame" frame.typ_ptr ) in
   let ga = C.Lval( C.var frame.gen_epilogueB ) in
   let call_to_generic = C.Call( None, ga, [ C.Lval this ], fdef_loc ) in
   let body = match return_type with
       C.TVoid _ -> C.mkBlock[ C.mkStmt( C.Instr[ call_to_generic ] ) ]
     | _ ->
        let lhsp =
-         let l = C.makeFormalVar after_ret "lhs"
+         let l = C.makeFormalVar epilogueB "lhs"
                                  ( C.TPtr( return_type, [(*attrs*)] ) ) in
          C.Lval( C.var l )
        in
@@ -372,8 +375,8 @@ let make_epilogueB after_ret frame =
        let null_check = C.mkStmt( C.If( lhsp, assign_block, empty_block, fdef_loc ) ) in
        C.mkBlock[ null_check; C.mkStmt( C.Instr[ call_to_generic ] ) ]
   in
-  let () = after_ret.C.sbody <- body in
-  after_ret
+  let () = epilogueB.C.sbody <- body in
+  epilogueB
 
 (*
  * Translate:
@@ -393,7 +396,7 @@ let coroutinify_activate params fdec loc frame =
     match entry_fn with
       C.AddrOf( C.Var v, C.NoOffset ) ->
       ( match lookup_fn_translation v with
-          Some ( _, p, eB ) -> p, eB
+          Some ( _, p, eB ) -> p, (C.mkCast eB frame.epilogueB_typ)
         | None -> E.s( E.bug "Missing translation for activate entry %a"
                              C.d_lval( C.var v ) ) )
     | _ -> E.s( E.bug "Activate entry exp is not a variable! %a" C.d_exp entry_fn )
@@ -410,7 +413,8 @@ let coroutinify_activate params fdec loc frame =
   in
   let next_frame = C.var( C.makeTempVar fdec ~name:"next_frame" frame.typ_ptr ) in
   let activate_call =
-    let ps = [ frame.exp; C.AddrOfLabel( ref after_return ); act; C.Lval act_frame ] in
+    let ps = [ frame.exp; C.AddrOfLabel( ref after_return ); act;
+               C.Lval act_frame; epilogueB ] in
     C.Call( Some next_frame, C.Lval( C.var frame.activate ), ps, loc )
   in
   let return_next_frame = C.mkStmt( C.Return( Some( C.Lval next_frame ), loc ) )  in
@@ -608,11 +612,9 @@ let make_yielding yielding frame_info_spec =
   let () = Pf.printf "make_yielding %s\n" yielding.C.svar.C.vname in
   let fdef_loc = yielding.C.svar.C.vdecl in
   let () =
-    match yielding.C.svar.C.vtype with
-      C.TFun( _, params, vararg, attrs ) ->
-      yielding.C.svar.C.vtype <-
-        C.TFun( frame_info_spec.typ_ptr, params, vararg, attrs )
-    | _ -> E.s( E.error "Yielding must be function" )
+    let ( _, ps, va, attrs ) = getTFunInfo yielding.C.svar.C.vtype "Yield" in
+    yielding.C.svar.C.vtype <-
+      C.TFun( frame_info_spec.typ_ptr, ps, va, attrs )
   in
   let () = C.setFormals yielding [] in
   let () = yielding.C.slocals <- [] in
@@ -656,7 +658,7 @@ let unyielding_activate params fdec loc frame =
     match entry_fn with
       C.AddrOf( C.Var v, C.NoOffset ) ->
       ( match lookup_fn_translation v with
-          Some ( _, p, eB ) -> p, eB
+          Some ( _, p, eB ) -> p, (C.mkCast eB frame.epilogueB_typ)
         | None -> E.s( E.bug "Missing translation for activate entry %a"
                              C.d_lval( C.var v ) ) )
     | _ -> E.s( E.bug "Activate entry exp is not a variable! %a" C.d_exp entry_fn )
@@ -667,7 +669,7 @@ let unyielding_activate params fdec loc frame =
     C.Call( Some act_frame, prologue, ps, loc )
   in
   let activate_call =
-    let ps = [ C.zero; C.zero; act; C.Lval act_frame ] in
+    let ps = [ C.zero; C.zero; act; C.Lval act_frame; epilogueB ] in
     C.Call( None, C.Lval( C.var frame.activate ), ps, loc )
   in
   [ prologue_call; activate_call ]
@@ -765,17 +767,15 @@ let make_unyielding unyielding frame_info =
  * it makes less work for finding address-of operations later. *)
 let make_indirect original frame_info =
   let return_type_opt =
-    match original.C.svar.C.vtype with
-      C.TFun( rt, params, vararg, attrs ) ->
-      let () =
-        original.C.svar.C.vtype <-
-          C.TFun( frame_info.typ_ptr, params, vararg, attrs )
-      in
-      ( match rt with
-          C.TVoid _ -> None
-        | r -> Some r
-      )
-    | _ -> E.s( E.error "Function with non-function type?!?" )
+    let ( rt, ps, va, attrs ) = getTFunInfo original.C.svar.C.vtype "indir" in
+    let () =
+      original.C.svar.C.vtype <-
+        C.TFun( frame_info.typ_ptr, ps, va, attrs )
+    in
+    ( match rt with
+        C.TVoid _ -> None
+      | r -> Some r
+    )
   in
   let original_formals = original.C.sformals in
   let () = C.setFormals original [] in
@@ -823,12 +823,22 @@ let examine_frame_t_struct ci dummy_var =
     let e = C.AddrOf( C.Mem( C.Lval frame ), C.Field( s, C.NoOffset ) ) in
     C.mkCast e t
   in
-
+  let frame_typ = C.TComp( ci, [(*attrs*)] ) in
+  let frame_ptr_typ = C.TPtr( frame_typ, [(*attrs*)] ) in
+    (* WARNING: This type has to be the same as crcl(epilogueB_t)
+       defined in the runtime library. *)
+  let epilogueB_typ =
+    C.TPtr( C.TFun( C.voidType,
+                    Some[ ( "frame", frame_ptr_typ, [] );
+                          ( "data", C.voidPtrType, [] ) ],
+                    false, [] ), [] )
+  in
   {
     (* generic: *)
     specific_cast   = specific_cast;
-    typ             = C.TComp( ci, [(*attrs*)] );
-    typ_ptr         = C.TPtr( C.TComp( ci, [(*attrs*)] ), [(*attrs*)] );
+    typ             = frame_typ;
+    typ_ptr         = frame_ptr_typ;
+    epilogueB_typ   = epilogueB_typ;
     callee_sel      = ( fun e -> ( C.Mem e, C.Field( ce, C.NoOffset ) ) );
     return_addr_sel = ( fun e -> ( C.Mem e, C.Field( r, C.NoOffset ) ) );
     gen_prologue    = dummy_var;
@@ -843,6 +853,7 @@ let examine_frame_t_struct ci dummy_var =
     locals_type     = dummy_type;
     yielding        = dummy_var;
     epilogueA       = dummy_var;
+    epilogueB       = dummy_var;
     locals          = ( fun _ -> IH.create 0 );
     (* context-specific *)
     lval            = dummy_lval;
@@ -925,6 +936,7 @@ class globals_visitor = object(self)
          in
          let frame_info =
            { specific_frame_info with epilogueA = epilogueA.C.svar;
+                                      epilogueB = epilogueB.C.svar;
                                       yielding = yielding.C.svar}
          in
          (* "p" before "y" *)
