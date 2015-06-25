@@ -12,6 +12,6 @@ int main( int argc, char **argv, char **env )
         yield();
         printf( "I'm active\n" );
     };
-    printf( "After the activity" );
+    printf( "After the activate\n" );
     return 0;
 }
