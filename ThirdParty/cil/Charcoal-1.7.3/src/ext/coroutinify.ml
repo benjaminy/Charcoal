@@ -70,10 +70,11 @@ let remove_charcoal_linkage fdec =
     Some t' -> v.C.vtype <- t'
   | _ -> E.s( E.error "Remove linkage from non-function?!?" )
 
-let add_charcoal_linkage fdec =
-  let v = fdec.C.svar in
+let add_charcoal_linkage_var v =
   let ( rt, ps, va, attrs ) = getTFunInfo v.C.vtype "Add linkage?!?" in
   v.C.vtype <- C.TFun( rt, ps, va, C.Attr( "linkage_charcoal", [] )::attrs )
+
+let add_charcoal_linkage fdec = add_charcoal_linkage_var fdec.C.svar
 
 let type_is_charcoal_fn ty =
   match ty with
@@ -97,6 +98,8 @@ type frame_info =
     gen_epilogueB   : C.varinfo;
     activate        : C.varinfo;
     act_intermed    : C.varinfo;
+    yield           : C.varinfo;
+    yield_impl      : C.exp;
     (* function-specific *)
     sizeof_specific : C.exp;
     locals_sel      : C.lval -> C.lval;
@@ -443,6 +446,7 @@ let coroutinify_activate params fdec loc frame =
 
 type dir_indir =
     CActivate
+  | CYield
   | CDirect of C.exp * C.exp
   | CIndirect of C.exp
 
@@ -460,7 +464,7 @@ let coroutinify_normal_call lhs_opt fn_exp params call_stuff fdec loc frame =
       let f = match call_stuff with
           CDirect( _, eB ) -> eB
         | CIndirect p -> p
-        | CActivate -> E.s( E.bug "Noo act" )
+        | CActivate | CYield -> E.s( E.bug "Noo act yield" )
       in
       C.Call( None, f, params, loc )
     in
@@ -475,13 +479,30 @@ let coroutinify_normal_call lhs_opt fn_exp params call_stuff fdec loc frame =
     let f = match call_stuff with
         CDirect( p, _ ) -> p
       | CIndirect p -> p
-      | CActivate -> E.s( E.bug "Noooo Act" )
+      | CActivate | CYield -> E.s( E.bug "Noooo Act yiel" )
     in
     let call = C.Call( Some callee, f, ps, loc ) in
     C.mkStmt( C.Instr[ call ] )
   in
   let return_callee = C.mkStmt( C.Return( Some( C.Lval callee ), loc ) )  in
   [ prologue_call; return_callee; epilogueB_call ]
+
+let coroutinify_yield lhs_opt params fdec loc frame =
+  let post_yield_stmt =
+    let inst =
+      match lhs_opt with
+        None -> []
+      | Some lhs -> [ C.Set( lhs, (* XXX yielded?*) C.zero, loc ) ]
+    in
+    let post = C.mkStmt( C.Instr inst ) in
+    let () = post.C.labels <- [ fresh_return_label loc ] in
+    post
+  in
+  let next_frame = C.var( C.makeTempVar fdec ~name:"next_frame" frame.typ_ptr ) in
+  let params = [ frame.exp; C.AddrOfLabel( ref post_yield_stmt ) ] in
+  let yield_call = C.Call( Some next_frame, frame.yield_impl, params, loc ) in
+  let return_next = C.mkStmt( C.Return( Some( C.Lval next_frame ), loc ) )  in
+  [ C.mkStmt( C.Instr[ yield_call ] ); return_next; post_yield_stmt ]
 
 let coroutinify_call visitor fdec frame instr =
   let () = trc( Pretty.dprintf "coroutinify_call %a %a\n"
@@ -501,6 +522,8 @@ let coroutinify_call visitor fdec frame instr =
         C.Lval( C.Var v, C.NoOffset ) ->
         if v.C.vid = frame.act_intermed.C.vid then
           CActivate
+        else if v.C.vid = frame.yield.C.vid then
+          CYield
         else
           ( match lookup_fn_translation v with
               Some ( _, p, eB ) -> CDirect( p, eB )
@@ -511,6 +534,7 @@ let coroutinify_call visitor fdec frame instr =
         CActivate, Some _ ->
         E.s( E.bug "ERR 129637" )
       | CActivate, None -> coroutinify_activate params fdec loc frame
+      | CYield, _ -> coroutinify_yield lhs_opt params fdec loc frame
       | _ -> coroutinify_normal_call lhs_opt fn_exp params call_stuff fdec loc frame
     )
 
@@ -691,6 +715,11 @@ class coroutinifyUnyieldingVisitor fdec frame_info = object(self)
          when exp_is_charcoal_fn f ->
       if fname.C.vid = frame_info.act_intermed.C.vid then
         C.ChangeTo( unyielding_activate params fdec loc frame_info )
+      else if fname.C.vid = frame_info.yield.C.vid then
+        C.ChangeTo(
+            match lval_opt with
+              None -> []
+            | Some lval -> [ C.Set( lval, C.zero, loc ) ] )
       else
         (match lookup_fn_translation fname with
            Some( u, _ , _ ) ->
@@ -846,6 +875,8 @@ let examine_frame_t_struct ci dummy_var =
     gen_epilogueB   = dummy_var;
     activate        = dummy_var;
     act_intermed    = dummy_var;
+    yield           = dummy_var;
+    yield_impl      = dummy_exp;
     (* function-specific *)
     sizeof_specific = dummy_exp;
     locals_sel      = ( fun e -> dummy_lval );
@@ -887,15 +918,23 @@ class globals_visitor = object(self)
        let name = v.C.vname in
        let () =
          if name = crcl "fn_generic_prologue" then
-           frame_opt <- Some{ frame_info with gen_prologue = v };
-         if name = crcl "fn_generic_epilogueA" then
-           frame_opt <- Some{ frame_info with gen_epilogueA = v };
-         if name = crcl "fn_generic_epilogueB" then
-           frame_opt <- Some{ frame_info with gen_epilogueB = v };
-         if name = crcl "activate_intermediate" then
-           frame_opt <- Some{ frame_info with act_intermed = v };
-         if name = crcl "activate" then
-           frame_opt <- Some{ frame_info with activate = v };
+           frame_opt <- Some{ frame_info with gen_prologue = v }
+         else if name = crcl "fn_generic_epilogueA" then
+           frame_opt <- Some{ frame_info with gen_epilogueA = v }
+         else if name = crcl "fn_generic_epilogueB" then
+           frame_opt <- Some{ frame_info with gen_epilogueB = v }
+         else if name = crcl "activate_intermediate" then
+           frame_opt <- Some{ frame_info with act_intermed = v }
+         else if name = crcl "yield" then
+           let () = if not( type_is_charcoal_fn v.C.vtype ) then
+                      add_charcoal_linkage_var v
+           in
+           frame_opt <- Some{ frame_info with yield = v }
+         else if name = crcl "yield_impl" then
+           frame_opt <- Some{ frame_info with yield_impl = C.Lval( C.var v ) }
+         else if name = crcl "activate" then
+           frame_opt <- Some{ frame_info with activate = v }
+         else ()
        in
        ()
     | ( Some _, Some _ ) -> E.s( E.error "Too much frame" )

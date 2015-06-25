@@ -1,0 +1,22 @@
+extern "C" {
+#include <stdlib.h>
+#include <stdio.h>
+}
+
+#define N 10
+
+int main( int argc, char **argv, char **env )
+{
+    printf( "Hello World\n" );
+    int i;
+    for( i = 0; i < N; ++i )
+    {
+        activity_p a = (activity_p)malloc( sizeof( a[0] ) );
+        activate {a} ( i )
+        {
+            printf( "I'm active %d\n", i );
+        };
+    }
+    printf( "After the activations" );
+    return 0;
+}

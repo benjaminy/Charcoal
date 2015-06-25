@@ -92,9 +92,9 @@ let smooth_expression lst =
 let add_yield before_not_after loc stmt =
   let stmts =
     if before_not_after then
-      [ COMPUTATION( CALL( VARIABLE "yield", [] ), loc ); stmt ]
+      [ COMPUTATION( CALL( VARIABLE "__charcoal_yield", [] ), loc ); stmt ]
     else
-      [ stmt; COMPUTATION( CALL( VARIABLE "yield", [] ), loc ) ]
+      [ stmt; COMPUTATION( CALL( VARIABLE "__charcoal_yield", [] ), loc ) ]
   in
   BLOCK( { blabels=[]; battrs=[]; bstmts=stmts }, loc )
 
@@ -376,7 +376,7 @@ end (* insert_shit_class *)
 %token<Cabs.cabsloc> SEMICOLON
 %token COMMA ELLIPSIS QUEST
 
-%token<Cabs.cabsloc> BREAK CONTINUE GOTO GOTO_NY RETURN ACTIVATE UNYIELDING SYNCHRONIZED
+%token<Cabs.cabsloc> BREAK CONTINUE GOTO GOTO_NY RETURN ACTIVATE YIELD UNYIELDING SYNCHRONIZED
 %token<Cabs.cabsloc> SWITCH CASE DEFAULT
 %token<Cabs.cabsloc> WHILE WHILE_NY DO DO_NY FOR FOR_NY
 %token<Cabs.cabsloc> IF TRY EXCEPT FINALLY
@@ -635,6 +635,8 @@ unary_expression:   /*(* 6.5.3 *)*/
 |		TILDE cast_expression
 		        {UNARY (BNOT, fst $2), $1}
 |               AND_AND IDENT  { LABELADDR (fst $2), $1 }
+|               YIELD LPAREN RPAREN
+                        { CALL( VARIABLE "__charcoal_yield", [] ), $1 }
 |               ACTIVATE LBRACE cast_expression RBRACE var_list_opt comma_expression
                         {ACTIVATE (fst $3, $5, RETURN (smooth_expression (fst $6), snd $6)), $1}
 |               ACTIVATE LBRACE cast_expression RBRACE var_list_opt statement

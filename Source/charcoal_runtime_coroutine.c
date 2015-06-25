@@ -347,8 +347,7 @@ crcl(atomic_int) *crcl(yield_ticker);
  * yield invocation sites.  A yield in Charcoal source should translate
  * to:
  *
- *     frame_p next_frame = yield_impl( frame, &after_yield_N );
- *     return next_frame;
+ *     return yield_impl( frame, &after_yield_N );
  *     after_yield_N:
  *     ...
  *
@@ -381,6 +380,8 @@ crcl(frame_p) crcl(yield_impl)( crcl(frame_p) frame, void *ret_addr ){
     ssize_t    diff               = activity->thread->tick - current_yield_tick;
     if( diff < 0 )
     {
+        int *p = (int *)&frame->callee;
+        *p = 0;
         return frame;
     }
     /* "else": The current activity's quantum has expired. */

@@ -8,6 +8,8 @@
 #pragma cilnoremove( "__charcoal_fn_generic_epilogueA" )
 #pragma cilnoremove( "__charcoal_fn_generic_epilogueB" )
 #pragma cilnoremove( "__charcoal_activate" )
+#pragma cilnoremove( "__charcoal_yield" )
+#pragma cilnoremove( "__charcoal_yield_impl" )
 #endif
 
 #include <charcoal_runtime_common.h>
@@ -116,5 +118,8 @@ void crcl(fn_generic_epilogueB)( crcl(frame_p) frame );
 extern cthread_p crcl(main_thread);
 extern activity_t crcl(main_activity);
 extern int crcl(process_return_value);
+
+int crcl(yield)( void );
+crcl(frame_p) crcl(yield_impl)( crcl(frame_p) frame, void *ret_addr );
 
 #endif /* __CHARCOAL_RUNTIME_COROUTINE */
