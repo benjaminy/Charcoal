@@ -65,7 +65,7 @@ struct activity_t
 
     /* NOTE: While an activity is running "top" might be stale.  It
      * gets updated when an activity switches for sure. */
-    crcl(frame_t) bottom, *top;
+    crcl(frame_t) oldest_frame, *newest_frame;
     void (*epilogue)( crcl(frame_p), void * );
 
     /* Debug and profiling stuff */

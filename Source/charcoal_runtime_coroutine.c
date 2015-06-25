@@ -299,12 +299,12 @@ crcl(frame_p) crcl(activity_blocked)( crcl(frame_p) frame )
     uv_mutex_lock( &thd->thd_management_mtx );
     if( activity->flags & CRCL(ACTF_BLOCKED) )
     {
-        activity->top = frame;
+        activity->newest_frame = frame;
         if( thd->ready )
         {
             activity_p to = crcl(pop_ready_queue)( thd );
             crcl(activity_start_resume)( to );
-            rv = to->top;
+            rv = to->newest_frame;
         }
     }
     else
@@ -516,11 +516,32 @@ static crcl(frame_p) activity_epilogue( crcl(frame_p) frame )
     assert( frame );
     activity_p act = frame->activity;
     zlog_info( crcl(c) , "Activity finished %p %p\n", frame, act );
-    assert( frame == &act->bottom );
+    assert( frame == &act->oldest_frame );
+    /* XXX I think this return value business is broken currently. */
     act->epilogue( frame, &act->return_value );
-    crcl(remove_activity_from_thread)( act, act->thread );
+    cthread_p t = act->thread;
+    /* XXX locking necessary? */
+    uv_mutex_lock( &t->thd_management_mtx );
+    crcl(remove_activity_from_thread)( act, t );
     /* XXX invoke some kind of scheduler */
-    return NULL;
+    crcl(frame_p) rv = NULL;
+    if( t->activities )
+    {
+        activity_p next = crcl(pop_ready_queue)( t );
+        if( !next )
+        {
+            next = &t->idle;
+        }
+        rv = next->newest_frame;
+    }
+    else
+    {
+        /* No more activities in thread! */
+        /* XXX cleanup? */
+    }
+
+    uv_mutex_unlock( &t->thd_management_mtx );
+    return rv;
 }
 
 /* Initialize 'activity' and add it to 'thread'. */
@@ -528,22 +549,22 @@ static crcl(frame_p) activity_epilogue( crcl(frame_p) frame )
 crcl(frame_p) activate_in_thread(
     cthread_p thread, activity_p activity, crcl(frame_p) frame, crcl(epilogueB_t) epi )
 {
-    activity->thread             = thread;
-    activity->flags              = 0;
-    activity->yield_attempts     = 0;
-    activity->top                = frame;
-    activity->snext              = activity->sprev = NULL;
-    activity->bottom.activity    = activity;
-    activity->bottom.fn          = activity_epilogue;
-    activity->bottom.caller      = 0;
-    activity->bottom.callee      = frame;
-    activity->bottom.return_addr = 0;
-    activity->epilogue           = epi;
-    frame->caller                = &activity->bottom;
+    activity->thread                   = thread;
+    activity->flags                    = 0;
+    activity->yield_attempts           = 0;
+    activity->newest_frame             = frame;
+    activity->snext                    = activity->sprev = NULL;
+    activity->oldest_frame.activity    = activity;
+    activity->oldest_frame.fn          = activity_epilogue;
+    activity->oldest_frame.caller      = 0;
+    activity->oldest_frame.callee      = frame;
+    activity->oldest_frame.return_addr = 0;
+    activity->epilogue                 = epi;
+    frame->caller                      = &activity->oldest_frame;
     uv_mutex_lock( &thread->thd_management_mtx );
     insert_activity_into_thread( activity, thread );
     uv_mutex_unlock( &thread->thd_management_mtx );
-    return 0; /* XXX TROUBLE */
+    return frame;
 }
 
 /*
@@ -561,8 +582,9 @@ crcl(frame_p) crcl(activate)(
     { /* Currently in yielding context */
         caller->return_addr = ret_addr;
         f->activity = activity;
-        return activate_in_thread(
-            caller->activity->thread, activity, f, epi );
+        activity_p caller_act = caller->activity;
+        crcl(push_ready_queue)( caller_act, caller_act->thread );
+        return activate_in_thread( caller_act->thread, activity, f, epi );
     }
     else
     { /* Currently in unyielding context */

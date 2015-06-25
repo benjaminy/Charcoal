@@ -115,19 +115,19 @@ static crcl(frame_p) thread_init(
     // thread->sys initialized in thread_start
     CRCL(SET_FLAG)( thread->flags, CRCL(THDF_IDLE) );
     CRCL(SET_FLAG)( thread->flags, CRCL(THDF_NEVER_RUN) );
-    thread->idle.thread             = thread;
-    thread->idle.flags              = 0;
-    thread->idle.next               = NULL;
-    thread->idle.prev               = NULL;
-    thread->idle.snext              = NULL;
-    thread->idle.sprev              = NULL;
-    thread->idle.top                = &thread->idle.bottom;
-    thread->idle.yield_attempts     = 0;
-    thread->idle.bottom.activity    = &thread->idle;
-    thread->idle.bottom.fn          = idle;
-    thread->idle.bottom.caller      = NULL;
-    thread->idle.bottom.callee      = NULL;
-    thread->idle.bottom.return_addr = NULL;
+    thread->idle.thread                   = thread;
+    thread->idle.flags                    = 0;
+    thread->idle.next                     = NULL;
+    thread->idle.prev                     = NULL;
+    thread->idle.snext                    = NULL;
+    thread->idle.sprev                    = NULL;
+    thread->idle.newest_frame             = &thread->idle.oldest_frame;
+    thread->idle.yield_attempts           = 0;
+    thread->idle.oldest_frame.activity    = &thread->idle;
+    thread->idle.oldest_frame.fn          = idle;
+    thread->idle.oldest_frame.caller      = NULL;
+    thread->idle.oldest_frame.callee      = NULL;
+    thread->idle.oldest_frame.return_addr = NULL;
 
     /* XXX: pthread attributes */
     // detachstate guardsize inheritsched schedparam schedpolicy scope
@@ -137,7 +137,7 @@ static crcl(frame_p) thread_init(
     assert( !crcl(sem_decr)( &params->s2 ) );
     add_to_threads_list( thread );
     assert( !crcl(sem_incr)( &params->s1 ) );
-    return &thread->idle.bottom;
+    return &thread->idle.oldest_frame;
 }
 
 static void thread_finish( cthread_p thread )
@@ -201,7 +201,7 @@ static crcl(frame_p) idle( crcl(frame_p) idle_frame )
     }
     activity_p a = crcl(pop_ready_queue)( thread );
     assert( a );
-    crcl(frame_p) next_frame = a->top;
+    crcl(frame_p) next_frame = a->newest_frame;
     CRCL(CLEAR_FLAG)( thread->flags, CRCL(THDF_IDLE) );
     uv_mutex_unlock( &thread->thd_management_mtx );
 
