@@ -17,7 +17,7 @@ $(BUILD_DIR)/%$(CRCL_DOT_H_EXT): %.crcl
 
 # Generic rule for building a single file program
 $(BUILD_DIR)/% : $(BUILD_DIR)/%.crcl.cil.c
-	$(CC) -o $@ $< $(CRCL_RUNTIME) $(ZLOG_LIB) $(LIBUV_FLAGS)
+	$(CC) $(CFLAGS) -o $@ $< $(CRCL_RUNTIME) $(ZLOG_LIB) $(LIBUV_FLAGS)
 
 # Generic rule for building in the build directory
 %: $(BUILD_DIR)/%

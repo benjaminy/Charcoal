@@ -6,7 +6,7 @@ CRCL_ROOT=../../..
 
 include $(CRCL_ROOT)/Testing/generic.mk
 
-CFLAGS+=" -g"
+CFLAGS+= -g
 
 TARGETS = hello_world one_activity activate_loop
 

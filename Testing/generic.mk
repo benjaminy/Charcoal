@@ -40,4 +40,4 @@ INCLUDE_DIRS = -I$(INSTALL_DIR)/include
 LIB_DIRS =  -L$(INSTALL_DIR)/lib
 # FLAGS = $(INCLUDE_DIRS) $(LIB_DIRS) -lcharcoal_sys -lpthread -pg -lrt
 # FLAGS = -g $(INCLUDE_DIRS) $(LIB_DIRS) -lcharcoal_sys -lpthread -lrt
-FLAGS = -g $(INCLUDE_DIRS) $(LIB_DIRS) -lcharcoal_sys
+# CFLAGS = -g
