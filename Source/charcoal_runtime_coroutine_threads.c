@@ -97,7 +97,7 @@ static crcl(frame_p) thread_init(
     /* XXX  init can-run */
     *params->tptr = thread;
     // crcl(atomic_store_int)( &thread->timeout, 0 );
-    crcl(atomic_store_int)( &thread->keep_going, 1 );
+    crcl(atomic_store_int)( &thread->interrupt_activity, 0 );
     thread->timer_req.data = &thread;
     /* XXX Does timer_init have to be called from the I/O thread? */
     uv_timer_init( crcl(io_loop), &thread->timer_req );
@@ -112,8 +112,8 @@ static crcl(frame_p) thread_init(
     thread->activities          = NULL;
     thread->ready               = NULL;
     // thread->sys initialized in thread_start
-    CRCL(SET_FLAG)( thread->flags, CRCL(THDF_IDLE) );
-    CRCL(SET_FLAG)( thread->flags, CRCL(THDF_NEVER_RUN) );
+    CRCL(SET_FLAG)( *thread, CRCL(THDF_IDLE) );
+    CRCL(SET_FLAG)( *thread, CRCL(THDF_NEVER_RUN) );
     thread->idle.thread                   = thread;
     thread->idle.flags                    = 0;
     thread->idle.next                     = NULL;
@@ -121,7 +121,7 @@ static crcl(frame_p) thread_init(
     thread->idle.snext                    = NULL;
     thread->idle.sprev                    = NULL;
     thread->idle.newest_frame             = &thread->idle.oldest_frame;
-    thread->idle.yield_attempts           = 0;
+    thread->idle.yield_calls              = 0;
     thread->idle.oldest_frame.activity    = &thread->idle;
     thread->idle.oldest_frame.fn          = idle;
     thread->idle.oldest_frame.caller      = NULL;
@@ -187,7 +187,7 @@ static crcl(frame_p) idle( crcl(frame_p) idle_frame )
     uv_mutex_lock( &thread->thd_management_mtx );
     while( !thread->ready )
     {
-        CRCL(SET_FLAG)( thread->flags, CRCL(THDF_IDLE) );
+        CRCL(SET_FLAG)( *thread, CRCL(THDF_IDLE) );
         uv_cond_wait( &thread->thd_management_cond,
                       &thread->thd_management_mtx );
     }
@@ -201,7 +201,7 @@ static crcl(frame_p) idle( crcl(frame_p) idle_frame )
     activity_p a = crcl(pop_ready_queue)( thread );
     assert( a );
     crcl(frame_p) next_frame = a->newest_frame;
-    CRCL(CLEAR_FLAG)( thread->flags, CRCL(THDF_IDLE) );
+    CRCL(CLEAR_FLAG)( *thread, CRCL(THDF_IDLE) );
     uv_mutex_unlock( &thread->thd_management_mtx );
 
     return next_frame;

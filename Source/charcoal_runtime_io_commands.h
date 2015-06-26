@@ -41,6 +41,6 @@ crcl(io_cmd_t) *dequeue( void );
 
 void crcl(io_cmd_cb)( uv_async_t *handle );
 
-int crcl(init_io_loop)( cthread_p t, activity_p a );
+int crcl(init_io_loop)( cthread_p t, activity_p a, int (*)( void ) );
 
 #endif /* __CHARCOAL_RUNTIME_IO_COMMANDS */

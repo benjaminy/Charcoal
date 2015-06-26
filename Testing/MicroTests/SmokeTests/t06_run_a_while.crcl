@@ -1,0 +1,26 @@
+extern "C" {
+#include <stdlib.h>
+#include <stdio.h>
+}
+
+#define N 100000
+
+int main( int argc, char **argv, char **env )
+{
+    printf( "Hello World\n" );
+    activity_p a = (activity_p)malloc( sizeof( a[0] ) );
+    activate {a} ()
+    {
+        for( int i = 0; i < N; ++i )
+        {
+            printf( "O" );
+        }
+        printf( "After the Os\n" );
+    };
+    for( int i = 0; i < N; ++i )
+    {
+        printf( "X" );
+    }
+    printf( "After the Xs\n" );
+    return 0;
+}

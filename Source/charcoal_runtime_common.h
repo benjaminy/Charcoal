@@ -8,14 +8,15 @@
 
 #include <uv.h>
 
-#define __CHARCOAL_SET_FLAG(x,f)   do { (x) |=  (f); } while( 0 )
-#define __CHARCOAL_CLEAR_FLAG(x,f) do { (x) &= ~(f); } while( 0 )
-#define __CHARCOAL_CHECK_FLAG(x,f) ( !!( (x) & (f) ) )
+#define __CHARCOAL_SET_FLAG(x,f)   do { (x).flags |=  (f); } while( 0 )
+#define __CHARCOAL_CLEAR_FLAG(x,f) do { (x).flags &= ~(f); } while( 0 )
+#define __CHARCOAL_CHECK_FLAG(x,f) ( !!( (x).flags & (f) ) )
 
 /* Thread flags */
 #define __CHARCOAL_THDF_IDLE       (1 << 0)
 #define __CHARCOAL_THDF_KEEP_ALIVE (1 << 1) /* even after last activity finishes */
 #define __CHARCOAL_THDF_NEVER_RUN  (1 << 2)
+#define __CHARCOAL_THDF_TIMER_ON   (1 << 3)
 
 /* XXX Need to refactor types some day */
 typedef union crcl(io_response_t) crcl(io_response_t);
@@ -43,6 +44,8 @@ void crcl(push_special_queue)(
     unsigned queue_flag, activity_p a, cthread_p t, activity_p *qp );
 activity_p crcl(pop_special_queue)(
     unsigned queue_flag, cthread_p t, activity_p *qp );
+
+void crcl(push_ready_queue)( activity_p a, cthread_p t );
 
 /* join thread t.  Return True if t was the last application
  * thread. */

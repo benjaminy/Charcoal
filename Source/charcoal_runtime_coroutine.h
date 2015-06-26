@@ -71,7 +71,7 @@ struct activity_t
     void (*epilogue)( crcl(frame_p), void * );
 
     /* Debug and profiling stuff */
-    int yield_attempts;
+    int yield_calls;
 
     /* Using the variable-sized last field of the struct hack */
     /* Default size is int so that we can globally allocate the main
@@ -84,7 +84,7 @@ struct cthread_t
     /* atomic */ size_t tick;
     unsigned            flags;
     uv_thread_t         sys;
-    crcl(atomic_int)    unyield_depth, keep_going;
+    crcl(atomic_int)    interrupt_activity;
     uv_timer_t          timer_req;
     activity_p          activities, ready;
     uv_mutex_t          thd_management_mtx;
@@ -99,7 +99,7 @@ crcl(frame_p) crcl(activity_start_resume)( activity_p activity );
 
 typedef void (*crcl(epilogueB_t))( crcl(frame_p), void * );
 
-crcl(frame_p) activate_in_thread(
+void activate_in_thread(
     cthread_p, activity_p, crcl(frame_p), crcl(epilogueB_t) );
 
 crcl(frame_p) crcl(activate)( crcl(frame_p), void *,

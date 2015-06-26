@@ -17,19 +17,19 @@
 #define app_main_prologue crcl(fn_prologue___charcoal_application_main)
 #define app_main_epilogueB crcl(fn_epilogueB___charcoal_application_main)
 
-static void crcl(yield_heartbeat)( int sig, siginfo_t *info, void *uc );
-static int crcl(init_yield_heartbeat)();
 cthread_p crcl(main_thread);
 activity_t crcl(main_activity);
 int crcl(process_return_value);
 
-void app_main_epilogueB(
-    crcl(frame_p) caller, int *lhs );
-
 crcl(frame_p) app_main_prologue(
     crcl(frame_p) caller, void *ret_addr, int argc, char **argv, char **env );
+void app_main_epilogueB( crcl(frame_p) caller, int *lhs );
 
-static int start_application_main( int argc, char **argv, char **env );
+static int __argc;
+static char **__argv;
+static char **__env;
+
+static int start_application_main( void );
 
 /* Architecture note: For the time being (as of early 2014, at least),
  * we're using libuv to handle asynchronous I/O stuff.  It would be
@@ -63,19 +63,15 @@ int main( int argc, char **argv, char **env )
         return -2;
     }
 
-    if( ( rc = crcl(init_io_loop)( &io_thread, &io_activity ) ) )
+    __argc = argc;
+    __argv = argv;
+    __env  = env;
+    if( ( rc = crcl(init_io_loop)( &io_thread, &io_activity, start_application_main ) ) )
     {
         zlog_error( crcl(c), "Failure: Initialization of the I/O loop: %d\n", rc );
         return rc;
     }
 
-    if( ( rc = start_application_main( argc, argv, env ) ) )
-    {
-        zlog_error( crcl(c), "Failure: Launch of application main: %d\n", rc );
-        return rc;
-    }
-
-    assert( !crcl(init_yield_heartbeat)() );
     crcl(activity_start_resume)( &io_activity );
     if( ( rc = uv_run( crcl(io_loop), UV_RUN_DEFAULT ) ) )
     {
@@ -89,63 +85,9 @@ int main( int argc, char **argv, char **env )
     return crcl(process_return_value);
 }
 
-/* yield_heartbeat is the signal handler that should run every few
- * milliseconds (give or take) when any activity is running.  It
- * atomically modifies the activity state so that the next call to
- * yield will do a more thorough check to see if it should switch to
- * another activity.
- *
- * XXX Actually, this only really needs to be armed if there are any
- * threads with more than one ready (or running) activity. */
-static void crcl(yield_heartbeat)( int sig, siginfo_t *info, void *uc )
+static int start_application_main( void )
 {
-    if( sig != 0 /*XXX SIG*/ )
-    {
-        /* XXX Very weird */
-        exit( sig );
-    }
-
-    void *p = info->si_value.sival_ptr;
-    if( p == &crcl(threads) )
-    {
-        /* XXX Is it worth worrying about a weird address collision
-         * here? */
-        /* XXX disarm if no activities are running */
-        /* XXX For all threads: check flags, decr unyielding */
-    }
-    else
-    {
-        /* XXX pass the signal on to the application? */
-        exit( -sig );
-    }
-}
-
-static int crcl(init_yield_heartbeat)()
-{
-    /* Establish handler for timer signal */
-    struct sigaction sa;
-    /* zlog_debug( crcl(c), "Establishing handler for signal %d\n", SIG); */
-    sa.sa_flags     = SA_SIGINFO;
-    sa.sa_sigaction = crcl(yield_heartbeat);
-    sigemptyset( &sa.sa_mask );
-    // RET_IF_ERROR( sigaction( 0 /*SIG*/, &sa, NULL ) );
-
-#if 0
-    /* XXX deprecated??? Create the timer */
-    struct sigevent sev;
-    sev.sigev_notify = SIGEV_SIGNAL;
-    sev.sigev_signo  = 0 /*XXX SIG*/;
-    sev.sigev_value.sival_ptr = &crcl(threads);
-    // XXX RET_IF_ERROR( timer_create( 0 /*CLOCKID*/, &sev, &crcl(heartbeat_timer) ) );
-#endif
-
-    zlog_info( crcl(c), "timer ID is 0x%lx\n", (long) 42 /*crcl(heartbeat_timer)*/ );
-    return 0;
-}
-
-static int start_application_main( int argc, char **argv, char **env )
-{
-    zlog_info( crcl(c), "Starting app main %d %p %p\n", argc, argv, env );
+    zlog_info( crcl(c), "Starting app main %d %p %p\n", __argc, __argv, __env );
     int rc;
     /* There's nothing particularly special about the thread that runs
      * the application's 'main' procedure.  The application will
@@ -157,20 +99,14 @@ static int start_application_main( int argc, char **argv, char **env )
         return rc;
     }
 
-    crcl(frame_p) main_frame = app_main_prologue( 0, 0, argc, argv, env );
+    crcl(frame_p) main_frame = app_main_prologue( 0, 0, __argc, __argv, __env );
     if( !main_frame )
     {
         return -3;
     }
-    /* XXX Cleaner way to set the activity? ... */
-    main_frame->activity = &crcl(main_activity);
-    crcl(frame_p) next_frame = activate_in_thread(
-        crcl(main_thread), &crcl(main_activity), main_frame,
+    activate_in_thread( crcl(main_thread), &crcl(main_activity), main_frame,
         (crcl(epilogueB_t))app_main_epilogueB );
-    if( !next_frame )
-    {
-        // return -4;
-    }
+    crcl(push_ready_queue)( &crcl(main_activity), crcl(main_thread) );
     uv_cond_signal( &crcl(main_thread)->thd_management_cond );
     return 0;
 }

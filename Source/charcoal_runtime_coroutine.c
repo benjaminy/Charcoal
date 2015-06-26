@@ -3,6 +3,7 @@
  */
 
 #include <charcoal.h>
+#include <stdbool.h>
 #include <assert.h>
 #include <signal.h>
 #include <stdlib.h>
@@ -24,39 +25,11 @@
 
 cthread_p crcl(threads);
 uv_key_t crcl(self_key);
-// XXX static timer_t crcl(heartbeat_timer);
-// XXX deprecated??? static int crcl(heartbeat_timer);
 
 activity_p crcl(get_self_activity)( void )
 {
     return (activity_p)uv_key_get( &crcl(self_key) );
 }
-
-#if 0
-    deprecated?
-static int crcl(start_stop_heartbeat)( int start )
-{
-    /* XXX I think 'its' can be stack alloc'ed.  Check this. */
-    // struct itimerspec its;
-    /* XXX Think about what the interval should be. */
-    long long freq_nanosecs;
-    if( start )
-    {
-        freq_nanosecs = 10*1000*1000;
-    }
-    else
-    {
-        freq_nanosecs = 0;
-    }
-    // its.it_value.tv_sec     = freq_nanosecs / 1000000000;
-    // its.it_value.tv_nsec    = freq_nanosecs % 1000000000;
-    // its.it_interval.tv_sec  = its.it_value.tv_sec;
-    // its.it_interval.tv_nsec = its.it_value.tv_nsec;
-
-    // RET_IF_ERROR( timer_settime( crcl(heartbeat_timer), 0, &its, NULL ) );
-    return 0;
-}
-#endif
 
 int crcl(choose_next_activity)( activity_p *p )
 {
@@ -97,18 +70,22 @@ int crcl(choose_next_activity)( activity_p *p )
 
 /* This should be called just before an activity starts or resumes from
  * yield/wait. */
-crcl(frame_p) crcl(activity_start_resume)( activity_p activity )
+crcl(frame_p) crcl(activity_start_resume)( activity_p act )
 {
+    cthread_p thd = act->thread;
     /* XXX: enqueue command */
     /* XXX: start heartbeat if runnable > 1 */
     // HUH??? ABORT_ON_FAIL( uv_async_send( &crcl(io_cmd) ) );
-    uv_key_set( &crcl(self_key), activity );
+    uv_key_set( &crcl(self_key), act );
     // XXX don't think we're using alarm anymore
     // XXX alarm((int) self->container->max_time);
     // crcl(atomic_store_int)(&self->container->timeout, 0);
-    activity->yield_attempts = 0;
+    act->yield_calls = 0;
+    /* XXX Races with other interruptions coming in!!! */
+    crcl(atomic_store_int)( &thd->interrupt_activity, 0 );
+
     /* XXX: Lots to fix here. */
-    return activity->newest_frame;
+    return act->newest_frame;
 }
 
 typedef void (*crcl(switch_listener))(activity_p from, activity_p to, void *ctx);
@@ -194,7 +171,7 @@ activity_p crcl(pop_special_queue)(
             a->sprev->snext = a->snext;
             *q = a->snext;
         }
-        a->flags &= ~queue_flag;
+        CRCL(CLEAR_FLAG)( *a, queue_flag );
         return a;
     }
     else
@@ -224,12 +201,12 @@ void crcl(push_special_queue)(
 {
     assert( t || qp );
     assert( !( t && qp ) );
-    if( a->flags & queue_flag )
+    if( CRCL(CHECK_FLAG)( *a, queue_flag ) )
     {
         /* zlog_debug( crcl(c), "Already in queue\n" ); */
         return;
     }
-    a->flags |= queue_flag;
+    CRCL(SET_FLAG)( *a, queue_flag );
     activity_p *q = NULL;
     switch( queue_flag )
     {
@@ -268,6 +245,16 @@ void crcl(push_special_queue)(
 void crcl(push_ready_queue)( activity_p a, cthread_p t )
 {
     crcl(push_special_queue)( CRCL(ACTF_READY_QUEUE), a, t, NULL );
+    if( !CRCL(CHECK_FLAG)( *t, CRCL(THDF_TIMER_ON) ) )
+    {
+        CRCL(SET_FLAG)( *t, CRCL(THDF_TIMER_ON) );
+        crcl(io_cmd_t) *cmd = (crcl(io_cmd_t) *)malloc( sizeof( cmd[0] ) );
+        cmd->command = CRCL(IO_CMD_START);
+        cmd->_.thread = t;
+        // zlog_debug( crcl(c) , "Send timer req cmd: %p\n", cmd );
+        enqueue( cmd );
+        ABORT_ON_FAIL( uv_async_send( &crcl(io_cmd) ) );
+    }
 }
 
 void crcl(push_blocked_queue)( activity_p a, cthread_p t )
@@ -275,43 +262,15 @@ void crcl(push_blocked_queue)( activity_p a, cthread_p t )
     crcl(push_special_queue)( CRCL(ACTF_BLOCKED), a, t, NULL ); /* XXX */
 }
 
-/* activity_blocked should be called when an activity has nothing to do
- * right now.  Another activity or thread might switch back to it later.
- * If another activity is ready, run it.  Otherwise wait for a condition
- * variable signal from another thread (typically the I/O thread). */
-crcl(frame_p) crcl(activity_blocked)( crcl(frame_p) frame )
-{
-    // XXX --thd->runnable_activities;
-    /* zlog_debug( crcl(c), "Actvity blocked\n" ); */
-    crcl(frame_p) rv       = NULL;
-    activity_p    activity = frame->activity;
-    cthread_p     thd      = activity->thread;
-    uv_mutex_lock( &thd->thd_management_mtx );
-    if( activity->flags & CRCL(ACTF_BLOCKED) )
-    {
-        activity->newest_frame = frame;
-        if( thd->ready )
-        {
-            activity_p to = crcl(pop_ready_queue)( thd );
-            crcl(activity_start_resume)( to );
-            rv = to->newest_frame;
-        }
-    }
-    else
-    {
-        rv = frame->caller;
-    }
-    uv_mutex_unlock( &thd->thd_management_mtx );
-    return rv;
-}
-
 crcl(frame_p) crcl(switch_from_to)( activity_p from, activity_p to )
 {
-    /* XXX assert from is the currently running activity? */
+    assert( !CRCL(CHECK_FLAG)( *from, CRCL(ACTF_DONE) ) );
+    assert( !CRCL(CHECK_FLAG)( *from, CRCL(ACTF_READY_QUEUE) ) );
+    assert( !CRCL(CHECK_FLAG)( *from, CRCL(ACTF_BLOCKED) ) );
     cthread_p thd = from->thread;
     assert( thd );
     uv_mutex_lock( &thd->thd_management_mtx );
-    crcl(push_special_queue)( CRCL(ACTF_READY_QUEUE), from, thd, NULL );
+    crcl(push_ready_queue)( from, thd );
     uv_mutex_unlock( &thd->thd_management_mtx );
     //zlog_debug( crcl(c), "Set timeout value to 0 in charcoal_switch_from_to\n");
     /* check if anybody should be deallocated (int sem_destroy(sem_t *);) */
@@ -322,9 +281,6 @@ crcl(frame_p) crcl(switch_to)( activity_p act )
 {
     return crcl(switch_from_to)( crcl(get_self_activity)(), act );
 }
-
-crcl(atomic_int) crcl(yield_ticker_impl) = 0,
-    *crcl(yield_ticker) = &crcl(yield_ticker_impl);
 
 /*
  * The current implementation strategy for yield is to put almost all of
@@ -358,33 +314,29 @@ crcl(atomic_int) crcl(yield_ticker_impl) = 0,
  *    These factors can have a surprisingly large impact on
  *    whole-application performance
  */
-crcl(frame_p) crcl(yield_impl)( crcl(frame_p) frame, void *ret_addr ){
-    frame->return_addr = ret_addr;
-    size_t     current_yield_tick = crcl(atomic_load_int)( crcl(yield_ticker) );
-    activity_p activity           = frame->activity;
-    ssize_t    diff               = activity->thread->tick - current_yield_tick;
-    int *p = (int *)&frame->callee;
+crcl(frame_p) crcl(yield_impl)( crcl(frame_p) frm, void *ret_addr ){
+    activity_p act = frm->activity;
+    cthread_p  thd = act->thread;
+    int         *p = (int *)&frm->callee;
+
+    frm->return_addr = ret_addr;
+    ++act->yield_calls;
+    int interrupt = crcl(atomic_load_int)( &thd->interrupt_activity );
+
     *p = 0;
-    if( diff < 0 )
+    if( !interrupt )
     {
-        return frame;
+        return frm;
     }
     /* "else": The current activity's quantum has expired. */
-    activity_p self = frame->activity;
-
-    /* XXX DEBUG foo->yield_attempts++; */
-    cthread_p thd = self->thread;
-    /* XXX handle locking errors? */
+    *p = 1;
     uv_mutex_lock( &thd->thd_management_mtx );
-    if( !thd->ready )
-    {
-        uv_mutex_unlock( &thd->thd_management_mtx );
-        return frame;
-    }
-    activity_p to = crcl(pop_special_queue)(
-        CRCL(ACTF_READY_QUEUE), thd, NULL );
+    activity_p next = crcl(pop_ready_queue)( thd );
     uv_mutex_unlock( &thd->thd_management_mtx );
-    return crcl(switch_from_to)( self, to );
+    /* We really shouldn't be getting interrupted if there's nothing in
+     * the ready queue */
+    assert( next );
+    return crcl(switch_from_to)( act, next );
 }
 
 /* XXX remove problem!!! */
@@ -419,36 +371,6 @@ int crcl(activity_detach)( activity_p a )
     return 0;
 }
 
-#if 0
-    deprecated?
-/* compiler inserts call to this fn at the end of each activity */
-static crcl(frame_p) crcl(activity_finished)( crcl(frame_p) frame )
-{
-    /* TODO: the compiler generates the code to copy the activity
-     * return value to activity memory. */
-    activity_p activity = frame->activity;
-    cthread_p thd = activity->thread;
-    /* zlog_debug( crcl(c), "Finishing %p\n", a ); */
-    uv_mutex_lock( &thd->thd_management_mtx );
-    activity_p next = crcl(pop_ready_queue)( thd );
-    uv_mutex_unlock( &thd->thd_management_mtx );
-    /* zlog_debug( crcl(c), "Jumping to %p\n", next ); */
-    if( next )
-    {
-        crcl(activity_start_resume)( next );
-    }
-    else
-    {
-        return NULL;
-    }
-    /* XXX activity migration between threads will cause problems??? */
-
-    /* LOG: Actual activity starting. */
-    /* LOG: Actual activity complete. */
-    return frame;
-}
-#endif
-
 /* XXX Still have to think more about signal handling (and masking)??? */
 
 static void insert_activity_into_thread( activity_p a, cthread_p t )
@@ -469,8 +391,6 @@ static void insert_activity_into_thread( activity_p a, cthread_p t )
         a->prev = a;
         a->next = a;
     }
-    crcl(push_ready_queue)( a, t );
-    ++t->runnable_activities;
 }
 
 static void crcl(remove_activity_from_thread)( activity_p a, cthread_p t)
@@ -492,47 +412,76 @@ static void crcl(remove_activity_from_thread)( activity_p a, cthread_p t)
     // zlog_debug( crcl(c), "f:%p  r:%p\n", t->activities, t->activities->prev );
 }
 
+/*
+ * activity_blocked_or_done should be called when an activity has
+ * nothing to do right now.  Another activity or thread might switch
+ * back to it later.  There are a few cases to consider to decide what
+ * happens next:
+ * 1) If there is a ready activity, switch to one
+ * 2) Otherwise, if there are blocked activities switch to idle
+ * 3) Otherwise, clean up thread
+ */
+static crcl(frame_p) activity_blocked_or_done( crcl(frame_p) frm )
+{
+    activity_p act = frm->activity;
+    cthread_p  thd = act->thread;
+    uv_mutex_lock( &thd->thd_management_mtx );
+    bool done = CRCL(CHECK_FLAG)( *act, CRCL(ACTF_DONE) );
+    if( !done )
+    {
+        crcl(push_blocked_queue)( act, thd );
+    }
+    activity_p next = crcl(pop_ready_queue)( thd );
+    if( next )
+    {
+        /* Hooray! */
+    }
+    else if( !done /* TODO: || keep thread alive */ )
+    {
+        next = &thd->idle;
+    }
+    else
+    {
+        /* Clean up thread? */
+    }
+    uv_mutex_unlock( &thd->thd_management_mtx );
+    if( next )
+        return crcl(activity_start_resume)( next );
+    else
+        return NULL;
+}
+
 static crcl(frame_p) activity_epilogue( crcl(frame_p) frame )
 {
     assert( frame );
     activity_p act = frame->activity;
-    zlog_info( crcl(c) , "Activity finished %p %p\n", frame, act );
+    zlog_debug( crcl(c) , "Activity finished %p %p\n", frame, act );
     assert( frame == &act->oldest_frame );
     /* XXX I think this return value business is broken currently. */
+    CRCL(SET_FLAG)( *act, CRCL(ACTF_DONE) );
     act->epilogue( frame, &act->return_value );
     cthread_p t = act->thread;
     /* XXX locking necessary? */
     uv_mutex_lock( &t->thd_management_mtx );
     crcl(remove_activity_from_thread)( act, t );
-    /* XXX invoke some kind of scheduler */
-    crcl(frame_p) rv = NULL;
-    if( t->activities )
-    {
-        activity_p next = crcl(pop_ready_queue)( t );
-        if( !next )
-        {
-            next = &t->idle;
-        }
-        rv = next->newest_frame;
-    }
-    else
-    {
-        /* No more activities in thread! */
-        /* XXX cleanup? */
-    }
-
     uv_mutex_unlock( &t->thd_management_mtx );
-    return rv;
+    return activity_blocked_or_done( frame );
 }
 
 /* Initialize 'activity' and add it to 'thread'. */
 /* (Do not start the new activity running) */
-crcl(frame_p) activate_in_thread(
-    cthread_p thread, activity_p activity, crcl(frame_p) frame, crcl(epilogueB_t) epi )
+void activate_in_thread(
+    cthread_p thread, activity_p activity,
+    crcl(frame_p) frame, crcl(epilogueB_t) epi )
 {
+    assert( activity );
+    assert( frame );
+    assert( thread );
+    assert( epi );
+    zlog_debug( crcl(c), "Activate %p", activity );
     activity->thread                   = thread;
     activity->flags                    = 0;
-    activity->yield_attempts           = 0;
+    activity->yield_calls              = 0;
     activity->newest_frame             = frame;
     activity->snext                    = activity->sprev = NULL;
     activity->oldest_frame.activity    = activity;
@@ -542,10 +491,10 @@ crcl(frame_p) activate_in_thread(
     activity->oldest_frame.return_addr = 0;
     activity->epilogue                 = epi;
     frame->caller                      = &activity->oldest_frame;
+    frame->activity                    = activity;
     uv_mutex_lock( &thread->thd_management_mtx );
     insert_activity_into_thread( activity, thread );
     uv_mutex_unlock( &thread->thd_management_mtx );
-    return frame;
 }
 
 /*
@@ -554,18 +503,19 @@ crcl(frame_p) activate_in_thread(
  */
 crcl(frame_p) crcl(activate)(
     crcl(frame_p) caller, void *ret_addr,
-    activity_p activity, crcl(frame_p) f, crcl(epilogueB_t) epi )
+    activity_p activity, crcl(frame_p) frm, crcl(epilogueB_t) epi )
 {
     assert( !caller == !ret_addr );
     assert( activity );
+    assert( frm );
+    assert( epi );
     zlog_info( crcl(c), "crcl(activate) %p %p\n", caller, caller ? caller->activity : 0 );
     if( caller )
     { /* Currently in yielding context */
         caller->return_addr = ret_addr;
-        f->activity = activity;
         activity_p caller_act = caller->activity;
-        crcl(push_ready_queue)( caller_act, caller_act->thread );
-        return activate_in_thread( caller_act->thread, activity, f, epi );
+        activate_in_thread( caller_act->thread, activity, frm, epi );
+        return crcl(switch_from_to)( caller_act, activity );
     }
     else
     { /* Currently in unyielding context */

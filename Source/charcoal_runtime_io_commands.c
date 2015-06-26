@@ -7,6 +7,7 @@
 
 uv_loop_t *crcl(io_loop);
 uv_async_t crcl(io_cmd);
+static uv_idle_t start_the_world;
 
 /* NOTE: Using the classic two-stack queue implementation */
 typedef struct
@@ -58,6 +59,10 @@ crcl(io_cmd_t) *dequeue( void )
 
 void the_thing( uv_timer_t* handle )
 {
+    crcl(io_cmd_t) *cmd = (crcl(io_cmd_t) *)handle->data;
+    zlog_debug( crcl(c) , "INTERRUPT!!!! cmd: %p %p\n", cmd,
+                &cmd->_.thread->interrupt_activity );
+    crcl(atomic_store_int)( &cmd->_.thread->interrupt_activity, 1 );
 }
 
 static void crcl(io_cmd_close)( uv_handle_t *h )
@@ -103,8 +108,10 @@ void crcl(io_cmd_cb)( uv_async_t *handle )
         {
         case CRCL(IO_CMD_START):
             /* XXX this should go in the start_resume function */
+            zlog_debug( crcl(c) , "Timer req recved cmd: %p\n", cmd );
+            cmd->_.thread->timer_req.data = cmd;
             rc = uv_timer_start(
-                &cmd->activity->thread->timer_req, the_thing, 5000, 2000);
+                &cmd->_.thread->timer_req, the_thing, 10, 0);
             assert( !rc );
             break;
         case CRCL(IO_CMD_JOIN_THREAD):
@@ -114,6 +121,7 @@ void crcl(io_cmd_cb)( uv_async_t *handle )
                 /* XXX What about when there are more events???. */
                 uv_close( (uv_handle_t *)handle, crcl(io_cmd_close) );
             }
+            free( cmd );
             break;
         case CRCL(IO_CMD_GETADDRINFO):
         {
@@ -139,8 +147,18 @@ void crcl(io_cmd_cb)( uv_async_t *handle )
             /* XXX error message? */
             exit( 1 );
         }
-        free( cmd );
     }
+}
+
+static void start_cb( uv_idle_t* handle ) {
+    int (*f)( void ) = (int (*)( void ))handle->data;
+    int rc = f();
+    if( rc )
+    {
+        zlog_error( crcl(c), "Failure: Launch of application main: %d\n", rc );
+        uv_stop( crcl(io_loop) );
+    }
+    uv_idle_stop( handle );
 }
 
 /*
@@ -148,7 +166,7 @@ void crcl(io_cmd_cb)( uv_async_t *handle )
  * be the I/O thread.  Before it starts its I/O duties it launches
  * another thread that will call the application's main procedure.
  */
-int crcl(init_io_loop)( cthread_p t, activity_p a )
+int crcl(init_io_loop)( cthread_p t, activity_p a, int (*f)( void ) )
 {
     crcl(threads) = t;
 
@@ -166,6 +184,10 @@ int crcl(init_io_loop)( cthread_p t, activity_p a )
     crcl(io_loop) = uv_default_loop();
     RET_IF_ERROR(
         uv_async_init( crcl(io_loop), &crcl(io_cmd), crcl(io_cmd_cb) ) );
+
+    uv_idle_init( crcl(io_loop), &start_the_world );
+    start_the_world.data = f;
+    uv_idle_start( &start_the_world, start_cb );
 
     crcl(cmd_queue).front = NULL;
     crcl(cmd_queue).back = NULL;
