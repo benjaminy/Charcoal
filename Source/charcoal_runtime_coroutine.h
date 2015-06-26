@@ -95,7 +95,7 @@ struct cthread_t
     cthread_p           next, prev;
 };
 
-void crcl(activity_start_resume)( activity_p activity );
+crcl(frame_p) crcl(activity_start_resume)( activity_p activity );
 
 typedef void (*crcl(epilogueB_t))( crcl(frame_p), void * );
 

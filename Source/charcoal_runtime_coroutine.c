@@ -108,17 +108,18 @@ int crcl(choose_next_activity)( activity_p *p )
 
 /* This should be called just before an activity starts or resumes from
  * yield/wait. */
-void crcl(activity_start_resume)( activity_p activity )
+crcl(frame_p) crcl(activity_start_resume)( activity_p activity )
 {
     /* XXX: enqueue command */
     /* XXX: start heartbeat if runnable > 1 */
-    ABORT_ON_FAIL( uv_async_send( &crcl(io_cmd) ) );
+    // HUH??? ABORT_ON_FAIL( uv_async_send( &crcl(io_cmd) ) );
     uv_key_set( &crcl(self_key), activity );
     // XXX don't think we're using alarm anymore
     // XXX alarm((int) self->container->max_time);
     // crcl(atomic_store_int)(&self->container->timeout, 0);
     activity->yield_attempts = 0;
     /* XXX: Lots to fix here. */
+    return activity->newest_frame;
 }
 
 typedef void (*crcl(switch_listener))(activity_p from, activity_p to, void *ctx);
@@ -315,7 +316,7 @@ crcl(frame_p) crcl(activity_blocked)( crcl(frame_p) frame )
     return rv;
 }
 
-void crcl(switch_from_to)( activity_p from, activity_p to )
+crcl(frame_p) crcl(switch_from_to)( activity_p from, activity_p to )
 {
     /* XXX assert from is the currently running activity? */
     cthread_p thd = from->thread;
@@ -323,23 +324,18 @@ void crcl(switch_from_to)( activity_p from, activity_p to )
     uv_mutex_lock( &thd->thd_management_mtx );
     crcl(push_special_queue)( CRCL(ACTF_READY_QUEUE), from, thd, NULL );
     uv_mutex_unlock( &thd->thd_management_mtx );
-#if 0
-    if( _setjmp( from->jmp ) == 0 )
-    {
-        crcl(activity_start_resume)( to );
-        _longjmp( to->jmp, 1 );
-    }
-#endif
     //zlog_debug( crcl(c), "Set timeout value to 0 in charcoal_switch_from_to\n");
     /* check if anybody should be deallocated (int sem_destroy(sem_t *);) */
+    return crcl(activity_start_resume)( to );
 }
 
-void crcl(switch_to)( activity_p act )
+crcl(frame_p) crcl(switch_to)( activity_p act )
 {
-    crcl(switch_from_to)( crcl(get_self_activity)(), act );
+    return crcl(switch_from_to)( crcl(get_self_activity)(), act );
 }
 
-crcl(atomic_int) *crcl(yield_ticker);
+crcl(atomic_int) crcl(yield_ticker_impl) = 0,
+    *crcl(yield_ticker) = &crcl(yield_ticker_impl);
 
 /*
  * The current implementation strategy for yield is to put almost all of
@@ -378,14 +374,14 @@ crcl(frame_p) crcl(yield_impl)( crcl(frame_p) frame, void *ret_addr ){
     size_t     current_yield_tick = crcl(atomic_load_int)( crcl(yield_ticker) );
     activity_p activity           = frame->activity;
     ssize_t    diff               = activity->thread->tick - current_yield_tick;
+    int *p = (int *)&frame->callee;
+    *p = 0;
     if( diff < 0 )
     {
-        int *p = (int *)&frame->callee;
-        *p = 0;
         return frame;
     }
     /* "else": The current activity's quantum has expired. */
-    activity_p self = crcl(get_self_activity)();
+    activity_p self = frame->activity;
 
     /* XXX DEBUG foo->yield_attempts++; */
     int unyield_depth = crcl(atomic_load_int)( &(self->thread->unyield_depth) );
@@ -397,14 +393,17 @@ crcl(frame_p) crcl(yield_impl)( crcl(frame_p) frame, void *ret_addr ){
         if( !thd->ready )
         {
             uv_mutex_unlock( &thd->thd_management_mtx );
-            return NULL /* XXX */;
+            return frame;
         }
         activity_p to = crcl(pop_special_queue)(
             CRCL(ACTF_READY_QUEUE), thd, NULL );
         uv_mutex_unlock( &thd->thd_management_mtx );
-        crcl(switch_from_to)( self, to );
+        return crcl(switch_from_to)( self, to );
     }
-    /* XXX */ return NULL;
+    else
+    {
+        return frame;
+    }
 }
 
 /* XXX remove problem!!! */
