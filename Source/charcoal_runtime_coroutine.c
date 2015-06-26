@@ -95,17 +95,6 @@ int crcl(choose_next_activity)( activity_p *p )
     return 0;
 }
 
-/* unyielding */ void crcl(unyielding_enter)( crcl(frame_p) frame )
-{
-    crcl(atomic_incr_int)( &frame->activity->thread->unyield_depth );
-}
-
-/* unyielding */ void crcl(unyielding_exit)( crcl(frame_p) frame )
-{
-    crcl(atomic_decr_int)( &frame->activity->thread->unyield_depth );
-    /* TODO: Maybe call yield here?  Probably not.  unyielding -/> loop */
-}
-
 /* This should be called just before an activity starts or resumes from
  * yield/wait. */
 crcl(frame_p) crcl(activity_start_resume)( activity_p activity )
@@ -384,26 +373,18 @@ crcl(frame_p) crcl(yield_impl)( crcl(frame_p) frame, void *ret_addr ){
     activity_p self = frame->activity;
 
     /* XXX DEBUG foo->yield_attempts++; */
-    int unyield_depth = crcl(atomic_load_int)( &(self->thread->unyield_depth) );
-    if( unyield_depth == 0 )
+    cthread_p thd = self->thread;
+    /* XXX handle locking errors? */
+    uv_mutex_lock( &thd->thd_management_mtx );
+    if( !thd->ready )
     {
-        cthread_p thd = self->thread;
-        /* XXX handle locking errors? */
-        uv_mutex_lock( &thd->thd_management_mtx );
-        if( !thd->ready )
-        {
-            uv_mutex_unlock( &thd->thd_management_mtx );
-            return frame;
-        }
-        activity_p to = crcl(pop_special_queue)(
-            CRCL(ACTF_READY_QUEUE), thd, NULL );
         uv_mutex_unlock( &thd->thd_management_mtx );
-        return crcl(switch_from_to)( self, to );
-    }
-    else
-    {
         return frame;
     }
+    activity_p to = crcl(pop_special_queue)(
+        CRCL(ACTF_READY_QUEUE), thd, NULL );
+    uv_mutex_unlock( &thd->thd_management_mtx );
+    return crcl(switch_from_to)( self, to );
 }
 
 /* XXX remove problem!!! */

@@ -96,7 +96,6 @@ static crcl(frame_p) thread_init(
     zlog_info( crcl(c), "Charcoal thread initializing %p( %p )\n", thread, params );
     /* XXX  init can-run */
     *params->tptr = thread;
-    crcl(atomic_store_int)( &thread->unyield_depth, 0 );
     // crcl(atomic_store_int)( &thread->timeout, 0 );
     crcl(atomic_store_int)( &thread->keep_going, 1 );
     thread->timer_req.data = &thread;
