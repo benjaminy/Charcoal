@@ -11,6 +11,6 @@ int main( int argc, char **argv, char **env )
     {
         printf( "I'm active\n" );
     };
-    printf( "After the activity" );
+    printf( "After the activity\n" );
     return 0;
 }
