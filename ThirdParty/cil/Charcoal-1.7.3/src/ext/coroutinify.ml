@@ -447,22 +447,26 @@ let coroutinify_activate params fdec loc frame =
 type dir_indir =
     CActivate
   | CYield
-  | CDirect of C.exp * C.exp
+  | CDirect of C.exp * C.exp * C.exp
   | CIndirect of C.exp
 
-let coroutinify_normal_call lhs_opt fn_exp params call_stuff fdec loc frame =
+let coroutinify_normal_call lhs_opt params call_stuff fdec loc frame =
   let epilogueB_call =
     (* XXX fix to be direct or indirect *)
     let params =
-      match ( C.typeOf fn_exp, lhs_opt ) with
+      let f = match call_stuff with
+          CDirect( u, _, _ ) -> u
+        | _ -> E.s( E.unimp "EERR 34254" )
+      in
+      match ( C.typeOf f, lhs_opt ) with
         ( C.TFun( C.TVoid _, _, _, _ ), _ ) -> [ frame.exp ]
-      | ( C.TFun _, None )                  -> [ frame.exp; C.zero ]
+      | ( C.TFun( t, _, _, _ ), None )      -> [ frame.exp; C.zero ]
       | ( C.TFun _, Some lhs )              -> [ frame.exp; C.AddrOf lhs ]
       | _ -> E.s( E.error "Function with non-function type?!?" )
     in
     let call =
       let f = match call_stuff with
-          CDirect( _, eB ) -> eB
+          CDirect( _, _, eB ) -> eB
         | CIndirect p -> p
         | CActivate | CYield -> E.s( E.bug "Noo act yield" )
       in
@@ -477,7 +481,7 @@ let coroutinify_normal_call lhs_opt fn_exp params call_stuff fdec loc frame =
   let ps = frame.exp::( C.AddrOfLabel( ref epilogueB_call ) )::params in
   let prologue_call =
     let f = match call_stuff with
-        CDirect( p, _ ) -> p
+        CDirect( _, p, _ ) -> p
       | CIndirect p -> p
       | CActivate | CYield -> E.s( E.bug "Noooo Act yiel" )
     in
@@ -526,7 +530,7 @@ let coroutinify_call visitor fdec frame instr =
           CYield
         else
           ( match lookup_fn_translation v with
-              Some ( _, p, eB ) -> CDirect( p, eB )
+              Some ( u, p, eB ) -> CDirect( u, p, eB )
             | None -> CIndirect fn_exp )
       | _ -> CIndirect fn_exp
     in
@@ -535,7 +539,7 @@ let coroutinify_call visitor fdec frame instr =
         E.s( E.bug "ERR 129637" )
       | CActivate, None -> coroutinify_activate params fdec loc frame
       | CYield, _ -> coroutinify_yield lhs_opt params fdec loc frame
-      | _ -> coroutinify_normal_call lhs_opt fn_exp params call_stuff fdec loc frame
+      | _ -> coroutinify_normal_call lhs_opt params call_stuff fdec loc frame
     )
 
   (* Something other than a call to a Charcoal function *)
