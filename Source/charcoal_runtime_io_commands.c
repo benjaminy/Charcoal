@@ -60,9 +60,13 @@ crcl(io_cmd_t) *dequeue( void )
 void the_thing( uv_timer_t* handle )
 {
     crcl(io_cmd_t) *cmd = (crcl(io_cmd_t) *)handle->data;
+    cthread_p thd = cmd->_.thread;
     zlog_debug( crcl(c) , "INTERRUPT!!!! cmd: %p %p\n", cmd,
-                &cmd->_.thread->interrupt_activity );
-    crcl(atomic_store_int)( &cmd->_.thread->interrupt_activity, 1 );
+                &thd->interrupt_activity );
+    uv_mutex_lock( &thd->thd_management_mtx );
+    if( thd->ready )
+        crcl(atomic_store_int)( &thd->interrupt_activity, 1 );
+    uv_mutex_unlock( &thd->thd_management_mtx );
 }
 
 static void crcl(io_cmd_close)( uv_handle_t *h )
