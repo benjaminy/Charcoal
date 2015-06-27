@@ -543,7 +543,7 @@ crcl(frame_p) crcl(fn_generic_prologue)(
     f->caller      = caller;
     f->callee      = NULL;
     f->return_addr = NULL;
-    zlog_info( crcl(c), "generic_prologue %p %p\n", caller, caller ? caller->activity : 0 );
+    // zlog_info( crcl(c), "generic_prologue %p %p\n", caller, caller ? caller->activity : 0 );
     if( caller )
     {
         caller->callee = f;
