@@ -3,7 +3,25 @@ extern "C" {
 #include <stdio.h>
 }
 
-#define N 100000
+#define N 1000
+#define M 100000
+int A[10] = { 1, 3, 6, 9, 0, 2, 4, 5, 8, 7 };
+
+void blah( char *s )
+{
+    int x = 0, i;
+    for( i = 0; i < N; ++i )
+    {
+        printf( "%s", s );
+        fflush( stdout );
+        for( int j = 0; j < M; ++j );
+        {
+            x = ( x + rand() ) % 10;
+            x = ( x + A[x] ) % 10;
+        }
+    }
+    printf( "After the %ss %d\n", s, i );
+}
 
 int main( int argc, char **argv, char **env )
 {
@@ -11,16 +29,8 @@ int main( int argc, char **argv, char **env )
     activity_p a = (activity_p)malloc( sizeof( a[0] ) );
     activate {a} ()
     {
-        for( int i = 0; i < N; ++i )
-        {
-            printf( "O" );
-        }
-        printf( "After the Os\n" );
+        blah( "O" );
     };
-    for( int i = 0; i < N; ++i )
-    {
-        printf( "X" );
-    }
-    printf( "After the Xs\n" );
+    blah( "X" );
     return 0;
 }
