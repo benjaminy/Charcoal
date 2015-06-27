@@ -4,7 +4,7 @@ extern "C" {
 
 #define N ( 1024 * 1024 )
 #define M 1000
-#define B 0x1F
+#define B 0xFF
 
 int my_strcmp( const char *s1, const char *s2 )
 {
