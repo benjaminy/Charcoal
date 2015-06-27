@@ -432,6 +432,7 @@ static crcl(frame_p) activity_blocked_or_done( crcl(frame_p) frm )
         crcl(push_blocked_queue)( act, thd );
     }
     activity_p next = crcl(pop_ready_queue)( thd );
+    zlog_debug( crcl(c) , "Activity blocked/done %d %p", done, next );
     if( next )
     {
         /* Hooray! */
@@ -558,6 +559,7 @@ crcl(frame_p) crcl(fn_generic_prologue)(
         caller->callee = f;
         caller->return_addr = return_ptr;
         f->activity = caller->activity;
+        f->activity->newest_frame = f;
     }
     return f;
 }
