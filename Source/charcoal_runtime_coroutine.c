@@ -69,7 +69,10 @@ int crcl(choose_next_activity)( activity_p *p )
 }
 
 /* This should be called just before an activity starts or resumes from
- * yield/wait. */
+ * yield/wait.
+ *
+ * Precondition: The thread mgmt lock is held.
+ */
 crcl(frame_p) crcl(activity_start_resume)( activity_p act )
 {
     cthread_p thd = act->thread;
@@ -85,6 +88,17 @@ crcl(frame_p) crcl(activity_start_resume)( activity_p act )
     crcl(atomic_store_int)( &thd->interrupt_activity, 0 );
 
     /* XXX: Lots to fix here. */
+    if( thd->ready && !CRCL(CHECK_FLAG)( *thd, CRCL(THDF_TIMER_ON) ) )
+    {
+        CRCL(SET_FLAG)( *thd, CRCL(THDF_TIMER_ON) );
+        crcl(io_cmd_t) *cmd = (crcl(io_cmd_t) *)malloc( sizeof( cmd[0] ) );
+        cmd->command = CRCL(IO_CMD_START);
+        cmd->_.thread = thd;
+        // zlog_debug( crcl(c) , "Send timer req cmd: %p\n", cmd );
+        enqueue( cmd );
+        ABORT_ON_FAIL( uv_async_send( &crcl(io_cmd) ) );
+    }
+
     return act->newest_frame;
 }
 
@@ -97,24 +111,6 @@ void crcl(push_yield_switch_listener)( crcl(switch_listener) pre, void *pre_ctx,
 void crcl(pop_yield_switch_listener)()
 {
 }
-
-#if 0
-    deprecated?
-/* XXX must fix.  Still assuming activities implemented as threads */
-static int crcl(yield_try_switch)( activity_p self )
-{
-    activity_p to;
-    /* XXX error check */
-    crcl(choose_next_activity)( &to );
-    if( to )
-    {
-        // XXX crcl(sem_incr)( &to->can_run );
-        // XXX crcl(sem_decr)( &self->can_run );
-        crcl(activity_start_resume)( self );
-    }
-    return 0;
-}
-#endif
 
 #if 0
     deprecated?
@@ -245,16 +241,6 @@ void crcl(push_special_queue)(
 void crcl(push_ready_queue)( activity_p a, cthread_p t )
 {
     crcl(push_special_queue)( CRCL(ACTF_READY_QUEUE), a, t, NULL );
-    if( !CRCL(CHECK_FLAG)( *t, CRCL(THDF_TIMER_ON) ) )
-    {
-        CRCL(SET_FLAG)( *t, CRCL(THDF_TIMER_ON) );
-        crcl(io_cmd_t) *cmd = (crcl(io_cmd_t) *)malloc( sizeof( cmd[0] ) );
-        cmd->command = CRCL(IO_CMD_START);
-        cmd->_.thread = t;
-        // zlog_debug( crcl(c) , "Send timer req cmd: %p\n", cmd );
-        enqueue( cmd );
-        ABORT_ON_FAIL( uv_async_send( &crcl(io_cmd) ) );
-    }
 }
 
 void crcl(push_blocked_queue)( activity_p a, cthread_p t )
@@ -262,7 +248,7 @@ void crcl(push_blocked_queue)( activity_p a, cthread_p t )
     crcl(push_special_queue)( CRCL(ACTF_BLOCKED), a, t, NULL ); /* XXX */
 }
 
-crcl(frame_p) crcl(switch_from_to)( activity_p from, activity_p to )
+static crcl(frame_p) switch_from_to( activity_p from, activity_p to )
 {
     assert( !CRCL(CHECK_FLAG)( *from, CRCL(ACTF_DONE) ) );
     assert( !CRCL(CHECK_FLAG)( *from, CRCL(ACTF_READY_QUEUE) ) );
@@ -271,15 +257,18 @@ crcl(frame_p) crcl(switch_from_to)( activity_p from, activity_p to )
     assert( thd );
     uv_mutex_lock( &thd->thd_management_mtx );
     crcl(push_ready_queue)( from, thd );
+    crcl(frame_p) rv = crcl(activity_start_resume)( to );
+    // zlog_debug( crcl(c) , "Switch from->to thd:%p %p %p %p", thd,
+    //             from, to, thd->ready );
     uv_mutex_unlock( &thd->thd_management_mtx );
     //zlog_debug( crcl(c), "Set timeout value to 0 in charcoal_switch_from_to\n");
     /* check if anybody should be deallocated (int sem_destroy(sem_t *);) */
-    return crcl(activity_start_resume)( to );
+    return rv;
 }
 
 crcl(frame_p) crcl(switch_to)( activity_p act )
 {
-    return crcl(switch_from_to)( crcl(get_self_activity)(), act );
+    return switch_from_to( crcl(get_self_activity)(), act );
 }
 
 /*
@@ -329,6 +318,7 @@ crcl(frame_p) crcl(yield_impl)( crcl(frame_p) frm, void *ret_addr ){
         return frm;
     }
     /* "else": The current activity's quantum has expired. */
+    // zlog_debug( crcl(c) , "Yield switch %p", act );
     *p = 1;
     uv_mutex_lock( &thd->thd_management_mtx );
     activity_p next = crcl(pop_ready_queue)( thd );
@@ -336,7 +326,7 @@ crcl(frame_p) crcl(yield_impl)( crcl(frame_p) frm, void *ret_addr ){
     /* We really shouldn't be getting interrupted if there's nothing in
      * the ready queue */
     assert( next );
-    return crcl(switch_from_to)( act, next );
+    return switch_from_to( act, next );
 }
 
 /* XXX remove problem!!! */
@@ -445,11 +435,11 @@ static crcl(frame_p) activity_blocked_or_done( crcl(frame_p) frm )
     {
         /* Clean up thread? */
     }
-    uv_mutex_unlock( &thd->thd_management_mtx );
+    crcl(frame_p) rv = NULL;
     if( next )
-        return crcl(activity_start_resume)( next );
-    else
-        return NULL;
+        rv = crcl(activity_start_resume)( next );
+    uv_mutex_unlock( &thd->thd_management_mtx );
+    return rv;
 }
 
 static crcl(frame_p) activity_epilogue( crcl(frame_p) frame )
@@ -516,7 +506,7 @@ crcl(frame_p) crcl(activate)(
         caller->return_addr = ret_addr;
         activity_p caller_act = caller->activity;
         activate_in_thread( caller_act->thread, activity, frm, epi );
-        return crcl(switch_from_to)( caller_act, activity );
+        return switch_from_to( caller_act, activity );
     }
     else
     { /* Currently in unyielding context */

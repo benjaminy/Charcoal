@@ -59,11 +59,11 @@ crcl(io_cmd_t) *dequeue( void )
 
 void the_thing( uv_timer_t* handle )
 {
-    crcl(io_cmd_t) *cmd = (crcl(io_cmd_t) *)handle->data;
-    cthread_p thd = cmd->_.thread;
-    zlog_debug( crcl(c) , "INTERRUPT!!!! cmd: %p %p\n", cmd,
-                &thd->interrupt_activity );
+    cthread_p thd = (cthread_p)handle->data;
     uv_mutex_lock( &thd->thd_management_mtx );
+    // zlog_debug( crcl(c) , "Timer expired! thd:%p %p %p", thd,
+    //            &thd->interrupt_activity, thd->ready );
+    CRCL(CLEAR_FLAG)( *thd, CRCL(THDF_TIMER_ON) );
     if( thd->ready )
         crcl(atomic_store_int)( &thd->interrupt_activity, 1 );
     uv_mutex_unlock( &thd->thd_management_mtx );
@@ -111,13 +111,18 @@ void crcl(io_cmd_cb)( uv_async_t *handle )
         switch( cmd->command )
         {
         case CRCL(IO_CMD_START):
-            /* XXX this should go in the start_resume function */
-            zlog_debug( crcl(c) , "Timer req recved cmd: %p\n", cmd );
-            cmd->_.thread->timer_req.data = cmd;
-            rc = uv_timer_start(
-                &cmd->_.thread->timer_req, the_thing, 10, 0);
+        {
+            cthread_p thd = cmd->_.thread;
+            // zlog_debug( crcl(c) , "Timer req recved cmd: %p thd: %p\n", cmd, thd );
+            if( CRCL(CHECK_FLAG)( *thd, CRCL(THDF_TIMER_ON) ) )
+            {
+                /* Very weird timing, but probably possible */
+                uv_timer_stop( &thd->timer_req );
+            }
+            rc = uv_timer_start( &thd->timer_req, the_thing, 10, 0);
             assert( !rc );
             break;
+        }
         case CRCL(IO_CMD_JOIN_THREAD):
             if( crcl(join_thread)( cmd->_.thread ) )
             {
@@ -125,7 +130,6 @@ void crcl(io_cmd_cb)( uv_async_t *handle )
                 /* XXX What about when there are more events???. */
                 uv_close( (uv_handle_t *)handle, crcl(io_cmd_close) );
             }
-            free( cmd );
             break;
         case CRCL(IO_CMD_GETADDRINFO):
         {
@@ -151,6 +155,7 @@ void crcl(io_cmd_cb)( uv_async_t *handle )
             /* XXX error message? */
             exit( 1 );
         }
+        free( cmd );
     }
 }
 

@@ -98,7 +98,7 @@ static crcl(frame_p) thread_init(
     *params->tptr = thread;
     // crcl(atomic_store_int)( &thread->timeout, 0 );
     crcl(atomic_store_int)( &thread->interrupt_activity, 0 );
-    thread->timer_req.data = &thread;
+    thread->timer_req.data = thread;
     /* XXX Does timer_init have to be called from the I/O thread? */
     uv_timer_init( crcl(io_loop), &thread->timer_req );
     // XXX thread->start_time = 0.0;
