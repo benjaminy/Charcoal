@@ -983,16 +983,16 @@ class globals_visitor = object(self)
                                       yielding = yielding.C.svar}
          in
          (* "p" before "y" *)
+         let () =
+           let e f = C.Lval( C.var( f.C.svar ) ) in
+           add_fn_translation orig_var ( e unyielding ) ( e prologue ) ( e epilogueB )
+         in
          let p  = make_prologue     prologue frame_info yielding.C.sformals in
          let y  = make_yielding     yielding frame_info in
          let u  = make_unyielding unyielding frame_info in
          let eA = make_epilogueA   epilogueA frame_info in
          let eB = make_epilogueB   epilogueB frame_info in
          let i  = make_indirect     original frame_info in
-         let () =
-           let e f = C.Lval( C.var( f.C.svar ) ) in
-           add_fn_translation orig_var ( e u ) ( e p ) ( e eB )
-         in
          let decls = L.map ( fun f -> C.GVarDecl( f.C.svar, loc ) )
                            [ y; u; eA; p; eB; i ]
          in
