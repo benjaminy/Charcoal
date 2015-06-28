@@ -641,7 +641,7 @@ unary_expression:   /*(* 6.5.3 *)*/
                         {ACTIVATE (fst $3, $5, RETURN (smooth_expression (fst $6), snd $6)), $1}
 |               ACTIVATE LBRACE cast_expression RBRACE var_list_opt statement
                         {ACTIVATE (fst $3, $5, $6), $1}
-|               UNYIELDING { UNARY( PLUS, CONSTANT( CONST_INT "0" ) ), $1 (* XXX *) }
+|               UNYIELDING cast_expression { UNARY( PLUS, CONSTANT( CONST_INT "0" ) ), $1 (* XXX *) }
 |               SYNCHRONIZED paren_comma_expression statement { (* XXX I guess this has to be translated later because of escaping *)
            GNU_BODY{ blabels=[]; battrs=[];
                      bstmts=[

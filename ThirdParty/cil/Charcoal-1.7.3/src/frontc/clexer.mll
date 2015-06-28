@@ -156,7 +156,7 @@ let init_lexicon _ =
       (*** Begin Charcoal keywords ***)
       ("activate",       fun loc -> dbgToken( ACTIVATE     loc ) );
       ("yield",          fun loc -> dbgToken( YIELD        loc ) );
-      ("unyielding",     fun loc -> dbgToken( UNYIELDING   loc ) );
+      ("no_yield",       fun loc -> dbgToken( UNYIELDING   loc ) );
       ("synchronized",   fun loc -> dbgToken( SYNCHRONIZED loc ) );
       ("for_no_yield",   fun loc -> dbgToken( FOR_NY       loc ) );
       ("while_no_yield", fun loc -> dbgToken( WHILE_NY     loc ) );
