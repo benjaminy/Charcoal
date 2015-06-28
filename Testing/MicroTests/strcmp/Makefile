@@ -13,8 +13,6 @@ CFLAGS+= -O2
 clean:
 	rm -f $(BUILD_DIR)/*
 
-baseline_strcmp: $(BUILD_DIR)/baseline_strcmp
-
 $(BUILD_DIR)/baseline_strcmp: baseline_strcmp.c
 	$(CC) $(CFLAGS) -o $@ $<
 

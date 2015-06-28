@@ -52,7 +52,7 @@ __charcoal_fn_yielding_my_strcmp:
 	.size	__charcoal_fn_yielding_my_strcmp, .-__charcoal_fn_yielding_my_strcmp
 
 
-no-yield: (Why is this different from plain C?)
+no-yield: (Why is this different from plain C? A: Because of locals)
 
 .L8:
 	addq	$1, %rax
