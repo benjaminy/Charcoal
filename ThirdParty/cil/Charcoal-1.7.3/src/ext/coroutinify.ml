@@ -564,110 +564,19 @@ let coroutinify_return fdec rval_opt loc frame =
   let return_stmt = C.mkStmt( C.Return( Some( C.Lval caller ), loc ) ) in
   C.ChangeTo( C.mkStmt( C.Block( C.mkBlock[ call; return_stmt ] ) ) )
 
-
-class coroutinifyYieldingVisitor fdec locals frame = object(self)
-  inherit C.nopCilVisitor
-
-  (* Translate uses of local variables from:
-   *     x
-   * to:
-   *     locals->x
-   *)
-  (* It's tempting to use vvrbl, because we're only interested in uses
-   * of locals.  However, we need to replace them with a more complex
-   * lval, so we need the method that lets us return lvals. *)
-  method vlval( lhost, offset ) =
-    match lhost with
-      C.Var v ->
-      let () = trc
-          (Pretty.dprintf "Replace local var? %a %d\n" C.d_lval ( C.var v ) v.C.vid )
-      in
-      ( match IH.tryfind locals v.C.vid with
-          Some l -> let () = Pf.printf "  ...Yup\n" in change_do_children ( l offset )
-        | None -> let () = Pf.printf "  ...Nope\n" in C.DoChildren )
-    (* We can ignore the Mem case because we'll get it later in the visit *)
-    | _ -> C.DoChildren
-
-  (* It's tempting to use vinstr for calls.  However, we need to replace
-   * them with a sequence that has returns and labels, so we need the
-   * method that lets us return statements. *)
-  method vstmt s =
-    let is_not_call i =
-      match i with
-        C.Call _ -> false
-      | _ -> true
-    in
-
-    match s.C.skind with
-      (C.Instr instrs) ->
-      if L.for_all is_not_call instrs then
-        C.DoChildren
-      else
-        let coroutinify_call_here =
-          coroutinify_call ( self :> C.cilVisitor ) fdec frame
-        in
-        let stmts = L.concat( L.map coroutinify_call_here instrs ) in
-        C.ChangeTo( C.mkStmt( C.Block( C.mkBlock stmts ) ) )
-
-    | ( C.Return( rval_opt, loc ) ) ->
-       let x = opt_map ( C.visitCilExpr ( self :> C.cilVisitor ) ) rval_opt in
-       coroutinify_return fdec x loc frame
-
-    | _ -> C.DoChildren
-end
-
-(* Translate:
- *     rt f( p1, p2, p3 ) { ... }
+(* Translate uses of local variables from:
+ *     x
  * to:
- *     frame_p __yielding_f( frame_p frame )
- *     {
- *         __locals_f *locals = &locals_cast( frame );
- *         if( frame->return_addr )
- *             goto frame->return_addr;
- *         coroutinify( ... )
- *     }
+ *     locals->x
  *)
-
-(* XXX There's probably a bug because we introduce new locals after making
- * the locals struct *)
-(* XXX Or maybe there's not a bug.  Maybe none of the locals introduced by
- * coroutinification are live across calls. *)
-(* XXX Also we should only allocate struct space for locals that are live
- * across returns.  Others can just be regular locals. *)
-(* XXX Also some day we can do register allocation style optimizations to
- * share slots in the locals struct *)
-let make_yielding yielding frame_info_spec =
-  let () = Pf.printf "make_yielding %s\n" yielding.C.svar.C.vname in
-  let fdef_loc = yielding.C.svar.C.vdecl in
-  let () =
-    let ( _, ps, va, attrs ) = getTFunInfo yielding.C.svar.C.vtype "Yield" in
-    yielding.C.svar.C.vtype <-
-      C.TFun( frame_info_spec.typ_ptr, ps, va, attrs )
-  in
-  let () = C.setFormals yielding [] in
-  let () = yielding.C.slocals <- [] in
-  let this = C.makeFormalVar yielding "frame" frame_info_spec.typ_ptr in
-  let frame_info = {
-      frame_info_spec with lval = C.var this;
-                           exp = C.Lval( C.var this ); }
-  in
-  let ( locals_tbl, locals_init ) =
-    let locals = C.var( C.makeTempVar yielding ~name:"locals" frame_info.locals_type ) in
-    let locals_val = C.AddrOf( frame_info.locals_sel( C.var this ) ) in
-    let locals_init_instr = C.Set( locals, locals_val, fdef_loc ) in
-    let locals_init = C.mkStmt( C.Instr[ locals_init_instr ] ) in
-    ( frame_info.locals( C.Lval( locals ) ), locals_init )
-  in
-  let goto_stmt =
-    let ret_addr_field = C.Lval( frame_info.return_addr_sel( C.Lval( C.var this ) ) ) in
-    let empty_block = C.mkBlock( [ C.mkEmptyStmt() ] ) in
-    let goto = C.mkStmt( C.ComputedGoto( ret_addr_field, fdef_loc ) ) in
-    C.mkStmt( C.If( ret_addr_field, C.mkBlock( [ goto ] ), empty_block, fdef_loc ) )
-  in
-  let v = new coroutinifyYieldingVisitor yielding locals_tbl frame_info in
-  let y = C.visitCilFunction v yielding in
-  let () = y.C.sbody.C.bstmts <- locals_init :: goto_stmt :: y.C.sbody.C.bstmts in
-  y
+let coroutinify_local_var locals lhost offset =
+  match lhost with
+    C.Var v ->
+    ( match IH.tryfind locals v.C.vid with
+        Some l -> change_do_children ( l offset )
+      | None -> C.DoChildren )
+  (* We can ignore the Mem case because we'll get it later in the visit *)
+  | _ -> C.DoChildren
 
 (*
  * Translate:
@@ -702,8 +611,38 @@ let unyielding_activate params fdec loc frame =
   in
   [ prologue_call; activate_call ]
 
+let unyielding_indirect_call lval f ps loc =
+  let lval_param = match lval with
+      None   -> C.zero
+    | Some l -> C.AddrOf l
+  in
+  change_do_children[ C.Call( None, f, C.zero::C.zero::lval_param::ps, loc ) ]
+
+let unyielding_call i fdec frame =
+  match i with
+    C.Call( lval_opt, ( C.Lval( C.Var fname, C.NoOffset ) as f), params, loc )
+       when exp_is_charcoal_fn f ->
+    if fname.C.vid = frame.act_intermed.C.vid then
+      change_do_children( unyielding_activate params fdec loc frame )
+    else if fname.C.vid = frame.yield.C.vid then
+      change_do_children(
+          match lval_opt with
+            None -> []
+          | Some lval -> [ C.Set( lval, C.zero, loc ) ] )
+    else
+      (match lookup_fn_translation fname with
+         Some( u, _ , _ ) ->
+         change_do_children[ C.Call( lval_opt, u, params, loc ) ]
+       | None -> unyielding_indirect_call lval_opt f params loc )
+
+  (* Indirect call: *)
+  | C.Call( lval_opt, fn, params, loc ) when exp_is_charcoal_fn fn ->
+     unyielding_indirect_call lval_opt fn params loc
+
+  | _ -> C.DoChildren
+
 (* In the body of f, change calls to unyielding versions *)
-class coroutinifyUnyieldingVisitor fdec frame_info = object(self)
+class coroutinifyUnyieldingVisitor fdec frame = object(self)
   inherit C.nopCilVisitor
 
   method vexpr e = match e with
@@ -711,37 +650,142 @@ class coroutinifyUnyieldingVisitor fdec frame_info = object(self)
       change_do_children exp
     | _ -> C.DoChildren
 
-  method indirect_call lval f ps loc =
-    let lval_param = match lval with
-        None   -> C.zero
-      | Some l -> C.AddrOf l
-    in
-    C.ChangeTo[ C.Call( None, f, C.zero::C.zero::lval_param::ps, loc ) ]
+  method vinst i = unyielding_call i fdec frame
+
+  method vstmt s =
+    match s.C.skind with
+      C.NoYieldStmt( b, _ ) -> change_do_children( C.mkStmt( C.Block b ) )
+    | _ -> C.DoChildren
+end
+
+class coroutinifyYieldingVisitor fdec locals frame = object(self)
+  inherit C.nopCilVisitor
+
+  val mutable no_yield_depth = []
+
+  method yielding_mode () = no_yield_depth = []
+
+  (* It's tempting to use vvrbl, because we're only interested in uses
+   * of locals.  However, we need to replace them with a more complex
+   * lval, so we need the method that lets us return lvals. *)
+  method vlval( lhost, offset ) =
+    coroutinify_local_var locals lhost offset
+
+  method vexpr e = match e with
+      C.UnOp( C.NoYield, exp, _ (* Could type matter? *) ) ->
+      let () = no_yield_depth <- ()::no_yield_depth in
+      let dumb_post x =
+        let () = match no_yield_depth with
+            _ :: d -> no_yield_depth <- d
+          | _ -> E.s( E.bug "2907456370" )
+        in
+        x
+      in
+      C.ChangeDoChildrenPost( exp, dumb_post )
+    | _ -> C.DoChildren
 
   method vinst i =
-    match i with
-      C.Call( lval_opt, ( C.Lval( C.Var fname, C.NoOffset ) as f), params, loc )
-         when exp_is_charcoal_fn f ->
-      if fname.C.vid = frame_info.act_intermed.C.vid then
-        C.ChangeTo( unyielding_activate params fdec loc frame_info )
-      else if fname.C.vid = frame_info.yield.C.vid then
-        C.ChangeTo(
-            match lval_opt with
-              None -> []
-            | Some lval -> [ C.Set( lval, C.zero, loc ) ] )
+    if self#yielding_mode() then
+      C.DoChildren
+    else
+      unyielding_call i fdec frame
+
+  (* It's tempting to use vinstr for calls.  However, we need to replace
+   * them with a sequence that has returns and labels, so we need the
+   * method that lets us return statements. *)
+  method vstmt s =
+    let is_not_call i =
+      match i with
+        C.Call _ -> false
+      | _ -> true
+    in
+
+    match s.C.skind with
+      (C.Instr instrs) ->
+      if L.for_all is_not_call instrs then
+        C.DoChildren
+      else if self#yielding_mode() then
+        let coroutinify_call_here =
+          coroutinify_call ( self :> C.cilVisitor ) fdec frame
+        in
+        let stmts = L.concat( L.map coroutinify_call_here instrs ) in
+        C.ChangeTo( C.mkStmt( C.Block( C.mkBlock stmts ) ) )
       else
-        (match lookup_fn_translation fname with
-           Some( u, _ , _ ) ->
-           C.ChangeTo[ C.Call( lval_opt, u, params, loc ) ]
-         | None -> self#indirect_call lval_opt f params loc )
+        C.DoChildren
 
-      (* Indirect call: *)
-    | C.Call( lval_opt, fn, params, loc )
-         when exp_is_charcoal_fn fn ->
-       self#indirect_call lval_opt fn params loc
+    | ( C.Return( rval_opt, loc ) ) ->
+       let x = opt_map ( C.visitCilExpr ( self :> C.cilVisitor ) ) rval_opt in
+       coroutinify_return fdec x loc frame
 
-    | _ -> C.SkipChildren
+    | C.NoYieldStmt( body, loc ) ->
+       let () = no_yield_depth <- ()::no_yield_depth in
+       let dumb_post x =
+         let () = match no_yield_depth with
+             _ :: d -> no_yield_depth <- d
+           | _ -> E.s( E.bug "2907456370" )
+         in
+         x
+       in
+       C.ChangeDoChildrenPost( C.mkStmt( C.Block( body ) ), dumb_post )
+
+    | _ -> C.DoChildren
 end
+
+(* Translate:
+ *     rt f( p1, p2, p3 ) { ... }
+ * to:
+ *     frame_p __yielding_f( frame_p frame )
+ *     {
+ *         __locals_f *locals = &locals_cast( frame );
+ *         if( frame->return_addr )
+ *             goto frame->return_addr;
+ *         coroutinify( ... )
+ *     }
+ *)
+
+(* XXX There's probably a bug because we introduce new locals after making
+ * the locals struct *)
+(* XXX Or maybe there's not a bug.  Maybe none of the locals introduced by
+ * coroutinification are live across calls. *)
+(* XXX Also we should only allocate struct space for locals that are live
+ * across returns.  Others can just be regular locals. *)
+(* XXX Also some day we can do register allocation style optimizations to
+ * share slots in the locals struct *)
+let make_yielding yielding frame_info_spec =
+  let () = Pf.printf "make_yielding %s\n" yielding.C.svar.C.vname in
+  let () =
+    trc( Pretty.dprintf "%a\n" C.d_block yielding.C.sbody )
+  in
+  let fdef_loc = yielding.C.svar.C.vdecl in
+  let () =
+    let ( _, ps, va, attrs ) = getTFunInfo yielding.C.svar.C.vtype "Yield" in
+    yielding.C.svar.C.vtype <-
+      C.TFun( frame_info_spec.typ_ptr, ps, va, attrs )
+  in
+  let () = C.setFormals yielding [] in
+  let () = yielding.C.slocals <- [] in
+  let this = C.makeFormalVar yielding "frame" frame_info_spec.typ_ptr in
+  let frame_info = {
+      frame_info_spec with lval = C.var this;
+                           exp = C.Lval( C.var this ); }
+  in
+  let ( locals_tbl, locals_init ) =
+    let locals = C.var( C.makeTempVar yielding ~name:"locals" frame_info.locals_type ) in
+    let locals_val = C.AddrOf( frame_info.locals_sel( C.var this ) ) in
+    let locals_init_instr = C.Set( locals, locals_val, fdef_loc ) in
+    let locals_init = C.mkStmt( C.Instr[ locals_init_instr ] ) in
+    ( frame_info.locals( C.Lval( locals ) ), locals_init )
+  in
+  let goto_stmt =
+    let ret_addr_field = C.Lval( frame_info.return_addr_sel( C.Lval( C.var this ) ) ) in
+    let empty_block = C.mkBlock( [ C.mkEmptyStmt() ] ) in
+    let goto = C.mkStmt( C.ComputedGoto( ret_addr_field, fdef_loc ) ) in
+    C.mkStmt( C.If( ret_addr_field, C.mkBlock( [ goto ] ), empty_block, fdef_loc ) )
+  in
+  let v = new coroutinifyYieldingVisitor yielding locals_tbl frame_info in
+  let y = C.visitCilFunction ( v :> C.cilVisitor ) yielding in
+  let () = y.C.sbody.C.bstmts <- locals_init :: goto_stmt :: y.C.sbody.C.bstmts in
+  y
 
 let make_unyielding unyielding frame_info =
   let v = new coroutinifyUnyieldingVisitor unyielding frame_info in

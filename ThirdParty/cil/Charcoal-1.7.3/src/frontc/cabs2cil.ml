@@ -3291,6 +3291,7 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
                  not (isFunctionType vi.vtype) && 
                  not (isArrayType vi.vtype)then
                 E.s (error "variable appears in constant"); *)
+
               finishExp empty (Lval(var vi)) vi.vtype
           | EnvEnum (tag, typ), _ ->
               if !Cil.lowerConstants then 
@@ -3853,16 +3854,10 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
 
     | A.UNARY( NOYIELD, e ) ->
        let ( se, e', t ) = doExp asconst e ( AExp None ) in
-       finishExp se ( UnOp( NoYield, e', t ) ) t
-    (*
-
-       let () = currentLoc := convLoc loc in
-       let ch = doStatement body in
-       let () = if ch.cases <> [] then E.s (unimp "no_yield cases???") in
-       let ny = mkStmt( NoYieldStmt( c2block ch, !currentLoc ) ) in
-       { stmts=[ ny ]; postins=[]; cases=[] }
-
-*)
+       let () = if se.cases <> [] then E.s (unimp "no_yield cases???") in
+       let ny = mkStmt( NoYieldStmt( c2block se, !currentLoc ) ) in
+       let se' = { stmts=[ ny ]; postins=[]; cases=[] } in
+       finishExp se' ( UnOp( NoYield, e', t ) ) t
 
     | A.BINARY(A.ASSIGN, e1, e2) -> begin
         match e1 with 
