@@ -227,6 +227,7 @@ and statement =
    (** MS SEH *)
  | TRY_EXCEPT of block * expression * block * cabsloc
  | TRY_FINALLY of block * block * cabsloc
+ | NOYIELD_STMT of statement * cabsloc
  
 and for_clause = 
    FC_EXP of expression

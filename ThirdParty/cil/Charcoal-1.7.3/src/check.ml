@@ -811,7 +811,12 @@ and checkStmt (s: stmt) =
           checkExpType false e intType;
           checkBlock h
 
-      | Instr il -> List.iter checkInstr il)
+      | Instr il -> List.iter checkInstr il
+
+      | NoYieldStmt( b, l ) ->
+         let () = currentLoc := l in
+         checkBlock b
+    )
     () (* argument of withContext *)
 
 and checkBlock (b: block) : unit = 

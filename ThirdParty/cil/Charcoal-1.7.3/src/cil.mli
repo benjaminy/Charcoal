@@ -1011,7 +1011,8 @@ and stmtkind =
          exception !!!
      *)      
   | TryExcept of block * (instr list * exp) * block * location
-  
+  | NoYieldStmt of block * location
+
 
 (** {b Instructions}. 
  An instruction {!Cil.instr} is a statement that has no local

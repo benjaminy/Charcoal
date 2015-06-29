@@ -326,7 +326,7 @@ object (self)
 
       | NOP _ | COMPUTATION _ | BLOCK _ | SEQUENCE _
       | IF _ | CASE _ | CASERANGE _ | DEFAULT _ | LABEL _
-      | DEFINITION _ -> V.DoChildren
+      | DEFINITION _ | NOYIELD_STMT _ (* XXX ??? *) -> V.DoChildren
 
 end (* insert_shit_class *)
 
@@ -1047,6 +1047,7 @@ statement:
                           if not !Cprint.msvcMode then 
                             parse_error "try/finally in GCC code";
                           TRY_FINALLY (b, h, (*handleLoc*) $1) }
+|   NOYIELD statement {NOYIELD_STMT( $2, (*handleLoc*) $1 ) }
 
 |   error location   SEMICOLON   { (NOP $2)}
 ;

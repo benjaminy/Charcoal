@@ -148,6 +148,9 @@ let oneret (f: Cil.fundec) : unit =
     | ({skind=Block b} as s) :: rests -> 
         s.skind <- Block (scanBlock false b);
         s :: scanStmts mainbody rests
+    | ({skind=NoYieldStmt( b, l )} as s) :: rests ->
+        s.skind <- NoYieldStmt( scanBlock false b, l );
+        s :: scanStmts mainbody rests
     | ({skind=(Goto _ | ComputedGoto _ | Instr _ | Continue _ | Break _ 
                | TryExcept _ | TryFinally _)} as s)
       :: rests -> s :: scanStmts mainbody rests

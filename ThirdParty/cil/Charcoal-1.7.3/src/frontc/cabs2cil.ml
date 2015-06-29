@@ -3854,6 +3854,15 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
     | A.UNARY( NOYIELD, e ) ->
        let ( se, e', t ) = doExp asconst e ( AExp None ) in
        finishExp se ( UnOp( NoYield, e', t ) ) t
+    (*
+
+       let () = currentLoc := convLoc loc in
+       let ch = doStatement body in
+       let () = if ch.cases <> [] then E.s (unimp "no_yield cases???") in
+       let ny = mkStmt( NoYieldStmt( c2block ch, !currentLoc ) ) in
+       { stmts=[ ny ]; postins=[]; cases=[] }
+
+*)
 
     | A.BINARY(A.ASSIGN, e1, e2) -> begin
         match e1 with 
@@ -6100,6 +6109,7 @@ and doDecl (isglobal: bool) : A.definition -> chunk = function
               | Block b -> blockFallsThrough b
               | TryFinally (b, h, _) -> blockFallsThrough h
               | TryExcept (b, _, h, _) -> true (* Conservative *)
+              | NoYieldStmt( b, _ ) -> blockFallsThrough b
             and blockFallsThrough b = 
               let rec fall = function
                   [] -> true
@@ -6147,6 +6157,7 @@ and doDecl (isglobal: bool) : A.definition -> chunk = function
               | Block b -> blockCanBreak b
               | TryFinally (b, h, _) -> blockCanBreak b || blockCanBreak h
               | TryExcept (b, _, h, _) -> blockCanBreak b || blockCanBreak h
+              | NoYieldStmt( b, _ ) -> blockCanBreak b
             and blockCanBreak b = 
               List.exists stmtCanBreak b.bstmts
             in
@@ -6681,6 +6692,13 @@ and doStatement (s : A.statement) : chunk =
           | _ -> E.s (error "Except expression contains too many statements")
         in
         s2c (mkStmt (TryExcept (c2block b', (il', e'), c2block h', loc')))
+
+    | NOYIELD_STMT( body, loc ) ->
+       let () = currentLoc := convLoc loc in
+       let ch = doStatement body in
+       let () = if ch.cases <> [] then E.s (unimp "no_yield cases???") in
+       let ny = mkStmt( NoYieldStmt( c2block ch, !currentLoc ) ) in
+       { stmts=[ ny ]; postins=[]; cases=[] }
 
   with e when continueOnError -> begin
     (ignore (E.log "Error in doStatement (%s)\n" (Printexc.to_string e)));

@@ -703,7 +703,10 @@ struct
                               visit_block
                                 stmt_fun
                                 (visit_block stmt_fun y block1)
-                                block2)
+                                block2
+                          | NoYieldStmt( body, _ ) ->
+                              visit_block stmt_fun y body
+                    )
                     acc
                     blk.bstmts
                 and gather_gotos acc stmt =

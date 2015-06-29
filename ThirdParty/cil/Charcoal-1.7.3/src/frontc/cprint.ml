@@ -716,6 +716,10 @@ and print_statement stat =
       print_block b;
       printl ["__except";"("]; print_expression e; print ")";
       print_block h
+  | NOYIELD_STMT( body, loc ) ->
+      setLoc(loc);
+      printl ["no_yield"];
+      print_substatement body
       
 and print_block blk = 
   new_line();

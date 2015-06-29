@@ -222,7 +222,8 @@ module ForwardsDataFlow =
 
             | Goto _ | ComputedGoto _ | Break _ | Continue _ | If _ 
             | TryExcept _ | TryFinally _ 
-            | Switch _ | Loop _ | Return _ | Block _ -> curr
+            | Switch _ | Loop _ | Return _ | Block _
+            | NoYieldStmt _ -> curr
           in
           currentLoc := get_stmtLoc s.skind;
                 

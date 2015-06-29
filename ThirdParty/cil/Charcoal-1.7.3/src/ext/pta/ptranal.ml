@@ -334,6 +334,7 @@ let rec analyze_stmt (s : stmt ) : unit =
         analyze_block h
     | Break l -> ()
     | Continue l -> ()
+    | NoYieldStmt( b, _ ) -> analyze_block b
 
 
 and analyze_block (b : block ) : unit =
