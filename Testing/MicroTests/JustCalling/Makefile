@@ -13,7 +13,7 @@ TARGETS = hello_world one_activity activate_loop
 clean:
 	rm -f $(BUILD_DIR)/*
 
-CFLAGS+= -g
+CFLAGS+= -O2
 
 all:
 	echo $(BUILD_DIR)

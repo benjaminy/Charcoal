@@ -1,4 +1,6 @@
-int A[ 10 ] = { 4, 0, 3, 5, 6, 7, 2, 1 };
+int A[ 9 ] = { 4, 8, 3, 5, 6, 7, 2, 1, 0 };
+
+#define N 50000000
 
 int f( int n, int x )
 {
@@ -16,5 +18,5 @@ int f( int n, int x )
 
 int main( int argc, char **argv )
 {
-    return f( 100000000, 1 );
+    return f( N, 1 );
 }
