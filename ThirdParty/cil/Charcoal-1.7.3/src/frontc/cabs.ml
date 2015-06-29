@@ -247,6 +247,7 @@ and binary_operator =
 and unary_operator =
     MINUS | PLUS | NOT | BNOT | MEMOF | ADDROF
   | PREINCR | PREDECR | POSINCR | POSDECR
+  | NOYIELD
 
 and expression =
     NOTHING

@@ -512,6 +512,8 @@ and checkExp (isconst: bool) (e: exp) : typ =
           typeMatch tres intType;
           tres
 
+      | UnOp( NoYield, e, tres ) -> checkExpType isconst e tres; tres
+
       | BinOp (bop, e1, e2, tres) -> begin
           let t1 = checkExp isconst e1 in
           let t2 = checkExp isconst e2 in

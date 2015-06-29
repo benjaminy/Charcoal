@@ -547,6 +547,7 @@ and unop =
     Neg                                 (** Unary minus *)
   | BNot                                (** Bitwise complement (~) *)
   | LNot                                (** Logical Not (!) *)
+  | NoYield                             (** No yield *)
 
 (** Binary operations *)
 and binop =
@@ -1811,7 +1812,7 @@ let getParenthLevel (e: exp) =
   | AddrOf(_) -> 30
   | AddrOfLabel(_) -> 30
   | StartOf(_) -> 30
-  | UnOp((Neg|BNot|LNot),_,_) -> 30
+  | UnOp((Neg|BNot|LNot|NoYield),_,_) -> 30
 
                                         (* Lvals *)
   | Lval(Mem _ , _) -> derefStarLevel (* 20 *)                   
@@ -2585,6 +2586,7 @@ and constFold (machdep: bool) (e: exp) : exp =
               Neg -> kintegerCilint tk (neg_cilint ic)
             | BNot -> kintegerCilint tk (lognot_cilint ic)
             | LNot -> if is_zero_cilint ic then one else zero
+            | NoYield -> kintegerCilint tk ic
             end
         | e1c -> UnOp(unop, e1c, tres)
       with Not_found -> e
@@ -2835,6 +2837,7 @@ let d_unop () u =
     Neg -> text "-"
   | BNot -> text "~"
   | LNot -> text "!"
+  | NoYield -> text "no_yield"
 
 let d_binop () b =
   match b with

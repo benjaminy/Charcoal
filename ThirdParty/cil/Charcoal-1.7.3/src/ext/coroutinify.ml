@@ -706,6 +706,11 @@ let unyielding_activate params fdec loc frame =
 class coroutinifyUnyieldingVisitor fdec frame_info = object(self)
   inherit C.nopCilVisitor
 
+  method vexpr e = match e with
+      C.UnOp( C.NoYield, exp, _ (* Could type matter? *) ) ->
+      change_do_children exp
+    | _ -> C.DoChildren
+
   method indirect_call lval f ps loc =
     let lval_param = match lval with
         None   -> C.zero

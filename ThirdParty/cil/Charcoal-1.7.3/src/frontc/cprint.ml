@@ -357,7 +357,8 @@ and get_operator exp =
       | PREINCR -> ("++", 13)
       | PREDECR -> ("--", 13)
       | POSINCR -> ("++", 14)
-      | POSDECR -> ("--", 14))
+      | POSDECR -> ("--", 14)
+      | NOYIELD -> ("no_yield", 15))
   | LABELADDR s -> ("", 16)  (* Like a constant *)
   | BINARY (op, _, _) ->
       (match op with

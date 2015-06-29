@@ -666,6 +666,7 @@ and unop =
     Neg                                 (** Unary minus *)
   | BNot                                (** Bitwise complement (~) *)
   | LNot                                (** Logical Not (!) *)
+  | NoYield                             (** No yield *)
 
 (** Binary operations *)
 and binop =

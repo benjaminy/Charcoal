@@ -3850,7 +3850,11 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
            end
         | _ -> E.s (error "Unexpected operand for suffix ++ or --")
     end
-          
+
+    | A.UNARY( NOYIELD, e ) ->
+       let ( se, e', t ) = doExp asconst e ( AExp None ) in
+       finishExp se ( UnOp( NoYield, e', t ) ) t
+
     | A.BINARY(A.ASSIGN, e1, e2) -> begin
         match e1 with 
           A.COMMA el -> (* GCC extension *)
@@ -5022,7 +5026,7 @@ and doInit
 	  (* ISO 6.7.8 para 14: final NUL added only if no size specified, or
 	   * if there is room for it; btw, we can't rely on zero-init of
 	   * globals, since this array might be a local variable *)
-          if ((isNone leno) or ((String.length s) < (integerArrayLength leno)))
+          if ((isNone leno) || ((String.length s) < (integerArrayLength leno)))
             then ref [init Int64.zero]
             else ref []  
         in
@@ -5084,7 +5088,7 @@ and doInit
 	  (* ISO 6.7.8 para 14: final NUL added only if no size specified, or
 	   * if there is room for it; btw, we can't rely on zero-init of
 	   * globals, since this array might be a local variable *)
-          if ((isNone leno) or ((List.length s) < (integerArrayLength leno)))
+          if ((isNone leno) || ((List.length s) < (integerArrayLength leno)))
             then [init Int64.zero]
             else [])
 (*
@@ -6965,7 +6969,7 @@ object (self)
       name
 
   (* XXX problem with local named main??? *)
-  method vname _ _ ( ( name, ty, attrs, loc ) as cabsname ) =
+  method vname _ _ ( name, ty, attrs, loc ) =
     if name = "main" then
       V.ChangeDoChildrenPost ( ( "__charcoal_application_main", ty, attrs, loc ),
                                fun n -> n )
