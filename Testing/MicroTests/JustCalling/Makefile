@@ -18,34 +18,34 @@ CFLAGS+= -O2
 all:
 	echo $(BUILD_DIR)
 
-$(BUILD_DIR)/just_calling: just_calling.c
+$(BUILD_DIR)/non_rec: non_rec.c
 	$(CC) $(CFLAGS) -o $@ $<
 
 $(BUILD_DIR)/just_calling_rec: just_calling_rec.c
 	$(CC) $(CFLAGS) -o $@ $<
 
-$(BUILD_DIR)/just_calling_coro: just_calling_coro.c
-	$(CC) -O1 -g -o $@ $<
+$(BUILD_DIR)/non_rec_coro: non_rec_coro.c
+	$(CC) $(CFLAGS) -g -o $@ $<
 
-$(BUILD_DIR)/just_calling_coro_goto: just_calling_coro_goto.c
-	$(CC) -O1 -g -o $@ $<
+$(BUILD_DIR)/non_rec_coro_goto: non_rec_coro_goto.c
+	$(CC) $(CFLAGS) -g -o $@ $<
 
-$(BUILD_DIR)/just_calling_final_maybe: just_calling_final_maybe.c
-	$(CC) -O1 -g -o $@ $<
+$(BUILD_DIR)/non_rec_final_maybe: non_rec_final_maybe.c
+	$(CC) $(CFLAGS) -g -o $@ $<
 
-$(BUILD_DIR)/just_calling_coro2: just_calling_coro2.c
-	$(CC) -O1 -g -o $@ $<
+$(BUILD_DIR)/non_rec_coro2: non_rec_coro2.c
+	$(CC) $(CFLAGS) -g -o $@ $<
 
-$(BUILD_DIR)/just_calling_coro3: just_calling_coro3.c
-	$(CC) -O1 -g -o $@ $<
+$(BUILD_DIR)/non_rec_coro3: non_rec_coro3.c
+	$(CC) $(CFLAGS) -g -o $@ $<
 
-$(BUILD_DIR)/just_calling_coro4: just_calling_coro4.c
-	$(CC) -O1 -g -o $@ $<
+$(BUILD_DIR)/non_rec_coro4: non_rec_coro4.c
+	$(CC) $(CFLAGS) -g -o $@ $<
 
-$(BUILD_DIR)/just_calling.class: just_calling.java
-	javac -d $(BUILD_DIR) just_calling.java
+$(BUILD_DIR)/non_rec.class: non_rec.java
+	javac -d $(BUILD_DIR) non_rec.java
 
-$(BUILD_DIR)/just_calling_hs: just_calling.hs
-	ghc -outputdir $(BUILD_DIR) -o $(BUILD_DIR)/just_calling_hs --make just_calling.hs
+$(BUILD_DIR)/non_rec_hs: non_rec.hs
+	ghc -outputdir $(BUILD_DIR) -o $(BUILD_DIR)/non_rec_hs --make non_rec.hs
 
 include $(CRCL_ROOT)/Testing/cil_rules.mk
