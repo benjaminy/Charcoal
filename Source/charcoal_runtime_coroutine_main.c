@@ -99,7 +99,10 @@ static int start_application_main( void )
         return rc;
     }
 
-    crcl(frame_p) main_frame = app_main_prologue( 0, 0, __argc, __argv, __env );
+    /* XXX This is getting a little hacky */
+    crcl(main_activity).oldest_frame.activity = &crcl(main_activity);
+    crcl(frame_p) main_frame = app_main_prologue(
+        &crcl(main_activity).oldest_frame, 0, __argc, __argv, __env );
     if( !main_frame )
     {
         return -3;

@@ -91,13 +91,16 @@ type frame_info =
     typ             : C.typ;
     typ_ptr         : C.typ;
     epilogueB_typ   : C.typ;
+    caller_sel      : C.exp -> C.lval;
     callee_sel      : C.exp -> C.lval;
     return_addr_sel : C.exp -> C.lval;
+    oldest_sel      : C.exp -> C.lval;
     gen_prologue    : C.varinfo;
     gen_epilogueA   : C.varinfo;
     gen_epilogueB   : C.varinfo;
     activate        : C.varinfo;
     act_intermed    : C.varinfo;
+    activity_init   : C.varinfo;
     yield           : C.varinfo;
     yield_impl      : C.exp;
     (* function-specific *)
@@ -109,6 +112,8 @@ type frame_info =
     epilogueB       : C.varinfo;
     yielding        : C.varinfo;
     locals          : C.exp -> ( ( C.offset -> C.lval ) IH.t );
+    ret_type        : C.typ;
+    param_types     : ( string * C.typ * C.attributes ) list;
     (* context-specific *)
     lval            : C.lval;
     exp             : C.exp;
@@ -199,10 +204,10 @@ let make_specific fdec fname frame_info =
        in
        ( C.TComp( ci, [(*attrs*)] ), locals_gen, [ C.GCompTag( ci, fdef_loc ) ] )
   in
-  let return_type =
+  let return_type, real_return_type, param_types =
     match fname.C.vtype with
-      C.TFun( C.TVoid _, _, _, _ ) -> unit_type
-    | C.TFun( r, _, _, _ ) -> r
+      C.TFun( C.TVoid _ as r, ps, _, _ ) -> unit_type, r, ps
+    | C.TFun( r, ps, _, _ ) -> r, r, ps
     | _ -> E.s( E.error "Function with non-function type?!?" )
   in
   let specific =
@@ -339,7 +344,7 @@ let make_epilogueA epilogueA frame =
 
 (* For this function definition:
  *     rt f( p1, p2, p3 ) { ... }
- * Generate this after-return:
+ * Generate this epilogueB:
  *     void __epilogueB_f( frame_p frame, rt *lhs )
  *     {
  *         /* Order is important because generic frees the callee */
@@ -385,7 +390,8 @@ let make_epilogueB epilogueB frame =
  * Translate:
  *     __activate_intermediate( act, fn, p1, p2, p3 );
  * to:
- *     act_frame = __prologue_fn( 0, 0, p1, p2, p3 );
+ *     __activity_init( act );
+ *     act_frame = __prologue_fn( &act->oldest, 0, p1, p2, p3 );
  *     return __activate( frame, &__return_N, act, act_frame, __epilogueB_fn XXX );
  *   __return_N:
  *)
@@ -404,28 +410,32 @@ let coroutinify_activate params fdec loc frame =
                              C.d_lval( C.var v ) ) )
     | _ -> E.s( E.bug "Activate entry exp is not a variable! %a" C.d_exp entry_fn )
   in
-  let after_return =
+  let after_act =
     let r = C.mkStmt( C.Block( C.mkBlock [] ) ) in
     let () = r.C.labels <- [ fresh_return_label loc ] in
     r
   in
   let act_frame = C.var( C.makeTempVar fdec ~name:"act_frame" frame.typ_ptr ) in
+  let init_call =
+    C.Call( None, C.Lval( C.var( frame.activity_init ) ), [ act ], loc )
+  in
   let prologue_call =
-    let ps = C.zero::C.zero::real_params in
+    let ps = ( C.AddrOf( frame.oldest_sel( act ) ) )::C.zero::real_params in
     C.Call( Some act_frame, prologue, ps, loc )
   in
   let next_frame = C.var( C.makeTempVar fdec ~name:"next_frame" frame.typ_ptr ) in
   let activate_call =
-    let ps = [ frame.exp; C.AddrOfLabel( ref after_return ); act;
+    let ps = [ frame.exp; C.AddrOfLabel( ref after_act ); act;
                C.Lval act_frame; epilogueB ] in
     C.Call( Some next_frame, C.Lval( C.var frame.activate ), ps, loc )
   in
   let return_next_frame = C.mkStmt( C.Return( Some( C.Lval next_frame ), loc ) )  in
-  let p, a =
+  let i, p, a =
+    C.mkStmt( C.Instr( [ init_call ] ) ),
     C.mkStmt( C.Instr( [ prologue_call ] ) ),
     C.mkStmt( C.Instr( [ activate_call ] ) )
   in
-  [ p; a; return_next_frame; after_return ]
+  [ i; p; a; return_next_frame; after_act ]
 
 
 (* Translate direct calls from:
@@ -443,7 +453,11 @@ let coroutinify_activate params fdec loc frame =
  *     exp( frame, null, &lhs );
  *
  *)
-
+(*
+ * TODO: experiment with translating the after-return to
+ *     lhs = (ret type)frame->callee->_.R;
+ *     free( frame->callee );
+ *)
 type dir_indir =
     CActivate
   | CYield
@@ -553,16 +567,37 @@ let coroutinify_call visitor fdec frame instr =
  *
  * Prereq: exp should be coroutinified already
  *)
+(*
+ * Experimenting with not calling epilogue functions
+ * Translate returns from:
+ *     return exp;
+ * to:
+ *     return_cast( frame ) = exp;
+ *     return frame->caller;
+ *
+ * Prereq: exp should be coroutinified already
+*)
 let coroutinify_return fdec rval_opt loc frame =
-  let caller = C.var( C.makeTempVar fdec ~name:"caller" frame.typ_ptr ) in
-  let params = match rval_opt with
-      None ->   [ frame.exp ]
-    | Some e -> [ frame.exp; e ]
-  in
-  let ep = C.Lval( C.var frame.epilogueA ) in
-  let call = C.mkStmt( C.Instr[ C.Call( Some caller, ep, params, loc ) ] ) in
-  let return_stmt = C.mkStmt( C.Return( Some( C.Lval caller ), loc ) ) in
-  C.ChangeTo( C.mkStmt( C.Block( C.mkBlock[ call; return_stmt ] ) ) )
+  if false then
+    let set_return_val = match rval_opt with
+        None -> []
+      | Some e ->
+         let set_rv = C.Set( frame.return_sel frame.lval, e, loc ) in
+         [ C.mkStmt( C.Instr( [ set_rv ] ) ) ]
+    in
+    let caller = C.Lval( frame.caller_sel( C.Lval frame.lval ) ) in
+    let return_stmt = [ C.mkStmt( C.Return( Some( caller ), loc ) ) ] in
+    C.ChangeTo( C.mkStmt( C.Block( C.mkBlock( set_return_val @ return_stmt ) ) ) )
+  else
+    let caller = C.var( C.makeTempVar fdec ~name:"caller" frame.typ_ptr ) in
+    let params = match rval_opt with
+        None ->   [ frame.exp ]
+      | Some e -> [ frame.exp; e ]
+    in
+    let ep = C.Lval( C.var frame.epilogueA ) in
+    let call = C.mkStmt( C.Instr[ C.Call( Some caller, ep, params, loc ) ] ) in
+    let return_stmt = C.mkStmt( C.Return( Some( C.Lval caller ), loc ) ) in
+    C.ChangeTo( C.mkStmt( C.Block( C.mkBlock[ call; return_stmt ] ) ) )
 
 (* Translate uses of local variables from:
  *     x
@@ -800,7 +835,7 @@ let make_unyielding unyielding frame_info =
  * NOTE: This function can be called in three different contexts:
  *   - unyielding mode (indicated by caller == NULL)
  *   - yielding mode prologue (indicated by ret != NULL)
- *   - yielding mode after return (neither of the above cases)
+ *   - yielding mode epilogueB (neither of the above cases)
  *
  *     frame_p __indirect_f( frame_p caller, void *ret, rt *lhs, struct *ps )
  *     {
@@ -879,15 +914,11 @@ let make_indirect original frame_info =
 
 (* When we find the definition of the generic frame type, examine it and
  * record some stuff. *)
-let examine_frame_t_struct ci dummy_var =
-  let dummy_lval  = ( C.Var dummy_var, C.NoOffset ) in
-  let dummy_exp   = C.zero in
-  let dummy_type  = C.voidType in
+let examine_activity_t_struct ci frame_info =
 
-  let _, s, r, ce =
-    let ar, sr, ra, cer = ref None, ref None, ref None, ref None in
-    let fields = [ ( "activity", ar ); ( "specific", sr );
-                   ( "return_addr", ra ); ( "callee", cer ); ] in
+  let old =
+    let oldr = ref None in
+    let fields = [ ( "oldest_frame", oldr ); ] in
     let extract field =
       let find_field ( name, field_ref ) =
         if field.C.fname = name then
@@ -896,8 +927,37 @@ let examine_frame_t_struct ci dummy_var =
       L.iter find_field fields
     in
     let () = L.iter extract ci.C.cfields in
-    match ( !ar, !sr, !ra, !cer ) with
-      Some a, Some s, Some r, Some ce -> a, s, r, ce
+    match !oldr with
+      Some old -> old
+    | _ -> E.s( E.error "frame struct missing fields?!?" )
+  in
+  { frame_info with
+    oldest_sel = ( fun e -> ( C.Mem e, C.Field( old, C.NoOffset ) ) );
+  }
+
+(* When we find the definition of the generic frame type, examine it and
+ * record some stuff. *)
+let examine_frame_t_struct ci dummy_var =
+  let dummy_lval  = ( C.Var dummy_var, C.NoOffset ) in
+  let dummy_exp   = C.zero in
+  let dummy_type  = C.voidType in
+
+  let _, s, r, ce, cr =
+    let ar, sr, ra, cer, crr =
+      ref None, ref None, ref None, ref None, ref None in
+    let fields = [ ( "activity", ar ); ( "specific", sr );
+                   ( "return_addr", ra ); ( "callee", cer );
+                   ( "caller", crr ); ] in
+    let extract field =
+      let find_field ( name, field_ref ) =
+        if field.C.fname = name then
+          field_ref := Some field
+      in
+      L.iter find_field fields
+    in
+    let () = L.iter extract ci.C.cfields in
+    match ( !ar, !sr, !ra, !cer, !crr ) with
+      Some a, Some s, Some r, Some ce, Some cr -> a, s, r, ce, cr
     | _ -> E.s( E.error "frame struct missing fields?!?" )
   in
   let specific_cast specific_type frame =
@@ -921,13 +981,16 @@ let examine_frame_t_struct ci dummy_var =
     typ             = frame_typ;
     typ_ptr         = frame_ptr_typ;
     epilogueB_typ   = epilogueB_typ;
-    callee_sel      = ( fun e -> ( C.Mem e, C.Field( ce, C.NoOffset ) ) );
-    return_addr_sel = ( fun e -> ( C.Mem e, C.Field( r, C.NoOffset ) ) );
+    caller_sel      = ( fun e -> ( C.Mem e, C.Field( cr,  C.NoOffset ) ) );
+    callee_sel      = ( fun e -> ( C.Mem e, C.Field( ce,  C.NoOffset ) ) );
+    return_addr_sel = ( fun e -> ( C.Mem e, C.Field( r,   C.NoOffset ) ) );
+    oldest_sel      = ( fun e -> ( C.Mem e, C.Field( cr , C.NoOffset ) ) );
     gen_prologue    = dummy_var;
     gen_epilogueA   = dummy_var;
     gen_epilogueB   = dummy_var;
     activate        = dummy_var;
     act_intermed    = dummy_var;
+    activity_init   = dummy_var;
     yield           = dummy_var;
     yield_impl      = dummy_exp;
     (* function-specific *)
@@ -939,6 +1002,8 @@ let examine_frame_t_struct ci dummy_var =
     epilogueA       = dummy_var;
     epilogueB       = dummy_var;
     locals          = ( fun _ -> IH.create 0 );
+    ret_type        = dummy_type;
+    param_types     = [];
     (* context-specific *)
     lval            = dummy_lval;
     exp             = C.zero;
@@ -959,15 +1024,20 @@ class globals_visitor = object(self)
 
   val mutable frame_opt = None
   val mutable frame_struct = None
+  val mutable activity_struct = None
 
   (* If we have encountered the def of crcl(frame_t), extract its fields. *)
   method fill_in_frame v =
-    match ( frame_opt, frame_struct ) with
-      ( None, None ) -> ()
-    | ( None, Some ci ) ->
-       let () = frame_opt <- Some( examine_frame_t_struct ci v ) in
-       frame_struct <- None
-    | ( Some frame_info, None ) ->
+    match ( frame_opt, frame_struct, activity_struct ) with
+      ( None, Some fci, Some aci ) ->
+      let frame_info = examine_frame_t_struct fci v in
+      let frame_info = examine_activity_t_struct aci frame_info in
+      let () = frame_opt <- Some( frame_info ) in
+      let () = frame_struct <- None in
+      let () = activity_struct <- None in
+      ()
+    | ( None, _, _ ) -> ()
+    | ( Some frame_info, None, None ) ->
        let name = v.C.vname in
        let () =
          if name = crcl "fn_generic_prologue" then
@@ -978,6 +1048,8 @@ class globals_visitor = object(self)
            frame_opt <- Some{ frame_info with gen_epilogueB = v }
          else if name = crcl "activate_intermediate" then
            frame_opt <- Some{ frame_info with act_intermed = v }
+         else if name = crcl "activity_init" then
+           frame_opt <- Some{ frame_info with activity_init = v }
          else if name = crcl "yield" then
            let () = if not( type_is_charcoal_fn v.C.vtype ) then
                       add_charcoal_linkage_var v
@@ -990,7 +1062,7 @@ class globals_visitor = object(self)
          else ()
        in
        ()
-    | ( Some _, Some _ ) -> E.s( E.error "Too much frame" )
+    | ( Some _, _, _ ) -> E.s( E.error "Too much frame" )
 
   method vglob g =
     let () = let p () = match g with
@@ -1074,6 +1146,9 @@ class globals_visitor = object(self)
        (* let () = Pf.printf "ffv - gct - %s\n" ci.C.cname in *)
        if ci.C.cname = "__charcoal_frame_t" then
          let () = frame_struct <- Some ci in
+         C.DoChildren
+       else if ci.C.cname = "activity_t" then
+         let () = activity_struct <- Some ci in
          C.DoChildren
        else
          C.DoChildren

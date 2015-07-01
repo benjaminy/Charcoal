@@ -523,6 +523,19 @@ static void crcl(report_thread_done)( activity_p a )
 }
 #endif
 
+/*
+ * This function is a kinda hacky solution to a chicken and egg problem.
+ * - The generic prologue function assume's the "caller"'s activity
+ *   field is set properly
+ * - We need to call prologue before activate
+ * - The "caller" in that context is the activity's "oldest_frame"
+ * - The "oldest_frame" is initialized in activate
+ */
+void crcl(activity_init)( activity_p act )
+{
+    act->oldest_frame.activity = act;
+}
+
 /* NOTE: It might make good performance sense to inline all these
  * generic yielding call helper functions.  I'm going to leave that
  * decision to the system for now. */
@@ -530,27 +543,31 @@ static void crcl(report_thread_done)( activity_p a )
  * debugging stuff. */
 
 crcl(frame_p) crcl(fn_generic_prologue)(
-    size_t sz, void *return_ptr, crcl(frame_p) caller, crcl(frame_p) (*fn)( crcl(frame_p) ) )
+    size_t sz,
+    void *return_ptr,
+    crcl(frame_p) caller,
+    crcl(frame_p) (*fn)( crcl(frame_p) ) )
 {
+    /* assert( caller ) */
+    /* assert( caller->activity ) */
+    /* assert( fn ) */
     /* XXX make malloc/free configurable? */
     crcl(frame_p) f = (crcl(frame_p))malloc( sz + sizeof( f[0] ) );
     if( !f )
     {
         /* XXX out-of-memory error */
+        exit( -1 );
     }
-    f->activity    = NULL;
-    f->fn          = fn;
-    f->caller      = caller;
-    f->callee      = NULL;
-    f->return_addr = NULL;
-    // zlog_info( crcl(c), "generic_prologue %p %p\n", caller, caller ? caller->activity : 0 );
-    if( caller )
-    {
-        caller->callee = f;
-        caller->return_addr = return_ptr;
-        f->activity = caller->activity;
-        f->activity->newest_frame = f;
-    }
+    // zlog_info( crcl(c), "generic_prologue %p %p\n",
+    //       caller, caller ? caller->activity : 0 );
+    caller->callee            = f;
+    caller->return_addr       = return_ptr;
+    f->fn                     = fn;
+    f->caller                 = caller;
+    f->callee                 = NULL;
+    f->return_addr            = NULL;
+    f->activity               = caller->activity;
+    f->activity->newest_frame = f;
     return f;
 }
 

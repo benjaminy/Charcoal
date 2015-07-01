@@ -4,10 +4,12 @@
 #ifdef __CHARCOAL_CIL
 /* #pragma cilnoremove("func1", "var2", "type foo", "struct bar") */
 #pragma cilnoremove( "struct __charcoal_frame_t" )
+#pragma cilnoremove( "struct activity_t" )
 #pragma cilnoremove( "__charcoal_fn_generic_prologue" )
 #pragma cilnoremove( "__charcoal_fn_generic_epilogueA" )
 #pragma cilnoremove( "__charcoal_fn_generic_epilogueB" )
 #pragma cilnoremove( "__charcoal_activate" )
+#pragma cilnoremove( "__charcoal_activity_init" )
 #pragma cilnoremove( "__charcoal_yield" )
 #pragma cilnoremove( "__charcoal_yield_impl" )
 #endif
@@ -46,6 +48,14 @@ struct crcl(frame_t)
      *     return type R;
      * } */
     char specific[0];
+/* TODO
+    union {
+        struct {
+            char p[0];
+        } L;
+        char R[0];
+    } specific;
+*/
 };
 
 /* I think the Charcoal type for activities and the C type need to be
@@ -104,6 +114,8 @@ void activate_in_thread(
 
 crcl(frame_p) crcl(activate)( crcl(frame_p), void *,
                     activity_p, crcl(frame_p), crcl(epilogueB_t) );
+
+void crcl(activity_init)( activity_p act );
 
 crcl(frame_p) crcl(activity_blocked)( crcl(frame_p) frame );
 
