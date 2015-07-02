@@ -1,8 +1,8 @@
 #ifndef __CHARCOAL_STD_LIB_H
 #define __CHARCOAL_STD_LIB_H
 
-#include <charcoal_runtime_coroutine.h>
-#include <netdb.h>
+// #include <charcoal_runtime_coroutine.h>
+// #include <netdb.h>
 
 /* Using the C11 API where appropriate */
 

@@ -2,7 +2,7 @@
  * The Charcoal Runtime System
  */
 
-#include <charcoal.h>
+#include <core.h>
 #include <stdbool.h>
 #include <assert.h>
 #include <signal.h>
@@ -330,22 +330,24 @@ crcl(frame_p) crcl(yield_impl)( crcl(frame_p) frm, void *ret_addr ){
 }
 
 /* XXX remove problem!!! */
-int crcl(activity_join)( activity_p a, void *p )
+#if 0
+int wait_activity_done( activity_p a, void *p )
 {
     if( !a )
     {
         return EINVAL;
     }
-    if( a->flags & CRCL(ACTF_DONE) )
+    if( CRCL(CHECK_FLAG)( *a, CRCL(ACTF_DONE) ) )
     {
         return 0;
     }
     activity_p self = crcl(get_self_activity)();
-    // XXX crcl(push_blocked_queue)( CRCL(ACTF_BLOCKED), self, NULL, &a->joining );
-    crcl(push_blocked_queue)( self, NULL );
+    self->snext = a->waiters;
+    a->waiters = self;
     // XXX RET_IF_ERROR( crcl(activity_blocked)( self ) );
     return 0;
 }
+#endif
 
 int crcl(activity_detach)( activity_p a )
 {
@@ -475,6 +477,7 @@ void activate_in_thread(
     activity->yield_calls              = 0;
     activity->newest_frame             = frame;
     activity->snext                    = activity->sprev = NULL;
+    activity->waiters                  = NULL;
     activity->oldest_frame.activity    = activity;
     activity->oldest_frame.fn          = activity_epilogue;
     activity->oldest_frame.caller      = 0;

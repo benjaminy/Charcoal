@@ -1,8 +1,43 @@
-#include <charcoal.h>
-#include <charcoal_std_lib.h>
+#include <standard_library.crclh>
+extern "C" {
 #include <errno.h>
 #include <stdlib.h>
-#include <charcoal_runtime_io_commands.h>
+}
+
+int wait_activity_done( activity_p waitee )
+{
+    if( !waitee )
+        return -EINVAL;
+    /* TODO: More validation? */
+    if( CRCL(CHECK_FLAG)( *waitee, CRCL(ACTF_DONE) ) )
+    {
+        return 0;
+    }
+    if( !crcl(yielding_mode)() )
+    {
+        /* XXX. Deadlock ... unless it's a different thread.  Arg:
+         * terrible thread safety issues */
+        exit( -EDEADLK );
+    }
+    activity_p self = self_activity();
+    self->snext = NULL;
+    if( waitee->waiters_front )
+    {
+        assert( waitee->waiters_back );
+        waitee->waiters_back->snext = self;
+        self->sprev = waitee->waiters_back;
+        waitee->waiters_back = self;
+    }
+    else
+    {
+        assert( !waitee->waiters_front );
+        waitee->waiters_front = waitee->waiters_back = self;
+        self->sprev = NULL;
+    }
+    CRCL_SET_FLAG( *self, CRCL(ACTF_BLOCKED) );
+    crcl(block_self)();
+    return 1;
+}
 
 /*
  * TetraStak

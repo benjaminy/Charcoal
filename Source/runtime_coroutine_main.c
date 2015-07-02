@@ -1,4 +1,4 @@
-#include <charcoal.h>
+#include <core.h>
 
 #include <assert.h>
 #include <charcoal_runtime_coroutine.h>

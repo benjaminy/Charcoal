@@ -1,10 +1,19 @@
 #ifndef __CHARCOAL_RUNTIME_IO_COMMANDS
 #define __CHARCOAL_RUNTIME_IO_COMMANDS
 
-#include <charcoal_runtime_common.h>
+#include <runtime_common.h>
 
 extern uv_loop_t *crcl(io_loop);
 extern uv_async_t crcl(io_cmd);
+
+union crcl(io_response_t)
+{
+    struct
+    {
+        int rc;
+        struct addrinfo *info;
+    } addrinfo;
+};
 
 typedef enum
 {

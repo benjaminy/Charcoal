@@ -1,6 +1,6 @@
 /* XXX Unresolved: use errno or return value for error code? */
 
-#include<charcoal.h>
+#include<core.h>
 #include<charcoal_semaphore.h>
 #include<stdlib.h>
 #include<errno.h>

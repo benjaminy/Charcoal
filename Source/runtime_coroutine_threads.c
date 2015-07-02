@@ -2,7 +2,7 @@
  * This is the thread stuff for the coroutine-based implementation
  */
 
-#include <charcoal.h>
+#include <core.h>
 #include <assert.h>
 #include <stdlib.h>
 #include <charcoal_runtime_coroutine.h>
@@ -120,6 +120,7 @@ static crcl(frame_p) thread_init(
     thread->idle.prev                     = NULL;
     thread->idle.snext                    = NULL;
     thread->idle.sprev                    = NULL;
+    thread->idle.waiters                  = NULL;
     thread->idle.newest_frame             = &thread->idle.oldest_frame;
     thread->idle.yield_calls              = 0;
     thread->idle.oldest_frame.activity    = &thread->idle;

@@ -1,5 +1,5 @@
+#include <core.h>
 #include <assert.h>
-#include <charcoal.h>
 // #include <stdio.h>
 #include <stdlib.h>
 #include <charcoal_runtime_io_commands.h>

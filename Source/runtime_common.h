@@ -18,18 +18,6 @@
 #define __CHARCOAL_THDF_NEVER_RUN  (1 << 2)
 #define __CHARCOAL_THDF_TIMER_ON   (1 << 3)
 
-/* XXX Need to refactor types some day */
-typedef union crcl(io_response_t) crcl(io_response_t);
-
-union crcl(io_response_t)
-{
-    struct
-    {
-        int rc;
-        struct addrinfo *info;
-    } addrinfo;
-};
-
 /* Activity flags */
 #define __CHARCOAL_ACTF_DETACHED    (1 << 0)
 #define __CHARCOAL_ACTF_BLOCKED     (1 << 1)
@@ -53,7 +41,6 @@ int crcl(join_thread)( cthread_p t );
 
 activity_p crcl(get_self_activity)( void );
 void crcl(set_self_activity)( activity_p a );
-int crcl(activity_join)( activity_p, void * );
 int crcl(activity_detach)( activity_p );
 
 int thread_start( cthread_p *thd, void *options );
