@@ -1,30 +1,35 @@
-#ifndef __CHARCOAL_BASE
-#define __CHARCOAL_BASE
+#ifndef __CHARCOAL_CORE
+#define __CHARCOAL_CORE
 
 /* Should be included before absolutely anything else in Charcoal source
  * files. */
 
+#define _opa_inline
+
 #include <stddef.h>
 #include <errno.h>
 #include <uv.h>
-/* I suspect more stuff will find its way in here, but if not maybe
- * refactor this into some other file. */
+#include <opa_primitives.h>
+#include <opa_config.h>
+#include <opa_util.h>
+//#ifndef _opa_inline
+//#define _opa_inline inline
+//#endif
+
 #define crcl(n) __charcoal_ ## n
 #define CRCL(n) __CHARCOAL_ ## n
 
 #define RET_IF_ERROR(cmd) \
-    do { int rc; if( ( rc = cmd ) ) { return rc; } } while( 0 )
-
-#include <runtime_atomics.h>
+    do { int rc; if( 0 > ( rc = cmd ) ) { return rc; } } while( 0 )
 
 /* XXX super annoying name collision on thread_t with Mach header.
  * Look into it more some day. */
-typedef struct          cthread_t           cthread_t,     *cthread_p;
-typedef struct         activity_t          activity_t,    *activity_p;
-typedef struct       crcl(frame_t)       crcl(frame_t), *crcl(frame_p);
+typedef struct    cthread_t     cthread_t,     *cthread_p;
+typedef struct   activity_t    activity_t,    *activity_p;
+typedef struct crcl(frame_t) crcl(frame_t), *crcl(frame_p);
 
 /* The size of a frame is currently 5 pointers (20/40 bytes) plus the
- * function-specific data. */
+ * procedure-specific data. */
 struct crcl(frame_t)
 {
     /* The activity this frame belongs to */
@@ -33,7 +38,7 @@ struct crcl(frame_t)
     /* The code for this frame */
     crcl(frame_p) (*fn)( crcl(frame_p) );
 
-    /* The address to resume execution in the code. If NULL, start at
+    /* The address to resume execution in the code.  If NULL, start at
      * the beginning */
     void *return_addr;
 
@@ -90,63 +95,53 @@ struct activity_t
      * thing-a-ma-jig */
     activity_p waiters_front, waiters_back;
 
-    /* The oldest frame in this activity's call chain.  This is
-     * hard-coded to be a function that handles activity epilogue
-     * stuff. */
-    crcl(frame_t) oldest_frame;
+    /* The oldest and newest frames in this activity's call chain.
+     * NOTE: While an activity is running this might be stale.  It gets
+     * updated when an activity switches for sure. */
+    crcl(frame_p) oldest_frame, newest_frame;
 
-    /* The newest frame in this activity's call chain.  NOTE: While an
-     * activity is running this might be stale.  It gets updated when an
-     * activity switches for sure. */
-    crcl(frame_p) newest_frame;
-
-    /* The function to call to clean up the activity entry function. */
+    /* The procedure to call to finalize the activity entry procedure. */
     void (*epilogue)( crcl(frame_p), void * );
 
     /* Debug and profiling stuff */
     int yield_calls;
-
-    /* Using the variable-sized last field of the struct hack */
-    /* Default size is int so that we can globally allocate the main
-     * activity */
-    char return_value[ sizeof( int ) ];
 };
 
 struct cthread_t
 {
     /* Used??? Should be atomic??? */
-    size_t           tick;
+    size_t      tick;
 
     /* Various status bits */
-    unsigned         flags;
+    unsigned    flags;
 
     /* The system-specific thread object */
-    uv_thread_t      sys;
+    uv_thread_t sys;
 
     /* The indicator that the currently-running activity should yield
      * ASAP. */
-    crcl(atomic_int) interrupt_activity;
+    OPA_int_t   interrupt_activity;
 
     /* For execution quantum expiration */
-    uv_timer_t       timer_req;
+    uv_timer_t  timer_req;
 
     /* The lists of all and ready-to-execute activities */
-    activity_p       activities, ready;
+    activity_p  activities, ready;
 
     /* Thread management mutex and condition variable */
-    uv_mutex_t       thd_management_mtx;
-    uv_cond_t        thd_management_cond;
+    uv_mutex_t  thd_management_mtx;
+    uv_cond_t   thd_management_cond;
 
-    /* The idle activity (for when all activities are blocked) */
-    activity_t       idle;
+    /* The idle activity (for when all activities are waiting) */
+    activity_t  idle;
 
     /* Used??? */
-    unsigned         runnable_activities;
+    unsigned    runnable_activities;
 
     /* Linked list of all threads */
-    cthread_p           next, prev;
+    cthread_p   next, prev;
 };
 
 #define assert_impl(a,b) assert( ( !( a ) ) || ( b ) )
 
-#endif /* __CHARCOAL_BASE */
+#endif /* __CHARCOAL_CORE */

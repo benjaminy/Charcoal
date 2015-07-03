@@ -2,8 +2,9 @@
 extern "C" {
 #include <errno.h>
 #include <stdlib.h>
+#include <runtime_io_commands.h>
 }
-
+#if 0
 int wait_activity_done( activity_p waitee )
 {
     if( !waitee )
@@ -439,5 +440,5 @@ void *once( once_t *o, void *(*proc)( void ) )
     release( o->m );
     return o->val;
 }
-
+#endif
 #endif
