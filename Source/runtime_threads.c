@@ -38,7 +38,7 @@ int thread_start( cthread_p *thread, void *options )
     // ABORT_ON_FAIL( pthread_attr_init( &attr ) );
     /* Because yielding call frames are heap-allocated, the thread's
      * stack only needs to be big enough for the maximum chain of
-     * unyielding calls, which shouldn't be very long.  However, TODO:
+     * no_yield calls, which shouldn't be very long.  However, TODO:
      * this should probably be configurable. */
     // ABORT_ON_FAIL( pthread_attr_setstacksize( &attr, PTHREAD_STACK_MIN ) );
 

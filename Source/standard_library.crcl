@@ -277,7 +277,7 @@ int getaddrinfo_crcl(
     const struct addrinfo *hints,
     struct addrinfo **res )
 {
-    /* XXX if unyielding, just call directly */
+    /* XXX if no_yield, just call directly -- WRONG! interruption!! */
     uv_getaddrinfo_t resolver;
     activity_p self = crcl(get_self_activity)();
     resolver.data = self;

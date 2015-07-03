@@ -366,7 +366,7 @@ void crcl(add_to_waiters)( activity_p waiter, activity_p waitee )
         waitee->waiters_front = waitee->waiters_back = waiter;
         waiter->sprev = NULL;
     }
-    CRCL_SET_FLAG( *waiter, CRCL(ACTF_WAITING) );
+    CRCL(SET_FLAG)( *waiter, CRCL(ACTF_WAITING) );
 }
 
 int crcl(activity_detach)( activity_p a )
@@ -487,6 +487,7 @@ crcl(frame_p) crcl(activity_epilogue)( crcl(frame_p) frame )
 void activate_in_thread(
     cthread_p thread,
     activity_p activity,
+    crcl(frame_p) caller,
     crcl(frame_p) frame,
     crcl(epilogueB_t) epi )
 {
@@ -494,25 +495,23 @@ void activate_in_thread(
     assert( frame );
     assert( thread );
     assert( epi );
+
     zlog_debug( crcl(c), "Activate %p", activity );
+
     activity->thread                   = thread;
     activity->flags                    = 0;
     activity->yield_calls              = 0;
     activity->newest_frame             = frame;
-    activity->snext                    = activity->sprev = NULL;
+    activity->oldest_frame             = frame;
+    activity->snext                    = NULL;
+    activity->sprev                    = NULL;
     activity->waiters_front            = NULL;
     activity->waiters_back             = NULL;
-#if 0
-    XXX
-    activity->oldest_frame.activity    = activity;
-    activity->oldest_frame.fn          = activity_epilogue;
-    activity->oldest_frame.caller      = 0;
-    activity->oldest_frame.callee      = frame;
-    activity->oldest_frame.return_addr = 0;
-#endif
     activity->epilogueB                = epi;
-    frame->caller                      = NULL; // XXX&activity->oldest_frame;
+    frame->caller                      = NULL;
     frame->activity                    = activity;
+    /* Clean up problems created by generic prologue: */
+    caller->activity->newest_frame     = caller;
     uv_mutex_lock( &thread->thd_management_mtx );
     insert_activity_into_thread( activity, thread );
     uv_mutex_unlock( &thread->thd_management_mtx );
@@ -523,8 +522,11 @@ void activate_in_thread(
  * Assume: "f" is the frame returned by the relevant init procedure
  */
 crcl(frame_p) crcl(activate)(
-    crcl(frame_p) caller, void *ret_addr,
-    activity_p activity, crcl(frame_p) frm, crcl(epilogueB_t) epi )
+    crcl(frame_p)     caller,
+    void             *ret_addr,
+    activity_p        activity,
+    crcl(frame_p)     frm,
+    crcl(epilogueB_t) epi )
 {
     assert( !caller == !ret_addr );
     assert( activity );
@@ -532,15 +534,15 @@ crcl(frame_p) crcl(activate)(
     assert( epi );
     zlog_info( crcl(c), "crcl(activate) %p %p\n", caller, caller ? caller->activity : 0 );
     if( caller )
-    { /* Currently in yielding context */
+    {   /* Currently in yielding context */
         caller->return_addr = ret_addr;
         activity_p caller_act = caller->activity;
-        activate_in_thread( caller_act->thread, activity, frm, epi );
+        activate_in_thread( caller_act->thread, activity, caller, frm, epi );
         return switch_from_to( caller_act, activity );
     }
     else
-    { /* Currently in unyielding context */
-        zlog_info( crcl(c), "Activation in unyielding context unimplemented\n" );
+    {   /* Currently in no_yield context */
+        zlog_info( crcl(c), "UNIMP: Activation in no_yield context\n" );
         exit( 1 );
     }
 }

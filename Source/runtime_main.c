@@ -107,7 +107,11 @@ static int start_application_main( void )
     {
         return -3;
     }
-    activate_in_thread( crcl(main_thread), &crcl(main_activity), main_frame,
+    activate_in_thread(
+        crcl(main_thread),
+        &crcl(main_activity),
+        main_frame, /* ??? XXX */
+        main_frame,
         (crcl(epilogueB_t))app_main_epilogueB );
     crcl(push_ready_queue)( &crcl(main_activity), crcl(main_thread) );
     uv_cond_signal( &crcl(main_thread)->thd_management_cond );

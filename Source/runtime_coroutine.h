@@ -23,7 +23,11 @@ crcl(frame_p) crcl(activity_start_resume)( activity_p activity );
 typedef void (*crcl(epilogueB_t))( crcl(frame_p), void * );
 
 void activate_in_thread(
-    cthread_p, activity_p, crcl(frame_p), crcl(epilogueB_t) );
+    cthread_p,
+    activity_p,
+    crcl(frame_p),
+    crcl(frame_p),
+    crcl(epilogueB_t) );
 
 crcl(frame_p) crcl(activate)( crcl(frame_p), void *,
                     activity_p, crcl(frame_p), crcl(epilogueB_t) );
