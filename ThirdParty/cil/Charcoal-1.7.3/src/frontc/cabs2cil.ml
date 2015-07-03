@@ -6744,7 +6744,9 @@ object (self)
           PROTO( ret_ty, params, var_args ) ->
             let single_name_to_name_group( spec, name ) = ( spec, [name] ) in
             List.map single_name_to_name_group params
-        | _ -> E.s (bug "Function with type other than PROTO")
+        | _ ->
+           let () = withCprint ( Cprint.print_decl "foo" ) fun_ty in
+           E.s (bug "Function '%s' with type other than PROTO" name)
       in
       let () = match local_vars with [] -> () | _ ->
         E.s (bug "Function def, but there are already locals")
