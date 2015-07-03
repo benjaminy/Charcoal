@@ -4,23 +4,37 @@
 /* Should be included before absolutely anything else in Charcoal source
  * files. */
 
-#define _opa_inline
+#ifdef __CHARCOAL_CIL
+/* #pragma cilnoremove("func1", "var2", "type foo", "struct bar") */
+#pragma cilnoremove( "struct __charcoal_frame_t" )
+#pragma cilnoremove( "struct activity_t" )
+#endif
 
-#include <stddef.h>
-#include <errno.h>
+#include <atomics_wrappers.h>
 #include <uv.h>
-#include <opa_primitives.h>
-#include <opa_config.h>
-#include <opa_util.h>
-//#ifndef _opa_inline
-//#define _opa_inline inline
-//#endif
 
 #define crcl(n) __charcoal_ ## n
 #define CRCL(n) __CHARCOAL_ ## n
 
 #define RET_IF_ERROR(cmd) \
     do { int rc; if( 0 > ( rc = cmd ) ) { return rc; } } while( 0 )
+
+#define __CHARCOAL_SET_FLAG(x,f)   do { (x).flags |=  (f); } while( 0 )
+#define __CHARCOAL_CLEAR_FLAG(x,f) do { (x).flags &= ~(f); } while( 0 )
+#define __CHARCOAL_CHECK_FLAG(x,f) ( !!( (x).flags & (f) ) )
+
+/* Thread flags */
+#define __CHARCOAL_THDF_IDLE       (1 << 0)
+#define __CHARCOAL_THDF_KEEP_ALIVE (1 << 1) /* even after last activity finishes */
+#define __CHARCOAL_THDF_NEVER_RUN  (1 << 2)
+#define __CHARCOAL_THDF_TIMER_ON   (1 << 3)
+
+/* Activity flags */
+#define __CHARCOAL_ACTF_DETACHED    (1 << 0)
+#define __CHARCOAL_ACTF_WAITING     (1 << 1)
+#define __CHARCOAL_ACTF_READY_QUEUE (1 << 2)
+#define __CHARCOAL_ACTF_REAP_QUEUE  (1 << 3)
+#define __CHARCOAL_ACTF_DONE        (1 << 4)
 
 /* XXX super annoying name collision on thread_t with Mach header.
  * Look into it more some day. */
@@ -87,7 +101,7 @@ struct activity_t
      * possiblities are:
      * - None (Currently executing)
      * - Ready to execute
-     * - Blocked on a particular event */
+     * - Waiting for a particular event */
     activity_p snext, sprev;
 
     /* A list of activities that are waiting for this one to finish. */
@@ -101,7 +115,7 @@ struct activity_t
     crcl(frame_p) oldest_frame, newest_frame;
 
     /* The procedure to call to finalize the activity entry procedure. */
-    void (*epilogue)( crcl(frame_p), void * );
+    void (*epilogueB)( crcl(frame_p), void * );
 
     /* Debug and profiling stuff */
     int yield_calls;
@@ -120,7 +134,7 @@ struct cthread_t
 
     /* The indicator that the currently-running activity should yield
      * ASAP. */
-    OPA_int_t   interrupt_activity;
+    atomic_int  interrupt_activity;
 
     /* For execution quantum expiration */
     uv_timer_t  timer_req;

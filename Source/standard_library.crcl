@@ -4,7 +4,7 @@ extern "C" {
 #include <stdlib.h>
 #include <runtime_io_commands.h>
 }
-#if 0
+
 int wait_activity_done( activity_p waitee )
 {
     if( !waitee )
@@ -35,8 +35,8 @@ int wait_activity_done( activity_p waitee )
         waitee->waiters_front = waitee->waiters_back = self;
         self->sprev = NULL;
     }
-    CRCL_SET_FLAG( *self, CRCL(ACTF_BLOCKED) );
-    crcl(block_self)();
+    CRCL_SET_FLAG( *self, CRCL(ACTF_WAITING) );
+    crcl(wait_for_response)();
     return 1;
 }
 
@@ -124,7 +124,7 @@ void send( channel c, void *data )
         {
             switch_to( c->receiver );
         }
-        block_self();
+        wait_for_response();
         invoke_scheduler();
     }
 }
@@ -179,6 +179,7 @@ int release( mutex m )
     }
 }
 #endif
+#if 0
 /* XXX the semaphore implementation is not thread-safe yet.  Fix
  * eventually. */
 
@@ -216,7 +217,7 @@ int semaphore_incr( semaphore_p s )
     if( s->waiters )
     {
         activity_p a = crcl(pop_special_queue)(
-            CRCL(ACTF_BLOCKED), NULL, &s->waiters );
+            CRCL(ACTF_WAITING), NULL, &s->waiters );
         crcl(push_special_queue)(
             CRCL(ACTF_READY_QUEUE), a, a->thread, NULL );
     }
@@ -233,11 +234,11 @@ int semaphore_decr( semaphore_p s )
     while( s->value < 1 )
     {
         // XXX int rc;
-        crcl(push_special_queue)(CRCL(ACTF_BLOCKED),
+        crcl(push_special_queue)(CRCL(ACTF_WAITING),
             self, NULL, &s->waiters );
 #if 0
         XXX
-        if( ( rc = crcl(activity_blocked)( /* XXX bad cast */(crcl(frame_p))self ) ) )
+        if( ( rc = crcl(activity_waiting)( /* XXX bad cast */(crcl(frame_p))self ) ) )
         {
             return rc;
         }
@@ -248,7 +249,7 @@ int semaphore_decr( semaphore_p s )
     if( s->value > 0 && s->waiters )
     {
         activity_p a = crcl(pop_special_queue)(
-            CRCL(ACTF_BLOCKED), NULL, &s->waiters );
+            CRCL(ACTF_WAITING), NULL, &s->waiters );
         crcl(push_special_queue)(
             CRCL(ACTF_READY_QUEUE), a, a->thread, NULL );
     }
@@ -275,10 +276,10 @@ int semaphore_try_decr( semaphore_p s )
 static int crcl(send_io_cmd)( crcl(io_cmd_t) *cmd, activity_p a )
 {
     enqueue( cmd );
-    a->flags |= CRCL(ACTF_BLOCKED);
+    a->flags |= CRCL(ACTF_WAITING);
     /* XXX Race between the next two lines??? */
     RET_IF_ERROR( uv_async_send( &crcl(io_cmd) ) );
-    // XXX??? RET_IF_ERROR( crcl(activity_blocked)( /* XXX bad cast */(crcl(frame_p))a ) );
+    // XXX??? RET_IF_ERROR( crcl(activity_waiting)( /* XXX bad cast */(crcl(frame_p))a ) );
     return 0;
 }
 

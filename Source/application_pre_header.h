@@ -1,4 +1,3 @@
-#define __CHARCOAL_CIL
 extern "C" {
     #include <core.h>
 }

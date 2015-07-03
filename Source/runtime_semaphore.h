@@ -1,7 +1,7 @@
 #ifndef __CHARCOAL_SEMAPHORE
 #define __CHARCOAL_SEMAPHORE
 
-#include <charcoal_runtime_common.h>
+#include <core_runtime.h>
 
 /*
  * A simple little semaphore library.  Anonymous POSIX semaphores are

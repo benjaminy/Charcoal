@@ -1,8 +1,8 @@
 #include <core.h>
 
 #include <assert.h>
-#include <charcoal_runtime_coroutine.h>
-#include <charcoal_runtime_io_commands.h>
+#include <runtime_coroutine.h>
+#include <runtime_io_commands.h>
 
 /* The Charcoal preprocessor replaces all instances of "main" in
  * Charcoal code with "crcl(replace_main)".  The "real" main is
@@ -100,9 +100,9 @@ static int start_application_main( void )
     }
 
     /* XXX This is getting a little hacky */
-    crcl(main_activity).oldest_frame.activity = &crcl(main_activity);
+    // crcl(main_activity).oldest_frame.activity = &crcl(main_activity);
     crcl(frame_p) main_frame = app_main_prologue(
-        &crcl(main_activity).oldest_frame, 0, __argc, __argv, __env );
+        /*XXX*/crcl(main_activity).oldest_frame, 0, __argc, __argv, __env );
     if( !main_frame )
     {
         return -3;

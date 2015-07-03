@@ -1,7 +1,7 @@
 /* XXX Unresolved: use errno or return value for error code? */
 
 #include<core.h>
-#include<charcoal_semaphore.h>
+#include<runtime_semaphore.h>
 #include<stdlib.h>
 #include<errno.h>
 

@@ -2,8 +2,9 @@
 #include <assert.h>
 // #include <stdio.h>
 #include <stdlib.h>
-#include <charcoal_runtime_io_commands.h>
-#include <charcoal_runtime_coroutine.h>
+#include <runtime_io_commands.h>
+#include <runtime_coroutine.h>
+#include <opa_primitives.h>
 
 uv_loop_t *crcl(io_loop);
 uv_async_t crcl(io_cmd);
@@ -65,7 +66,7 @@ void the_thing( uv_timer_t* handle )
     //            &thd->interrupt_activity, thd->ready );
     CRCL(CLEAR_FLAG)( *thd, CRCL(THDF_TIMER_ON) );
     if( thd->ready )
-        crcl(atomic_store_int)( &thd->interrupt_activity, 1 );
+        OPA_store_int( (OPA_int_t *)&thd->interrupt_activity, 1 );
     uv_mutex_unlock( &thd->thd_management_mtx );
 }
 
@@ -77,7 +78,7 @@ static void crcl(io_cmd_close)( uv_handle_t *h )
 
 static int crcl(wake_up_requester)( activity_p a )
 {
-    a->flags &= ~CRCL(ACTF_BLOCKED);
+    a->flags &= ~CRCL(ACTF_WAITING);
     cthread_p thd = a->thread;
     uv_mutex_lock( &thd->thd_management_mtx );
     crcl(push_special_queue)( CRCL(ACTF_READY_QUEUE), a, thd, NULL );
@@ -90,8 +91,8 @@ static void crcl(getaddrinfo_callback)(
     uv_getaddrinfo_t* req, int status, struct addrinfo* res )
 {
     activity_p a = (activity_p)req->data;
-    a->io_response.addrinfo.rc   = status;
-    a->io_response.addrinfo.info = res;
+    // XXX a->io_response.addrinfo.rc   = status;
+    // XXX a->io_response.addrinfo.info = res;
     /* XXX handle errors? */
     crcl(wake_up_requester)( a );
 }
@@ -142,7 +143,7 @@ void crcl(io_cmd_cb)( uv_async_t *handle )
                                       cmd->_.addrinfo.hints ) ) )
             {
                 activity_p a = (activity_p)cmd->_.addrinfo.resolver->data;
-                a->io_response.addrinfo.rc = rc;
+                // XXX a->io_response.addrinfo.rc = rc;
                 crcl(wake_up_requester)( a );
             }
             else
@@ -177,19 +178,7 @@ static void start_cb( uv_idle_t* handle ) {
  */
 int crcl(init_io_loop)( cthread_p t, activity_p a, int (*f)( void ) )
 {
-    crcl(threads) = t;
-
     assert( !uv_key_create( &crcl(self_key) ) );
-
-    /* Most of the thread and activity fields are not relevant to the I/O thread */
-    t->activities     = a;
-    t->ready          = NULL;
-    t->next           = crcl(threads);
-    t->prev           = crcl(threads);
-    /* XXX Not sure about the types of self: */
-    // XXX t->sys            = uv_thread_self();
-    a->thread         = t;
-
     crcl(io_loop) = uv_default_loop();
     RET_IF_ERROR(
         uv_async_init( crcl(io_loop), &crcl(io_cmd), crcl(io_cmd_cb) ) );

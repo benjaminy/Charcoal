@@ -5,11 +5,13 @@
 #include <core.h>
 #include <assert.h>
 #include <stdlib.h>
-#include <charcoal_runtime_coroutine.h>
-#include <charcoal_runtime_io_commands.h>
+#include <runtime_coroutine.h>
+#include <runtime_io_commands.h>
+#include <opa_primitives.h>
 
-extern cthread_p crcl(threads);
 activity_p crcl(pop_ready_queue)( cthread_p t );
+
+static cthread_p crcl(threads);
 
 struct thread_entry_params
 {
@@ -96,8 +98,8 @@ static crcl(frame_p) thread_init(
     zlog_info( crcl(c), "Charcoal thread initializing %p( %p )\n", thread, params );
     /* XXX  init can-run */
     *params->tptr = thread;
-    // crcl(atomic_store_int)( &thread->timeout, 0 );
-    crcl(atomic_store_int)( &thread->interrupt_activity, 0 );
+    // OPA_store_int( (OPA_int_t *)&thread->timeout, 0 );
+    OPA_store_int( (OPA_int_t *)&thread->interrupt_activity, 0 );
     thread->timer_req.data = thread;
     /* XXX Does timer_init have to be called from the I/O thread? */
     uv_timer_init( crcl(io_loop), &thread->timer_req );
@@ -120,15 +122,18 @@ static crcl(frame_p) thread_init(
     thread->idle.prev                     = NULL;
     thread->idle.snext                    = NULL;
     thread->idle.sprev                    = NULL;
-    thread->idle.waiters                  = NULL;
-    thread->idle.newest_frame             = &thread->idle.oldest_frame;
+    thread->idle.waiters_front            = NULL;
+    thread->idle.waiters_back             = NULL;
+thread->idle.newest_frame             = /* XXX */thread->idle.oldest_frame;
     thread->idle.yield_calls              = 0;
-    thread->idle.oldest_frame.activity    = &thread->idle;
-    thread->idle.oldest_frame.fn          = idle;
+thread->idle.oldest_frame->fn          = idle; // XXX
+#if 0
+    XXX
+thread->idle.oldest_frame.activity    = &thread->idle;
     thread->idle.oldest_frame.caller      = NULL;
     thread->idle.oldest_frame.callee      = NULL;
     thread->idle.oldest_frame.return_addr = NULL;
-
+#endif
     /* XXX: pthread attributes */
     // detachstate guardsize inheritsched schedparam schedpolicy scope
 
@@ -137,7 +142,7 @@ static crcl(frame_p) thread_init(
     assert( !crcl(sem_decr)( &params->s2 ) );
     add_to_threads_list( thread );
     assert( !crcl(sem_incr)( &params->s1 ) );
-    return &thread->idle.oldest_frame;
+    return thread->idle.oldest_frame; /* XXX */
 }
 
 static void thread_finish( cthread_p thread )
@@ -160,8 +165,8 @@ int crcl(join_thread)( cthread_p t )
                t, t->next, t->prev, crcl(threads) );
     if( t == crcl(main_thread) )
     {
-        int *p = (int *)crcl(main_activity).return_value;
-        crcl(process_return_value) = *p;
+        //XXXint *p = (int *)crcl(main_activity).return_value;
+        crcl(process_return_value) = 42;//*p;
     }
     if( t == t->next )
     {
@@ -216,4 +221,20 @@ static void add_to_threads_list( cthread_p t )
     crcl(threads)->prev = t;
     t->next = crcl(threads);
     t->prev = last;
+}
+
+int crcl(init_threads)( cthread_p thd, activity_p act )
+{
+    if( !thd )
+        return -EINVAL;
+    if( !act )
+        return -EINVAL;
+    crcl(threads)   = thd;
+    thd->activities = act;
+    thd->ready      = NULL;
+    thd->next       = thd;
+    thd->prev       = thd;
+    thd->sys        = uv_thread_self();
+    act->thread     = thd;
+    return 0;
 }

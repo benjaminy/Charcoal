@@ -1,50 +1,15 @@
-#ifndef __CHARCOAL_RUNTIME_ATOMICS
-#define __CHARCOAL_RUNTIME_ATOMICS
+#ifndef __ATOMICS_WRAPPERS
+#define __ATOMICS_WRAPPERS
 
-#ifdef USE_OPA_LIBRARY
-/* #define OPA_PRIMITIVES_H_INCLUDED */
-#include "opa_primitives.h"
-#include "opa_config.h"
-#include "opa_util.h"
-#ifndef _opa_inline
-#define _opa_inline inline
+/*
+ * I'd really like to use C11 atomics, but cil doesn't seem to support
+ * them.  So Here are some definitons that should be identical to those
+ * in OpenPA.
+ */
 
-typedef OPA_int_t crcl(atomic_int);
-#endif
-static inline void crcl(atomic_incr_int)( crcl(atomic_int) *p )
-{ OPA_incr_int( p ); }
-static inline void crcl(atomic_decr_int)( crcl(atomic_int) *p );
-{ OPA_decr_int( p ); }
-static inline void crcl(atomic_store_int)( crcl(atomic_int) *p, int v );
-{ OPA_store_int( p, v ); }
-static inline int crcl(atomic_load_int)( crcl(atomic_int) *p );
-{ return OPA_load_int( p ); }
-static inline int crcl(atomic_load_int_relaxed)( crcl(atomic_int) *p );
-{ return OPA_load_int( p ); }
-static inline int crcl(atomic_fetch_incr_int)( crcl(atomic_int) *p );
-{ return OPA_fetch_and_incr_int( p ); }
-static inline int crcl(atomic_fetch_incr_int)( crcl(atomic_int) *p );
-{ return OPA_fetch_and_incr_int( p ); }
-static inline void *crcl(atomic_compare_exchange_ptr)()
-    void *foo = OPA_cas_ptr( ptr, thread, self->thread );
+typedef struct { volatile int v; } atomic_int;
 
-__atomic_fetch_add (type *ptr, type val, int memmodel)
+int atomic_load_int( atomic_int * );
+void atomic_store_int( atomic_int *, int );
 
-#else /* USE_OPA_LIBRARY */
-typedef int crcl(atomic_int);
-static inline void crcl(atomic_incr_int) ( crcl(atomic_int) *p )
-{ __atomic_fetch_add ( p, 1, __ATOMIC_SEQ_CST); }
-static inline void crcl(atomic_decr_int) ( crcl(atomic_int) *p )
-{ __atomic_fetch_sub ( p, 1, __ATOMIC_SEQ_CST); }
-static inline void crcl(atomic_store_int)( crcl(atomic_int) *p, int v )
-{ __atomic_store_n( p, v, __ATOMIC_SEQ_CST ); }
-static inline int crcl(atomic_load_int) ( crcl(atomic_int) *p )
-{ return __atomic_load_n( p, __ATOMIC_SEQ_CST ); }
-static inline int crcl(atomic_load_int_relaxed)( crcl(atomic_int) *p )
-{ return __atomic_load_n( p, __ATOMIC_RELAXED ); }
-
-/*: bool __atomic_compare_exchange_n (type *ptr, type *expected, type desired, bool weak, int success_memmodel, int failure_memmodel)*/
-
-#endif /* USE_OPA_LIBRARY */
-
-#endif /* __CHARCOAL_RUNTIME_ATOMICS */
+#endif /* __ATOMICS_WRAPPERS */

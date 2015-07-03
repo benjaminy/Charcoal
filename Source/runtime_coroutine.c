@@ -3,6 +3,7 @@
  */
 
 #include <core.h>
+#include <core_runtime.h>
 #include <stdbool.h>
 #include <assert.h>
 #include <signal.h>
@@ -11,8 +12,9 @@
 // #include <stdio.h> /* XXX remove dep eventually */
 #include <errno.h>
 #include <limits.h>
-#include <charcoal_runtime_coroutine.h>
-#include <charcoal_runtime_io_commands.h>
+#include <runtime_coroutine.h>
+#include <runtime_io_commands.h>
+#include <opa_primitives.h>
 
 /* Scheduler stuff */
 
@@ -23,7 +25,6 @@
             exit( __abort_on_fail_rc ); \
     } while( 0 )
 
-cthread_p crcl(threads);
 uv_key_t crcl(self_key);
 
 activity_p crcl(get_self_activity)( void )
@@ -38,7 +39,7 @@ int crcl(choose_next_activity)( activity_p *p )
     uv_mutex_lock( &thd->thd_management_mtx );
     first = to_run = thd->activities;
     do {
-        if( !( to_run->flags & CRCL(ACTF_BLOCKED) )
+        if( !( to_run->flags & CRCL(ACTF_WAITING) )
             && ( to_run != self ) )
         {
             first = NULL;
@@ -82,10 +83,10 @@ crcl(frame_p) crcl(activity_start_resume)( activity_p act )
     uv_key_set( &crcl(self_key), act );
     // XXX don't think we're using alarm anymore
     // XXX alarm((int) self->container->max_time);
-    // crcl(atomic_store_int)(&self->container->timeout, 0);
+    // OPA_store_int(&self->container->timeout, 0);
     act->yield_calls = 0;
     /* XXX Races with other interruptions coming in!!! */
-    crcl(atomic_store_int)( &thd->interrupt_activity, 0 );
+    OPA_store_int( (OPA_int_t *)&thd->interrupt_activity, 0 );
 
     /* XXX: Lots to fix here. */
     if( thd->ready && !CRCL(CHECK_FLAG)( *thd, CRCL(THDF_TIMER_ON) ) )
@@ -146,7 +147,7 @@ activity_p crcl(pop_special_queue)(
     case CRCL(ACTF_READY_QUEUE):
         q = &t->ready;
         break;
-    case CRCL(ACTF_BLOCKED):
+    case CRCL(ACTF_WAITING):
         q = qp;
         break;
     default:
@@ -185,9 +186,9 @@ activity_p crcl(pop_ready_queue)( cthread_p t )
 
 #if 0
     deprecated?
-static activity_p crcl(pop_blocked_queue)( cthread_p t )
+static activity_p crcl(pop_waiting_queue)( cthread_p t )
 {
-    return crcl(pop_special_queue)( CRCL(ACTF_BLOCKED), t, NULL ); /* XXX */
+    return crcl(pop_special_queue)( CRCL(ACTF_WAITING), t, NULL ); /* XXX */
 }
 #endif
 
@@ -209,7 +210,7 @@ void crcl(push_special_queue)(
     case CRCL(ACTF_READY_QUEUE):
         q = &t->ready;
         break;
-    case CRCL(ACTF_BLOCKED):
+    case CRCL(ACTF_WAITING):
         q = qp;
         break;
     default:
@@ -243,16 +244,16 @@ void crcl(push_ready_queue)( activity_p a, cthread_p t )
     crcl(push_special_queue)( CRCL(ACTF_READY_QUEUE), a, t, NULL );
 }
 
-void crcl(push_blocked_queue)( activity_p a, cthread_p t )
+void crcl(push_waiting_queue)( activity_p a, cthread_p t )
 {
-    crcl(push_special_queue)( CRCL(ACTF_BLOCKED), a, t, NULL ); /* XXX */
+    crcl(push_special_queue)( CRCL(ACTF_WAITING), a, t, NULL ); /* XXX */
 }
 
 static crcl(frame_p) switch_from_to( activity_p from, activity_p to )
 {
     assert( !CRCL(CHECK_FLAG)( *from, CRCL(ACTF_DONE) ) );
     assert( !CRCL(CHECK_FLAG)( *from, CRCL(ACTF_READY_QUEUE) ) );
-    assert( !CRCL(CHECK_FLAG)( *from, CRCL(ACTF_BLOCKED) ) );
+    assert( !CRCL(CHECK_FLAG)( *from, CRCL(ACTF_WAITING) ) );
     cthread_p thd = from->thread;
     assert( thd );
     uv_mutex_lock( &thd->thd_management_mtx );
@@ -310,7 +311,7 @@ crcl(frame_p) crcl(yield_impl)( crcl(frame_p) frm, void *ret_addr ){
 
     frm->return_addr = ret_addr;
     ++act->yield_calls;
-    int interrupt = crcl(atomic_load_int)( &thd->interrupt_activity );
+    int interrupt = OPA_load_int( (OPA_int_t *)&thd->interrupt_activity );
 
     *p = 0;
     if( !interrupt )
@@ -344,7 +345,7 @@ int wait_activity_done( activity_p a, void *p )
     activity_p self = crcl(get_self_activity)();
     self->snext = a->waiters;
     a->waiters = self;
-    // XXX RET_IF_ERROR( crcl(activity_blocked)( self ) );
+    // XXX RET_IF_ERROR( crcl(activity_waiting)( self ) );
     return 0;
 }
 #endif
@@ -405,15 +406,15 @@ static void crcl(remove_activity_from_thread)( activity_p a, cthread_p t)
 }
 
 /*
- * activity_blocked_or_done should be called when an activity has
+ * activity_waiting_or_done should be called when an activity has
  * nothing to do right now.  Another activity or thread might switch
  * back to it later.  There are a few cases to consider to decide what
  * happens next:
  * 1) If there is a ready activity, switch to one
- * 2) Otherwise, if there are blocked activities switch to idle
+ * 2) Otherwise, if there are waiting activities switch to idle
  * 3) Otherwise, clean up thread
  */
-static crcl(frame_p) activity_blocked_or_done( crcl(frame_p) frm )
+static crcl(frame_p) activity_waiting_or_done( crcl(frame_p) frm )
 {
     activity_p act = frm->activity;
     cthread_p  thd = act->thread;
@@ -421,10 +422,10 @@ static crcl(frame_p) activity_blocked_or_done( crcl(frame_p) frm )
     bool done = CRCL(CHECK_FLAG)( *act, CRCL(ACTF_DONE) );
     if( !done )
     {
-        crcl(push_blocked_queue)( act, thd );
+        crcl(push_waiting_queue)( act, thd );
     }
     activity_p next = crcl(pop_ready_queue)( thd );
-    zlog_debug( crcl(c) , "Activity blocked/done %d %p", done, next );
+    zlog_debug( crcl(c) , "Activity waiting/done %d %p", done, next );
     if( next )
     {
         /* Hooray! */
@@ -444,28 +445,31 @@ static crcl(frame_p) activity_blocked_or_done( crcl(frame_p) frm )
     return rv;
 }
 
-static crcl(frame_p) activity_epilogue( crcl(frame_p) frame )
+crcl(frame_p) crcl(activity_epilogue)( crcl(frame_p) frame )
 {
     assert( frame );
     activity_p act = frame->activity;
     zlog_debug( crcl(c) , "Activity finished %p %p\n", frame, act );
-    assert( frame == &act->oldest_frame );
+    assert( frame == act->oldest_frame );
     /* XXX I think this return value business is broken currently. */
     CRCL(SET_FLAG)( *act, CRCL(ACTF_DONE) );
-    act->epilogue( frame, &act->return_value );
+    /* XXX */
+    act->epilogueB( frame, 0 );
     cthread_p t = act->thread;
     /* XXX locking necessary? */
     uv_mutex_lock( &t->thd_management_mtx );
     crcl(remove_activity_from_thread)( act, t );
     uv_mutex_unlock( &t->thd_management_mtx );
-    return activity_blocked_or_done( frame );
+    return activity_waiting_or_done( frame );
 }
 
 /* Initialize 'activity' and add it to 'thread'. */
 /* (Do not start the new activity running) */
 void activate_in_thread(
-    cthread_p thread, activity_p activity,
-    crcl(frame_p) frame, crcl(epilogueB_t) epi )
+    cthread_p thread,
+    activity_p activity,
+    crcl(frame_p) frame,
+    crcl(epilogueB_t) epi )
 {
     assert( activity );
     assert( frame );
@@ -477,14 +481,18 @@ void activate_in_thread(
     activity->yield_calls              = 0;
     activity->newest_frame             = frame;
     activity->snext                    = activity->sprev = NULL;
-    activity->waiters                  = NULL;
+    activity->waiters_front            = NULL;
+    activity->waiters_back             = NULL;
+#if 0
+    XXX
     activity->oldest_frame.activity    = activity;
     activity->oldest_frame.fn          = activity_epilogue;
     activity->oldest_frame.caller      = 0;
     activity->oldest_frame.callee      = frame;
     activity->oldest_frame.return_addr = 0;
-    activity->epilogue                 = epi;
-    frame->caller                      = &activity->oldest_frame;
+#endif
+    activity->epilogueB                = epi;
+    frame->caller                      = NULL; // XXX&activity->oldest_frame;
     frame->activity                    = activity;
     uv_mutex_lock( &thread->thd_management_mtx );
     insert_activity_into_thread( activity, thread );
@@ -536,7 +544,7 @@ static void crcl(report_thread_done)( activity_p a )
  */
 void crcl(activity_init)( activity_p act )
 {
-    act->oldest_frame.activity = act;
+    // XXX act->oldest_frame.activity = act;
 }
 
 /* NOTE: It might make good performance sense to inline all these
@@ -559,7 +567,7 @@ crcl(frame_p) crcl(fn_generic_prologue)(
     if( !f )
     {
         /* XXX out-of-memory error */
-        exit( -1 );
+        exit( -ENOMEM );
     }
     // zlog_info( crcl(c), "generic_prologue %p %p\n",
     //       caller, caller ? caller->activity : 0 );
