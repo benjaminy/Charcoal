@@ -470,6 +470,7 @@ let coroutinify_normal_call lhs_opt params call_stuff fdec loc frame =
     let params =
       let f = match call_stuff with
           CDirect( u, _, _ ) -> u
+        | CIndirect e -> E.s( E.unimp "EERR 89235 %a" C.d_exp e )
         | _ -> E.s( E.unimp "EERR 34254" )
       in
       match ( C.typeOf f, lhs_opt ) with
@@ -788,9 +789,9 @@ end
  * share slots in the locals struct *)
 let make_yielding yielding frame_info_spec =
   let () = Pf.printf "make_yielding %s\n" yielding.C.svar.C.vname in
-  let () =
-    trc( Pretty.dprintf "%a\n" C.d_block yielding.C.sbody )
-  in
+  (* let () = *)
+  (*   trc( Pretty.dprintf "%a\n" C.d_block yielding.C.sbody ) *)
+  (* in *)
   let fdef_loc = yielding.C.svar.C.vdecl in
   let () =
     let ( _, ps, va, attrs ) = getTFunInfo yielding.C.svar.C.vtype "Yield" in
