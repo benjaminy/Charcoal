@@ -124,36 +124,38 @@ struct activity_t
 struct cthread_t
 {
     /* Used??? Should be atomic??? */
-    size_t      tick;
+    size_t        tick;
 
     /* Various status bits */
-    unsigned    flags;
+    unsigned      flags;
 
     /* The system-specific thread object */
-    uv_thread_t sys;
+    uv_thread_t   sys;
 
     /* The indicator that the currently-running activity should yield
      * ASAP. */
-    atomic_int  interrupt_activity;
+    atomic_int    interrupt_activity;
 
     /* For execution quantum expiration */
-    uv_timer_t  timer_req;
+    uv_timer_t    timer_req;
 
     /* The lists of all and ready-to-execute activities */
-    activity_p  activities, ready;
+    activity_p    activities, ready;
 
     /* Thread management mutex and condition variable */
-    uv_mutex_t  thd_management_mtx;
-    uv_cond_t   thd_management_cond;
+    uv_mutex_t    thd_management_mtx;
+    uv_cond_t     thd_management_cond;
 
-    /* The idle activity (for when all activities are waiting) */
-    activity_t  idle;
+    /* The idle activity and its frame (for when all activities are
+     * waiting) */
+    activity_t    idle_act;
+    crcl(frame_t) idle_frm;
 
     /* Used??? */
-    unsigned    runnable_activities;
+    unsigned      runnable_activities;
 
     /* Linked list of all threads */
-    cthread_p   next, prev;
+    cthread_p     next, prev;
 };
 
 #define assert_impl(a,b) assert( ( !( a ) ) || ( b ) )

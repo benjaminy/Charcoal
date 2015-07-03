@@ -350,6 +350,25 @@ int wait_activity_done( activity_p a, void *p )
 }
 #endif
 
+void crcl(add_to_waiters)( activity_p waiter, activity_p waitee )
+{
+    waiter->snext = NULL;
+    if( waitee->waiters_front )
+    {
+        assert( waitee->waiters_back );
+        waitee->waiters_back->snext = waiter;
+        waiter->sprev = waitee->waiters_back;
+        waitee->waiters_back = waiter;
+    }
+    else
+    {
+        assert( !waitee->waiters_front );
+        waitee->waiters_front = waitee->waiters_back = waiter;
+        waiter->sprev = NULL;
+    }
+    CRCL_SET_FLAG( *waiter, CRCL(ACTF_WAITING) );
+}
+
 int crcl(activity_detach)( activity_p a )
 {
     if( !a )
@@ -432,7 +451,7 @@ static crcl(frame_p) activity_waiting_or_done( crcl(frame_p) frm )
     }
     else if( !done /* TODO: || keep thread alive */ )
     {
-        next = &thd->idle;
+        next = &thd->idle_act;
     }
     else
     {

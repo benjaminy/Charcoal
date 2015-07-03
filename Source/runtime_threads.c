@@ -77,7 +77,6 @@ int thread_start( cthread_p *thread, void *options )
     return 0;
 }
 
-/* XXX Add the ability to cleanly kill a thread? */
 static void thread_main_loop( void *p )
 {
     assert( p );
@@ -116,24 +115,22 @@ static crcl(frame_p) thread_init(
     // thread->sys initialized in thread_start
     CRCL(SET_FLAG)( *thread, CRCL(THDF_IDLE) );
     CRCL(SET_FLAG)( *thread, CRCL(THDF_NEVER_RUN) );
-    thread->idle.thread                   = thread;
-    thread->idle.flags                    = 0;
-    thread->idle.next                     = NULL;
-    thread->idle.prev                     = NULL;
-    thread->idle.snext                    = NULL;
-    thread->idle.sprev                    = NULL;
-    thread->idle.waiters_front            = NULL;
-    thread->idle.waiters_back             = NULL;
-thread->idle.newest_frame             = /* XXX */thread->idle.oldest_frame;
-    thread->idle.yield_calls              = 0;
-thread->idle.oldest_frame->fn          = idle; // XXX
-#if 0
-    XXX
-thread->idle.oldest_frame.activity    = &thread->idle;
-    thread->idle.oldest_frame.caller      = NULL;
-    thread->idle.oldest_frame.callee      = NULL;
-    thread->idle.oldest_frame.return_addr = NULL;
-#endif
+    thread->idle_act.thread                    = thread;
+    thread->idle_act.flags                     = 0;
+    thread->idle_act.next                      = NULL;
+    thread->idle_act.prev                      = NULL;
+    thread->idle_act.snext                     = NULL;
+    thread->idle_act.sprev                     = NULL;
+    thread->idle_act.waiters_front             = NULL;
+    thread->idle_act.waiters_back              = NULL;
+    thread->idle_act.newest_frame              = &thread->idle_frm;
+    thread->idle_act.oldest_frame              = &thread->idle_frm;
+    thread->idle_act.yield_calls               = 0;
+    thread->idle_act.oldest_frame->fn          = idle;
+    thread->idle_act.oldest_frame->activity    = &thread->idle_act;
+    thread->idle_act.oldest_frame->caller      = NULL;
+    thread->idle_act.oldest_frame->callee      = NULL;
+    thread->idle_act.oldest_frame->return_addr = NULL;
     /* XXX: pthread attributes */
     // detachstate guardsize inheritsched schedparam schedpolicy scope
 
@@ -142,7 +139,7 @@ thread->idle.oldest_frame.activity    = &thread->idle;
     assert( !crcl(sem_decr)( &params->s2 ) );
     add_to_threads_list( thread );
     assert( !crcl(sem_incr)( &params->s1 ) );
-    return thread->idle.oldest_frame; /* XXX */
+    return thread->idle_act.oldest_frame; /* XXX */
 }
 
 static void thread_finish( cthread_p thread )
@@ -196,6 +193,7 @@ static crcl(frame_p) idle( crcl(frame_p) idle_frame )
         CRCL(SET_FLAG)( *thread, CRCL(THDF_IDLE) );
         uv_cond_wait( &thread->thd_management_cond,
                       &thread->thd_management_mtx );
+        /* XXX Add the ability to cleanly kill a thread? */
     }
     if( !thread->activities )
     {

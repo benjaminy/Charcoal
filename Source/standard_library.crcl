@@ -5,6 +5,7 @@ extern "C" {
 #include <runtime_io_commands.h>
 }
 
+#if 0
 int wait_activity_done( activity_p waitee )
 {
     if( !waitee )
@@ -21,25 +22,12 @@ int wait_activity_done( activity_p waitee )
         exit( -EDEADLK );
     }
     activity_p self = self_activity();
-    self->snext = NULL;
-    if( waitee->waiters_front )
-    {
-        assert( waitee->waiters_back );
-        waitee->waiters_back->snext = self;
-        self->sprev = waitee->waiters_back;
-        waitee->waiters_back = self;
-    }
-    else
-    {
-        assert( !waitee->waiters_front );
-        waitee->waiters_front = waitee->waiters_back = self;
-        self->sprev = NULL;
-    }
-    CRCL_SET_FLAG( *self, CRCL(ACTF_WAITING) );
-    crcl(wait_for_response)();
+    assert( self );
+    crcl(add_to_waiters)( self, waitee );
+    crcl(activity_wait)();
     return 1;
 }
-
+#endif
 /*
  * TetraStak
  */
