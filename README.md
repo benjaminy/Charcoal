@@ -7,6 +7,11 @@ See http://charcoal-lang.org/
 
 Quick notes on building:
 
+cd ThirdParty/libuv/Releases/1.0.0
+sh autogen.sh
+./configure --prefix=$CHARCOAL_HOME/Install
+make && make check && make install
+
 cd ThirdParty/zlog/Charcoal-1.2.12/
 make PREFIX=$CHARCOAL_HOME/Install install
 
