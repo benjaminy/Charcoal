@@ -164,6 +164,6 @@ struct cthread_t
 
 #define assert_impl(a,b) assert( ( !( a ) ) || ( b ) )
 
-int thread_start( cthread_p *thd, void *options );
+int thread_start( cthread_p thd, void *options );
 
 #endif /* __CHARCOAL_CORE */

@@ -17,7 +17,7 @@
 #define app_main_prologue crcl(fn_prologue___charcoal_application_main)
 #define app_main_epilogueB crcl(fn_epilogueB___charcoal_application_main)
 
-cthread_p crcl(main_thread);
+cthread_t crcl(main_thread);
 activity_t crcl(main_activity);
 int crcl(process_return_value);
 
@@ -108,12 +108,12 @@ static int start_application_main( void )
         return -3;
     }
     activate_in_thread(
-        crcl(main_thread),
+        &crcl(main_thread),
         &crcl(main_activity),
         &dummy_frm,
         main_frame,
         (crcl(epilogueB_t))app_main_epilogueB );
-    crcl(push_ready_queue)( &crcl(main_activity), crcl(main_thread) );
-    uv_cond_signal( &crcl(main_thread)->thd_management_cond );
+    crcl(push_ready_queue)( &crcl(main_activity), &crcl(main_thread) );
+    uv_cond_signal( &crcl(main_thread).thd_management_cond );
     return 0;
 }

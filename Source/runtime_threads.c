@@ -15,12 +15,11 @@ static cthread_p crcl(threads) = NULL;
 typedef struct
 {
     crcl(sem_t) s1, s2;
-    cthread_p  *tptr;
+    cthread_p   thd;
     void       *options;
 } thread_entry_params;
 
-static crcl(frame_p) thread_init(
-    thread_entry_params *params, cthread_p thd );
+static crcl(frame_p) thread_init( thread_entry_params *params );
 static void thread_main_loop( void *p );
 static void thread_finish( cthread_p thread );
 static crcl(frame_p) idle( crcl(frame_p) idle_frame );
@@ -29,10 +28,10 @@ static void add_to_threads_list( cthread_p thd );
 /* XXX Probably should wrap the whole thread starting process up in a
  * critical region.  Thread starting should be relatively uncommon, so
  * the (in any case minor) performance concern is really negligible. */
-int thread_start( cthread_p *thread, void *options )
+int thread_start( cthread_p thd, void *options )
 {
     int rc;
-    zlog_info( crcl(c), "Starting Charcoal thread %p( %p )\n", thread, options );
+    zlog_info( crcl(c), "Starting Charcoal thread %p( %p )\n", thd, options );
 
     // pthread_attr_t attr;
     // ABORT_ON_FAIL( pthread_attr_init( &attr ) );
@@ -50,7 +49,7 @@ int thread_start( cthread_p *thread, void *options )
     assert( !rc );
     rc = crcl(sem_init)( &params.s2, 0, 0 );
     assert( !rc );
-    params.tptr    = thread;
+    params.thd    = thd;
     params.options = options;
 
     uv_thread_t thread_id;
@@ -61,7 +60,7 @@ int thread_start( cthread_p *thread, void *options )
     /* Must wait for thread initialization to complete, because the
      * Charcoal thread struct is stack-allocated in the new thread. */
     crcl(sem_decr)( &params.s1 );
-    (*thread)->sys = thread_id;
+    thd->sys = thread_id;
     crcl(sem_incr)( &params.s2 );
     /* Must wait for acknowledgment from new thread, because the
      * semaphores are stack-allocated here, so can't be deallocated
@@ -73,15 +72,17 @@ int thread_start( cthread_p *thread, void *options )
     assert( !rc );
     // assert( !pthread_attr_destroy( &attr ) );
 
-    zlog_info( crcl(c), "Charcoal thread started %p( %p )\n", thread, options );
+    zlog_info( crcl(c), "Charcoal thread started %p( %p )\n", thd, options );
     return 0;
 }
 
 static void thread_main_loop( void *p )
 {
     assert( p );
-    cthread_p thd = (cthread_p)malloc( sizeof( thd[0] ) );
-    crcl(frame_p) frm = thread_init( (thread_entry_params *)p, thd );
+    thread_entry_params *params = (thread_entry_params *)p;
+    assert( params->thd );
+    cthread_p thd = params->thd;
+    crcl(frame_p) frm = thread_init( params );
     if( !frm )
         exit( -EINVAL );
     do
@@ -92,12 +93,11 @@ static void thread_main_loop( void *p )
     thread_finish( thd );
 }
 
-static crcl(frame_p) thread_init(
-    thread_entry_params *params, cthread_p thd )
+static crcl(frame_p) thread_init( thread_entry_params *params )
 {
-    if( !thd )    exit( -1 );
+    if( !params->thd )    exit( -1 );
     if( !params ) exit( -1 );
-    *params->tptr = thd;
+    cthread_p thd = params->thd;
     zlog_info( crcl(c), "Charcoal thread initializing %p( %p )\n", thd, params );
     /* XXX  init can-run */
     // OPA_store_int( (OPA_int_t *)&thd->timeout, 0 );
@@ -166,7 +166,7 @@ int crcl(join_thread)( cthread_p t )
     int rv = 0;
     zlog_info( crcl(c), "Joining thread %p n:%p p:%p ts:%p\n",
                t, t->next, t->prev, crcl(threads) );
-    if( t == crcl(main_thread) )
+    if( t == &crcl(main_thread) )
     {
         crcl(frame_t) dummy_frm;
         dummy_frm.callee = crcl(main_activity).oldest_frame;
