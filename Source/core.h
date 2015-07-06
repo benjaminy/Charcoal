@@ -9,6 +9,9 @@
 /* Example: #pragma cilnoremove("func1", "var2", "type foo", "struct bar") */
 #pragma cilnoremove( "struct __charcoal_frame_t" )
 #pragma cilnoremove( "struct activity_t" )
+#pragma cilnoremove( "__charcoal_activate" )
+#pragma cilnoremove( "__charcoal_yield" )
+#pragma cilnoremove( "__charcoal_yield_impl" )
 #endif
 
 #include <atomics_wrappers.h>
@@ -165,5 +168,11 @@ struct cthread_t
 #define assert_impl(a,b) assert( ( !( a ) ) || ( b ) )
 
 int thread_start( cthread_p thd, void *options );
+
+typedef void (*crcl(epilogueB_t))( crcl(frame_p), void * );
+
+crcl(frame_p) crcl(activate)( crcl(frame_p) f, void *p, activity_p a, crcl(frame_p) f2, crcl(epilogueB_t) e );
+int crcl(yield)( void );
+crcl(frame_p) crcl(yield_impl)( crcl(frame_p) frame, void *ret_addr );
 
 #endif /* __CHARCOAL_CORE */

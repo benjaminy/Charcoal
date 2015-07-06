@@ -100,7 +100,7 @@ type frame_info =
     gen_epilogueB   : C.varinfo;
     activate        : C.varinfo;
     act_intermed    : C.varinfo;
-    activity_init   : C.varinfo;
+    act_epilogue    : C.varinfo;
     yield           : C.varinfo;
     yield_impl      : C.exp;
     (* function-specific *)
@@ -390,8 +390,7 @@ let make_epilogueB epilogueB frame =
  * Translate:
  *     __activate_intermediate( act, fn, p1, p2, p3 );
  * to:
- *     __activity_init( act );
- *     act_frame = __prologue_fn( &act->oldest, 0, p1, p2, p3 );
+ *     act_frame = __prologue_fn( frame, 0, p1, p2, p3 );
  *     return __activate( frame, &__return_N, act, act_frame, __epilogueB_fn XXX );
  *   __return_N:
  *)
@@ -416,11 +415,8 @@ let coroutinify_activate params fdec loc frame =
     r
   in
   let act_frame = C.var( C.makeTempVar fdec ~name:"act_frame" frame.typ_ptr ) in
-  let init_call =
-    C.Call( None, C.Lval( C.var( frame.activity_init ) ), [ act ], loc )
-  in
   let prologue_call =
-    let ps = ( C.AddrOf( frame.oldest_sel( act ) ) )::C.zero::real_params in
+    let ps = frame.exp::C.zero::real_params in
     C.Call( Some act_frame, prologue, ps, loc )
   in
   let next_frame = C.var( C.makeTempVar fdec ~name:"next_frame" frame.typ_ptr ) in
@@ -430,12 +426,11 @@ let coroutinify_activate params fdec loc frame =
     C.Call( Some next_frame, C.Lval( C.var frame.activate ), ps, loc )
   in
   let return_next_frame = C.mkStmt( C.Return( Some( C.Lval next_frame ), loc ) )  in
-  let i, p, a =
-    C.mkStmt( C.Instr( [ init_call ] ) ),
+  let p, a =
     C.mkStmt( C.Instr( [ prologue_call ] ) ),
     C.mkStmt( C.Instr( [ activate_call ] ) )
   in
-  [ i; p; a; return_next_frame; after_act ]
+  [ p; a; return_next_frame; after_act ]
 
 
 (* Translate direct calls from:
@@ -577,8 +572,15 @@ let coroutinify_call visitor fdec frame instr =
  *     return frame->caller;
  *
  * Prereq: exp should be coroutinified already
-*)
-let coroutinify_return fdec rval_opt loc frame =
+ *)
+(*
+ * If is activity entry:
+ *     return exp;
+ * to:
+ *     __epilogueA_f( frame, exp );
+ *     return activity_epilogue( frame );
+ *)
+let coroutinify_return fdec rval_opt loc frame is_activity_entry =
   if false then
     let set_return_val = match rval_opt with
         None -> []
@@ -590,15 +592,23 @@ let coroutinify_return fdec rval_opt loc frame =
     let return_stmt = [ C.mkStmt( C.Return( Some( caller ), loc ) ) ] in
     C.ChangeTo( C.mkStmt( C.Block( C.mkBlock( set_return_val @ return_stmt ) ) ) )
   else
-    let caller = C.var( C.makeTempVar fdec ~name:"caller" frame.typ_ptr ) in
+    let next =
+      C.var( C.makeTempVar fdec ~name:"next_frame" frame.typ_ptr )
+    in
     let params = match rval_opt with
         None ->   [ frame.exp ]
       | Some e -> [ frame.exp; e ]
     in
-    let ep = C.Lval( C.var frame.epilogueA ) in
-    let call = C.mkStmt( C.Instr[ C.Call( Some caller, ep, params, loc ) ] ) in
-    let return_stmt = C.mkStmt( C.Return( Some( C.Lval caller ), loc ) ) in
-    C.ChangeTo( C.mkStmt( C.Block( C.mkBlock[ call; return_stmt ] ) ) )
+    let callEpA =
+      C.Call( Some next, C.Lval( C.var frame.epilogueA ), params, loc ) in
+    let callActEp =
+      C.Call( Some next, C.Lval( C.var frame.act_epilogue ), [ frame.exp ], loc ) in
+    let calls =
+      if is_activity_entry then [ callEpA; callActEp ] else [ callEpA ]
+    in
+    let return_stmt = C.mkStmt( C.Return( Some( C.Lval next ), loc ) ) in
+    let stmts = [ C.mkStmt( C.Instr( calls ) ); return_stmt ] in
+    C.ChangeTo( C.mkStmt( C.Block( C.mkBlock stmts ) ) )
 
 (* Translate uses of local variables from:
  *     x
@@ -694,7 +704,7 @@ class coroutinifyUnyieldingVisitor fdec frame = object(self)
     | _ -> C.DoChildren
 end
 
-class coroutinifyYieldingVisitor fdec locals frame = object(self)
+class coroutinifyYieldingVisitor fdec locals frame is_activity_entry = object(self)
   inherit C.nopCilVisitor
 
   val mutable no_yield_depth = []
@@ -751,7 +761,7 @@ class coroutinifyYieldingVisitor fdec locals frame = object(self)
 
     | ( C.Return( rval_opt, loc ) ) ->
        let x = opt_map ( C.visitCilExpr ( self :> C.cilVisitor ) ) rval_opt in
-       coroutinify_return fdec x loc frame
+       coroutinify_return fdec x loc frame is_activity_entry
 
     | C.NoYieldStmt( body, loc ) ->
        let () = no_yield_depth <- ()::no_yield_depth in
@@ -787,7 +797,7 @@ end
  * across returns.  Others can just be regular locals. *)
 (* XXX Also some day we can do register allocation style optimizations to
  * share slots in the locals struct *)
-let make_yielding yielding frame_info_spec =
+let make_yielding yielding frame_info_spec is_activity_entry =
   let () = Pf.printf "make_yielding %s\n" yielding.C.svar.C.vname in
   (* let () = *)
   (*   trc( Pretty.dprintf "%a\n" C.d_block yielding.C.sbody ) *)
@@ -818,7 +828,9 @@ let make_yielding yielding frame_info_spec =
     let goto = C.mkStmt( C.ComputedGoto( ret_addr_field, fdef_loc ) ) in
     C.mkStmt( C.If( ret_addr_field, C.mkBlock( [ goto ] ), empty_block, fdef_loc ) )
   in
-  let v = new coroutinifyYieldingVisitor yielding locals_tbl frame_info in
+  let v = new coroutinifyYieldingVisitor
+              yielding locals_tbl frame_info is_activity_entry
+  in
   let y = C.visitCilFunction ( v :> C.cilVisitor ) yielding in
   let () = y.C.sbody.C.bstmts <- locals_init :: goto_stmt :: y.C.sbody.C.bstmts in
   y
@@ -991,7 +1003,7 @@ let examine_frame_t_struct ci dummy_var =
     gen_epilogueB   = dummy_var;
     activate        = dummy_var;
     act_intermed    = dummy_var;
-    activity_init   = dummy_var;
+    act_epilogue    = dummy_var;
     yield           = dummy_var;
     yield_impl      = dummy_exp;
     (* function-specific *)
@@ -1049,8 +1061,8 @@ class globals_visitor = object(self)
            frame_opt <- Some{ frame_info with gen_epilogueB = v }
          else if name = crcl "activate_intermediate" then
            frame_opt <- Some{ frame_info with act_intermed = v }
-         else if name = crcl "activity_init" then
-           frame_opt <- Some{ frame_info with activity_init = v }
+         else if name = crcl "activity_epilogue" then
+           frame_opt <- Some{ frame_info with act_epilogue = v }
          else if name = crcl "yield" then
            let () = if not( type_is_charcoal_fn v.C.vtype ) then
                       add_charcoal_linkage_var v
@@ -1092,6 +1104,12 @@ class globals_visitor = object(self)
             E.s( E.error "GFun before frame_t def  :(  %s !" orig_name )
        in
        if type_is_charcoal_fn original.C.svar.C.vtype then
+         let is_activity_entry =
+           let s = "__charcoal_act_" in
+           try s = "__charcoal_application_main" ||
+               s = String.sub original.C.svar.C.vname 0 ( String.length s )
+           with Invalid_argument _ -> false
+         in
          (* NOTE: These are modified below. *)
          let( yielding, unyielding, prologue, epilogueA, epilogueB ) =
            make_function_skeletons original orig_name
@@ -1110,7 +1128,7 @@ class globals_visitor = object(self)
            add_fn_translation orig_var ( e unyielding ) ( e prologue ) ( e epilogueB )
          in
          let p  = make_prologue     prologue frame_info yielding.C.sformals in
-         let y  = make_yielding     yielding frame_info in
+         let y  = make_yielding     yielding frame_info is_activity_entry in
          let u  = make_unyielding unyielding frame_info in
          let eA = make_epilogueA   epilogueA frame_info in
          let eB = make_epilogueB   epilogueB frame_info in

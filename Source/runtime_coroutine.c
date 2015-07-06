@@ -399,9 +399,9 @@ crcl(frame_p) crcl(activity_epilogue)( crcl(frame_p) frame )
 {
     assert( frame );
     activity_p act = frame->activity;
-    zlog_debug( crcl(c) , "Activity finished %p %p\n", frame, act );
+    zlog_debug( crcl(c) , "Activity finished %p %p %p\n", frame, act, act->newest_frame );
     assert( frame == act->oldest_frame );
-    assert( frame == act->newest_frame );
+    assert( NULL == act->newest_frame );
     /* XXX I think this return value business is broken currently. */
     CRCL(SET_FLAG)( *act, CRCL(ACTF_DONE) );
     /* XXX */
@@ -490,19 +490,6 @@ static void crcl(report_thread_done)( activity_p a )
 }
 #endif
 
-/*
- * This function is a kinda hacky solution to a chicken and egg problem.
- * - The generic prologue function assume's the "caller"'s activity
- *   field is set properly
- * - We need to call prologue before activate
- * - The "caller" in that context is the activity's "oldest_frame"
- * - The "oldest_frame" is initialized in activate
- */
-void crcl(activity_init)( activity_p act )
-{
-    // XXX act->oldest_frame.activity = act;
-}
-
 /* NOTE: It might make good performance sense to inline all these
  * generic yielding call helper functions.  I'm going to leave that
  * decision to the system for now. */
@@ -541,18 +528,19 @@ crcl(frame_p) crcl(fn_generic_prologue)(
     return frm;
 }
 
-crcl(frame_p) crcl(fn_generic_epilogueA)( crcl(frame_p) frame )
+crcl(frame_p) crcl(fn_generic_epilogueA)( crcl(frame_p) frm )
 {
-    return frame->caller;
+    frm->activity->newest_frame = frm->caller;
+    return frm->caller;
 }
 
-void crcl(fn_generic_epilogueB)( crcl(frame_p) frame )
+void crcl(fn_generic_epilogueB)( crcl(frame_p) frm )
 {
     /* XXX make malloc/free configurable? */
-    free( frame->callee );
+    free( frm->callee );
     /* NOTE Zeroing the callee field is not strictly necessary, and
      * therefore might be wasteful.  However, one should not be
      * nickel-and-diming the performance of yielding calls anyway (use
      * no_yield calls instead). */
-    frame->callee = NULL;
+    frm->callee = NULL;
 }
