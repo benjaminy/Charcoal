@@ -553,6 +553,6 @@ void crcl(fn_generic_epilogueB)( crcl(frame_p) frame )
     /* NOTE Zeroing the callee field is not strictly necessary, and
      * therefore might be wasteful.  However, one should not be
      * nickel-and-diming the performance of yielding calls anyway (use
-     * unyielding calls instead). */
+     * no_yield calls instead). */
     frame->callee = NULL;
 }

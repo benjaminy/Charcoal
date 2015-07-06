@@ -98,8 +98,11 @@ static int start_application_main( void )
 
     /* XXX This is getting a little hacky */
     // crcl(main_activity).oldest_frame.activity = &crcl(main_activity);
+    activity_t dummy_act;
+    crcl(frame_t) dummy_frm;
+    dummy_frm.activity = &dummy_act;
     crcl(frame_p) main_frame = app_main_prologue(
-        /*XXX*/crcl(main_activity).oldest_frame, 0, __argc, __argv, __env );
+        &dummy_frm, 0, __argc, __argv, __env );
     if( !main_frame )
     {
         return -3;
@@ -107,7 +110,7 @@ static int start_application_main( void )
     activate_in_thread(
         crcl(main_thread),
         &crcl(main_activity),
-        main_frame, /* ??? XXX */
+        &dummy_frm,
         main_frame,
         (crcl(epilogueB_t))app_main_epilogueB );
     crcl(push_ready_queue)( &crcl(main_activity), crcl(main_thread) );

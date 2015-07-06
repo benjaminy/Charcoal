@@ -10,7 +10,7 @@
 #include <runtime_io_commands.h>
 #include <opa_primitives.h>
 
-static cthread_p crcl(threads);
+static cthread_p crcl(threads) = NULL;
 
 typedef struct
 {
@@ -104,12 +104,12 @@ static crcl(frame_p) thread_init(
     OPA_store_int( (OPA_int_t *)&thd->interrupt_activity, 0 );
     thd->timer_req.data = thd;
     /* XXX Does timer_init have to be called from the I/O thread? */
-    if( !uv_timer_init( crcl(io_loop), &thd->timer_req ) )
+    if( uv_timer_init( crcl(io_loop), &thd->timer_req ) )
         exit( -1 );
     // XXX thd->start_time = 0.0;
     // XXX thd->max_time = 0.0;
 
-    if( !uv_mutex_init( &thd->thd_management_mtx ) )
+    if( uv_mutex_init( &thd->thd_management_mtx ) )
         exit( -1 );
     if( uv_cond_init( &thd->thd_management_cond ) )
         exit( -1 );
@@ -163,28 +163,29 @@ static void thread_finish( cthread_p thread )
 
 int crcl(join_thread)( cthread_p t )
 {
+    int rv = 0;
     zlog_info( crcl(c), "Joining thread %p n:%p p:%p ts:%p\n",
                t, t->next, t->prev, crcl(threads) );
     if( t == crcl(main_thread) )
     {
-        //XXXint *p = (int *)crcl(main_activity).return_value;
-        crcl(process_return_value) = 42;//*p;
+        crcl(frame_t) dummy_frm;
+        dummy_frm.callee = crcl(main_activity).oldest_frame;
+        crcl(main_activity).epilogueB(
+            &dummy_frm, &crcl(process_return_value) );
     }
     if( t == t->next )
     {
-        /* XXX Trying to remove the last thread. */
-        exit( 1 );
+        zlog_info( crcl(c), "Joining the last thread" );
+        rv = 1;
     }
-    if( t == crcl(threads) )
+    else
     {
-        /* XXX Trying to remove the I/O thread. */
-        exit( 1 );
+        t->next->prev = t->prev;
+        t->prev->next = t->next;
     }
-    t->next->prev = t->prev;
-    t->prev->next = t->next;
     assert( !uv_thread_join( &t->sys ) );
     /* XXX free t? */
-    return crcl(threads) == crcl(threads)->next;
+    return rv;
 }
 
 static crcl(frame_p) idle( crcl(frame_p) idle_frame )
@@ -217,27 +218,18 @@ static crcl(frame_p) idle( crcl(frame_p) idle_frame )
 }
 
 /* XXX Data race??? */
-static void add_to_threads_list( cthread_p t )
+static void add_to_threads_list( cthread_p thd )
 {
-    cthread_p last = crcl(threads)->prev;
-    last->next = t;
-    crcl(threads)->prev = t;
-    t->next = crcl(threads);
-    t->prev = last;
-}
-
-int crcl(init_threads)( cthread_p thd, activity_p act )
-{
-    if( !thd )
-        return -EINVAL;
-    if( !act )
-        return -EINVAL;
-    crcl(threads)   = thd;
-    thd->activities = act;
-    thd->ready      = NULL;
-    thd->next       = thd;
-    thd->prev       = thd;
-    thd->sys        = uv_thread_self();
-    act->thread     = thd;
-    return 0;
+    if( crcl(threads) )
+    {
+        cthread_p last = crcl(threads)->prev;
+        last->next = thd;
+        crcl(threads)->prev = thd;
+    }
+    else
+    {
+        crcl(threads) = thd;
+        thd->next = thd;
+        thd->prev = thd;
+    }
 }
