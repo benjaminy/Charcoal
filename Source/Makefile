@@ -21,9 +21,9 @@ RUNTIME_C_OBJS = $(addsuffix .o, $(addprefix $(BUILD_DIR)/runtime_, $(RUNTIME_SO
 RUNTIME_CRCL_OBJS = $(addsuffix $(CIL_O_EXT), $(addprefix $(BUILD_DIR)/, standard_library ) )
 RUNTIME_OBJS = $(RUNTIME_CRCL_OBJS) $(RUNTIME_C_OBJS)
 
-MAIN_RUNTIME_HEADERS = atomics common coroutine io_commands semaphore
+MAIN_RUNTIME_HEADERS = common coroutine io_commands semaphore
 RUNTIME_HEADERS = $(addsuffix( .h, $(addprefix runtime_, $(MAIN_RUNTIME_HEADERS)) core )
-APP_HEADERS = application_pre_header.h core.h core_application.crclh standard_library.crclh
+APP_HEADERS = core.h application_pre_header.h core.h core_application.crclh standard_library.crclh atomics_wrappers.h
 
 .PRECIOUS: %$(CRCL_DOT_H_EXT) %$(CRCL_CPP_EXT)
 

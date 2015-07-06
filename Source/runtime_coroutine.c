@@ -8,8 +8,6 @@
 #include <assert.h>
 #include <signal.h>
 #include <stdlib.h>
-// #include <string.h> /* XXX remove dep eventually */
-// #include <stdio.h> /* XXX remove dep eventually */
 #include <errno.h>
 #include <limits.h>
 #include <runtime_coroutine.h>
@@ -30,43 +28,6 @@ uv_key_t crcl(self_key);
 activity_p crcl(get_self_activity)( void )
 {
     return (activity_p)uv_key_get( &crcl(self_key) );
-}
-
-int crcl(choose_next_activity)( activity_p *p )
-{
-    activity_p to_run, first, self = crcl(get_self_activity)();
-    cthread_p thd = self->thread;
-    uv_mutex_lock( &thd->thd_management_mtx );
-    first = to_run = thd->activities;
-    do {
-        if( !( to_run->flags & CRCL(ACTF_WAITING) )
-            && ( to_run != self ) )
-        {
-            first = NULL;
-            break;
-        }
-        to_run = to_run->next;
-    } while( to_run != first );
-    /* XXX What is this sv nonsense about??? */
-    int rv = -1, sv = 0; // XXX crcl(sem_try_decr)( &self->can_run );
-    if( !sv )
-        ; //XXX crcl(sem_incr)( &self->can_run );
-
-    if( first )
-    {
-        // XXX rv = crcl(sem_try_decr)( &to_run->can_run );
-        if( !rv )
-            ; // XXX crcl(sem_incr)( &to_run->can_run );
-    }
-    //commented this out for testing purposes, TODO: put back
-    //zlog_debug( crcl(c), "SWITCH from: %p(%i)  to: %p(%i)\n",
-    //        self, sv, to_run, rv );
-    if( p )
-    {
-        *p = to_run;
-    }
-    uv_mutex_unlock( &thd->thd_management_mtx );
-    return 0;
 }
 
 /* This should be called just before an activity starts or resumes from
@@ -101,16 +62,6 @@ crcl(frame_p) crcl(activity_start_resume)( activity_p act )
     }
 
     return act->newest_frame;
-}
-
-typedef void (*crcl(switch_listener))(activity_p from, activity_p to, void *ctx);
-
-void crcl(push_yield_switch_listener)( crcl(switch_listener) pre, void *pre_ctx, crcl(switch_listener) post, void *post_ctx )
-{
-}
-
-void crcl(pop_yield_switch_listener)()
-{
 }
 
 #if 0
@@ -330,26 +281,6 @@ crcl(frame_p) crcl(yield_impl)( crcl(frame_p) frm, void *ret_addr ){
     return switch_from_to( act, next );
 }
 
-/* XXX remove problem!!! */
-#if 0
-int wait_activity_done( activity_p a, void *p )
-{
-    if( !a )
-    {
-        return EINVAL;
-    }
-    if( CRCL(CHECK_FLAG)( *a, CRCL(ACTF_DONE) ) )
-    {
-        return 0;
-    }
-    activity_p self = crcl(get_self_activity)();
-    self->snext = a->waiters;
-    a->waiters = self;
-    // XXX RET_IF_ERROR( crcl(activity_waiting)( self ) );
-    return 0;
-}
-#endif
-
 void crcl(add_to_waiters)( activity_p waiter, activity_p waitee )
 {
     waiter->snext = NULL;
@@ -470,6 +401,7 @@ crcl(frame_p) crcl(activity_epilogue)( crcl(frame_p) frame )
     activity_p act = frame->activity;
     zlog_debug( crcl(c) , "Activity finished %p %p\n", frame, act );
     assert( frame == act->oldest_frame );
+    assert( frame == act->newest_frame );
     /* XXX I think this return value business is broken currently. */
     CRCL(SET_FLAG)( *act, CRCL(ACTF_DONE) );
     /* XXX */
@@ -493,25 +425,28 @@ void activate_in_thread(
 {
     assert( activity );
     assert( frame );
+    assert( caller );
+    assert( caller->activity );
     assert( thread );
     assert( epi );
+    assert( caller->activity != activity );
 
     zlog_debug( crcl(c), "Activate %p", activity );
 
-    activity->thread                   = thread;
-    activity->flags                    = 0;
-    activity->yield_calls              = 0;
-    activity->newest_frame             = frame;
-    activity->oldest_frame             = frame;
-    activity->snext                    = NULL;
-    activity->sprev                    = NULL;
-    activity->waiters_front            = NULL;
-    activity->waiters_back             = NULL;
-    activity->epilogueB                = epi;
-    frame->caller                      = NULL;
-    frame->activity                    = activity;
-    /* Clean up problems created by generic prologue: */
-    caller->activity->newest_frame     = caller;
+    activity->thread        = thread;
+    activity->flags         = 0;
+    activity->yield_calls   = 0;
+    activity->newest_frame  = frame;
+    activity->oldest_frame  = frame;
+    activity->snext         = NULL;
+    activity->sprev         = NULL;
+    activity->waiters_front = NULL;
+    activity->waiters_back  = NULL;
+    activity->epilogueB     = epi;
+    frame->caller           = NULL;
+    frame->activity         = activity;
+    /* Compensate for the wrongness introduced by generic_prologue: */
+    caller->activity->newest_frame = caller;
     uv_mutex_lock( &thread->thd_management_mtx );
     insert_activity_into_thread( activity, thread );
     uv_mutex_unlock( &thread->thd_management_mtx );
@@ -580,27 +515,30 @@ crcl(frame_p) crcl(fn_generic_prologue)(
     crcl(frame_p) caller,
     crcl(frame_p) (*fn)( crcl(frame_p) ) )
 {
-    /* assert( caller ) */
-    /* assert( caller->activity ) */
-    /* assert( fn ) */
-    /* XXX make malloc/free configurable? */
-    crcl(frame_p) f = (crcl(frame_p))malloc( sz + sizeof( f[0] ) );
-    if( !f )
+    assert( caller );
+    assert( caller->activity );
+    assert( fn );
+    /* NOTE: malloc and free are a considerable source of overhead in
+     * Charcoal.  Some day we should experiment with different
+     * allocators. */
+    crcl(frame_p) frm = (crcl(frame_p))malloc( sz + sizeof( frm[0] ) );
+    if( !frm )
     {
-        /* XXX out-of-memory error */
         exit( -ENOMEM );
     }
-    // zlog_info( crcl(c), "generic_prologue %p %p\n",
-    //       caller, caller ? caller->activity : 0 );
-    caller->callee            = f;
-    caller->return_addr       = return_ptr;
-    f->fn                     = fn;
-    f->caller                 = caller;
-    f->callee                 = NULL;
-    f->return_addr            = NULL;
-    f->activity               = caller->activity;
-    f->activity->newest_frame = f;
-    return f;
+    zlog_debug( crcl(c), "generic_prologue %p %p", caller, caller->activity );
+    caller->callee      = frm;
+    caller->return_addr = return_ptr;
+    frm->fn             = fn;
+    frm->caller         = caller;
+    frm->callee         = NULL;
+    frm->return_addr    = NULL;
+    frm->activity       = caller->activity;
+    /* WARNING: The following line is correct when used for procedure
+     * calls, but not activates.  To keep calls as fast as possible we
+     * allow this wrongness here and compensate for it in activate. */
+    caller->activity->newest_frame = frm;
+    return frm;
 }
 
 crcl(frame_p) crcl(fn_generic_epilogueA)( crcl(frame_p) frame )

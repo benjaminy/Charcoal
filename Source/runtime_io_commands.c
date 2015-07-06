@@ -176,20 +176,21 @@ static void start_cb( uv_idle_t* handle ) {
  * be the I/O thread.  Before it starts its I/O duties it launches
  * another thread that will call the application's main procedure.
  */
-int crcl(init_io_loop)( cthread_p t, activity_p a, int (*f)( void ) )
+int crcl(init_io_loop)( int (*f)( void ) )
 {
-    assert( !uv_key_create( &crcl(self_key) ) );
+    RET_IF_ERROR( uv_key_create( &crcl(self_key) ) );
     crcl(io_loop) = uv_default_loop();
     RET_IF_ERROR(
         uv_async_init( crcl(io_loop), &crcl(io_cmd), crcl(io_cmd_cb) ) );
 
-    uv_idle_init( crcl(io_loop), &start_the_world );
-    start_the_world.data = f;
-    uv_idle_start( &start_the_world, start_cb );
-
     crcl(cmd_queue).front = NULL;
     crcl(cmd_queue).back = NULL;
-    assert( !uv_mutex_init( &crcl(cmd_queue).mtx ) );
+    RET_IF_ERROR( uv_mutex_init( &crcl(cmd_queue).mtx ) );
+
+    /* app_main doesn't run until the event loop is actually started */
+    RET_IF_ERROR( uv_idle_init( crcl(io_loop), &start_the_world ) );
+    start_the_world.data = f;
+    RET_IF_ERROR( uv_idle_start( &start_the_world, start_cb ) );
 
     return 0;
 }

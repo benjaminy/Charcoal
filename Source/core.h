@@ -1,11 +1,12 @@
 #ifndef __CHARCOAL_CORE
 #define __CHARCOAL_CORE
 
-/* Should be included before absolutely anything else in Charcoal source
- * files. */
+/* Should be included before absolutely anything else in Charcoal
+ * runtime source files.  Charcoal application compilation flows should
+ * implicitly include this file. */
 
 #ifdef __CHARCOAL_CIL
-/* #pragma cilnoremove("func1", "var2", "type foo", "struct bar") */
+/* Example: #pragma cilnoremove("func1", "var2", "type foo", "struct bar") */
 #pragma cilnoremove( "struct __charcoal_frame_t" )
 #pragma cilnoremove( "struct activity_t" )
 #endif
@@ -17,6 +18,9 @@
 #define CRCL(n) __CHARCOAL_ ## n
 
 #define RET_IF_ERROR(cmd) \
+    do { int rc = cmd; if( 0 > rc ) return rc; if( 0 < rc ) return -rc; } while( 0 )
+
+#define __CHARCOAL_RET_IF_ERROR(cmd) \
     do { int rc; if( 0 > ( rc = cmd ) ) { return rc; } } while( 0 )
 
 #define __CHARCOAL_SET_FLAG(x,f)   do { (x).flags |=  (f); } while( 0 )
@@ -159,5 +163,7 @@ struct cthread_t
 };
 
 #define assert_impl(a,b) assert( ( !( a ) ) || ( b ) )
+
+int thread_start( cthread_p *thd, void *options );
 
 #endif /* __CHARCOAL_CORE */

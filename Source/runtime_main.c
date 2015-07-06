@@ -48,8 +48,6 @@ int main( int argc, char **argv, char **env )
     /* Okay to stack-allocate these here because the I/O thread should
      * always be the last thing running in a Charcoal process.
      * TODO: Document why we need these for the I/O thread */
-    cthread_t  io_thread;
-    activity_t io_activity;
     int rc;
     if( ( rc = zlog_init( zlog_config_full_filename ) ) )
     {
@@ -66,13 +64,12 @@ int main( int argc, char **argv, char **env )
     __argc = argc;
     __argv = argv;
     __env  = env;
-    if( ( rc = crcl(init_io_loop)( &io_thread, &io_activity, start_application_main ) ) )
+    if( ( rc = crcl(init_io_loop)( start_application_main ) ) )
     {
         zlog_error( crcl(c), "Failure: Initialization of the I/O loop: %d\n", rc );
         return rc;
     }
 
-    crcl(activity_start_resume)( &io_activity );
     if( ( rc = uv_run( crcl(io_loop), UV_RUN_DEFAULT ) ) )
     {
         zlog_error( crcl(c), "Failure: Running the I/O loop: %d", rc );

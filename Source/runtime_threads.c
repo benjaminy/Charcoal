@@ -3,25 +3,25 @@
  */
 
 #include <core.h>
+#include <core_runtime.h>
 #include <assert.h>
 #include <stdlib.h>
 #include <runtime_coroutine.h>
 #include <runtime_io_commands.h>
 #include <opa_primitives.h>
 
-activity_p crcl(pop_ready_queue)( cthread_p t );
-
 static cthread_p crcl(threads);
 
-struct thread_entry_params
+typedef struct
 {
     crcl(sem_t) s1, s2;
     cthread_p  *tptr;
     void       *options;
-};
+} thread_entry_params;
 
+static crcl(frame_p) thread_init(
+    thread_entry_params *params, cthread_p thd );
 static void thread_main_loop( void *p );
-static crcl(frame_p) thread_init( struct thread_entry_params *params, cthread_p thread );
 static void thread_finish( cthread_p thread );
 static crcl(frame_p) idle( crcl(frame_p) idle_frame );
 static void add_to_threads_list( cthread_p thd );
@@ -45,7 +45,7 @@ int thread_start( cthread_p *thread, void *options )
     /* XXX: pthread attributes */
     // detachstate guardsize inheritsched schedparam schedpolicy scope
 
-    struct thread_entry_params params;
+    thread_entry_params params;
     rc = crcl(sem_init)( &params.s1, 0, 0 );
     assert( !rc );
     rc = crcl(sem_init)( &params.s2, 0, 0 );
@@ -80,66 +80,71 @@ int thread_start( cthread_p *thread, void *options )
 static void thread_main_loop( void *p )
 {
     assert( p );
-    cthread_p thread = (cthread_p)malloc( sizeof( thread[0] ) );
-    crcl(frame_p) frame =
-        thread_init( (struct thread_entry_params *)p, thread );
+    cthread_p thd = (cthread_p)malloc( sizeof( thd[0] ) );
+    crcl(frame_p) frm = thread_init( (thread_entry_params *)p, thd );
+    if( !frm )
+        exit( -EINVAL );
     do
     {
-        frame = frame->fn( frame );
-    } while( frame );
+        frm = frm->fn( frm );
+    } while( frm );
 
-    thread_finish( thread );
+    thread_finish( thd );
 }
 
 static crcl(frame_p) thread_init(
-    struct thread_entry_params *params, cthread_p thread )
+    thread_entry_params *params, cthread_p thd )
 {
-    zlog_info( crcl(c), "Charcoal thread initializing %p( %p )\n", thread, params );
+    if( !thd )    exit( -1 );
+    if( !params ) exit( -1 );
+    *params->tptr = thd;
+    zlog_info( crcl(c), "Charcoal thread initializing %p( %p )\n", thd, params );
     /* XXX  init can-run */
-    *params->tptr = thread;
-    // OPA_store_int( (OPA_int_t *)&thread->timeout, 0 );
-    OPA_store_int( (OPA_int_t *)&thread->interrupt_activity, 0 );
-    thread->timer_req.data = thread;
+    // OPA_store_int( (OPA_int_t *)&thd->timeout, 0 );
+    OPA_store_int( (OPA_int_t *)&thd->interrupt_activity, 0 );
+    thd->timer_req.data = thd;
     /* XXX Does timer_init have to be called from the I/O thread? */
-    uv_timer_init( crcl(io_loop), &thread->timer_req );
-    // XXX thread->start_time = 0.0;
-    // XXX thread->max_time = 0.0;
+    if( !uv_timer_init( crcl(io_loop), &thd->timer_req ) )
+        exit( -1 );
+    // XXX thd->start_time = 0.0;
+    // XXX thd->max_time = 0.0;
 
-    assert( !uv_mutex_init( &thread->thd_management_mtx ) );
-    assert( !uv_cond_init( &thread->thd_management_cond ) );
+    if( !uv_mutex_init( &thd->thd_management_mtx ) )
+        exit( -1 );
+    if( uv_cond_init( &thd->thd_management_cond ) )
+        exit( -1 );
 
-    thread->flags               = 0;
-    thread->runnable_activities = 0;
-    thread->activities          = NULL;
-    thread->ready               = NULL;
-    // thread->sys initialized in thread_start
-    CRCL(SET_FLAG)( *thread, CRCL(THDF_IDLE) );
-    CRCL(SET_FLAG)( *thread, CRCL(THDF_NEVER_RUN) );
-    thread->idle_act.thread                    = thread;
-    thread->idle_act.flags                     = 0;
-    thread->idle_act.next                      = NULL;
-    thread->idle_act.prev                      = NULL;
-    thread->idle_act.snext                     = NULL;
-    thread->idle_act.sprev                     = NULL;
-    thread->idle_act.waiters_front             = NULL;
-    thread->idle_act.waiters_back              = NULL;
-    thread->idle_act.newest_frame              = &thread->idle_frm;
-    thread->idle_act.oldest_frame              = &thread->idle_frm;
-    thread->idle_act.yield_calls               = 0;
-    thread->idle_act.oldest_frame->fn          = idle;
-    thread->idle_act.oldest_frame->activity    = &thread->idle_act;
-    thread->idle_act.oldest_frame->caller      = NULL;
-    thread->idle_act.oldest_frame->callee      = NULL;
-    thread->idle_act.oldest_frame->return_addr = NULL;
+    thd->flags               = 0;
+    thd->runnable_activities = 0;
+    thd->activities          = NULL;
+    thd->ready               = NULL;
+    // thd->sys initialized in thread_start
+    CRCL(SET_FLAG)( *thd, CRCL(THDF_IDLE) );
+    CRCL(SET_FLAG)( *thd, CRCL(THDF_NEVER_RUN) );
+    thd->idle_act.thread                    = thd;
+    thd->idle_act.flags                     = 0;
+    thd->idle_act.next                      = NULL;
+    thd->idle_act.prev                      = NULL;
+    thd->idle_act.snext                     = NULL;
+    thd->idle_act.sprev                     = NULL;
+    thd->idle_act.waiters_front             = NULL;
+    thd->idle_act.waiters_back              = NULL;
+    thd->idle_act.newest_frame              = &thd->idle_frm;
+    thd->idle_act.oldest_frame              = &thd->idle_frm;
+    thd->idle_act.yield_calls               = 0;
+    thd->idle_act.oldest_frame->fn          = idle;
+    thd->idle_act.oldest_frame->activity    = &thd->idle_act;
+    thd->idle_act.oldest_frame->caller      = NULL;
+    thd->idle_act.oldest_frame->callee      = NULL;
+    thd->idle_act.oldest_frame->return_addr = NULL;
     /* XXX: pthread attributes */
     // detachstate guardsize inheritsched schedparam schedpolicy scope
-
-    assert( !crcl(sem_incr)( &params->s1 ) );
+    if( crcl(sem_incr)( &params->s1 ) ) exit( -1 );
     /* Must wait for parent thread to initialize the sys field. */
-    assert( !crcl(sem_decr)( &params->s2 ) );
-    add_to_threads_list( thread );
-    assert( !crcl(sem_incr)( &params->s1 ) );
-    return thread->idle_act.oldest_frame; /* XXX */
+    if( crcl(sem_decr)( &params->s2 ) ) exit( -1 );
+    add_to_threads_list( thd );
+    if( crcl(sem_incr)( &params->s1 ) ) exit( -1 );
+    return thd->idle_act.newest_frame;
 }
 
 static void thread_finish( cthread_p thread )

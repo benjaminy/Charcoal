@@ -9,7 +9,7 @@ $(BUILD_DIR)/%$(CRCL_DOT_H_EXT): %.crcl
 
 # Do C preprocesing.  Cil doesn't do this itself.
 %$(CRCL_CPP_EXT): %$(CRCL_DOT_H_EXT)
-	$(CC) -E $(INCLUDE_DIRS) -o $@ -x c $<
+	$(CC) -E $(INCLUDE_DIRS) -D__CHARCOAL_CIL -o $@ -x c $<
 
 # Invoke Cil to translate Charcoal to plain C.
 %$(CIL_C_EXT): %$(CRCL_CPP_EXT)
