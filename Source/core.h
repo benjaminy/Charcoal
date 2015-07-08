@@ -9,6 +9,7 @@
 /* Example: #pragma cilnoremove("func1", "var2", "type foo", "struct bar") */
 #pragma cilnoremove( "struct __charcoal_frame_t" )
 #pragma cilnoremove( "struct activity_t" )
+#pragma cilnoremove( "MYSTERIOUS_CIL_BUG" )
 #pragma cilnoremove( "__charcoal_activate" )
 #pragma cilnoremove( "__charcoal_yield" )
 #pragma cilnoremove( "__charcoal_yield_impl" )
@@ -39,11 +40,10 @@
 #define __CHARCOAL_THDF_TIMER_ON   (1 << 3)
 
 /* Activity flags */
-#define __CHARCOAL_ACTF_DETACHED    (1 << 0)
-#define __CHARCOAL_ACTF_WAITING     (1 << 1)
-#define __CHARCOAL_ACTF_READY_QUEUE (1 << 2)
-#define __CHARCOAL_ACTF_REAP_QUEUE  (1 << 3)
-#define __CHARCOAL_ACTF_DONE        (1 << 4)
+#define __CHARCOAL_ACTF_DETACHED  (1 << 0)
+#define __CHARCOAL_ACTF_WAITING   (1 << 1)
+#define __CHARCOAL_ACTF_READY     (1 << 2)
+#define __CHARCOAL_ACTF_DONE      (1 << 3)
 
 /* XXX super annoying name collision on thread_t with Mach header.
  * Look into it more some day. */
@@ -116,7 +116,7 @@ struct activity_t
     /* A list of activities that are waiting for this one to finish. */
     /* TODO: Might replace these with a more generic event
      * thing-a-ma-jig */
-    activity_p waiters_front, waiters_back;
+    activity_p waiters;
 
     /* The oldest and newest frames in this activity's call chain.
      * NOTE: While an activity is running this might be stale.  It gets
@@ -173,10 +173,17 @@ int thread_start( cthread_p thd, void *options );
 
 typedef void (*crcl(epilogueB_t))( crcl(frame_p), void * );
 
-crcl(frame_p) crcl(activate)( crcl(frame_p) f, void *p, activity_p a, crcl(frame_p) f2, crcl(epilogueB_t) e );
+int MYSTERIOUS_CIL_BUG( void );
+
+crcl(frame_p) crcl(activate)(
+    crcl(frame_p) f,
+    void *p,
+    activity_p a,
+    crcl(frame_p) f2,
+    crcl(epilogueB_t) e );
 int crcl(yield)( void );
 crcl(frame_p) crcl(yield_impl)( crcl(frame_p) frame, void *ret_addr );
 crcl(frame_p) crcl(activity_waiting_or_done)( crcl(frame_p) frm, void *ret_addr );
-void crcl(add_to_waiters)( activity_p waiter, activity_p waitee );
+void crcl(add_to_waiters)( activity_p waiter, activity_p *q );
 
 #endif /* __CHARCOAL_CORE */

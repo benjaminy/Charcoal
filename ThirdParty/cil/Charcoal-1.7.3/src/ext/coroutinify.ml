@@ -96,6 +96,7 @@ type frame_info =
     callee_sel      : C.exp -> C.lval;
     return_addr_sel : C.exp -> C.lval;
     oldest_sel      : C.exp -> C.lval;
+    dummy_var       : C.varinfo;
     gen_prologue    : C.varinfo;
     gen_epilogueA   : C.varinfo;
     gen_epilogueB   : C.varinfo;
@@ -544,11 +545,11 @@ let coroutinify_call visitor fdec frame instr =
                                C.d_lval ( C.var fdec.C.svar )
                                C.d_instr instr ) in
   match instr with
-    C.Call( lhs_opt_pre_vis, fn_exp_pre_vis, params_pre_vis, loc )
-       when exp_is_charcoal_fn fn_exp_pre_vis ->
-    let () = trc (Pretty.dprintf "entering function %a\n%a\n"
-                                 C.d_exp fn_exp_pre_vis
-                                 C.d_type( C.typeOf fn_exp_pre_vis ) )
+    C.Call( lhs_opt_pre_vis, fn_exp_pre_vis, params_pre_vis, loc ) ->
+    let () =
+      trc( Pretty.dprintf "XXXXXX %a\n%a\n"
+                          C.d_exp fn_exp_pre_vis
+                          C.d_type( C.typeOf fn_exp_pre_vis ) )
     in
     let lhs_opt = opt_map (C.visitCilLval visitor) lhs_opt_pre_vis in
     let fn_exp = C.visitCilExpr visitor fn_exp_pre_vis in
@@ -589,7 +590,9 @@ let coroutinify_call visitor fdec frame instr =
           coroutinify_wait fdec frame loc
         else
           E.s( E.bug "Built-in %s" v.C.vname )
-      | _ -> coroutinify_normal_call lhs_opt params call_stuff fdec loc frame
+      | _ when exp_is_charcoal_fn fn_exp_pre_vis ->
+         coroutinify_normal_call lhs_opt params call_stuff fdec loc frame
+      | _ -> [ C.mkStmt( C.Instr( C.visitCilInstr visitor instr ) ) ]
     )
 
   (* Something other than a call to a Charcoal function *)
@@ -1044,6 +1047,7 @@ let examine_frame_t_struct ci dummy_var =
     callee_sel      = ( fun e -> ( C.Mem e, C.Field( ce,  C.NoOffset ) ) );
     return_addr_sel = ( fun e -> ( C.Mem e, C.Field( r,   C.NoOffset ) ) );
     oldest_sel      = ( fun e -> ( C.Mem e, C.Field( cr , C.NoOffset ) ) );
+    dummy_var       = dummy_var;
     gen_prologue    = dummy_var;
     gen_epilogueA   = dummy_var;
     gen_epilogueB   = dummy_var;
@@ -1117,7 +1121,7 @@ class globals_visitor = object(self)
            frame_opt <- Some{ frame_info with self_activity = v }
          else if name = crcl "activity_epilogue" then
            frame_opt <- Some{ frame_info with act_epilogue = v }
-         else if name = "activity_wait" then
+         else if name = crcl "activity_wait" then
            frame_opt <- Some{ frame_info with activity_wait = v }
          else if name = crcl "activity_waiting_or_done" then
            frame_opt <- Some{ frame_info with act_wait_done = v }
@@ -1157,7 +1161,31 @@ class globals_visitor = object(self)
        let () = self#fill_in_frame orig_var in
        let generic_frame_info =
          match frame_opt with
-           Some f -> f
+           Some f ->
+           if f.dummy_var == f.gen_prologue then
+             E.s( E.bug "Missing generic prologue" )
+           else if f.dummy_var == f.gen_epilogueA then
+             E.s( E.bug "Missing generic epilogue A" )
+           else if f.dummy_var == f.gen_epilogueB then
+             E.s( E.bug "Missing generic epilogue B" )
+           else if f.dummy_var == f.activate then
+             E.s( E.bug "Missing activate" )
+           else if f.dummy_var == f.act_intermed then
+             E.s( E.bug "Missing activate intermediate" )
+           else if f.dummy_var == f.act_epilogue then
+             E.s( E.bug "Missing activity epilogue" )
+           else if f.dummy_var == f.yield then
+             E.s( E.bug "Missing yield" )
+           else if f.dummy_var == f.mode_test then
+             E.s( E.bug "Missing mode test" )
+           else if f.dummy_var == f.self_activity then
+             E.s( E.bug "Missing self activity" )
+           else if f.dummy_var == f.activity_wait then
+             E.s( E.bug "Missing activity wait" )
+           else if f.dummy_var == f.act_wait_done then
+             E.s( E.bug "Missing activity waiting or done" )
+           else
+             f
          | None ->
             E.s( E.error "GFun before frame_t def  :(  %s !" orig_name )
        in

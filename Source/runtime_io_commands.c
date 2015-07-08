@@ -81,7 +81,7 @@ static int crcl(wake_up_requester)( activity_p a )
     a->flags &= ~CRCL(ACTF_WAITING);
     cthread_p thd = a->thread;
     uv_mutex_lock( &thd->thd_management_mtx );
-    crcl(push_special_queue)( CRCL(ACTF_READY_QUEUE), a, thd, NULL );
+    crcl(push_ready_queue)( a, thd );
     uv_mutex_unlock( &thd->thd_management_mtx );
     uv_cond_signal( &thd->thd_management_cond );
     return 0;

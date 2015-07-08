@@ -23,14 +23,14 @@ int wait_activity_done( activity_p waitee )
     }
     activity_p self = self_activity();
     assert( self );
-    crcl(add_to_waiters)( self, waitee );
+    crcl(push_waiting_queue)( self, &waitee->waiters );
     crcl(activity_wait)();
     return 1;
 }
 
 /* XXX the semaphore implementation is not thread-safe yet.  Fix
  * eventually. */
-
+#if 0
 int semaphore_open( semaphore_p s, unsigned i )
 {
     if( !s )
@@ -67,7 +67,7 @@ int semaphore_incr( semaphore_p s )
         activity_p a = crcl(pop_special_queue)(
             CRCL(ACTF_WAITING), NULL, &s->waiters );
         crcl(push_special_queue)(
-            CRCL(ACTF_READY_QUEUE), a, a->thread, NULL );
+            CRCL(ACTF_READY), a, a->thread, NULL );
     }
     return 0;
 }
@@ -99,7 +99,7 @@ int semaphore_decr( semaphore_p s )
         activity_p a = crcl(pop_special_queue)(
             CRCL(ACTF_WAITING), NULL, &s->waiters );
         crcl(push_special_queue)(
-            CRCL(ACTF_READY_QUEUE), a, a->thread, NULL );
+            CRCL(ACTF_READY), a, a->thread, NULL );
     }
     return 0;
 }
@@ -120,7 +120,7 @@ int semaphore_try_decr( semaphore_p s )
         return 0;
     }
 }
-
+#endif
 /*
  * TetraStak
  */

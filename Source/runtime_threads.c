@@ -127,8 +127,7 @@ static crcl(frame_p) thread_init( thread_entry_params *params )
     thd->idle_act.prev                      = NULL;
     thd->idle_act.snext                     = NULL;
     thd->idle_act.sprev                     = NULL;
-    thd->idle_act.waiters_front             = NULL;
-    thd->idle_act.waiters_back              = NULL;
+    thd->idle_act.waiters                   = NULL;
     thd->idle_act.newest_frame              = &thd->idle_frm;
     thd->idle_act.oldest_frame              = &thd->idle_frm;
     thd->idle_act.yield_calls               = 0;

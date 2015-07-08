@@ -3,13 +3,10 @@
 
 extern uv_key_t crcl(self_key);
 
-void crcl(push_special_queue)(
-    unsigned queue_flag, activity_p a, cthread_p t, activity_p *qp );
-activity_p crcl(pop_special_queue)(
-    unsigned queue_flag, cthread_p t, activity_p *qp );
-
 void crcl(push_ready_queue)( activity_p a, cthread_p t );
 activity_p crcl(pop_ready_queue)( cthread_p t );
+void crcl(push_waiting_queue)( activity_p a, activity_p *q );
+activity_p crcl(pop_waiting_queue)( activity_p *q );
 
 /* join thread t.  Return True if t was the last application
  * thread. */
