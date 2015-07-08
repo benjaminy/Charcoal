@@ -364,8 +364,11 @@ static void crcl(remove_activity_from_thread)( activity_p a, cthread_p t)
  * 2) Otherwise, if there are waiting activities switch to idle
  * 3) Otherwise, clean up thread
  */
-static crcl(frame_p) activity_waiting_or_done( crcl(frame_p) frm )
+crcl(frame_p) crcl(activity_waiting_or_done)( crcl(frame_p) frm, void *ret_addr )
 {
+    assert( frm );
+    assert( frm->activity );
+    frm->return_addr = ret_addr;
     activity_p act = frm->activity;
     cthread_p  thd = act->thread;
     uv_mutex_lock( &thd->thd_management_mtx );
@@ -399,7 +402,7 @@ crcl(frame_p) crcl(activity_epilogue)( crcl(frame_p) frame )
 {
     assert( frame );
     activity_p act = frame->activity;
-    zlog_debug( crcl(c) , "Activity finished %p %p %p\n", frame, act, act->newest_frame );
+    zlog_debug( crcl(c) , "Activity finished %p %p %p", frame, act, act->newest_frame );
     assert( frame == act->oldest_frame );
     assert( NULL == act->newest_frame );
     /* XXX I think this return value business is broken currently. */
@@ -411,7 +414,7 @@ crcl(frame_p) crcl(activity_epilogue)( crcl(frame_p) frame )
     uv_mutex_lock( &t->thd_management_mtx );
     crcl(remove_activity_from_thread)( act, t );
     uv_mutex_unlock( &t->thd_management_mtx );
-    return activity_waiting_or_done( frame );
+    return crcl(activity_waiting_or_done)( frame, NULL );
 }
 
 /* Initialize 'activity' and add it to 'thread'. */
@@ -467,7 +470,7 @@ crcl(frame_p) crcl(activate)(
     assert( activity );
     assert( frm );
     assert( epi );
-    zlog_info( crcl(c), "crcl(activate) %p %p\n", caller, caller ? caller->activity : 0 );
+    zlog_info( crcl(c), "crcl(activate) %p %p", caller, caller ? caller->activity : 0 );
     if( caller )
     {   /* Currently in yielding context */
         caller->return_addr = ret_addr;

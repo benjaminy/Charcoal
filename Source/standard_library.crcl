@@ -1,11 +1,11 @@
 #include <standard_library.crclh>
 extern "C" {
+#include <assert.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <runtime_io_commands.h>
 }
 
-#if 0
 int wait_activity_done( activity_p waitee )
 {
     if( !waitee )
@@ -27,7 +27,100 @@ int wait_activity_done( activity_p waitee )
     crcl(activity_wait)();
     return 1;
 }
+
+/* XXX the semaphore implementation is not thread-safe yet.  Fix
+ * eventually. */
+
+int semaphore_open( semaphore_p s, unsigned i )
+{
+    if( !s )
+    {
+        return -EINVAL;
+    }
+    s->value = i;
+    s->waiters = NULL;
+    return 0;
+}
+
+int semaphore_close( semaphore_p s )
+{
+    if( !s )
+    {
+        return -EINVAL;
+    }
+    if( s->waiters )
+    {
+        /* XXX error? */
+    }
+    return 0;
+}
+
+int semaphore_incr( semaphore_p s )
+{
+    if( !s )
+    {
+        return -EINVAL;
+    }
+    ++s->value;
+    if( s->waiters )
+    {
+        activity_p a = crcl(pop_special_queue)(
+            CRCL(ACTF_WAITING), NULL, &s->waiters );
+        crcl(push_special_queue)(
+            CRCL(ACTF_READY_QUEUE), a, a->thread, NULL );
+    }
+    return 0;
+}
+
+int semaphore_decr( semaphore_p s )
+{
+    if( !s )
+    {
+        return EINVAL;
+    }
+    activity_p self = crcl(get_self_activity)();
+    while( s->value < 1 )
+    {
+        // XXX int rc;
+        crcl(push_special_queue)(CRCL(ACTF_WAITING),
+            self, NULL, &s->waiters );
+#if 0
+        XXX
+        if( ( rc = crcl(activity_waiting)( /* XXX bad cast */(crcl(frame_p))self ) ) )
+        {
+            return rc;
+        }
 #endif
+    }
+    --s->value;
+    /* XXX maybe this isn't necessary?  */
+    if( s->value > 0 && s->waiters )
+    {
+        activity_p a = crcl(pop_special_queue)(
+            CRCL(ACTF_WAITING), NULL, &s->waiters );
+        crcl(push_special_queue)(
+            CRCL(ACTF_READY_QUEUE), a, a->thread, NULL );
+    }
+    return 0;
+}
+
+int semaphore_try_decr( semaphore_p s )
+{
+    if( !s )
+    {
+        return EINVAL;
+    }
+    if( s->value < 1 )
+    {
+        return EAGAIN;
+    }
+    else
+    {
+        --s->value;
+        return 0;
+    }
+}
+
 /*
  * TetraStak
  */
@@ -168,98 +261,6 @@ int release( mutex m )
 }
 #endif
 #if 0
-/* XXX the semaphore implementation is not thread-safe yet.  Fix
- * eventually. */
-
-int semaphore_open( semaphore_p s, unsigned i )
-{
-    if( !s )
-    {
-        return EINVAL;
-    }
-    s->value = i;
-    s->waiters = NULL;
-    return 0;
-}
-
-int semaphore_close( semaphore_p s )
-{
-    if( !s )
-    {
-        return EINVAL;
-    }
-    if( s->waiters )
-    {
-        /* XXX error? */
-    }
-    return 0;
-}
-
-int semaphore_incr( semaphore_p s )
-{
-    if( !s )
-    {
-        return EINVAL;
-    }
-    ++s->value;
-    if( s->waiters )
-    {
-        activity_p a = crcl(pop_special_queue)(
-            CRCL(ACTF_WAITING), NULL, &s->waiters );
-        crcl(push_special_queue)(
-            CRCL(ACTF_READY_QUEUE), a, a->thread, NULL );
-    }
-    return 0;
-}
-
-int semaphore_decr( semaphore_p s )
-{
-    if( !s )
-    {
-        return EINVAL;
-    }
-    activity_p self = crcl(get_self_activity)();
-    while( s->value < 1 )
-    {
-        // XXX int rc;
-        crcl(push_special_queue)(CRCL(ACTF_WAITING),
-            self, NULL, &s->waiters );
-#if 0
-        XXX
-        if( ( rc = crcl(activity_waiting)( /* XXX bad cast */(crcl(frame_p))self ) ) )
-        {
-            return rc;
-        }
-#endif
-    }
-    --s->value;
-    /* XXX maybe this isn't necessary?  */
-    if( s->value > 0 && s->waiters )
-    {
-        activity_p a = crcl(pop_special_queue)(
-            CRCL(ACTF_WAITING), NULL, &s->waiters );
-        crcl(push_special_queue)(
-            CRCL(ACTF_READY_QUEUE), a, a->thread, NULL );
-    }
-    return 0;
-}
-
-int semaphore_try_decr( semaphore_p s )
-{
-    if( !s )
-    {
-        return EINVAL;
-    }
-    if( s->value < 1 )
-    {
-        return EAGAIN;
-    }
-    else
-    {
-        --s->value;
-        return 0;
-    }
-}
 
 static int crcl(send_io_cmd)( crcl(io_cmd_t) *cmd, activity_p a )
 {

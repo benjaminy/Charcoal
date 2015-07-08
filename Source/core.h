@@ -12,6 +12,8 @@
 #pragma cilnoremove( "__charcoal_activate" )
 #pragma cilnoremove( "__charcoal_yield" )
 #pragma cilnoremove( "__charcoal_yield_impl" )
+#pragma cilnoremove( "__charcoal_activity_waiting_or_done" )
+#pragma cilnoremove( "__charcoal_add_to_waiters" )
 #endif
 
 #include <atomics_wrappers.h>
@@ -174,5 +176,7 @@ typedef void (*crcl(epilogueB_t))( crcl(frame_p), void * );
 crcl(frame_p) crcl(activate)( crcl(frame_p) f, void *p, activity_p a, crcl(frame_p) f2, crcl(epilogueB_t) e );
 int crcl(yield)( void );
 crcl(frame_p) crcl(yield_impl)( crcl(frame_p) frame, void *ret_addr );
+crcl(frame_p) crcl(activity_waiting_or_done)( crcl(frame_p) frm, void *ret_addr );
+void crcl(add_to_waiters)( activity_p waiter, activity_p waitee );
 
 #endif /* __CHARCOAL_CORE */

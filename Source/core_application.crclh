@@ -8,9 +8,11 @@
 #ifdef __CHARCOAL_CIL
 #pragma cilnoremove( "__charcoal_activate_intermediate" )
 #pragma cilnoremove( "__charcoal_activity_epilogue" )
+#pragma cilnoremove( "__charcoal_activity_wait" )
 #pragma cilnoremove( "__charcoal_fn_generic_prologue" )
 #pragma cilnoremove( "__charcoal_fn_generic_epilogueA" )
 #pragma cilnoremove( "__charcoal_fn_generic_epilogueB" )
+#pragma cilnoremove( "self_activity" )
 #endif
 
 /* calls to "intermediate" only exist temporarily, between stages of compilation */
@@ -31,6 +33,10 @@ crcl(frame_p) crcl(fn_generic_prologue)(
 crcl(frame_p) crcl(fn_generic_epilogueA)( crcl(frame_p) frame );
 
 void crcl(fn_generic_epilogueB)( crcl(frame_p) frame );
+
+void crcl(activity_wait)( void );
+
+activity_p self_activity();
 }
 
 #endif /* __CHARCOAL_CORE_APPLICATION */

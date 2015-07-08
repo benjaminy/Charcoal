@@ -17,6 +17,6 @@ int main( int argc, char **argv, char **env )
             printf( "I'm active %d\n", i );
         };
     }
-    printf( "After the activations" );
+    printf( "After the activations\n" );
     return 0;
 }

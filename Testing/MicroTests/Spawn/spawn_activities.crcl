@@ -1,20 +1,19 @@
 extern "C" {
 #include <stdlib.h>
 #include <stdio.h>
+#include <assert.h>
 }
 
 #define N 10
 int m = N;
-pthread_mutex_t mtx;
-pthread_cond_t cond;
-pthread_t threads[2];
+activity_t activities[2];
 int i, done = 0;
 
 void f( int n, int x )
 {
     if( i > 1 )
     {
-        pthread_join( threads[ i % 2 ], NULL );
+        wait_activity_done( threads[ i % 2 ], NULL );
     }
     ++i;
     if( i < m )
@@ -26,7 +25,6 @@ void f( int n, int x )
         done = 1;
         pthread_cond_signal( &cond );
     }
-    return p;
 }
 
 int main( int argc, char **argv )
