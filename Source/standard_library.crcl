@@ -30,7 +30,7 @@ int wait_activity_done( activity_p waitee )
 
 /* XXX the semaphore implementation is not thread-safe yet.  Fix
  * eventually. */
-#if 0
+
 int semaphore_open( semaphore_p s, unsigned i )
 {
     if( !s )
@@ -62,12 +62,10 @@ int semaphore_incr( semaphore_p s )
         return -EINVAL;
     }
     ++s->value;
-    if( s->waiters )
+    activity_p waiter = crcl(pop_waiting_queue)( &s->waiters );
+    if( waiter )
     {
-        activity_p a = crcl(pop_special_queue)(
-            CRCL(ACTF_WAITING), NULL, &s->waiters );
-        crcl(push_special_queue)(
-            CRCL(ACTF_READY), a, a->thread, NULL );
+        crcl(push_ready_queue)( waiter, waiter->thread );
     }
     return 0;
 }
@@ -76,14 +74,15 @@ int semaphore_decr( semaphore_p s )
 {
     if( !s )
     {
-        return EINVAL;
+        return -EINVAL;
     }
-    activity_p self = crcl(get_self_activity)();
+    activity_p self = self_activity();
+    assert( self );
     while( s->value < 1 )
     {
         // XXX int rc;
-        crcl(push_special_queue)(CRCL(ACTF_WAITING),
-            self, NULL, &s->waiters );
+        crcl(push_waiting_queue)( self, &s->waiters );
+        crcl(activity_wait)();
 #if 0
         XXX
         if( ( rc = crcl(activity_waiting)( /* XXX bad cast */(crcl(frame_p))self ) ) )
@@ -94,12 +93,13 @@ int semaphore_decr( semaphore_p s )
     }
     --s->value;
     /* XXX maybe this isn't necessary?  */
-    if( s->value > 0 && s->waiters )
+    if( s->value > 0 )
     {
-        activity_p a = crcl(pop_special_queue)(
-            CRCL(ACTF_WAITING), NULL, &s->waiters );
-        crcl(push_special_queue)(
-            CRCL(ACTF_READY), a, a->thread, NULL );
+        activity_p waiter = crcl(pop_waiting_queue)( &s->waiters );
+        if( waiter )
+        {
+            crcl(push_ready_queue)( waiter, waiter->thread );
+        }
     }
     return 0;
 }
@@ -120,7 +120,7 @@ int semaphore_try_decr( semaphore_p s )
         return 0;
     }
 }
-#endif
+
 /*
  * TetraStak
  */

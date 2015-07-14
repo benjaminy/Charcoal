@@ -126,8 +126,12 @@ type frame_info =
   }
 
 let function_vars : ( C.exp * C.exp * C.exp ) IH.t = IH.create 42
-let lookup_fn_translation v = IH.tryfind function_vars v.C.vid
-let add_fn_translation v u p a = IH.replace function_vars v.C.vid ( u, p, a )
+let lookup_fn_translation v =
+  let () = trc( Pretty.dprintf "LOOKUP %s %d\n" v.C.vname v.C.vid ) in
+  IH.tryfind function_vars v.C.vid
+let add_fn_translation v u p a =
+  let () = trc( Pretty.dprintf "ADD %s %d\n" v.C.vname v.C.vid ) in
+  IH.replace function_vars v.C.vid ( u, p, a )
 
 (*
   try IH.find function_vars v.C.vid

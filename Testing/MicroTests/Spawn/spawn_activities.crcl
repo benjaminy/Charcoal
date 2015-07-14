@@ -4,41 +4,44 @@ extern "C" {
 #include <assert.h>
 }
 
+#include <standard_library.crclh>
+
 #define N 10
 int m = N;
 activity_t activities[2];
-int i, done = 0;
+csemaphore_t sem;
 
-void f( int n, int x )
+void f1( int );
+
+void f1( int i )
 {
+    ++i;
     if( i > 1 )
     {
-        wait_activity_done( threads[ i % 2 ], NULL );
+        wait_activity_done( &activities[ i % 2 ] );
     }
-    ++i;
     if( i < m )
     {
-        assert( !pthread_create( &threads[ ( i + 1 ) % 2 ], NULL, f, NULL ) );
+        activate { &activities[ i % 2 ] } ( i )
+        {
+            f1( i );
+        };
     }
     else
     {
-        done = 1;
-        pthread_cond_signal( &cond );
+        semaphore_incr( &sem );
     }
 }
 
 int main( int argc, char **argv )
 {
     m = ( argc > 1 ) ? (int)atol( argv[1] ) : N;
-    pthread_mutex_init( &mtx, NULL );
-    pthread_cond_init( &cond, NULL );
-    assert( !pthread_create( &threads[0], NULL, f, NULL ) );
-    pthread_mutex_lock( &mtx );
-    while( !done )
+    semaphore_open( &sem, 0 );
+    activate { &activities[0] } ()
     {
-        pthread_cond_wait( &cond, &mtx );
-    }
-    pthread_mutex_unlock( &mtx );
-    printf( "%d\n", i );
+        f1( 0 );
+    };
+    semaphore_decr( &sem );
+    printf( "DONE!!!\n" );
     return 0;
 }

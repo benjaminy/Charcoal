@@ -1,0 +1,11 @@
+int foo( int );
+
+int main( int argc, char **argv )
+{
+    return foo( argc );
+}
+
+int foo( int x )
+{
+    return x + 4;
+}

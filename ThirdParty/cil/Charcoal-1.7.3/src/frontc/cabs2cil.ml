@@ -6730,7 +6730,7 @@ object (self)
   val mutable by_vals_opt     = None
   val mutable by_refs         = []
   val mutable fun_def_depth   = 0
-  val mutable activity_bodies : definition list = []
+  val mutable activity_bodies : ( definition * definition ) list = []
   val mutable local_vars : ( specifier * name list ) list list = []
   val mutable fun_name        = None
 
@@ -6756,13 +6756,13 @@ object (self)
       let () = fun_name <- Some name in
 
       let after defs =
-        let acts = activity_bodies in
+        let ( acts, protos ) = List.split activity_bodies in
         let () = fun_def_depth   <- fun_def_depth - 1 in
         let () = activity_bodies <- [] in
         let () = local_vars      <- [] in
         let () = fun_name        <- None in
         match defs with
-          [def] -> acts @ defs
+          [def] -> protos @ defs @ acts
         | _ -> failwith "wrong number of defs"
       in
       V.ChangeDoChildrenPost ([d], after)
@@ -6886,7 +6886,8 @@ object (self)
             in
             let name = ( safe_name, PROTO( JUSTBASE, formals, false ), [], cabslu) in
             let body_block = { blabels=[]; battrs=[]; bstmts=[ body ] } in
-            FUNDEF( ( return_type, name ), body_block, cabslu, cabslu )
+            ( FUNDEF( ( return_type, name ), body_block, cabslu, cabslu ),
+              DECDEF( ( return_type, [ ( name, NO_INIT ) ] ), cabslu ) )
           in
           let () = activity_bodies <- act_fun::activity_bodies in
 

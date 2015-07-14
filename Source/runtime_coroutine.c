@@ -198,10 +198,10 @@ crcl(frame_p) crcl(switch_to)( activity_p act )
  *     after_yield_N:
  *     ...
  *
- * In the common case that the current activity's quantum has not
- * expired, yield_impl will return the current frame, which will be
- * returned to the main loop.  Therefore the cost of a yield that keeps
- * going will be roughly:
+ * In the common case that the current activity should not be
+ * interrupted, yield_impl will return the frame that is passed in,
+ * which will be returned to the main loop.  Therefore the cost of a
+ * yield that keeps going will be roughly:
  *  1 - Call yield_impl
  *  2 - Compute tick diff, branch (highly predictable)
  *  3 - Return (to yield site)
@@ -234,7 +234,8 @@ crcl(frame_p) crcl(yield_impl)( crcl(frame_p) frm, void *ret_addr ){
     {
         return frm;
     }
-    /* "else": The current activity's quantum has expired. */
+    /* "else": The current activity should be interrupted for some
+     * reason.  More smarts should go here eventually. */
     // zlog_debug( crcl(c) , "Yield switch %p", act );
     *p = 1;
     uv_mutex_lock( &thd->thd_management_mtx );
