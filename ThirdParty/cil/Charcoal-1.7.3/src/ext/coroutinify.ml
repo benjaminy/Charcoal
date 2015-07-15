@@ -22,6 +22,7 @@ module T  = Trace
 let spf = Printf.sprintf
 
 let opt_map f x = match x with None -> None | Some y -> Some( f y )
+let opt_default d x = match x with None -> d | Some y -> y
 
 let trc = T.trace "coroutinify"
 
@@ -38,14 +39,14 @@ let getTFunInfo t msg =
     C.TFun( r, ps, v, atts ) -> ( r, ps, v, atts )
   | _ -> E.s( E.error "Expecting function type; %s" msg )
 
-let charcoal_pfx   = "__charcoal_"
-let unyielding_pfx = "__charcoal_fn_unyielding_"
-let locals_pfx     = "__charcoal_fn_locals_"
-let specific_pfx   = "__charcoal_fn_specific_"
-let prologue_pfx   = "__charcoal_fn_prologue_"
-let yielding_pfx   = "__charcoal_fn_yielding_"
-let epilogueA_pfx  = "__charcoal_fn_epilogueA_"
-let epilogueB_pfx  = "__charcoal_fn_epilogueB_"
+let charcoal_pfx  = "__charcoal_"
+let no_yield_pfx  = "__charcoal_fn_no_yield_"
+let locals_pfx    = "__charcoal_fn_locals_"
+let specific_pfx  = "__charcoal_fn_specific_"
+let prologue_pfx  = "__charcoal_fn_prologue_"
+let yielding_pfx  = "__charcoal_fn_yielding_"
+let epilogueA_pfx = "__charcoal_fn_epilogueA_"
+let epilogueB_pfx = "__charcoal_fn_epilogueB_"
 let charcoal_pfx_len = String.length charcoal_pfx
 
 let charcoal_pfx_regex = Str.regexp charcoal_pfx
@@ -120,15 +121,24 @@ type frame_info =
     locals          : C.exp -> ( ( C.offset -> C.lval ) IH.t );
     ret_type        : C.typ;
     param_types     : ( string * C.typ * C.attributes ) list;
+    vararg          : bool;
+    attrs           : C.attributes;
     (* context-specific *)
     lval            : C.lval;
     exp             : C.exp;
   }
 
-let function_vars : ( C.exp * C.exp * C.exp ) IH.t = IH.create 42
-let lookup_fn_translation v =
+let function_vars : ( C.varinfo * C.varinfo * C.varinfo ) IH.t = IH.create 42
+
+let lookup_fn_translation_var v =
   let () = trc( Pretty.dprintf "LOOKUP %s %d\n" v.C.vname v.C.vid ) in
   IH.tryfind function_vars v.C.vid
+
+let lookup_fn_translation v =
+  let e f = C.Lval( C.var f ) in
+  let blah ( x, y, z ) = ( e x, e y, e z ) in
+  opt_map blah ( lookup_fn_translation_var v )
+
 let add_fn_translation v u p a =
   let () = trc( Pretty.dprintf "ADD %s %d\n" v.C.vname v.C.vid ) in
   IH.replace function_vars v.C.vid ( u, p, a )
@@ -140,7 +150,7 @@ let add_fn_translation v u p a =
     let mvi = C.makeVarinfo true in
     let i = mvi (spf "%s%s" prologue_pfx v.C.vname) C.voidType in
     let y = mvi (spf "%s%s" yielding_pfx   v.C.vname) C.voidType in
-    let u = mvi (spf "%s%s" unyielding_pfx v.C.vname) C.voidType in
+    let u = mvi (spf "%s%s" no_yield_pfx v.C.vname) C.voidType in
  *)
 
 (* For this function definition:
@@ -214,11 +224,11 @@ let make_specific fdec fname frame_info =
        in
        ( C.TComp( ci, [(*attrs*)] ), locals_gen, [ C.GCompTag( ci, fdef_loc ) ] )
   in
-  let return_type, real_return_type, param_types =
-    match fname.C.vtype with
-      C.TFun( C.TVoid _ as r, ps, _, _ ) -> unit_type, r, ps
-    | C.TFun( r, ps, _, _ ) -> r, r, ps
-    | _ -> E.s( E.error "Function with non-function type?!?" )
+  let ( real_return_type, orig_ps, va, attrs ) = getTFunInfo fname.C.vtype "FOO" in
+  let return_type =
+    match real_return_type with
+      C.TVoid _ -> unit_type
+    | _ -> real_return_type
   in
   let specific =
     let f n t = ( n, t, None, [(*attrs*)], fdef_loc ) in
@@ -246,6 +256,10 @@ let make_specific fdec fname frame_info =
       locals_type     = C.TPtr( locals_type, [(*attrs*)] );
       yielding        = frame_info.yielding;
       locals          = locals;
+      ret_type        = real_return_type;
+      param_types     = opt_default [] orig_ps;
+      vararg          = va;
+      attrs           = attrs;
     }
   in
   ( tags @ [ specific_tag ], updated_frame_info )
@@ -272,10 +286,6 @@ let make_specific fdec fname frame_info =
 let make_prologue prologue frame original_formals =
   let fname = prologue.C.svar in
   let fdef_loc = fname.C.vdecl in
-  let () =
-    let ( _, ps, va, attrs ) = getTFunInfo prologue.C.svar.C.vtype "Pro" in
-    prologue.C.svar.C.vtype <- C.TFun( frame.typ_ptr, ps, va, attrs )
-  in
   let this = C.makeLocalVar prologue "frame" frame.typ_ptr in
   let call =
     let ret_ptr = C.makeFormalVar prologue ~where:"^" "ret_ptr" C.voidPtrType in
@@ -326,24 +336,21 @@ let make_prologue prologue frame original_formals =
  *)
 let make_epilogueA epilogueA frame =
   let fdef_loc = epilogueA.C.svar.C.vdecl in
-  let return_type =
-    let ( r, ps, va, attrs ) = getTFunInfo epilogueA.C.svar.C.vtype "EpiA" in
-    let () = epilogueA.C.svar.C.vtype <-
-               C.TFun( frame.typ_ptr, ps, va, attrs )
-    in
-    r
+  let () =
+    let () = C.setFormals epilogueA [] in
+    let () = epilogueA.C.slocals <- [] in
+    C.setFunctionType epilogueA
+        ( C.TFun( frame.typ_ptr, Some [], false, [] ) )
   in
-  let () = C.setFormals epilogueA [] in
-  let () = epilogueA.C.slocals <- [] in
   let this = C.var( C.makeFormalVar epilogueA "frame" frame.typ_ptr ) in
   let caller = C.var( C.makeTempVar epilogueA ~name:"caller" frame.typ_ptr ) in
   let instrs =
     let ge = C.Lval( C.var frame.gen_epilogueA ) in
     let call_instr = C.Call( Some caller, ge, [ C.Lval this ], fdef_loc ) in
-    match return_type with
+    match frame.ret_type with
       C.TVoid _ -> [ call_instr ]
     | _ ->
-       let rval = C.Lval( C.var( C.makeFormalVar epilogueA "v" return_type ) ) in
+       let rval = C.Lval( C.var( C.makeFormalVar epilogueA "v" frame.ret_type ) ) in
        [ C.Set( frame.return_sel this, rval, fdef_loc ); call_instr ]
   in
   let return_stmt = C.mkStmt( C.Return( Some( C.Lval caller ), fdef_loc ) ) in
@@ -365,10 +372,6 @@ let make_epilogueA epilogueA frame =
  *)
 let make_epilogueB epilogueB frame =
   let fdef_loc = epilogueB.C.svar.C.vdecl in
-  let return_type =
-    let ( r, _, _, _ ) = getTFunInfo epilogueB.C.svar.C.vtype "EpiB" in
-    r
-  in
   let () =
     let () = C.setFormals epilogueB [] in
     C.setFunctionType epilogueB
@@ -378,12 +381,12 @@ let make_epilogueB epilogueB frame =
   let this = C.var( C.makeFormalVar epilogueB "frame" frame.typ_ptr ) in
   let ga = C.Lval( C.var frame.gen_epilogueB ) in
   let call_to_generic = C.Call( None, ga, [ C.Lval this ], fdef_loc ) in
-  let body = match return_type with
+  let body = match frame.ret_type with
       C.TVoid _ -> C.mkBlock[ C.mkStmt( C.Instr[ call_to_generic ] ) ]
     | _ ->
        let lhsp =
          let l = C.makeFormalVar epilogueB "lhs"
-                                 ( C.TPtr( return_type, [(*attrs*)] ) ) in
+                                 ( C.TPtr( frame.ret_type, [(*attrs*)] ) ) in
          C.Lval( C.var l )
        in
        let rhs = C.Lval( frame.return_sel( frame.callee_sel( C.Lval this ) ) ) in
@@ -494,11 +497,11 @@ let coroutinify_normal_call lhs_opt params call_stuff fdec loc frame =
         | CIndirect e -> E.s( E.unimp "EERR 89235 %a" C.d_exp e )
         | _ -> E.s( E.unimp "EERR 34254" )
       in
-      match ( C.typeOf f, lhs_opt ) with
-        ( C.TFun( C.TVoid _, _, _, _ ), _ ) -> [ frame.exp ]
-      | ( C.TFun( t, _, _, _ ), None )      -> [ frame.exp; C.zero ]
-      | ( C.TFun _, Some lhs )              -> [ frame.exp; C.AddrOf lhs ]
-      | _ -> E.s( E.error "Function with non-function type?!?" )
+      let ( rt, _, _, _ ) = getTFunInfo ( C.typeOf f ) "NormCall" in
+      match ( rt, lhs_opt ) with
+        ( C.TVoid _, _ ) -> [ frame.exp ]
+      | ( _, None )      -> [ frame.exp; C.zero ]
+      | ( _, Some lhs )  -> [ frame.exp; C.AddrOf lhs ]
     in
     let call =
       let f = match call_stuff with
@@ -678,7 +681,7 @@ let coroutinify_local_var locals lhost offset =
  *     act_frame = __prologue_fn( 0, 0, p1, p2, p3 );
  *     __activate( 0, 0, act, act_frame, __epilgoueB_fn );
  *)
-let unyielding_activate params fdec loc frame =
+let no_yield_activate params fdec loc frame =
   let act, entry_fn, real_params =
     match params with
       a::e::r -> a, e, r
@@ -704,19 +707,19 @@ let unyielding_activate params fdec loc frame =
   in
   [ prologue_call; activate_call ]
 
-let unyielding_indirect_call lval f ps loc =
+let no_yield_indirect_call lval f ps loc =
   let lval_param = match lval with
       None   -> C.zero
     | Some l -> C.AddrOf l
   in
   change_do_children[ C.Call( None, f, C.zero::C.zero::lval_param::ps, loc ) ]
 
-let unyielding_call i fdec frame =
+let no_yield_call i fdec frame =
   match i with
     C.Call( lval_opt, ( C.Lval( C.Var fname, C.NoOffset ) as f), params, loc )
        when exp_is_charcoal_fn f ->
     if fname.C.vid = frame.act_intermed.C.vid then
-      change_do_children( unyielding_activate params fdec loc frame )
+      change_do_children( no_yield_activate params fdec loc frame )
     else if fname.C.vid = frame.yield.C.vid || fname.C.vid = frame.mode_test.C.vid then
       change_do_children(
           match lval_opt with
@@ -731,16 +734,16 @@ let unyielding_call i fdec frame =
       (match lookup_fn_translation fname with
          Some( u, _ , _ ) ->
          change_do_children[ C.Call( lval_opt, u, params, loc ) ]
-       | None -> unyielding_indirect_call lval_opt f params loc )
+       | None -> no_yield_indirect_call lval_opt f params loc )
 
   (* Indirect call: *)
   | C.Call( lval_opt, fn, params, loc ) when exp_is_charcoal_fn fn ->
-     unyielding_indirect_call lval_opt fn params loc
+     no_yield_indirect_call lval_opt fn params loc
 
   | _ -> C.DoChildren
 
-(* In the body of f, change calls to unyielding versions *)
-class coroutinifyUnyieldingVisitor fdec frame = object(self)
+(* In the body of f, change calls to no_yield versions *)
+class coroutinifyNoYieldVisitor fdec frame = object(self)
   inherit C.nopCilVisitor
 
   method vexpr e = match e with
@@ -748,7 +751,7 @@ class coroutinifyUnyieldingVisitor fdec frame = object(self)
       change_do_children exp
     | _ -> C.DoChildren
 
-  method vinst i = unyielding_call i fdec frame
+  method vinst i = no_yield_call i fdec frame
 
   method vstmt s =
     match s.C.skind with
@@ -786,7 +789,7 @@ class coroutinifyYieldingVisitor fdec locals frame is_activity_entry = object(se
     if self#yielding_mode() then
       C.DoChildren
     else
-      unyielding_call i fdec frame
+      no_yield_call i fdec frame
 
   (* It's tempting to use vinstr for calls.  However, we need to replace
    * them with a sequence that has returns and labels, so we need the
@@ -849,47 +852,45 @@ end
  * across returns.  Others can just be regular locals. *)
 (* XXX Also some day we can do register allocation style optimizations to
  * share slots in the locals struct *)
-let make_yielding yielding frame_info_spec is_activity_entry =
+let make_yielding yielding frame_no_this is_activity_entry =
   let () = Pf.printf "make_yielding %s\n" yielding.C.svar.C.vname in
   (* let () = *)
   (*   trc( Pretty.dprintf "%a\n" C.d_block yielding.C.sbody ) *)
   (* in *)
   let fdef_loc = yielding.C.svar.C.vdecl in
   let () =
-    let ( _, ps, va, attrs ) = getTFunInfo yielding.C.svar.C.vtype "Yield" in
-    yielding.C.svar.C.vtype <-
-      C.TFun( frame_info_spec.typ_ptr, ps, va, attrs )
+    let () = C.setFormals yielding [] in
+    let () = yielding.C.slocals <- [] in
+    C.setFunctionType yielding
+        ( C.TFun( frame_no_this.typ_ptr, Some [], false, [] ) )
   in
-  let () = C.setFormals yielding [] in
-  let () = yielding.C.slocals <- [] in
-  let this = C.makeFormalVar yielding "frame" frame_info_spec.typ_ptr in
-  let frame_info = {
-      frame_info_spec with lval = C.var this;
-                           exp = C.Lval( C.var this ); }
+  let this = C.makeFormalVar yielding "frame" frame_no_this.typ_ptr in
+  let frame =
+    { frame_no_this with lval = C.var this; exp = C.Lval( C.var this ); }
   in
   let ( locals_tbl, locals_init ) =
-    let locals = C.var( C.makeTempVar yielding ~name:"locals" frame_info.locals_type ) in
-    let locals_val = C.AddrOf( frame_info.locals_sel( C.var this ) ) in
+    let locals = C.var( C.makeTempVar yielding ~name:"locals" frame.locals_type ) in
+    let locals_val = C.AddrOf( frame.locals_sel( C.var this ) ) in
     let locals_init_instr = C.Set( locals, locals_val, fdef_loc ) in
     let locals_init = C.mkStmt( C.Instr[ locals_init_instr ] ) in
-    ( frame_info.locals( C.Lval( locals ) ), locals_init )
+    ( frame.locals( C.Lval( locals ) ), locals_init )
   in
   let goto_stmt =
-    let ret_addr_field = C.Lval( frame_info.return_addr_sel( C.Lval( C.var this ) ) ) in
+    let ret_addr_field = C.Lval( frame.return_addr_sel( C.Lval( C.var this ) ) ) in
     let empty_block = C.mkBlock( [ C.mkEmptyStmt() ] ) in
     let goto = C.mkStmt( C.ComputedGoto( ret_addr_field, fdef_loc ) ) in
     C.mkStmt( C.If( ret_addr_field, C.mkBlock( [ goto ] ), empty_block, fdef_loc ) )
   in
   let v = new coroutinifyYieldingVisitor
-              yielding locals_tbl frame_info is_activity_entry
+              yielding locals_tbl frame is_activity_entry
   in
   let y = C.visitCilFunction ( v :> C.cilVisitor ) yielding in
   let () = y.C.sbody.C.bstmts <- locals_init :: goto_stmt :: y.C.sbody.C.bstmts in
   y
 
-let make_unyielding unyielding frame_info =
-  let v = new coroutinifyUnyieldingVisitor unyielding frame_info in
-  C.visitCilFunction ( v :> C.cilVisitor ) unyielding
+let make_no_yield no_yield frame_info =
+  let v = new coroutinifyNoYieldVisitor no_yield frame_info in
+  C.visitCilFunction ( v :> C.cilVisitor ) no_yield
 
 (* XXX Need to replace &fn with &__indirect_fn ... Maybe not ... *)
 (* XXX Need to replace fun ptr types w/ our craziness *)
@@ -898,7 +899,7 @@ let make_unyielding unyielding frame_info =
  *     rt f( p1, p2, p3 ) { ... }
  * Generate the function for indirect calling:
  * NOTE: This function can be called in three different contexts:
- *   - unyielding mode (indicated by caller == NULL)
+ *   - no_yield mode (indicated by caller == NULL)
  *   - yielding mode prologue (indicated by ret != NULL)
  *   - yielding mode epilogueB (neither of the above cases)
  *
@@ -922,7 +923,7 @@ let make_unyielding unyielding frame_info =
  *             {
  *                 frame_p frame = __generic_prologue(
  *                     sizeof( __specific_f ), ret, caller, 0 );
- *                 return_cast( frame ) = __unyielding_f( ps->p1, ps->p2, ps->p3 );
+ *                 return_cast( frame ) = __no_yield_f( ps->p1, ps->p2, ps->p3 );
  *             }
  *             else
  *             {
@@ -931,12 +932,12 @@ let make_unyielding unyielding frame_info =
  *             }
  *     #endif
  *         }
- *         else /* Caller in unyielding mode */
+ *         else /* Caller in no_yield mode */
  *         {
- *     #if unyielding version exists
- *             temp = __unyielding_f( ps->p1, ps->p2, ps->p3 );
+ *     #if no_yield version exists
+ *             temp = __no_yield_f( ps->p1, ps->p2, ps->p3 );
  *     #else
- *             ERROR Cannot call yielding-only functions in unyielding mode!!!
+ *             ERROR Cannot call yielding-only functions in no_yield mode!!!
  *             exit();
  *     #endif
  *         }
@@ -947,22 +948,21 @@ let make_unyielding unyielding frame_info =
  *)
 (* NOTE: We're taking "ownership" of the original Charcoal function here, because
  * it makes less work for finding address-of operations later. *)
-let make_indirect original frame_info =
+let make_indirect original frame =
+  let original_formals = original.C.sformals in
   let return_type_opt =
-    let ( rt, ps, va, attrs ) = getTFunInfo original.C.svar.C.vtype "indir" in
     let () =
-      original.C.svar.C.vtype <-
-        C.TFun( frame_info.typ_ptr, ps, va, attrs )
+      let () = C.setFormals original [] in
+      let () = original.C.slocals <- [] in
+      C.setFunctionType original
+          ( C.TFun( frame.typ_ptr, Some [], false, [] ) ) (* XXX *)
     in
-    ( match rt with
+    ( match frame.ret_type with
         C.TVoid _ -> None
-      | r -> Some r
+      | r -> Some frame.ret_type
     )
   in
-  let original_formals = original.C.sformals in
-  let () = C.setFormals original [] in
-  let () = original.C.slocals <- [] in
-  let caller  = C.makeFormalVar original "caller"  frame_info.typ_ptr in
+  let caller  = C.makeFormalVar original "caller"  frame.typ_ptr in
   let ret_ptr = C.makeFormalVar original "ret_ptr" C.voidPtrType in
   let lhs_opt =
     let l rt = C.makeFormalVar original "lhs" ( C.TPtr( rt, [(*attrs*)] ) ) in
@@ -976,6 +976,39 @@ let make_indirect original frame_info =
   let () = original.C.sbody.C.bstmts <- [ return_stmt ] in
   original (* XXX *)
 
+(* XXX varargs charcoal functions blah! *)
+
+(*
+ * Translate:
+ *     rt f( x, y, z );
+ * to:
+ *     rt      __no_yield_f( x, y, z );
+ *     frame_p __prologue_f( frame_p, void *, x, y, z );
+ *     void   __epilogueB_f( frame_p, rt * );
+ * XXX indirect frame_p f( frame_p, void *, rt *, ... );
+ *)
+let coroutinifyVariableDeclaration var loc frame =
+  if type_is_charcoal_fn var.C.vtype then
+    let ( rt, ps_opt, vararg, attrs ) = getTFunInfo var.C.vtype "DECL" in
+    let ps = opt_default [] ps_opt in
+    let decl x = C.GVarDecl( x, loc ) in
+    let v = var.C.vname in
+    let n = C.makeGlobalVar ( spf "%s%s" no_yield_pfx v ) var.C.vtype in
+    let params = ( "frm", frame.typ_ptr, [] )::( "ret_addr", C.voidPtrType, [] )
+                 ::ps in
+    let pt = C.TFun( frame.typ_ptr, Some params, vararg, attrs ) in
+    let p = C.makeGlobalVar ( spf "%s%s" prologue_pfx v ) pt in
+    let eparams = match rt with
+        C.TVoid _ -> [ ( "frm", frame.typ_ptr, [] ) ]
+      | _ -> [ ( "frm", frame.typ_ptr, [] ); ( "rv", C.TPtr( rt, [] ), [] ) ]
+    in
+    let et = C.TFun( frame.typ_ptr, Some eparams, vararg, attrs ) in
+    let e = C.makeGlobalVar ( spf "%s%s"  epilogueB_pfx v ) et in
+    (* XXX let i = C.makeGlobalVar "e" C.voidType in *)
+    let () = add_fn_translation var n p e in
+    change_do_children ( L.map decl [ n; p; e ] )
+  else
+    C.DoChildren
 
 (* When we find the definition of the generic frame type, examine it and
  * record some stuff. *)
@@ -1075,6 +1108,8 @@ let examine_frame_t_struct ci dummy_var =
     locals          = ( fun _ -> IH.create 0 );
     ret_type        = dummy_type;
     param_types     = [];
+    vararg          = false;
+    attrs           = [];
     (* context-specific *)
     lval            = dummy_lval;
     exp             = C.zero;
@@ -1082,11 +1117,11 @@ let examine_frame_t_struct ci dummy_var =
 
 let make_function_skeletons f n =
   let () = remove_charcoal_linkage f in
-  let y = C.copyFunction f ( spf "%s%s"   yielding_pfx n ) in
-  let u = C.copyFunction f ( spf "%s%s" unyielding_pfx n ) in
-  let c = C.copyFunction f ( spf "%s%s"   prologue_pfx n ) in
-  let e = C.copyFunction f ( spf "%s%s"  epilogueA_pfx n ) in
-  let a = C.copyFunction f ( spf "%s%s"  epilogueB_pfx n ) in
+  let y = C.copyFunction  f ( spf "%s%s"  yielding_pfx n ) in
+  let u = C.copyFunction  f ( spf "%s%s"  no_yield_pfx n ) in
+  let c = C.emptyFunction ( spf "%s%s"  prologue_pfx n ) in
+  let e = C.emptyFunction ( spf "%s%s" epilogueA_pfx n ) in
+  let a = C.emptyFunction ( spf "%s%s" epilogueB_pfx n ) in
   let () = add_charcoal_linkage f in
   ( y, u, c, e, a )
 
@@ -1201,8 +1236,17 @@ class globals_visitor = object(self)
            with Invalid_argument _ -> false
          in
          (* NOTE: These are modified below. *)
-         let( yielding, unyielding, prologue, epilogueA, epilogueB ) =
+         let( yielding, no_yield, prologue, epilogueA, epilogueB ) =
            make_function_skeletons original orig_name
+         in
+         let () =
+           match lookup_fn_translation_var orig_var with
+             None -> ()
+           | Some ( n, p, e ) ->
+              let () =  no_yield.C.svar <- n in
+              let () =  prologue.C.svar <- p in
+              let () = epilogueB.C.svar <- e in
+              ()
          in
          let ( tags, specific_frame_info ) =
            make_specific yielding orig_var generic_frame_info
@@ -1214,15 +1258,14 @@ class globals_visitor = object(self)
          in
          (* "p" before "y" *)
          let () =
-           let e f = C.Lval( C.var( f.C.svar ) ) in
-           add_fn_translation orig_var ( e unyielding ) ( e prologue ) ( e epilogueB )
+           add_fn_translation orig_var no_yield.C.svar prologue.C.svar epilogueB.C.svar
          in
-         let p  = make_prologue     prologue frame_info yielding.C.sformals in
-         let y  = make_yielding     yielding frame_info is_activity_entry in
-         let u  = make_unyielding unyielding frame_info in
-         let eA = make_epilogueA   epilogueA frame_info in
-         let eB = make_epilogueB   epilogueB frame_info in
-         let i  = make_indirect     original frame_info in
+         let p  = make_prologue  prologue  frame_info yielding.C.sformals in
+         let y  = make_yielding  yielding  frame_info is_activity_entry in
+         let u  = make_no_yield  no_yield  frame_info in
+         let eA = make_epilogueA epilogueA frame_info in
+         let eB = make_epilogueB epilogueB frame_info in
+         let i  = make_indirect  original  frame_info in
          let decls = L.map ( fun f -> C.GVarDecl( f.C.svar, loc ) )
                            [ y; u; eA; p; eB; i ]
          in
@@ -1246,9 +1289,11 @@ class globals_visitor = object(self)
            in*)
            C.SkipChildren
 
-    | C.GVarDecl( var, _ ) ->
+    | C.GVarDecl( var, loc ) ->
        let () = self#fill_in_frame var in
-       C.DoChildren
+       ( match frame_opt with
+           Some frame_info -> coroutinifyVariableDeclaration var loc frame_info
+         | None -> C.DoChildren )
 
     (* We need to find various struct definitions *)
     | C.GCompTag( ci, loc ) ->
