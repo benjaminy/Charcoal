@@ -18,6 +18,7 @@ module E  = Errormsg
 module IH = Inthash
 module Pf = Printf
 module T  = Trace
+module P  = Pretty
 
 let spf = Printf.sprintf
 
@@ -131,7 +132,7 @@ type frame_info =
 let function_vars : ( C.varinfo * C.varinfo * C.varinfo ) IH.t = IH.create 42
 
 let lookup_fn_translation_var v =
-  let () = trc( Pretty.dprintf "LOOKUP %s %d\n" v.C.vname v.C.vid ) in
+  let () = trc( P.dprintf "LOOKUP %s %d\n" v.C.vname v.C.vid ) in
   IH.tryfind function_vars v.C.vid
 
 let lookup_fn_translation v =
@@ -140,7 +141,7 @@ let lookup_fn_translation v =
   opt_map blah ( lookup_fn_translation_var v )
 
 let add_fn_translation v u p a =
-  let () = trc( Pretty.dprintf "ADD %s %d\n" v.C.vname v.C.vid ) in
+  let () = trc( P.dprintf "ADD %s %d\n" v.C.vname v.C.vid ) in
   IH.replace function_vars v.C.vid ( u, p, a )
 
 (*
@@ -548,13 +549,13 @@ let coroutinify_yield lhs_opt params fdec loc frame =
   [ C.mkStmt( C.Instr[ yield_call ] ); return_next; post_yield_stmt ]
 
 let coroutinify_call visitor fdec frame instr =
-  let () = trc( Pretty.dprintf "coroutinify_call %a %a\n"
+  let () = trc( P.dprintf "coroutinify_call %a %a\n"
                                C.d_lval ( C.var fdec.C.svar )
                                C.d_instr instr ) in
   match instr with
     C.Call( lhs_opt_pre_vis, fn_exp_pre_vis, params_pre_vis, loc ) ->
     let () =
-      trc( Pretty.dprintf "XXXXXX %a\n%a\n"
+      trc( P.dprintf "XXXXXX %a\n%a\n"
                           C.d_exp fn_exp_pre_vis
                           C.d_type( C.typeOf fn_exp_pre_vis ) )
     in
@@ -855,7 +856,7 @@ end
 let make_yielding yielding frame_no_this is_activity_entry =
   let () = Pf.printf "make_yielding %s\n" yielding.C.svar.C.vname in
   (* let () = *)
-  (*   trc( Pretty.dprintf "%a\n" C.d_block yielding.C.sbody ) *)
+  (*   trc( P.dprintf "%a\n" C.d_block yielding.C.sbody ) *)
   (* in *)
   let fdef_loc = yielding.C.svar.C.vdecl in
   let () =
@@ -977,38 +978,6 @@ let make_indirect original frame =
   original (* XXX *)
 
 (* XXX varargs charcoal functions blah! *)
-
-(*
- * Translate:
- *     rt f( x, y, z );
- * to:
- *     rt      __no_yield_f( x, y, z );
- *     frame_p __prologue_f( frame_p, void *, x, y, z );
- *     void   __epilogueB_f( frame_p, rt * );
- * XXX indirect frame_p f( frame_p, void *, rt *, ... );
- *)
-let coroutinifyVariableDeclaration var loc frame =
-  if type_is_charcoal_fn var.C.vtype then
-    let ( rt, ps_opt, vararg, attrs ) = getTFunInfo var.C.vtype "DECL" in
-    let ps = opt_default [] ps_opt in
-    let decl x = C.GVarDecl( x, loc ) in
-    let v = var.C.vname in
-    let n = C.makeGlobalVar ( spf "%s%s" no_yield_pfx v ) var.C.vtype in
-    let params = ( "frm", frame.typ_ptr, [] )::( "ret_addr", C.voidPtrType, [] )
-                 ::ps in
-    let pt = C.TFun( frame.typ_ptr, Some params, vararg, attrs ) in
-    let p = C.makeGlobalVar ( spf "%s%s" prologue_pfx v ) pt in
-    let eparams = match rt with
-        C.TVoid _ -> [ ( "frm", frame.typ_ptr, [] ) ]
-      | _ -> [ ( "frm", frame.typ_ptr, [] ); ( "rv", C.TPtr( rt, [] ), [] ) ]
-    in
-    let et = C.TFun( frame.typ_ptr, Some eparams, vararg, attrs ) in
-    let e = C.makeGlobalVar ( spf "%s%s"  epilogueB_pfx v ) et in
-    (* XXX let i = C.makeGlobalVar "e" C.voidType in *)
-    let () = add_fn_translation var n p e in
-    change_do_children ( L.map decl [ n; p; e ] )
-  else
-    C.DoChildren
 
 (* When we find the definition of the generic frame type, examine it and
  * record some stuff. *)
@@ -1289,11 +1258,7 @@ class globals_visitor = object(self)
            in*)
            C.SkipChildren
 
-    | C.GVarDecl( var, loc ) ->
-       let () = self#fill_in_frame var in
-       ( match frame_opt with
-           Some frame_info -> coroutinifyVariableDeclaration var loc frame_info
-         | None -> C.DoChildren )
+    | C.GVarDecl( var, loc ) -> C.DoChildren (* XXX *)
 
     (* We need to find various struct definitions *)
     | C.GCompTag( ci, loc ) ->
@@ -1311,7 +1276,53 @@ class globals_visitor = object(self)
        let () = self#fill_in_frame v in
        C.DoChildren
 
+    | _ -> C.DoChildren
+end
+
+(*
+ * Translate:
+ *     rt f( x, y, z );
+ * to:
+ *     rt      __no_yield_f( x, y, z );
+ *     frame_p __prologue_f( frame_p, void *, x, y, z );
+ *     void   __epilogueB_f( frame_p, rt * );
+ * XXX indirect frame_p f( frame_p, void *, rt *, ... );
+ *)
+let coroutinifyVariableDeclaration var loc frame =
+  if type_is_charcoal_fn var.C.vtype then
+    let ( rt, ps_opt, vararg, attrs ) = getTFunInfo var.C.vtype "DECL" in
+    let ps = opt_default [] ps_opt in
+    let () = trc( P.dprintf "fun dec %d %a\n"
+        ( L.length ps ) C.d_type var.C.vtype ) in
+    let v = var.C.vname in
+    let n = C.makeGlobalVar ( spf "%s%s" no_yield_pfx v ) var.C.vtype in
+    let params = ( "frm", frame.typ_ptr, [] )::( "ret_addr", C.voidPtrType, [] )
+                 ::ps in
+    let pt = C.TFun( frame.typ_ptr, Some params, vararg, attrs ) in
+    let p = C.makeGlobalVar ( spf "%s%s" prologue_pfx v ) pt in
+    let eparams = match rt with
+        C.TVoid _ -> [ ( "frm", frame.typ_ptr, [] ) ]
+      | _ -> [ ( "frm", frame.typ_ptr, [] ); ( "rv", C.TPtr( rt, [] ), [] ) ]
+    in
+    let et = C.TFun( frame.typ_ptr, Some eparams, vararg, attrs ) in
+    let e = C.makeGlobalVar ( spf "%s%s"  epilogueB_pfx v ) et in
+    (* XXX let i = C.makeGlobalVar "e" C.voidType in *)
+    let () = add_fn_translation var n p e in
+    let decl x = let g = C.GVarDecl( x, loc ) in
+                 let () = trc( P.dprintf "GGGG %a\n" C.d_global g ) in g in
+    change_do_children ( L.map decl [ n; p; e ] )
+  else
+    C.DoChildren
+
+class patch_fun_decls_visitor = object( self )
+  inherit C.nopCilVisitor
+
+  method vglob g =
+    match g with
+    | C.GVarDecl( var, loc ) ->
+       coroutinifyVariableDeclaration var loc
     | _ -> C.SkipChildren
+
 end
 
 class scrub_linkage_visitor = object(self)
@@ -1325,6 +1336,7 @@ end
 
 let do_coroutinify( f : C.file ) =
   let () = C.visitCilFile ( new globals_visitor :> C.cilVisitor ) f in
+  let () = C.visitCilFile ( new patch_fun_decls_visitor ) f in
   let () = C.visitCilFile ( new scrub_linkage_visitor ) f in
   ()
 
