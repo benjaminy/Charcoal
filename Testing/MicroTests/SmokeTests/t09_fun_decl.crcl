@@ -1,11 +1,11 @@
-int foo( int );
+int define_me_later( int );
 
 int main( int argc, char **argv )
 {
-    return foo( argc );
+    return define_me_later( argc );
 }
 
-int foo( int x )
+int define_me_later( int x )
 {
     return x + 4;
 }
