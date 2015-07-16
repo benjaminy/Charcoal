@@ -20,6 +20,12 @@ module Pf = Printf
 module T  = Trace
 module P  = Pretty
 
+module OrderedBuiltin = struct
+  type t = string * int
+  let compare ( n1, _ ) ( n2, _ ) = compare n1 n2
+end
+module BS = Set.Make( OrderedBuiltin )
+
 let spf = Printf.sprintf
 
 let opt_map f x = match x with None -> None | Some y -> Some( f y )
@@ -53,6 +59,35 @@ let charcoal_pfx_len = String.length charcoal_pfx
 let charcoal_pfx_regex = Str.regexp charcoal_pfx
 
 let crcl s = "__charcoal_" ^ s
+
+let gen_prologue_uid  = 11
+let gen_epilogueA_uid = 12
+let gen_epilogueB_uid = 13
+let act_intermed_uid  = 14
+let mode_test_uid     = 15
+let self_activity_uid = 16
+let act_epilogue_uid  = 17
+let activity_wait_uid = 18
+let act_wait_done_uid = 19
+let yield_uid         = 20
+let yield_impl_uid    = 21
+let activate_uid      = 22
+
+let builtins = L.fold_left ( fun x y -> BS.add y x ) BS.empty
+[
+    ( crcl "fn_generic_prologue" ,     gen_prologue_uid );
+    ( crcl "fn_generic_epilogueA",     gen_epilogueA_uid );
+    ( crcl "fn_generic_epilogueB",     gen_epilogueB_uid );
+    ( crcl "activate_intermediate",    act_intermed_uid );
+    ( crcl "yielding_mode",            mode_test_uid );
+    ( "self_activity",                 self_activity_uid );
+    ( crcl "activity_epilogue",        act_epilogue_uid );
+    ( crcl "activity_wait",            activity_wait_uid );
+    ( crcl "activity_waiting_or_done", act_wait_done_uid );
+    ( crcl "yield",                    yield_uid );
+    ( crcl "yield_impl",               yield_impl_uid );
+    ( crcl "activate",                 activate_uid );
+]
 
 let remove_charcoal_linkage_from_type expect_crcl t =
   match t with
