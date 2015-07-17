@@ -187,7 +187,7 @@ type frame_info =
     yielding        : C.varinfo;
     locals          : C.exp -> ( ( C.offset -> C.lval ) IH.t );
     ret_type        : C.typ;
-    param_types     : ( string * C.typ * C.attributes ) list;
+    formals         : ( string * C.typ * C.attributes * C.varinfo ) list;
     vararg          : bool;
     attrs           : C.attributes;
     (* context-specific: *)
@@ -309,7 +309,13 @@ let make_specific fdec fname frame_info =
         C.Field( field, C.NoOffset ) )
   in
   let specific_tag = C.GCompTag( specific, fdef_loc ) in
-
+  let formals =
+    try
+      List.map ( fun( ( w, x, y ), z ) -> ( w, x, y, z ) )
+               ( List.combine ( opt_default [] orig_ps ) fdec.C.sformals )
+    with Invalid_argument _ ->
+      E.s( E.bug "Too many or too few formals" )
+  in
   let updated_frame_info =
     { frame_info with
       sizeof_specific = C.SizeOf( specific_type );
@@ -319,7 +325,7 @@ let make_specific fdec fname frame_info =
       yielding        = frame_info.yielding;
       locals          = locals;
       ret_type        = real_return_type;
-      param_types     = opt_default [] orig_ps;
+      formals         = formals;
       vararg          = va;
       attrs           = attrs;
     }
@@ -345,7 +351,7 @@ let make_specific fdec fname frame_info =
  *        return frame;
  *     }
  *)
-let make_prologue prologue frame original_formals =
+let make_prologue prologue frame =
   let fname = prologue.C.svar in
   let fdef_loc = fname.C.vdecl in
   let this = C.makeLocalVar prologue "frame" frame.typ_ptr in
@@ -356,7 +362,7 @@ let make_prologue prologue frame original_formals =
     C.Call( Some( C.var this ), gen_prologue_e(), frame.sizeof_specific::ps, fdef_loc )
   in
   (* If the yielding function has zero parameters, skip this *)
-  let param_assignments = match original_formals with
+  let param_assignments = match frame.formals with
       [] -> []
     | fs ->
        let ( locals, locals_init ) =
@@ -365,7 +371,7 @@ let make_prologue prologue frame original_formals =
          let locals_init = C.Set( C.var l, locals_val, fdef_loc ) in
          ( frame.locals( var2exp l ), locals_init )
        in
-       let assign_param v =
+       let assign_param ( _, _, _, v ) =
          let local_var =
            match IH.tryfind locals v.C.vid with
              Some f -> f C.NoOffset
@@ -1118,7 +1124,7 @@ let examine_frame_t_struct ci dummy_var =
     epilogueB       = dummy_var;
     locals          = ( fun _ -> IH.create 0 );
     ret_type        = dummy_type;
-    param_types     = [];
+    formals         = [];
     vararg          = false;
     attrs           = [];
     (* context-specific *)
@@ -1128,13 +1134,13 @@ let examine_frame_t_struct ci dummy_var =
 
 let make_function_skeletons f n =
   let () = remove_charcoal_linkage f in
-  let y = C.copyFunction  f ( spf "%s%s"  yielding_pfx n ) in
-  let u = C.copyFunction  f ( spf "%s%s"  no_yield_pfx n ) in
-  let c = C.emptyFunction ( spf "%s%s"  prologue_pfx n ) in
-  let e = C.emptyFunction ( spf "%s%s" epilogueA_pfx n ) in
-  let a = C.emptyFunction ( spf "%s%s" epilogueB_pfx n ) in
+  let y  = C.copyFunction f ( spf "%s%s"  yielding_pfx n ) in
+  let n  = C.copyFunction f ( spf "%s%s"  no_yield_pfx n ) in
+  let p  = C.emptyFunction  ( spf "%s%s"  prologue_pfx n ) in
+  let eA = C.emptyFunction  ( spf "%s%s" epilogueA_pfx n ) in
+  let eB = C.emptyFunction  ( spf "%s%s" epilogueB_pfx n ) in
   let () = add_charcoal_linkage f in
-  ( y, u, c, e, a )
+  ( y, n, p, eA, eB )
 
 class phase1 = object(self)
   inherit C.nopCilVisitor
@@ -1276,40 +1282,44 @@ let coroutinifyVariableDeclaration var loc frame =
   else
     C.DoChildren
 
-class phase2 generic_frame = object(self)
+let completeFunctionTranslation fdec loc =
+  let fvar = fdec.C.svar in
+  try
+    let frame        = IH.find crcl_fun_defs  fvar.C.vid in
+    let ( n, p, eB ) = IH.find crcl_fun_decls fvar.C.vid in
+    if fvar.C.vid = n.C.vid then
+      let no_yield = make_no_yield fdec frame in
+      C.ChangeTo[ C.GFun( no_yield, loc ) ]
+    else if fvar.C.vid = p.C.vid then
+      let prologue = make_prologue fdec frame in
+      C.ChangeTo[ C.GFun( prologue, loc ) ]
+    else if fvar.C.vid = eB.C.vid then
+      let epilogueB = make_epilogueB fdec frame in
+      C.ChangeTo[ C.GFun( epilogueB, loc ) ]
+    else if fvar.C.vid = frame.yielding.C.vid then
+      let n = after_prefix fvar.C.vname yielding_pfx in
+      let is_activity_entry = starts_with n ( crcl "act_" ) in
+      let yielding = make_yielding fdec frame is_activity_entry in
+      C.ChangeTo[ C.GFun( yielding, loc ) ]
+    else if fvar.C.vid = frame.epilogueA.C.vid then
+      let epilogueA = make_epilogueA fdec frame in
+      C.ChangeTo[ C.GFun( epilogueA, loc ) ]
+    else
+      let indirect = make_indirect fdec frame in
+      C.ChangeTo[ C.GFun( indirect, loc ) ]
+  with Not_found -> C.DoChildren
+
+class phase2 generic_frame = object( self )
   inherit C.nopCilVisitor
 
   method vglob g =
     match g with
     | C.GFun( fdec, loc ) ->
-       let fvar = fdec.C.svar in
-       let fname = fvar.C.vname in
-       if starts_with fname no_yield_pfx then
-         let frame = IH.find crcl_fun_defs fvar.C.vid in
-         let ( n, _, _ ) = IH.find crcl_fun_decls fvar.C.vid in
-         let n = make_no_yield n frame in
-         C.ChangeTo n
-(*        let   = "__charcoal_fn_no_yield_" *)
-(* let locals_pfx    = "__charcoal_fn_locals_" *)
-(* let specific_pfx  = "__charcoal_fn_specific_" *)
-(* let prologue_pfx  = "__charcoal_fn_prologue_" *)
-(* let yielding_pfx  = "__charcoal_fn_yielding_" *)
-(* let epilogueA_pfx = "__charcoal_fn_epilogueA_" *)
-(* let epilogueB_pfx = "__charcoal_fn_epilogueB_" *)
-       else
-         C.DoChildren
+       completeFunctionTranslation fdec loc
     | C.GVarDecl( var, loc ) ->
        coroutinifyVariableDeclaration var loc generic_frame
     | _ -> C.SkipChildren
 
-  inherit C.nopCilVisitor
-
-  (* let is_activity_entry = *)
-  (*          let s = "__charcoal_act_" in *)
-  (*          try orig_name = "__charcoal_application_main" || *)
-  (*              s = String.sub orig_name 0 ( String.length s ) *)
-  (*          with Invalid_argument _ -> false *)
-  (*        in *)
 
 
          (* let () = *)
