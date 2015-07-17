@@ -15,6 +15,7 @@
 module L  = List
 module C  = Cil
 module E  = Errormsg
+module H  = Hashtbl
 module IH = Inthash
 module Pf = Printf
 module T  = Trace
@@ -28,10 +29,18 @@ module BS = Set.Make( OrderedBuiltin )
 
 let spf = Printf.sprintf
 
+let (|-) f1 f2 x = f2 ( f1 x )
+let (-|) f1 f2 x = f1 ( f2 x )
 let map2 f ( x1, x2 ) = ( f x1, f x2 )
 let map3 f ( x1, x2, x3 ) = ( f x1, f x2, f x3 )
 let opt_map f x = match x with None -> None | Some y -> Some( f y )
 let opt_default d x = match x with None -> d | Some y -> y
+let starts_with haystack needle =
+  try needle = String.sub haystack 0 ( String.length needle )
+  with Invalid_argument _ -> false
+let after_prefix s prefix =
+  try String.sub s ( String.length prefix ) ( String.length s )
+  with Invalid_argument _ -> ""
 
 let trc = T.trace "coroutinify"
 
@@ -77,7 +86,8 @@ let yield_uid         = 20
 let yield_impl_uid    = 21
 let activate_uid      = 22
 
-let builtin_set = L.fold_left ( fun x y -> BS.add y x ) BS.empty
+let builtin_uids : ( string, int ) H.t = H.create 20
+let () = L.iter ( fun ( x, y ) -> H.add builtin_uids x y )
 [
     ( crcl "fn_generic_prologue" ,     gen_prologue_uid );
     ( crcl "fn_generic_epilogueA",     gen_epilogueA_uid );
@@ -93,33 +103,34 @@ let builtin_set = L.fold_left ( fun x y -> BS.add y x ) BS.empty
     ( crcl "activate",                 activate_uid );
 ]
 
-let builtin_map = IH.create 20
+let builtins = IH.create 20
+let find_builtin = IH.find builtins
 
-let gen_prologue()  = IH.find builtin_map gen_prologue_uid
-let gen_epilogueA() = IH.find builtin_map gen_epilogueA_uid
-let gen_epilogueB() = IH.find builtin_map gen_epilogueB_uid
-let act_intermed()  = IH.find builtin_map act_intermed_uid
-let mode_test()     = IH.find builtin_map mode_test_uid
-let self_activity() = IH.find builtin_map self_activity_uid
-let act_epilogue()  = IH.find builtin_map act_epilogue_uid
-let activity_wait() = IH.find builtin_map activity_wait_uid
-let act_wait_done() = IH.find builtin_map act_wait_done_uid
-let yield()         = IH.find builtin_map yield_uid
-let yield_impl()    = IH.find builtin_map yield_impl_uid
-let activate()      = IH.find builtin_map activate_uid
+let gen_prologue()  = find_builtin gen_prologue_uid
+let gen_epilogueA() = find_builtin gen_epilogueA_uid
+let gen_epilogueB() = find_builtin gen_epilogueB_uid
+let act_intermed()  = find_builtin act_intermed_uid
+let mode_test()     = find_builtin mode_test_uid
+let self_activity() = find_builtin self_activity_uid
+let act_epilogue()  = find_builtin act_epilogue_uid
+let activity_wait() = find_builtin activity_wait_uid
+let act_wait_done() = find_builtin act_wait_done_uid
+let yield()         = find_builtin yield_uid
+let yield_impl()    = find_builtin yield_impl_uid
+let activate()      = find_builtin activate_uid
 
-let gen_prologue_e()  = var2exp( gen_prologue() )
-let gen_epilogueA_e() = var2exp( gen_epilogueA() )
-let gen_epilogueB_e() = var2exp( gen_epilogueB() )
-let act_intermed_e()  = var2exp( act_intermed() )
-let mode_test_e()     = var2exp( mode_test() )
-let self_activity_e() = var2exp( self_activity() )
-let act_epilogue_e()  = var2exp( act_epilogue() )
-let activity_wait_e() = var2exp( activity_wait() )
-let act_wait_done_e() = var2exp( act_wait_done() )
-let yield_e()         = var2exp( yield() )
-let yield_impl_e()    = var2exp( yield_impl() )
-let activate_e()      = var2exp( activate() )
+let gen_prologue_e  = var2exp -| gen_prologue
+let gen_epilogueA_e = var2exp -| gen_epilogueA
+let gen_epilogueB_e = var2exp -| gen_epilogueB
+let act_intermed_e  = var2exp -| act_intermed
+let mode_test_e     = var2exp -| mode_test
+let self_activity_e = var2exp -| self_activity
+let act_epilogue_e  = var2exp -| act_epilogue
+let activity_wait_e = var2exp -| activity_wait
+let act_wait_done_e = var2exp -| act_wait_done
+let yield_e         = var2exp -| yield
+let yield_impl_e    = var2exp -| yield_impl
+let activate_e      = var2exp -| activate
 
 let remove_charcoal_linkage_from_type expect_crcl t =
   match t with
@@ -184,18 +195,15 @@ type frame_info =
     exp             : C.exp;
   }
 
-let function_vars : ( C.varinfo * C.varinfo * C.varinfo ) IH.t = IH.create 42
+let crcl_fun_decls : ( C.varinfo * C.varinfo * C.varinfo ) IH.t = IH.create 42
+let crcl_fun_defs : frame_info IH.t = IH.create 42
 
-let lookup_fn_translation_var v =
-  let () = trc( P.dprintf "LOOKUP %s %d\n" v.C.vname v.C.vid ) in
-  IH.tryfind function_vars v.C.vid
+let lookup_fun_decl_var v = IH.tryfind crcl_fun_decls v.C.vid
+let lookup_fun_decl v = opt_map ( map3 var2exp ) ( lookup_fun_decl_var v )
+let add_fun_decl v u p a = IH.replace crcl_fun_decls v.C.vid ( u, p, a )
 
-let lookup_fn_translation v =
-  opt_map ( map3 var2exp ) ( lookup_fn_translation_var v )
-
-let add_fn_translation v u p a =
-  let () = trc( P.dprintf "ADD %s %d\n" v.C.vname v.C.vid ) in
-  IH.replace function_vars v.C.vid ( u, p, a )
+let lookup_fun_def v = IH.tryfind crcl_fun_defs v.C.vid
+let add_fun_def v = IH.replace crcl_fun_defs v.C.vid
 
 (*
   try IH.find function_vars v.C.vid
@@ -464,7 +472,7 @@ let coroutinify_activate params fdec loc frame =
   let prologue, epilogueB =
     match entry_fn with
       C.AddrOf( C.Var v, C.NoOffset ) ->
-      ( match lookup_fn_translation v with
+      ( match lookup_fun_decl v with
           Some ( _, p, eB ) -> p, (C.mkCast eB frame.epilogueB_typ)
         | None -> E.s( E.bug "Missing translation for activate entry %a"
                              C.d_lval( C.var v ) ) )
@@ -617,7 +625,7 @@ let coroutinify_call visitor fdec frame instr =
            v.C.vid = (mode_test()).C.vid
         then CBuiltIn v
         else
-          ( match lookup_fn_translation v with
+          ( match lookup_fun_decl v with
               Some ( u, p, eB ) -> CDirect( u, p, eB )
             | None -> CIndirect fn_exp )
       | _ -> CIndirect fn_exp
@@ -737,7 +745,7 @@ let no_yield_activate params fdec loc frame =
   let prologue, epilogueB =
     match entry_fn with
       C.AddrOf( C.Var v, C.NoOffset ) ->
-      ( match lookup_fn_translation v with
+      ( match lookup_fun_decl v with
           Some ( _, p, eB ) -> p, (C.mkCast eB frame.epilogueB_typ)
         | None -> E.s( E.bug "Missing translation for activate entry %a"
                              C.d_lval( C.var v ) ) )
@@ -778,7 +786,7 @@ let no_yield_call i fdec frame =
             None -> []
           | Some lval -> [ C.Set( lval, C.zero, loc ) ] ) (* XXX unimp *)
     else
-      (match lookup_fn_translation fname with
+      (match lookup_fun_decl fname with
          Some( u, _ , _ ) ->
          change_do_children[ C.Call( lval_opt, u, params, loc ) ]
        | None -> no_yield_indirect_call lval_opt f params loc )
@@ -1135,6 +1143,11 @@ class phase1 = object(self)
   val mutable frame_struct = None
   val mutable activity_struct = None
 
+  method get_frame () =
+    match frame_opt with
+      Some f -> f
+    | None -> E.s( E.bug "Should really have a frame here" )
+
   (* If we have encountered the def of crcl(frame_t), extract its fields. *)
   method fill_in_frame v =
     match ( frame_opt, frame_struct, activity_struct ) with
@@ -1148,6 +1161,9 @@ class phase1 = object(self)
     | ( None, _, _ ) -> ()
     | ( Some frame_info, None, None ) ->
        let name = v.C.vname in
+       let () = try let uid = H.find builtin_uids name in
+                    IH.replace builtins uid v
+                with Not_found -> () in
        (* let () = XXX *)
        (*   else if name = crcl "yield" then *)
        (*     let () = if not( type_is_charcoal_fn v.C.vtype ) then *)
@@ -1159,96 +1175,54 @@ class phase1 = object(self)
     | ( Some _, _, _ ) -> E.s( E.error "Too much frame" )
 
   method vglob g =
-    let () = let p () = match g with
-      | C.GType( t, l )    -> Pf.printf "T %s\n%!" t.C.tname
-      | C.GCompTag( c, l ) -> Pf.printf "CT %s\n%!" c.C.cname
-      | C.GCompTagDecl( c, l ) -> Pf.printf "CTD %s\n%!" c.C.cname
-      | C.GEnumTag( e, l ) -> Pf.printf "ET\n%!"
-      | C.GEnumTagDecl( e, l ) -> Pf.printf "ETD\n%!"
-      | C.GVarDecl( v, l ) -> ()(*Pf.printf "VD %s\n%!" v.C.vname*)
-      | C.GVar( v, i, l ) -> Pf.printf "V %s\n%!" v.C.vname
-      | C.GFun( f, l ) -> Pf.printf "F %s\n%!" f.C.svar.C.vname
-      | C.GAsm( s, l ) -> Pf.printf "A\n%!"
-      | C.GPragma( a, l ) -> Pf.printf "P\n%!"
-      | C.GText( s ) -> Pf.printf "T\n%!"
-    in (* p *) () in
-    match g with
-    | C.GFun( original, loc ) ->
+    match ( g, frame_opt ) with
+    | ( C.GFun( original, loc ), Some generic_frame ) ->
        let orig_var  = original.C.svar in
        let orig_name = orig_var.C.vname in
-       (* let () = Pf.printf "ffv - vg - %s\n" orig_name in *)
-       let () = self#fill_in_frame orig_var in
-       let generic_frame_info =
-         match frame_opt with
-           Some f -> f (* XXX check for all builtins *)
-         | None ->
-            E.s( E.error "GFun before frame_t def  :(  %s !" orig_name )
-       in
        if type_is_charcoal_fn original.C.svar.C.vtype then
-         let is_activity_entry =
-           let s = "__charcoal_act_" in
-           try s = "__charcoal_application_main" ||
-               s = String.sub original.C.svar.C.vname 0 ( String.length s )
-           with Invalid_argument _ -> false
-         in
          (* NOTE: These are modified below. *)
          let( yielding, no_yield, prologue, epilogueA, epilogueB ) =
            make_function_skeletons original orig_name
          in
-         let () =
-           match lookup_fn_translation_var orig_var with
-             None -> ()
-           | Some ( n, p, e ) ->
-              let () =  no_yield.C.svar <- n in
-              let () =  prologue.C.svar <- p in
-              let () = epilogueB.C.svar <- e in
-              ()
-         in
          let ( tags, specific_frame_info ) =
-           make_specific yielding orig_var generic_frame_info
+           make_specific yielding orig_var generic_frame
          in
-         let frame_info =
-           { specific_frame_info with epilogueA = epilogueA.C.svar;
-                                      epilogueB = epilogueB.C.svar;
-                                      yielding = yielding.C.svar}
+         let () =
+           let f v = add_fun_decl v no_yield.C.svar prologue.C.svar epilogueB.C.svar in
+           L.iter f [ orig_var; yielding.C.svar; no_yield.C.svar; epilogueA.C.svar;
+                      epilogueB.C.svar; prologue.C.svar ]
+         in
+         let () =
+           let frame =
+             { specific_frame_info with epilogueA = epilogueA.C.svar;
+                                        epilogueB = epilogueB.C.svar;
+                                        yielding = yielding.C.svar}
+           in
+           let f v = add_fun_def v frame in
+           L.iter f [ orig_var; yielding.C.svar; no_yield.C.svar; epilogueA.C.svar;
+                      epilogueB.C.svar; prologue.C.svar ]
          in
          (* "p" before "y" *)
-         let () =
-           add_fn_translation orig_var no_yield.C.svar prologue.C.svar epilogueB.C.svar
-         in
-         let p  = make_prologue  prologue  frame_info yielding.C.sformals in
-         let y  = make_yielding  yielding  frame_info is_activity_entry in
-         let u  = make_no_yield  no_yield  frame_info in
-         let eA = make_epilogueA epilogueA frame_info in
-         let eB = make_epilogueB epilogueB frame_info in
-         let i  = make_indirect  original  frame_info in
          let decls = L.map ( fun f -> C.GVarDecl( f.C.svar, loc ) )
-                           [ y; u; eA; p; eB; i ]
+                           [ yielding; no_yield; epilogueA; prologue; epilogueB; original ]
          in
          let funs = L.map ( fun f -> C.GFun( f, loc ) )
-                          [ y; u; eA; p; eB; i ]
+                          [ yielding; no_yield; epilogueA; prologue; epilogueB; original ]
          in
          C.ChangeTo ( tags @ decls @ funs )
 
        else
-         (* XXX is this necessary? what about fill_in_frame? *)
-(*           let () =
-             if crcl_runtime_fn_name = "fn_generic_prologue" then
-               frame_opt <-
-                 Some{ frame with gen_prologue = orig_var };
-             if crcl_runtime_fn_name = "fn_generic_epilogueA" then
-               frame_opt <-
-                 Some{ frame with gen_epilogueA = orig_var };
-             if crcl_runtime_fn_name = "fn_generic_epilogueB" then
-               frame_opt <-
-                 Some{ frame with gen_epilogueB = orig_var };
-           in*)
            C.SkipChildren
 
-    | C.GVarDecl( var, loc ) -> C.DoChildren (* XXX *)
+    | ( C.GFun( f, _ ), None ) ->
+       E.s( E.error "GFun before frame_t def  :(  %s !" f.C.svar.C.vname )
+
+    | C.GVarDecl( v, _ ), _ ->
+       let () = self#fill_in_frame v in
+       C.DoChildren
 
     (* We need to find various struct definitions *)
-    | C.GCompTag( ci, loc ) ->
+    | C.GCompTag( ci, loc ), _ ->
        (* let () = Pf.printf "ffv - gct - %s\n" ci.C.cname in *)
        if ci.C.cname = "__charcoal_frame_t" then
          let () = frame_struct <- Some ci in
@@ -1259,7 +1233,7 @@ class phase1 = object(self)
        else
          C.DoChildren
 
-    | C.GVar( v, _, _ ) ->
+    | C.GVar( v, _, _ ), _ ->
        let () = self#fill_in_frame v in
        C.DoChildren
 
@@ -1275,8 +1249,9 @@ end
  *     void   __epilogueB_f( frame_p, rt * );
  * XXX indirect frame_p f( frame_p, void *, rt *, ... );
  *)
-let coroutinifyVariableDeclaration var loc =
-  if type_is_charcoal_fn var.C.vtype then
+let coroutinifyVariableDeclaration var loc frame =
+  if type_is_charcoal_fn var.C.vtype
+     && not( IH.mem crcl_fun_decls var.C.vid ) then
     let ( rt, ps_opt, vararg, attrs ) = getTFunInfo var.C.vtype "DECL" in
     let ps = opt_default [] ps_opt in
     let () = trc( P.dprintf "fun dec %d %a\n"
@@ -1294,21 +1269,64 @@ let coroutinifyVariableDeclaration var loc =
     let et = C.TFun( frame.typ_ptr, Some eparams, vararg, attrs ) in
     let e = C.makeGlobalVar ( spf "%s%s"  epilogueB_pfx v ) et in
     (* XXX let i = C.makeGlobalVar "e" C.voidType in *)
-    let () = add_fn_translation var n p e in
+    let () = add_fun_decl var n p e in
     let decl x = let g = C.GVarDecl( x, loc ) in
                  let () = trc( P.dprintf "GGGG %a\n" C.d_global g ) in g in
     change_do_children ( L.map decl [ n; p; e ] )
   else
     C.DoChildren
 
-class patch_fun_decls_visitor = object( self )
+class phase2 generic_frame = object(self)
   inherit C.nopCilVisitor
 
   method vglob g =
     match g with
+    | C.GFun( fdec, loc ) ->
+       let fvar = fdec.C.svar in
+       let fname = fvar.C.vname in
+       if starts_with fname no_yield_pfx then
+         let frame = IH.find crcl_fun_defs fvar.C.vid in
+         let ( n, _, _ ) = IH.find crcl_fun_decls fvar.C.vid in
+         let n = make_no_yield n frame in
+         C.ChangeTo n
+(*        let   = "__charcoal_fn_no_yield_" *)
+(* let locals_pfx    = "__charcoal_fn_locals_" *)
+(* let specific_pfx  = "__charcoal_fn_specific_" *)
+(* let prologue_pfx  = "__charcoal_fn_prologue_" *)
+(* let yielding_pfx  = "__charcoal_fn_yielding_" *)
+(* let epilogueA_pfx = "__charcoal_fn_epilogueA_" *)
+(* let epilogueB_pfx = "__charcoal_fn_epilogueB_" *)
+       else
+         C.DoChildren
     | C.GVarDecl( var, loc ) ->
-       coroutinifyVariableDeclaration var loc
+       coroutinifyVariableDeclaration var loc generic_frame
     | _ -> C.SkipChildren
+
+  inherit C.nopCilVisitor
+
+  (* let is_activity_entry = *)
+  (*          let s = "__charcoal_act_" in *)
+  (*          try orig_name = "__charcoal_application_main" || *)
+  (*              s = String.sub orig_name 0 ( String.length s ) *)
+  (*          with Invalid_argument _ -> false *)
+  (*        in *)
+
+
+         (* let () = *)
+         (*   match lookup_fn_translation_var orig_var with *)
+         (*     None -> () *)
+         (*   | Some ( n, p, e ) -> *)
+         (*      let () =  no_yield.C.svar <- n in *)
+         (*      let () =  prologue.C.svar <- p in *)
+         (*      let () = epilogueB.C.svar <- e in *)
+         (*      () *)
+         (* in *)
+
+         (* let p  = make_prologue  prologue  frame_info yielding.C.sformals in *)
+         (* let y  = make_yielding  yielding  frame_info is_activity_entry in *)
+         (* let eA = make_epilogueA epilogueA frame_info in *)
+         (* let eB = make_epilogueB epilogueB frame_info in *)
+         (* let i  = make_indirect  original  frame_info in *)
 
 end
 
@@ -1332,8 +1350,16 @@ end
  * - Scrub linkage annotations
  *)
 let do_coroutinify( f : C.file ) =
-  let () = C.visitCilFile ( new phase1 :> C.cilVisitor ) f in
-  let () = C.visitCilFile ( new patch_fun_decls_visitor ) f in
+  let phase1obj = new phase1 in
+  let () = C.visitCilFile ( phase1obj :> C.cilVisitor ) f in
+  let () =
+    let check name uid =
+      if not( IH.mem builtins uid ) then
+        E.s( E.bug "Missing builting %s" name )
+    in
+    H.iter check builtin_uids
+  in
+  let () = C.visitCilFile ( new phase2 ( phase1obj#get_frame() ) ) f in
   let () = C.visitCilFile ( new scrub_linkage_visitor ) f in
   ()
 
@@ -1346,3 +1372,17 @@ let feature : C.featureDescr =
     C.fd_post_check = true ;
   }
 
+(* Graveyard *)
+    (*     let () = let p () = match g with *)
+    (*   | C.GType( t, l )    -> Pf.printf "T %s\n%!" t.C.tname *)
+    (*   | C.GCompTag( c, l ) -> Pf.printf "CT %s\n%!" c.C.cname *)
+    (*   | C.GCompTagDecl( c, l ) -> Pf.printf "CTD %s\n%!" c.C.cname *)
+    (*   | C.GEnumTag( e, l ) -> Pf.printf "ET\n%!" *)
+    (*   | C.GEnumTagDecl( e, l ) -> Pf.printf "ETD\n%!" *)
+    (*   | C.GVarDecl( v, l ) -> ()(\*Pf.printf "VD %s\n%!" v.C.vname*\) *)
+    (*   | C.GVar( v, i, l ) -> Pf.printf "V %s\n%!" v.C.vname *)
+    (*   | C.GFun( f, l ) -> Pf.printf "F %s\n%!" f.C.svar.C.vname *)
+    (*   | C.GAsm( s, l ) -> Pf.printf "A\n%!" *)
+    (*   | C.GPragma( a, l ) -> Pf.printf "P\n%!" *)
+    (*   | C.GText( s ) -> Pf.printf "T\n%!" *)
+    (* in (\* p *\) () in *)
