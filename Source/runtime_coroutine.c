@@ -348,16 +348,18 @@ crcl(frame_p) crcl(activity_epilogue)( crcl(frame_p) frame )
     zlog_debug( crcl(c) , "Activity finished %p %p %p", frame, act, act->newest_frame );
     assert( frame == act->oldest_frame );
     assert( NULL == act->newest_frame );
-    /* XXX I think this return value business is broken currently. */
     CRCL(SET_FLAG)( *act, CRCL(ACTF_DONE) );
-    /* XXX */
-    act->epilogueB( frame, 0 );
     cthread_p t = act->thread;
     /* XXX locking necessary? */
     uv_mutex_lock( &t->thd_management_mtx );
     crcl(remove_activity_from_thread)( act, t );
     uv_mutex_unlock( &t->thd_management_mtx );
-    return crcl(activity_waiting_or_done)( frame, NULL );
+    crcl(frame_p) rv = crcl(activity_waiting_or_done)( frame, NULL );
+    /* XXX I think this return value business is broken currently. */
+    crcl(frame_t) dummy;
+    dummy.callee = frame;
+    act->epilogueB( &dummy, 0 );
+    return rv;
 }
 
 /* Initialize 'activity' and add it to 'thread'. */

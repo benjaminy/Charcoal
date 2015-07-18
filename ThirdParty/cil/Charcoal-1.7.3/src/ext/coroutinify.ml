@@ -39,7 +39,8 @@ let starts_with haystack needle =
   try needle = String.sub haystack 0 ( String.length needle )
   with Invalid_argument _ -> false
 let after_prefix s prefix =
-  try String.sub s ( String.length prefix ) ( String.length s )
+  let p = String.length prefix in
+  try String.sub s p ( String.length s - p )
   with Invalid_argument _ -> ""
 
 let trc = T.trace "coroutinify"
@@ -132,38 +133,6 @@ let yield_e         = var2exp -| yield
 let yield_impl_e    = var2exp -| yield_impl
 let activate_e      = var2exp -| activate
 
-let remove_charcoal_linkage_from_type expect_crcl t =
-  match t with
-    C.TFun( rt, ps, va, attrs ) ->
-    let foo attr = attr = C.Attr( "linkage_charcoal", [] ) in
-    ( match L.partition foo attrs with
-        ( [_], others ) -> Some( C.TFun( rt, ps, va, others ) )
-      | _ -> if expect_crcl then
-               E.s( E.error "Linkage angry?!?" )
-             else
-               None )
-  | _ -> None
-
-let remove_charcoal_linkage fdec =
-  let v = fdec.C.svar in
-  match remove_charcoal_linkage_from_type true v.C.vtype with
-    Some t' -> v.C.vtype <- t'
-  | _ -> E.s( E.error "Remove linkage from non-function?!?" )
-
-let add_charcoal_linkage_var v =
-  let ( rt, ps, va, attrs ) = getTFunInfo v.C.vtype "Add linkage?!?" in
-  v.C.vtype <- C.TFun( rt, ps, va, C.Attr( "linkage_charcoal", [] )::attrs )
-
-let add_charcoal_linkage fdec = add_charcoal_linkage_var fdec.C.svar
-
-let type_is_charcoal_fn ty =
-  match ty with
-    C.TFun( _, _, _, attrs )
-  | C.TPtr( C.TFun( _, _, _, attrs ), _) -> C.linkage_charcoal attrs
-  | _ -> false
-
-let exp_is_charcoal_fn exp = type_is_charcoal_fn( C.typeOf exp )
-
 type frame_info =
   {
     (* generic type/struct info: *)
@@ -204,6 +173,43 @@ let add_fun_decl v u p a = IH.replace crcl_fun_decls v.C.vid ( u, p, a )
 
 let lookup_fun_def v = IH.tryfind crcl_fun_defs v.C.vid
 let add_fun_def v = IH.replace crcl_fun_defs v.C.vid
+
+let remove_charcoal_linkage_from_type expect_crcl t =
+  match t with
+    C.TFun( rt, ps, va, attrs ) ->
+    let foo attr = attr = C.Attr( "linkage_charcoal", [] ) in
+    ( match L.partition foo attrs with
+        ( [_], others ) -> Some( C.TFun( rt, ps, va, others ) )
+      | _ -> if expect_crcl then
+               E.s( E.error "Linkage angry?!?" )
+             else
+               None )
+  | _ -> None
+
+let remove_charcoal_linkage_var v =
+  match remove_charcoal_linkage_from_type true v.C.vtype with
+    Some t' -> v.C.vtype <- t'
+  | _ -> E.s( E.error "Remove linkage from non-function?!?" )
+
+let remove_charcoal_linkage fdec = remove_charcoal_linkage_var fdec.C.svar
+
+let add_charcoal_linkage_var v =
+  let ( rt, ps, va, attrs ) = getTFunInfo v.C.vtype "Add linkage?!?" in
+  v.C.vtype <- C.TFun( rt, ps, va, C.Attr( "linkage_charcoal", [] )::attrs )
+
+let add_charcoal_linkage fdec = add_charcoal_linkage_var fdec.C.svar
+
+let type_is_charcoal_fn ty =
+  match ty with
+    C.TFun( _, _, _, attrs )
+  | C.TPtr( C.TFun( _, _, _, attrs ), _) -> C.linkage_charcoal attrs
+  | _ -> false
+
+let exp_is_charcoal_fn exp =
+  type_is_charcoal_fn( C.typeOf exp )
+  || match exp with
+       C.Lval( C.Var v, C.NoOffset ) -> IH.mem crcl_fun_decls v.C.vid
+     | _ -> false
 
 (*
   try IH.find function_vars v.C.vid
@@ -356,8 +362,8 @@ let make_prologue prologue frame =
   let fdef_loc = fname.C.vdecl in
   let this = C.makeLocalVar prologue "frame" frame.typ_ptr in
   let call =
-    let ret_ptr = C.makeFormalVar prologue ~where:"^" "ret_ptr" C.voidPtrType in
-    let caller  = C.makeFormalVar prologue ~where:"^" "caller"  frame.typ_ptr in
+    let caller  = C.makeFormalVar prologue "caller"  frame.typ_ptr in
+    let ret_ptr = C.makeFormalVar prologue "ret_ptr" C.voidPtrType in
     let ps = L.map var2exp [ ret_ptr; caller; frame.yielding ] in
     C.Call( Some( C.var this ), gen_prologue_e(), frame.sizeof_specific::ps, fdef_loc )
   in
@@ -377,7 +383,8 @@ let make_prologue prologue frame =
              Some f -> f C.NoOffset
            | _ -> E.s( E.error "Missing local \"%s\"" v.C.vname )
          in
-         C.Set( local_var, var2exp v, fdef_loc )
+         let formal = C.makeFormalVar prologue v.C.vname v.C.vtype in
+         C.Set( local_var, var2exp formal, fdef_loc )
        in
        locals_init::( L.map assign_param fs )
   in
@@ -386,6 +393,11 @@ let make_prologue prologue frame =
     let r = C.mkStmt( C.Return( Some( var2exp this ), fdef_loc ) ) in
     C.mkBlock[ C.mkStmt( C.Instr instrs ); r ]
   in
+  let real_type = match prologue.C.svar.C.vtype with
+      C.TFun( _, ps, va, attrs ) -> C.TFun( frame.typ_ptr, ps, va, attrs )
+    | _ -> E.s( E.bug "ANGRY" )
+  in
+  let () = C.setFunctionType prologue real_type in
   let () = prologue.C.sbody <- body in
   prologue
 
@@ -777,8 +789,7 @@ let no_yield_indirect_call lval f ps loc =
 
 let no_yield_call i fdec frame =
   match i with
-    C.Call( lval_opt, ( C.Lval( C.Var fname, C.NoOffset ) as f), params, loc )
-       when exp_is_charcoal_fn f ->
+    C.Call( lval_opt, ( C.Lval( C.Var fname, C.NoOffset ) as f), params, loc ) ->
     if fname.C.vid = (act_intermed()).C.vid then
       change_do_children( no_yield_activate params fdec loc frame )
     else if fname.C.vid = (yield()).C.vid || fname.C.vid = (mode_test()).C.vid then
@@ -791,11 +802,13 @@ let no_yield_call i fdec frame =
           match lval_opt with
             None -> []
           | Some lval -> [ C.Set( lval, C.zero, loc ) ] ) (* XXX unimp *)
-    else
+    else if exp_is_charcoal_fn f then
       (match lookup_fun_decl fname with
          Some( u, _ , _ ) ->
          change_do_children[ C.Call( lval_opt, u, params, loc ) ]
        | None -> no_yield_indirect_call lval_opt f params loc )
+    else
+      C.DoChildren
 
   (* Indirect call: *)
   | C.Call( lval_opt, fn, params, loc ) when exp_is_charcoal_fn fn ->
@@ -914,7 +927,7 @@ end
 (* XXX Also some day we can do register allocation style optimizations to
  * share slots in the locals struct *)
 let make_yielding yielding frame_no_this is_activity_entry =
-  let () = Pf.printf "make_yielding %s\n" yielding.C.svar.C.vname in
+  let () = trc( P.dprintf "MAKE YIELDING %s\n" yielding.C.svar.C.vname ) in
   (* let () = *)
   (*   trc( P.dprintf "%a\n" C.d_block yielding.C.sbody ) *)
   (* in *)
@@ -1132,13 +1145,13 @@ let examine_frame_t_struct ci dummy_var =
     exp             = C.zero;
   }
 
-let make_function_skeletons f n =
+let make_function_skeletons f name =
   let () = remove_charcoal_linkage f in
-  let y  = C.copyFunction f ( spf "%s%s"  yielding_pfx n ) in
-  let n  = C.copyFunction f ( spf "%s%s"  no_yield_pfx n ) in
-  let p  = C.emptyFunction  ( spf "%s%s"  prologue_pfx n ) in
-  let eA = C.emptyFunction  ( spf "%s%s" epilogueA_pfx n ) in
-  let eB = C.emptyFunction  ( spf "%s%s" epilogueB_pfx n ) in
+  let y  = C.copyFunction f ( spf "%s%s"  yielding_pfx name ) in
+  let n  = C.copyFunction f ( spf "%s%s"  no_yield_pfx name ) in
+  let p  = C.emptyFunction  ( spf "%s%s"  prologue_pfx name ) in
+  let eA = C.emptyFunction  ( spf "%s%s" epilogueA_pfx name ) in
+  let eB = C.emptyFunction  ( spf "%s%s" epilogueB_pfx name ) in
   let () = add_charcoal_linkage f in
   ( y, n, p, eA, eB )
 
@@ -1185,8 +1198,9 @@ class phase1 = object(self)
     | ( C.GFun( original, loc ), Some generic_frame ) ->
        let orig_var  = original.C.svar in
        let orig_name = orig_var.C.vname in
+       let () = trc( P.dprintf "P1 DEFN %b %s\n"
+           (type_is_charcoal_fn orig_var.C.vtype) orig_name ) in
        if type_is_charcoal_fn original.C.svar.C.vtype then
-         (* NOTE: These are modified below. *)
          let( yielding, no_yield, prologue, epilogueA, epilogueB ) =
            make_function_skeletons original orig_name
          in
@@ -1224,6 +1238,8 @@ class phase1 = object(self)
        E.s( E.error "GFun before frame_t def  :(  %s !" f.C.svar.C.vname )
 
     | C.GVarDecl( v, _ ), _ ->
+       let () = trc( P.dprintf "P1 DECL %b %s\n"
+           (type_is_charcoal_fn v.C.vtype) v.C.vname ) in
        let () = self#fill_in_frame v in
        C.DoChildren
 
@@ -1255,30 +1271,14 @@ end
  *     void   __epilogueB_f( frame_p, rt * );
  * XXX indirect frame_p f( frame_p, void *, rt *, ... );
  *)
-let coroutinifyVariableDeclaration var loc frame =
+let coroutinifyVariableDeclaration var loc =
   if type_is_charcoal_fn var.C.vtype
-     && not( IH.mem crcl_fun_decls var.C.vid ) then
-    let ( rt, ps_opt, vararg, attrs ) = getTFunInfo var.C.vtype "DECL" in
-    let ps = opt_default [] ps_opt in
-    let () = trc( P.dprintf "fun dec %d %a\n"
-        ( L.length ps ) C.d_type var.C.vtype ) in
-    let v = var.C.vname in
-    let n = C.makeGlobalVar ( spf "%s%s" no_yield_pfx v ) var.C.vtype in
-    let params = ( "frm", frame.typ_ptr, [] )::( "ret_addr", C.voidPtrType, [] )
-                 ::ps in
-    let pt = C.TFun( frame.typ_ptr, Some params, vararg, attrs ) in
-    let p = C.makeGlobalVar ( spf "%s%s" prologue_pfx v ) pt in
-    let eparams = match rt with
-        C.TVoid _ -> [ ( "frm", frame.typ_ptr, [] ) ]
-      | _ -> [ ( "frm", frame.typ_ptr, [] ); ( "rv", C.TPtr( rt, [] ), [] ) ]
-    in
-    let et = C.TFun( frame.typ_ptr, Some eparams, vararg, attrs ) in
-    let e = C.makeGlobalVar ( spf "%s%s"  epilogueB_pfx v ) et in
-    (* XXX let i = C.makeGlobalVar "e" C.voidType in *)
-    let () = add_fun_decl var n p e in
-    let decl x = let g = C.GVarDecl( x, loc ) in
-                 let () = trc( P.dprintf "GGGG %a\n" C.d_global g ) in g in
-    change_do_children ( L.map decl [ n; p; e ] )
+     && IH.mem crcl_fun_defs var.C.vid then
+    let () = remove_charcoal_linkage_var var in
+    let frame        = IH.find crcl_fun_defs  var.C.vid in
+    let ( n, p, eB ) = IH.find crcl_fun_decls var.C.vid in
+    let decl x = C.GVarDecl( x, loc ) in
+    change_do_children ( L.map decl [ n; p; eB; frame.epilogueA; frame.yielding; var ] )
   else
     C.DoChildren
 
@@ -1315,8 +1315,12 @@ class phase2 generic_frame = object( self )
   method vglob g =
     match g with
     | C.GFun( fdec, loc ) ->
+       let () = trc( P.dprintf "P2 DEFN %b %s\n"
+           (type_is_charcoal_fn fdec.C.svar.C.vtype) fdec.C.svar.C.vname ) in
        completeFunctionTranslation fdec loc
     | C.GVarDecl( var, loc ) ->
+       let () = trc( P.dprintf "P2 DECL %b %s\n"
+           (type_is_charcoal_fn var.C.vtype) var.C.vname ) in
        coroutinifyVariableDeclaration var loc generic_frame
     | _ -> C.SkipChildren
 
@@ -1340,15 +1344,6 @@ class phase2 generic_frame = object( self )
 
 end
 
-class scrub_linkage_visitor = object(self)
-  inherit C.nopCilVisitor
-
-  method vtype t =
-    match remove_charcoal_linkage_from_type false t with
-      None -> C.DoChildren
-    | Some t' -> change_do_children t'
-end
-
 (*
  * Phase 1:
  * - Find the runtime builtin stuff
@@ -1356,8 +1351,6 @@ end
  * Phase 2:
  * - Translate Charcoal function _declarations_
  * - Complete translation of function definitions
- * Phase 3:
- * - Scrub linkage annotations
  *)
 let do_coroutinify( f : C.file ) =
   let phase1obj = new phase1 in
@@ -1370,7 +1363,6 @@ let do_coroutinify( f : C.file ) =
     H.iter check builtin_uids
   in
   let () = C.visitCilFile ( new phase2 ( phase1obj#get_frame() ) ) f in
-  let () = C.visitCilFile ( new scrub_linkage_visitor ) f in
   ()
 
 let feature : C.featureDescr =

@@ -16,10 +16,10 @@
 #pragma cilnoremove( "__charcoal_yielding_mode" )
 #endif
 
+extern "C" {
+
 /* calls to "intermediate" only exist temporarily, between stages of compilation */
 int crcl(activate_intermediate)( activity_p activity, ... );
-
-extern "C" {
 
 /* Activity support from the runtime system */
 crcl(frame_p) crcl(activity_epilogue)( crcl(frame_p) frame );
