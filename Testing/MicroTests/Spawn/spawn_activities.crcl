@@ -18,10 +18,12 @@ void f1( int i )
     ++i;
     if( i > 1 )
     {
+        // printf( "WAIT %d\n", i );
         wait_activity_done( &activities[ i % 2 ] );
     }
     if( i < m )
     {
+        // printf( "ACTIVATE %d\n", i );
         activate { &activities[ i % 2 ] } ( i )
         {
             f1( i );
@@ -29,6 +31,7 @@ void f1( int i )
     }
     else
     {
+        printf( "DONE %d\n", i );
         semaphore_incr( &sem );
     }
 }
