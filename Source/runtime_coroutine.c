@@ -349,11 +349,16 @@ crcl(frame_p) crcl(activity_epilogue)( crcl(frame_p) frame )
     assert( frame == act->oldest_frame );
     assert( NULL == act->newest_frame );
     CRCL(SET_FLAG)( *act, CRCL(ACTF_DONE) );
-    cthread_p t = act->thread;
+    cthread_p thd = act->thread;
     /* XXX locking necessary? */
-    uv_mutex_lock( &t->thd_management_mtx );
-    crcl(remove_activity_from_thread)( act, t );
-    uv_mutex_unlock( &t->thd_management_mtx );
+    uv_mutex_lock( &thd->thd_management_mtx );
+    crcl(remove_activity_from_thread)( act, thd );
+    activity_p waiter;
+    while( ( waiter = crcl(pop_waiting_queue)( &act->waiters ) ) )
+    {
+        crcl(push_ready_queue)( waiter, thd );
+    }
+    uv_mutex_unlock( &thd->thd_management_mtx );
     crcl(frame_p) rv = crcl(activity_waiting_or_done)( frame, NULL );
     /* XXX I think this return value business is broken currently. */
     crcl(frame_t) dummy;
