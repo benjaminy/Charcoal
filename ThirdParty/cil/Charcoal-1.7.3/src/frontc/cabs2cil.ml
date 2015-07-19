@@ -6722,6 +6722,8 @@ let stripParenFile file = V.visitCabsFile (new stripParenClass) file
 (* NOTE: For nested activities, if the inner uses a by-ref from way out,
    add the new var name to the inner activate's by-val list. *)
 
+let trc = trace "coroutinify"
+
 class extract_activity_class : V.cabsVisitor =
 object (self)
   inherit V.nopCabsVisitor as super
@@ -6856,10 +6858,12 @@ object (self)
                 let type_to_business ( frs', as' ) ( ( n, dt, attrs, loc ) as name ) =
                   let formal, actual =
                     if List.mem n by_vals then
-                      ( [], name ),
-                      VARIABLE n
+                      let () = withCprint ( Cprint.print_decl "foo" ) dt in
+                      let () = trc ( dprintf "BYVAL %s\n" n ) in
+                      ( spec, name ), VARIABLE n
                     else
-                      ( [], ( n, PTR( [], dt ), attrs, loc ) ),
+                      let () = trc ( dprintf "BYREF %s\n" n ) in
+                      ( spec, ( n, PTR( [], dt ), attrs, loc ) ),
                       UNARY( ADDROF, VARIABLE n )
                   in
                   ( formal::frs', actual::as' )
@@ -6952,11 +6956,9 @@ object (self)
 
   method vstmt s = match s with
     RETURN (e, loc) -> V.DoChildren (* XXX if > 0, set activity rv *)
-  | GOTO _ -> V.DoChildren (* XXX No gotos from activity body to outer scope *)
-  | COMPGOTO _ -> V.DoChildren (* XXX No gotos from activity body to outer scope *)
-  | DEFINITION _ ->
-    let () = Printf.printf "Gota def here!!!\n" in
-    V.DoChildren
+  | GOTO _ ->       V.DoChildren (* XXX No gotos from activity body to outer scope *)
+  | COMPGOTO _ ->   V.DoChildren (* XXX No gotos from activity body to outer scope *)
+  | DEFINITION _ -> V.DoChildren (* XXX Gota def here *)
   | _ -> V.DoChildren (* XXX audit the rest of the statement kinds *)
 
 end (* extract_activity_class *)

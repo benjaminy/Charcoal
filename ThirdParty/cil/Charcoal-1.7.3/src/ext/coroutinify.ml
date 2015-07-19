@@ -244,6 +244,7 @@ let exp_is_charcoal_fn exp =
  *     }
  *)
 let make_specific fdec fname frame_info =
+  let () = trc( P.dprintf "SPECIFIC %s\n" fdec.C.svar.C.vname ) in
   (* Crash if v doesn't have the properties expected of locals. *)
   let sanity v =
     let () = match v.C.vstorage with
@@ -280,7 +281,6 @@ let make_specific fdec fname frame_info =
            { C.fcomp = ci; C.fname = v.C.vname; C.ftype = v.C.vtype;
              C.fbitfield = None; C.fattr = [(*attrs*)]; C.floc = v.C.vdecl }
          in
-         let () = Pf.printf "Adding %d %s\n" v.C.vid v.C.vname in
          IH.replace t v.C.vid ( fun o -> ( C.Mem !locals_ptr, C.Field( field, o ) ) )
        in
        let locals = IH.create( L.length all ) in
