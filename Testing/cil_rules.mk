@@ -3,7 +3,7 @@
 # Prepend the Charcoal runtime headers
 $(BUILD_DIR)/%$(CRCL_DOT_H_EXT): %.crcl
 	echo "#define __CHARCOAL_INSTALL_DIR \"$(INSTALL_DIR)\"" > $@
-	cat $(INSTALL_DIR)/include/application_pre_header.h >> $@
+	cat $(INSTALL_DIR)/include/charcoal_main_pre_header.h >> $@
 	echo "#line 1 " \"$<\" >> $@
 	cat $< >> $@
 

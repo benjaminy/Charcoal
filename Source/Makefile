@@ -23,7 +23,7 @@ RUNTIME_OBJS = $(RUNTIME_CRCL_OBJS) $(RUNTIME_C_OBJS)
 
 MAIN_RUNTIME_HEADERS = common coroutine io_commands semaphore
 RUNTIME_HEADERS = $(addsuffix( .h, $(addprefix runtime_, $(MAIN_RUNTIME_HEADERS)) core )
-APP_HEADERS = core.h application_pre_header.h core.h core_application.crclh standard_library.crclh atomics_wrappers.h
+APP_HEADERS = core.h charcoal_source_pre_header.h charcoal_main_pre_header.h core.h core_application.crclh standard_library.crclh atomics_wrappers.h
 
 .PRECIOUS: %$(CRCL_DOT_H_EXT) %$(CRCL_CPP_EXT) %$(CIL_C_EXT)
 
@@ -33,7 +33,7 @@ all: copy_app_headers $(RUNTIME_OBJS) log_conf | $(LIB_DIR)
 # Prepend the Charcoal runtime headers
 $(BUILD_DIR)/%$(CRCL_DOT_H_EXT): %.crcl
 	echo "#define __CHARCOAL_INSTALL_DIR \"$(INSTALL_DIR)\"" > $@
-	cat application_pre_header.h >> $@
+	cat charcoal_source_pre_header.h >> $@
 	echo "#line 1 " \"$<\" >> $@
 	cat $< >> $@
 

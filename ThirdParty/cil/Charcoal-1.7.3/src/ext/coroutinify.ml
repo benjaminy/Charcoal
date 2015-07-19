@@ -627,7 +627,7 @@ let coroutinify_call visitor fdec frame instr =
   match instr with
     C.Call( lhs_opt_pre_vis, fn_exp_pre_vis, params_pre_vis, loc ) ->
     let () =
-      trc( P.dprintf "XXXXXX %a\n%a\n"
+      trc( P.dprintf "CORO CALL exp: %a   type:%a\n"
                           C.d_exp fn_exp_pre_vis
                           C.d_type( C.typeOf fn_exp_pre_vis ) )
     in
@@ -1271,14 +1271,33 @@ end
  *     void   __epilogueB_f( frame_p, rt * );
  * XXX indirect frame_p f( frame_p, void *, rt *, ... );
  *)
-let coroutinifyVariableDeclaration var loc =
-  if type_is_charcoal_fn var.C.vtype
-     && IH.mem crcl_fun_defs var.C.vid then
+let coroutinifyVariableDeclaration var loc frame =
+  if type_is_charcoal_fn var.C.vtype then
     let () = remove_charcoal_linkage_var var in
-    let frame        = IH.find crcl_fun_defs  var.C.vid in
-    let ( n, p, eB ) = IH.find crcl_fun_decls var.C.vid in
+    let ( n, p, eB ) =
+      match IH.tryfind crcl_fun_decls var.C.vid with
+        Some( n, p, eB ) -> ( n, p, eB )
+      | None ->
+         let ( rt, ps_opt, vararg, attrs ) = getTFunInfo var.C.vtype "DECL" in
+         let ps = opt_default [] ps_opt in
+         let name = var.C.vname in
+         let n = C.makeGlobalVar ( spf "%s%s" no_yield_pfx name ) var.C.vtype in
+         let params = ( "frm", frame.typ_ptr, [] )::( "ret_addr", C.voidPtrType, [] )
+                      ::ps in
+         let pt = C.TFun( frame.typ_ptr, Some params, vararg, attrs ) in
+         let p = C.makeGlobalVar ( spf "%s%s" prologue_pfx name ) pt in
+         let eparams = match rt with
+             C.TVoid _ -> [ ( "frm", frame.typ_ptr, [] ) ]
+           | _ -> [ ( "frm", frame.typ_ptr, [] ); ( "rv", C.TPtr( rt, [] ), [] ) ]
+         in
+         let et = C.TFun( frame.typ_ptr, Some eparams, vararg, attrs ) in
+         let e = C.makeGlobalVar ( spf "%s%s"  epilogueB_pfx name ) et in
+         (* XXX let i = C.makeGlobalVar "e" C.voidType in *)
+         let () = add_fun_decl var n p e in
+         ( n, p, e )
+    in
     let decl x = C.GVarDecl( x, loc ) in
-    change_do_children ( L.map decl [ n; p; eB; frame.epilogueA; frame.yielding; var ] )
+    change_do_children ( L.map decl [ n; p; eB; var ] )
   else
     C.DoChildren
 
