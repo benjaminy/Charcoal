@@ -31,6 +31,7 @@ endif
 CRCL_DOT_H_EXT=.crcl.with.h.c
 CRCL_CPP_EXT=.crcl.cpp.c
 CIL_C_EXT=.crcl.cil.c
+CRCL_O_EXT=.crcl.cil.o
 CC=gcc
 
 CRCL_RUNTIME = $(INSTALL_DIR)/lib/libcharcoal_sys.a

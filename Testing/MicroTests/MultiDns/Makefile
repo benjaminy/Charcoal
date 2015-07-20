@@ -6,7 +6,13 @@ CRCL_ROOT=../../..
 
 include $(CRCL_ROOT)/Testing/generic.mk
 
+include $(CRCL_ROOT)/Testing/cil_rules.mk
+
 CC=clang
+
+INCLUDE_DIRS += -I.
+
+CFLAGS += -g -O2
 
 TARGETS=sequential event_handlers threads processes coroutines
 
@@ -29,3 +35,8 @@ $(BUILD_DIR)/processes: processes.c multi_dns_utils.c
 
 $(BUILD_DIR)/coroutines: coroutines.c pcoroutine.c multi_dns_utils.c
 	$(CC) -I. -o $@ $^
+
+activities: $(BUILD_DIR)/activities
+
+$(BUILD_DIR)/activities: multi_dns_utils.c $(BUILD_DIR)/activities$(CRCL_O_EXT)
+	$(CC) -I. -o $@ $^  $(CRCL_RUNTIME) $(ZLOG_LIB) $(LIBUV_FLAGS)

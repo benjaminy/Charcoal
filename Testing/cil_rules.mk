@@ -1,4 +1,4 @@
-.PRECIOUS: %$(CRCL_DOT_H_EXT)
+.PRECIOUS: %$(CRCL_DOT_H_EXT) %$(CRCL_CPP_EXT) %$(CIL_C_EXT)
 
 # Prepend the Charcoal runtime headers
 $(BUILD_DIR)/%$(CRCL_DOT_H_EXT): %.crcl
@@ -15,8 +15,12 @@ $(BUILD_DIR)/%$(CRCL_DOT_H_EXT): %.crcl
 %$(CIL_C_EXT): %$(CRCL_CPP_EXT)
 	$(CIL_DIR)/bin/cilly.native --tr coroutinify --out $@ $<
 
+# Build object code from a translated Charcoal file
+%$(CRCL_O_EXT): %$(CIL_C_EXT)
+	$(CC) -c $(CFLAGS) -o $@ $<
+
 # Generic rule for building a single file program
-$(BUILD_DIR)/% : $(BUILD_DIR)/%.crcl.cil.c
+$(BUILD_DIR)/% : $(BUILD_DIR)/$(CRCL_O_EXT)
 	$(CC) $(CFLAGS) -o $@ $< $(CRCL_RUNTIME) $(ZLOG_LIB) $(LIBUV_FLAGS)
 
 # Generic rule for building in the build directory
