@@ -68,6 +68,7 @@ int main( int argc, char **argv )
     pthread_t t[N];
     unsigned int i;
     m = ( argc > 1 ) ? (int)atol( argv[1] ) : N;
+    m = ( 1 << m ) / N;
     for( i = 0; i < N; ++i )
     {
         dumb_sem_init( &s[i], 0 );

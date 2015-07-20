@@ -39,6 +39,7 @@ void f1( int i )
 int main( int argc, char **argv )
 {
     m = ( argc > 1 ) ? (int)atol( argv[1] ) : N;
+    m = 1 << m;
     semaphore_open( &sem, 0 );
     activate { &activities[0] } ()
     {

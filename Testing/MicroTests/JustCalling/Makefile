@@ -1,6 +1,6 @@
 # TODO: Header
-# 
-# 
+#
+#
 
 CRCL_ROOT=../../..
 
@@ -17,6 +17,11 @@ CFLAGS+= -O2
 
 all:
 	echo $(BUILD_DIR)
+
+rec: $(BUILD_DIR)/rec
+
+$(BUILD_DIR)/rec: rec.c
+	$(CC) $(CFLAGS) -o $@ $<
 
 $(BUILD_DIR)/non_rec: non_rec.c
 	$(CC) $(CFLAGS) -o $@ $<

@@ -32,6 +32,8 @@ void *f( void *p )
 int main( int argc, char **argv )
 {
     m = ( argc > 1 ) ? (int)atol( argv[1] ) : N;
+    m = 1 << m;
+    printf( "M: %d\n", m );
     pthread_mutex_init( &mtx, NULL );
     pthread_cond_init( &cond, NULL );
     assert( !pthread_create( &threads[0], NULL, f, NULL ) );
