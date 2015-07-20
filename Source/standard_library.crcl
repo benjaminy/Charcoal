@@ -92,6 +92,7 @@ int semaphore_decr( semaphore_p s )
 #endif
     }
     --s->value;
+#if 1
     /* XXX maybe this isn't necessary?  */
     if( s->value > 0 )
     {
@@ -101,6 +102,7 @@ int semaphore_decr( semaphore_p s )
             crcl(push_ready_queue)( waiter, waiter->thread );
         }
     }
+#endif
     return 0;
 }
 
