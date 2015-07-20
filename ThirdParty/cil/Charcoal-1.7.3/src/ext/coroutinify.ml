@@ -802,6 +802,11 @@ let no_yield_call i fdec frame =
           match lval_opt with
             None -> []
           | Some lval -> [ C.Set( lval, C.zero, loc ) ] ) (* XXX unimp *)
+    else if fname.C.vid = (activity_wait()).C.vid then
+      change_do_children(
+          match lval_opt with
+            None -> []
+          | Some lval -> [ C.Set( lval, C.zero, loc ) ] ) (* XXX unimp *)
     else if exp_is_charcoal_fn f then
       (match lookup_fun_decl fname with
          Some( u, _ , _ ) ->
