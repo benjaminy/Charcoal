@@ -262,7 +262,6 @@ int release( mutex m )
     }
 }
 #endif
-#if 0
 
 static int crcl(send_io_cmd)( crcl(io_cmd_t) *cmd, activity_p a )
 {
@@ -271,6 +270,8 @@ static int crcl(send_io_cmd)( crcl(io_cmd_t) *cmd, activity_p a )
     /* XXX Race between the next two lines??? */
     RET_IF_ERROR( uv_async_send( &crcl(io_cmd) ) );
     // XXX??? RET_IF_ERROR( crcl(activity_waiting)( /* XXX bad cast */(crcl(frame_p))a ) );
+    crcl(push_waiting_queue)( self, &waitee->waiters );
+    crcl(activity_wait)();
     return 0;
 }
 
@@ -282,7 +283,7 @@ int getaddrinfo_crcl(
 {
     /* XXX if no_yield, just call directly -- WRONG! interruption!! */
     uv_getaddrinfo_t resolver;
-    activity_p self = crcl(get_self_activity)();
+    activity_p self = self_activity();
     resolver.data = self;
     crcl(io_cmd_t) *cmd = (crcl(io_cmd_t) *)malloc( sizeof( cmd[0] ) );
     if( !cmd )
@@ -432,5 +433,4 @@ void *once( once_t *o, void *(*proc)( void ) )
     release( o->m );
     return o->val;
 }
-#endif
 #endif

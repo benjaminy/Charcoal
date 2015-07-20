@@ -28,7 +28,7 @@ struct crcl(io_cmd_t)
 {
     crcl(io_cmd_op) command;
     /* XXX Not _every_ command needs an activity, but I guess most will */
-    activity_p activity;
+    activity_p activity, waiters;
     union
     {
         cthread_p thread;
