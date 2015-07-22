@@ -28,7 +28,7 @@ $(BUILD_DIR)/event_handlers: event_handlers.c multi_dns_utils.c
 	$(CC) -I. -o $@ $^ -luv
 
 $(BUILD_DIR)/threads: threads.c multi_dns_utils.c
-	$(CC) -I. -o $@ $^
+	$(CC) -I. -o $@ $^ -pthread
 
 $(BUILD_DIR)/processes: processes.c multi_dns_utils.c
 	$(CC) -I. -o $@ $^

@@ -29,7 +29,7 @@ int main( int argc, char **argv, char **env )
 
     for( int i = 0; i < urls_to_get; ++i )
     {
-        // int rc = crcl(activity_join)( &as[i], NULL );
+        // printf( "Waiting for activity %p\n", &as[ i ] );
         wait_activity_done( &as[ i ] );
 #if 0
         if( rc )
