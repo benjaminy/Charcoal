@@ -1,10 +1,11 @@
 #include <core.h>
+#include <core_runtime.h>
 #include <assert.h>
 // #include <stdio.h>
 #include <stdlib.h>
 #include <runtime_io_commands.h>
 #include <runtime_coroutine.h>
-#include <opa_primitives.h>
+#include <atomics_wrappers.h>
 
 uv_loop_t *crcl(io_loop);
 uv_async_t crcl(io_cmd);
@@ -58,7 +59,7 @@ crcl(io_cmd_t) *dequeue( void )
     }
 }
 
-void the_thing( uv_timer_t* handle )
+static void timer_expired( uv_timer_t* handle )
 {
     cthread_p thd = (cthread_p)handle->data;
     uv_mutex_lock( &thd->thd_management_mtx );
@@ -66,7 +67,7 @@ void the_thing( uv_timer_t* handle )
     //            &thd->interrupt_activity, thd->ready );
     CRCL(CLEAR_FLAG)( *thd, CRCL(THDF_TIMER_ON) );
     if( thd->ready )
-        OPA_store_int( (OPA_int_t *)&thd->interrupt_activity, 1 );
+        atomic_store_int( &thd->interrupt_activity, 1 );
     uv_mutex_unlock( &thd->thd_management_mtx );
 }
 
@@ -76,25 +77,35 @@ static void crcl(io_cmd_close)( uv_handle_t *h )
     /* zlog_debug( crcl(c), "CLOSE %p\n", a ); fflush(stdout); */
 }
 
-static int crcl(wake_up_requester)( activity_p a )
+static int wake_up_waiters( activity_p *waiters )
 {
-    a->flags &= ~CRCL(ACTF_WAITING);
-    cthread_p thd = a->thread;
-    uv_mutex_lock( &thd->thd_management_mtx );
-    crcl(push_ready_queue)( a, thd );
-    uv_mutex_unlock( &thd->thd_management_mtx );
-    uv_cond_signal( &thd->thd_management_cond );
+    /* XXX multithreading :( */
+    activity_p waiter, next_waiter = crcl(pop_waiting_queue)( waiters );
+    while( next_waiter )
+    {
+        /* NOTE: Tricky timing here with the deallocation of the
+         * original invoker's stack frame. */
+        waiter = next_waiter;
+        next_waiter = crcl(pop_waiting_queue)( waiters );
+        cthread_p thd = waiter->thread;
+        uv_mutex_lock( &thd->thd_management_mtx );
+        crcl(push_ready_queue)( waiter, thd );
+        uv_mutex_unlock( &thd->thd_management_mtx );
+        /* If idle */
+        uv_cond_signal( &thd->thd_management_cond );
+    }
     return 0;
 }
 
-static void crcl(getaddrinfo_callback)(
-    uv_getaddrinfo_t* req, int status, struct addrinfo* res )
+static void getaddrinfo_callback(
+    uv_getaddrinfo_t* req, int rc, struct addrinfo* res )
 {
-    activity_p a = (activity_p)req->data;
-    // XXX a->io_response.addrinfo.rc   = status;
-    // XXX a->io_response.addrinfo.info = res;
-    /* XXX handle errors? */
-    crcl(wake_up_requester)( a );
+    crcl(io_cmd_t) *cmd = (crcl(io_cmd_t) *)req->data;
+    // zlog_debug( crcl(c), "getaddrinfo CB  &waiters:%p  waiters:%p",
+    //             &cmd->waiters, cmd->waiters );
+    *cmd->_.addrinfo.res = res;
+    cmd->_.addrinfo.rc = rc;
+    wake_up_waiters( &cmd->waiters );
 }
 
 void crcl(io_cmd_cb)( uv_async_t *handle )
@@ -120,8 +131,9 @@ void crcl(io_cmd_cb)( uv_async_t *handle )
                 /* Very weird timing, but probably possible */
                 uv_timer_stop( &thd->timer_req );
             }
-            rc = uv_timer_start( &thd->timer_req, the_thing, 10, 0);
+            rc = uv_timer_start( &thd->timer_req, timer_expired, 10, 0);
             assert( !rc );
+            free( cmd );
             break;
         }
         case CRCL(IO_CMD_JOIN_THREAD):
@@ -131,20 +143,20 @@ void crcl(io_cmd_cb)( uv_async_t *handle )
                 /* XXX What about when there are more events???. */
                 uv_close( (uv_handle_t *)handle, crcl(io_cmd_close) );
             }
+            free( cmd );
             break;
         case CRCL(IO_CMD_GETADDRINFO):
         {
             int rc;
             if( ( rc = uv_getaddrinfo(crcl(io_loop),
                                       cmd->_.addrinfo.resolver,
-                                      crcl(getaddrinfo_callback),
+                                      getaddrinfo_callback,
                                       cmd->_.addrinfo.node,
                                       cmd->_.addrinfo.service,
                                       cmd->_.addrinfo.hints ) ) )
             {
-                activity_p a = (activity_p)cmd->_.addrinfo.resolver->data;
-                // XXX a->io_response.addrinfo.rc = rc;
-                crcl(wake_up_requester)( a );
+                cmd->_.addrinfo.rc = rc;
+                wake_up_waiters( &cmd->waiters );
             }
             else
             {
@@ -156,7 +168,6 @@ void crcl(io_cmd_cb)( uv_async_t *handle )
             /* XXX error message? */
             exit( 1 );
         }
-        free( cmd );
     }
 }
 

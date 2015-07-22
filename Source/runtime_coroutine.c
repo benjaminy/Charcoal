@@ -12,7 +12,7 @@
 #include <limits.h>
 #include <runtime_coroutine.h>
 #include <runtime_io_commands.h>
-#include <opa_primitives.h>
+#include <atomics_wrappers.h>
 
 /* Scheduler stuff */
 
@@ -44,10 +44,10 @@ crcl(frame_p) crcl(activity_start_resume)( activity_p act )
     uv_key_set( &crcl(self_key), act );
     // XXX don't think we're using alarm anymore
     // XXX alarm((int) self->container->max_time);
-    // OPA_store_int(&self->container->timeout, 0);
+    // atomic_store_int(&self->container->timeout, 0);
     act->yield_calls = 0;
     /* XXX Races with other interruptions coming in!!! */
-    OPA_store_int( (OPA_int_t *)&thd->interrupt_activity, 0 );
+    atomic_store_int( &thd->interrupt_activity, 0 );
 
     /* XXX: Lots to fix here. */
     if( thd->ready && !CRCL(CHECK_FLAG)( *thd, CRCL(THDF_TIMER_ON) ) )
@@ -115,13 +115,23 @@ static activity_p crcl(pop_special_queue)( unsigned flag, activity_p *q )
 activity_p crcl(pop_ready_queue)( cthread_p thd )
 {
     assert( thd );
-    return crcl(pop_special_queue)( CRCL(ACTF_READY), &thd->ready );
+    activity_p act = crcl(pop_special_queue)( CRCL(ACTF_READY), &thd->ready );
+    // zlog_debug( crcl(c), "POP READY a:%p f:%x thd:%p q:%p",
+    //             act, act ? act->flags : 0xFFFFFFFF, thd, &thd->ready );
+    return act;
 }
 
-/* Precondition: The thread mgmt mutex is held, if necessary. */
 activity_p crcl(pop_waiting_queue)( activity_p *q )
 {
-    return crcl(pop_special_queue)( CRCL(ACTF_WAITING), q );
+    activity_p act = crcl(pop_special_queue)( CRCL(ACTF_WAITING), q );
+    // zlog_debug( crcl(c), "POP WAITING a:%p q:%p *q:%p", act, q, *q );
+    if( act )
+    {
+        cthread_p thd = act->thread;
+        assert( atomic_load_int( &thd->waiting_activities ) > 0 );
+        atomic_decr_int( &thd->waiting_activities );
+    }
+    return act;
 }
 
 /* Precondition: The thread mgmt mutex is held, if necessary. */
@@ -155,13 +165,16 @@ static void crcl(push_special_queue)(
 /* Precondition: The thread mgmt mutex is held. */
 void crcl(push_ready_queue)( activity_p act, cthread_p thd )
 {
+    // zlog_debug( crcl(c), "PUSH READY a:%p thd:%p q:%p", act, thd, &thd->ready );
     assert( thd );
     crcl(push_special_queue)( CRCL(ACTF_READY), act, &thd->ready );
+    /* XXX maybe start the timer here */
 }
 
-/* Precondition: The thread mgmt mutex is held, if necessary. */
 void crcl(push_waiting_queue)( activity_p act, activity_p *q )
 {
+    // zlog_debug( crcl(c), "PUSH WAITING a:%p q:%p *q:%p", act, q, *q );
+    atomic_incr_int( &act->thread->waiting_activities );
     crcl(push_special_queue)( CRCL(ACTF_WAITING), act, q );
 }
 
@@ -227,7 +240,7 @@ crcl(frame_p) crcl(yield_impl)( crcl(frame_p) frm, void *ret_addr ){
 
     frm->return_addr = ret_addr;
     ++act->yield_calls;
-    int interrupt = OPA_load_int( (OPA_int_t *)&thd->interrupt_activity );
+    int interrupt = atomic_load_int( &thd->interrupt_activity );
 
     *p = 0;
     if( !interrupt )
@@ -236,15 +249,19 @@ crcl(frame_p) crcl(yield_impl)( crcl(frame_p) frm, void *ret_addr ){
     }
     /* "else": The current activity should be interrupted for some
      * reason.  More smarts should go here eventually. */
-    // zlog_debug( crcl(c) , "Yield switch %p", act );
     *p = 1;
     uv_mutex_lock( &thd->thd_management_mtx );
     activity_p next = crcl(pop_ready_queue)( thd );
     uv_mutex_unlock( &thd->thd_management_mtx );
-    /* We really shouldn't be getting interrupted if there's nothing in
-     * the ready queue */
-    assert( next );
-    return switch_from_to( act, next );
+    // zlog_debug( crcl(c) , "YIELD y:%p n:%p", act, next );
+    /* XXX Something is wonky with the interrupt thing. Look into it. */
+    if( next )
+        return switch_from_to( act, next );
+    else
+    {
+        atomic_store_int( &thd->interrupt_activity, 0 );
+        return frm;
+    }
 }
 
 int crcl(activity_detach)( activity_p a )
@@ -319,14 +336,14 @@ crcl(frame_p) crcl(activity_waiting_or_done)( crcl(frame_p) frm, void *ret_addr 
     activity_p act = frm->activity;
     cthread_p  thd = act->thread;
     uv_mutex_lock( &thd->thd_management_mtx );
-    bool done = CRCL(CHECK_FLAG)( *act, CRCL(ACTF_DONE) );
     activity_p next = crcl(pop_ready_queue)( thd );
-    zlog_debug( crcl(c) , "Activity waiting/done %d %p", done, next );
+    // zlog_debug( crcl(c) , "Activity waiting/done %d n:%p", done, next );
     if( next )
     {
         /* Hooray! */
     }
-    else if( !done /* TODO: || keep thread alive */ )
+    else if( atomic_load_int( &thd->waiting_activities ) > 0
+             /* TODO: || keep thread alive */ )
     {
         next = &thd->idle_act;
     }
@@ -345,7 +362,7 @@ crcl(frame_p) crcl(activity_epilogue)( crcl(frame_p) frame )
 {
     assert( frame );
     activity_p act = frame->activity;
-    zlog_debug( crcl(c) , "Activity finished %p %p %p", frame, act, act->newest_frame );
+    // zlog_debug( crcl(c) , "Activity finished %p %p %p", frame, act, act->newest_frame );
     assert( frame == act->oldest_frame );
     assert( NULL == act->newest_frame );
     CRCL(SET_FLAG)( *act, CRCL(ACTF_DONE) );
@@ -384,7 +401,7 @@ void activate_in_thread(
     assert( epi );
     assert( caller->activity != activity );
 
-    zlog_debug( crcl(c), "Activate %p", activity );
+    // zlog_debug( crcl(c), "Activate %p", activity );
 
     activity->thread        = thread;
     activity->flags         = 0;
@@ -419,9 +436,9 @@ crcl(frame_p) crcl(activate)(
     assert( activity );
     assert( frm );
     assert( epi );
-    zlog_info( crcl(c), "crcl(activate) %p %p", caller, caller ? caller->activity : 0 );
     if( caller )
     {   /* Currently in yielding context */
+        // zlog_info( crcl(c), "crcl(activate) Y new:%p old:%p", activity, caller->activity );
         caller->return_addr = ret_addr;
         activity_p caller_act = caller->activity;
         activate_in_thread( caller_act->thread, activity, caller, frm, epi );
@@ -429,7 +446,7 @@ crcl(frame_p) crcl(activate)(
     }
     else
     {   /* Currently in no_yield context */
-        zlog_info( crcl(c), "UNIMP: Activation in no_yield context\n" );
+        zlog_info( crcl(c), "UNIMP crcl(activate) NY %p", activity );
         exit( 1 );
     }
 }
@@ -465,7 +482,7 @@ crcl(frame_p) crcl(fn_generic_prologue)(
     {
         exit( -ENOMEM );
     }
-    zlog_debug( crcl(c), "generic_prologue %p %p", caller, caller->activity );
+    // zlog_debug( crcl(c), "generic_prologue %p %p", caller, caller->activity );
     caller->callee      = frm;
     caller->return_addr = return_ptr;
     frm->fn             = fn;

@@ -1,3 +1,4 @@
+#include <core.h>
 #include <standard_library.crclh>
 extern "C" {
 #include <assert.h>
@@ -65,7 +66,10 @@ int semaphore_incr( semaphore_p s )
     activity_p waiter = crcl(pop_waiting_queue)( &s->waiters );
     if( waiter )
     {
-        crcl(push_ready_queue)( waiter, waiter->thread );
+        cthread_p thd = waiter->thread;
+        uv_mutex_lock( &thd->thd_management_mtx );
+        crcl(push_ready_queue)( waiter, thd );
+        uv_mutex_unlock( &thd->thd_management_mtx );
     }
     return 0;
 }
@@ -99,7 +103,10 @@ int semaphore_decr( semaphore_p s )
         activity_p waiter = crcl(pop_waiting_queue)( &s->waiters );
         if( waiter )
         {
-            crcl(push_ready_queue)( waiter, waiter->thread );
+            cthread_p thd = waiter->thread;
+            uv_mutex_lock( &thd->thd_management_mtx );
+            crcl(push_ready_queue)( waiter, thd );
+            uv_mutex_unlock( &thd->thd_management_mtx );
         }
     }
 #endif
@@ -123,6 +130,43 @@ int semaphore_try_decr( semaphore_p s )
     }
 }
 
+static int crcl(send_io_cmd)( crcl(io_cmd_t) *cmd, activity_p act )
+{
+    enqueue( cmd );
+    crcl(push_waiting_queue)( act, &cmd->waiters );
+    int rc;
+    if( ( rc = uv_async_send( &crcl(io_cmd) ) ) )
+    {
+        return rc;
+    }
+    crcl(activity_wait)();
+    return 0;
+}
+
+int getaddrinfo_crcl(
+    const char *node,
+    const char *service,
+    const struct addrinfo *hints,
+    struct addrinfo **res )
+{
+    /* XXX if no_yield, just call directly -- WRONG! interruption!! */
+    crcl(io_cmd_t) cmd;
+    uv_getaddrinfo_t resolver;
+    activity_p self = self_activity();
+    // zlog_debug( crcl(c), "getaddrinfo self:%p  &waiters:%p", self, &cmd.waiters );
+    resolver.data = &cmd;
+    cmd.waiters = NULL;
+    cmd.command = CRCL(IO_CMD_GETADDRINFO);
+    cmd._.addrinfo.resolver = &resolver;
+    cmd._.addrinfo.node     = node;
+    cmd._.addrinfo.service  = service;
+    cmd._.addrinfo.hints    = hints;
+    cmd._.addrinfo.res      = res;
+    RET_IF_ERROR( crcl(send_io_cmd)( &cmd, self ) );
+    return cmd._.addrinfo.rc;
+}
+
+#if 0
 /*
  * TetraStak
  */
@@ -263,44 +307,7 @@ int release( mutex m )
 }
 #endif
 
-static int crcl(send_io_cmd)( crcl(io_cmd_t) *cmd, activity_p a )
-{
-    enqueue( cmd );
-    a->flags |= CRCL(ACTF_WAITING);
-    /* XXX Race between the next two lines??? */
-    RET_IF_ERROR( uv_async_send( &crcl(io_cmd) ) );
-    // XXX??? RET_IF_ERROR( crcl(activity_waiting)( /* XXX bad cast */(crcl(frame_p))a ) );
-    crcl(push_waiting_queue)( self, &waitee->waiters );
-    crcl(activity_wait)();
-    return 0;
-}
 
-int getaddrinfo_crcl(
-    const char *node,
-    const char *service,
-    const struct addrinfo *hints,
-    struct addrinfo **res )
-{
-    /* XXX if no_yield, just call directly -- WRONG! interruption!! */
-    uv_getaddrinfo_t resolver;
-    activity_p self = self_activity();
-    resolver.data = self;
-    crcl(io_cmd_t) *cmd = (crcl(io_cmd_t) *)malloc( sizeof( cmd[0] ) );
-    if( !cmd )
-    {
-        return ENOMEM;
-    }
-    cmd->command = CRCL(IO_CMD_GETADDRINFO);
-    cmd->_.addrinfo.resolver = &resolver;
-    cmd->_.addrinfo.node     = node;
-    cmd->_.addrinfo.service  = service;
-    cmd->_.addrinfo.hints    = hints;
-    RET_IF_ERROR( crcl(send_io_cmd)( cmd, self ) );
-    *res = self->io_response.addrinfo.info;
-    return self->io_response.addrinfo.rc;
-}
-
-#if 0
 void sem_inc( semaphore_p s )
 {
     if( pseudo_multithreaded_check(

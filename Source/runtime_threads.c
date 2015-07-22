@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <runtime_coroutine.h>
 #include <runtime_io_commands.h>
-#include <opa_primitives.h>
+#include <atomics_wrappers.h>
 
 static cthread_p crcl(threads) = NULL;
 
@@ -100,8 +100,8 @@ static crcl(frame_p) thread_init( thread_entry_params *params )
     cthread_p thd = params->thd;
     zlog_info( crcl(c), "Charcoal thread initializing %p( %p )\n", thd, params );
     /* XXX  init can-run */
-    // OPA_store_int( (OPA_int_t *)&thd->timeout, 0 );
-    OPA_store_int( (OPA_int_t *)&thd->interrupt_activity, 0 );
+    // atomic_store_int( &thd->timeout, 0 );
+    atomic_store_int( &thd->interrupt_activity, 0 );
     thd->timer_req.data = thd;
     /* XXX Does timer_init have to be called from the I/O thread? */
     if( uv_timer_init( crcl(io_loop), &thd->timer_req ) )
@@ -115,7 +115,7 @@ static crcl(frame_p) thread_init( thread_entry_params *params )
         exit( -1 );
 
     thd->flags               = 0;
-    thd->runnable_activities = 0;
+    atomic_store_int( &thd->waiting_activities, 0 );
     thd->activities          = NULL;
     thd->ready               = NULL;
     // thd->sys initialized in thread_start
@@ -189,29 +189,22 @@ int crcl(join_thread)( cthread_p t )
 
 static crcl(frame_p) idle( crcl(frame_p) idle_frame )
 {
-    activity_p idle  = idle_frame->activity;
-    cthread_p thread = idle->thread;
+    activity_p idle = idle_frame->activity;
+    cthread_p   thd = idle->thread;
 
-    uv_mutex_lock( &thread->thd_management_mtx );
-    while( !thread->ready )
+    uv_mutex_lock( &thd->thd_management_mtx );
+    activity_p next;
+    while( !( next = crcl(pop_ready_queue)( thd ) ) )
     {
-        CRCL(SET_FLAG)( *thread, CRCL(THDF_IDLE) );
-        uv_cond_wait( &thread->thd_management_cond,
-                      &thread->thd_management_mtx );
+        CRCL(SET_FLAG)( *thd, CRCL(THDF_IDLE) );
+        uv_cond_wait( &thd->thd_management_cond,
+                      &thd->thd_management_mtx );
         /* XXX Add the ability to cleanly kill a thread? */
     }
-    if( !thread->activities )
-    {
-        /* NOTE: We arrived here because the ready flag was set and the
-         * activties list is NULL. */
-        uv_mutex_unlock( &thread->thd_management_mtx );
-        return 0;
-    }
-    activity_p a = crcl(pop_ready_queue)( thread );
-    assert( a );
-    crcl(frame_p) next_frame = a->newest_frame;
-    CRCL(CLEAR_FLAG)( *thread, CRCL(THDF_IDLE) );
-    uv_mutex_unlock( &thread->thd_management_mtx );
+    // zlog_info( crcl(c), "IDLE WAKE UP i:%p n:%p\n", idle, next );
+    crcl(frame_p) next_frame = next->newest_frame;
+    CRCL(CLEAR_FLAG)( *thd, CRCL(THDF_IDLE) );
+    uv_mutex_unlock( &thd->thd_management_mtx );
 
     return next_frame;
 }

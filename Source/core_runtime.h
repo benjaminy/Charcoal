@@ -1,6 +1,10 @@
 #ifndef __CHARCOAL_RUNTIME
 #define __CHARCOAL_RUNTIME
 
+#include <zlog.h>
+
+/* NOTE: Eventually make different dev/production configs that ifdef logging */
+extern zlog_category_t *crcl( c );
 extern uv_key_t crcl(self_key);
 
 void crcl(push_ready_queue)( activity_p a, cthread_p t );

@@ -17,7 +17,6 @@
 #pragma cilnoremove( "__charcoal_add_to_waiters" )
 #endif
 
-#include <atomics_wrappers.h>
 #include <uv.h>
 
 #define crcl(n) __charcoal_ ## n
@@ -28,6 +27,14 @@
 
 #define __CHARCOAL_RET_IF_ERROR(cmd) \
     do { int rc; if( 0 > ( rc = cmd ) ) { return rc; } } while( 0 )
+
+/*
+ * I'd really like to use C11 atomics, but cil doesn't seem to support
+ * them.  So Here are some definitons that should be identical to those
+ * in OpenPA.
+ */
+
+typedef struct { volatile int v; } atomic_int;
 
 #define __CHARCOAL_SET_FLAG(x,f)   do { (x).flags |=  (f); } while( 0 )
 #define __CHARCOAL_CLEAR_FLAG(x,f) do { (x).flags &= ~(f); } while( 0 )
@@ -160,8 +167,8 @@ struct cthread_t
     activity_t    idle_act;
     crcl(frame_t) idle_frm;
 
-    /* Used??? */
-    unsigned      runnable_activities;
+    /* How many activities are waiting on something; If non-zero, don't quit */
+    atomic_int    waiting_activities;
 
     /* Linked list of all threads */
     cthread_p     next, prev;

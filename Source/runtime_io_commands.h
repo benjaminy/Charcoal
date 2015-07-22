@@ -6,15 +6,6 @@
 extern uv_loop_t *crcl(io_loop);
 extern uv_async_t crcl(io_cmd);
 
-union crcl(io_response_t)
-{
-    struct
-    {
-        int rc;
-        struct addrinfo *info;
-    } addrinfo;
-};
-
 typedef enum
 {
     CRCL(IO_CMD_START),
@@ -38,6 +29,8 @@ struct crcl(io_cmd_t)
             const char *node;
             const char *service;
             const struct addrinfo *hints;
+            struct addrinfo **res;
+            int rc;
         } addrinfo;
     } _;
     uint64_t time_ns;

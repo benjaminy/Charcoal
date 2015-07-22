@@ -1,15 +1,11 @@
 #ifndef __ATOMICS_WRAPPERS
 #define __ATOMICS_WRAPPERS
 
-/*
- * I'd really like to use C11 atomics, but cil doesn't seem to support
- * them.  So Here are some definitons that should be identical to those
- * in OpenPA.
- */
+#include <opa_primitives.h>
 
-typedef struct { volatile int v; } atomic_int;
-
-int atomic_load_int( atomic_int * );
-void atomic_store_int( atomic_int *, int );
+#define atomic_load_int( p )     ( OPA_load_int( (OPA_int_t *)( p ) ) )
+#define atomic_store_int( p, i ) ( OPA_store_int( (OPA_int_t *)( p ), i ) )
+#define atomic_incr_int( p )     ( OPA_incr_int( (OPA_int_t *)( p ) ) )
+#define atomic_decr_int( p )     ( OPA_decr_int( (OPA_int_t *)( p ) ) )
 
 #endif /* __ATOMICS_WRAPPERS */
