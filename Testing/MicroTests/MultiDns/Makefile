@@ -8,11 +8,11 @@ include $(CRCL_ROOT)/Testing/generic.mk
 
 include $(CRCL_ROOT)/Testing/cil_rules.mk
 
-CC=clang
+# CC=clang
 
 INCLUDE_DIRS += -I.
 
-CFLAGS += -g -O2
+CFLAGS += -g -O1
 
 TARGETS=sequential event_handlers threads processes coroutines
 
