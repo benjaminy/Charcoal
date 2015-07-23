@@ -20,11 +20,11 @@ void *f( void *p )
 
 int main( int argc, char ** argv )
 {
-    int limit, i;
+    long limit, i;
 
     for( limit = 1; limit < 1000000000; limit *= 2 )
     {
-        printf( "Lets try spawning %d threads\n", limit ); fflush( stdout );
+        printf( "Lets try spawning %ld threads\n", limit ); fflush( stdout );
         pthread_t *threads = (pthread_t *)malloc( limit * sizeof( threads[0] ) );
         conds =  (pthread_cond_t *)malloc( limit * sizeof( conds[0] ) );
         mtxs  = (pthread_mutex_t *)malloc( limit * sizeof( mtxs[0] ) );

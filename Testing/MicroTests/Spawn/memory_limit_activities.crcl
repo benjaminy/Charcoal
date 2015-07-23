@@ -15,7 +15,7 @@ int main( int argc, char ** argv )
     for( limit = 1; limit < 1000000000; limit *= 2 )
     {
         printf( "Lets try spawning %d activities\n", limit ); fflush( stdout );
-        activity_p *acts = (activity_p)malloc( limit * sizeof( acts[0] ) );
+        activity_p acts = (activity_p)malloc( limit * sizeof( acts[0] ) );
         for( i = 0; i < limit; ++i )
         {
             activate{ &acts[i] } ()
@@ -26,6 +26,10 @@ int main( int argc, char ** argv )
         for( i = 0; i < limit; ++i )
         {
             semaphore_incr( &sem );
+        }
+        for( i = 0; i < limit; ++i )
+        {
+            wait_activity_done( &acts[ i ] );
         }
         free( acts );
     }
