@@ -6728,6 +6728,7 @@ class extract_activity_class : V.cabsVisitor =
 object (self)
   inherit V.nopCabsVisitor as super
 
+  val mutable uid             = 1
   val mutable activate_depth  = 0
   val mutable by_vals_opt     = None
   val mutable by_refs         = []
@@ -6864,7 +6865,10 @@ object (self)
           in
           let safe_name =
             match fun_name with
-              Some n -> "__charcoal_act_" ^ n ^ "_N" (* XXX unique number *)
+              Some n ->
+              let i = uid in
+              let () = uid <- i + 1 in
+              Printf.sprintf "__charcoal_act_%s_%d" n i
             | None -> E.s (bug "Activate without function name")
           in
           let formals_and_actuals_opt =
