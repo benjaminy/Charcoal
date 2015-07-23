@@ -4661,9 +4661,6 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
         finishExp empty (makeCast (integer addrval) voidPtrType) voidPtrType
     end
 
-    | A.ACTIVATE( act, by_vals, body ) ->
-      E.s (E.bug "activate should be gone before cabs2cil")
-
     | A.EXPR_PATTERN _ -> E.s (E.bug "EXPR_PATTERN in cabs2cil input")
 
   with e when continueOnError -> begin
@@ -6695,6 +6692,9 @@ and doStatement (s : A.statement) : chunk =
        let ny = mkStmt( NoYieldStmt( c2block ch, !currentLoc ) ) in
        { stmts=[ ny ]; postins=[]; cases=[] }
 
+    | A.ACTIVATE _ ->
+      E.s( E.bug "activate should be gone before cabs2cil" )
+
   with e when continueOnError -> begin
     (ignore (E.log "Error in doStatement (%s)\n" (Printexc.to_string e)));
     E.hadErrors := true;
@@ -6796,6 +6796,39 @@ object (self)
     | _::l -> local_vars <- l
 
   method vexpr e = match e with
+      VARIABLE v ->
+       let check_locals =
+         match by_vals_opt with
+           None -> false (* Not in activate *)
+         | Some by_vals -> (* This var is by-val *)
+            not( List.mem v by_vals )
+       in
+       let is_by_ref_local =
+         check_locals &&
+           (* XXX performance could be pretty bad here *)
+           let is_local_var =
+             let is_in_env =
+               let is_in_names ( _, names ) =
+                 List.exists ( fun (n,_,_,_) -> n = v ) names
+               in
+               List.exists is_in_names
+             in
+             List.exists is_in_env
+           in
+           is_local_var local_vars
+       in
+       if is_by_ref_local then
+         let () = by_refs <- v::by_refs in
+         V.ChangeTo( UNARY( MEMOF, e ) )
+       else
+         V.DoChildren
+  | _ -> V.DoChildren
+
+  method vstmt s = match s with
+    RETURN (e, loc) -> V.DoChildren (* XXX if > 0, set activity rv *)
+  | GOTO _ ->       V.DoChildren (* XXX No gotos from activity body to outer scope *)
+  | COMPGOTO _ ->   V.DoChildren (* XXX No gotos from activity body to outer scope *)
+  | DEFINITION _ -> V.DoChildren (* XXX Gota def here *)
     (* Translate:
      *     t f()
      *     {
@@ -6815,18 +6848,18 @@ object (self)
      *         __activate_intermediate( a, __activate_fN, x1, &x2, ... );
      *     }
      *)
-    ACTIVATE( act, by_vals, body ) ->
+  | ACTIVATE( act_pre, by_vals_pre, body_pre, loc_pre ) ->
       let () = activate_depth <- activate_depth + 1 in
         (* XXX activate nesting??? *)
-      let () = by_vals_opt <- Some by_vals in
+      let () = by_vals_opt <- Some by_vals_pre in
       if activate_depth > 1 then
         let after_children e = let () = activate_depth <- activate_depth - 1 in e in
-        V.ChangeDoChildrenPost( e, after_children )
+        V.ChangeDoChildrenPost( [ s ], after_children )
       else
         let after_children e =
           let () = by_vals_opt <- None in
-          let ( act_ref, by_vals, body ) = match e with
-              ACTIVATE( a, v, b ) -> a, v, b
+          let ( act_ref, by_vals, body, loc ) = match e with
+              ACTIVATE( a, v, b, l ) -> a, v, b, l
             | _ -> E.s( bug "Mysterious ACTIVATE transmogrification" )
           in
           let safe_name =
@@ -6888,10 +6921,10 @@ object (self)
                 None -> []
               | Some( f, _ ) -> f
             in
-            let name = ( safe_name, PROTO( JUSTBASE, formals, false ), [], cabslu) in
+            let name = ( safe_name, PROTO( JUSTBASE, formals, false ), [], loc ) in
             let body_block = { blabels=[]; battrs=[]; bstmts=[ body ] } in
-            ( FUNDEF( ( return_type, name ), body_block, cabslu, cabslu ),
-              DECDEF( ( return_type, [ ( name, NO_INIT ) ] ), cabslu ) )
+            ( FUNDEF( ( return_type, name ), body_block, loc, loc ),
+              DECDEF( ( return_type, [ ( name, NO_INIT ) ] ), loc ) )
           in
           let () = activity_bodies <- act_fun::activity_bodies in
 
@@ -6900,8 +6933,8 @@ object (self)
               None -> []
             | Some( _, ( actuals:expression list ) ) -> actuals
           in
-          CALL( VARIABLE "__charcoal_activate_intermediate",
-                [ act_ref; VARIABLE safe_name ] @ params )
+          COMPUTATION( CALL( VARIABLE "__charcoal_activate_intermediate",
+                [ act_ref; VARIABLE safe_name ] @ params ), loc )
 (*
           in
             GNU_BODY{ blabels = []; Cabs.battrs = [];
@@ -6922,43 +6955,11 @@ object (self)
                       bstmts = cast::actuals@[call] }
  *)
         in
-        (match V.visitCabsStatement (self :> V.cabsVisitor) body with
-          [b] -> V.ChangeTo( after_children( ACTIVATE( act, by_vals, b ) ) )
-        | bs -> E.s( bug "Visiting activate body gave weirdness" ) )
+        (match V.visitCabsStatement (self :> V.cabsVisitor) body_pre with
+           [b] -> V.ChangeTo( [ after_children(
+                       ACTIVATE( act_pre, by_vals_pre, b, loc_pre ) ) ] )
+         | bs -> E.s( bug "Visiting activate body gave weirdness" ) )
   (* End of ACTIVATE case *)
-    | VARIABLE v ->
-       let check_locals =
-         match by_vals_opt with
-           None -> false (* Not in activate *)
-         | Some by_vals -> (* This var is by-val *)
-            not( List.mem v by_vals )
-       in
-       let is_by_ref_local =
-         check_locals &&
-           (* XXX performance could be pretty bad here *)
-           let is_local_var =
-             let is_in_env =
-               let is_in_names ( _, names ) =
-                 List.exists ( fun (n,_,_,_) -> n = v ) names
-               in
-               List.exists is_in_names
-             in
-             List.exists is_in_env
-           in
-           is_local_var local_vars
-       in
-       if is_by_ref_local then
-         let () = by_refs <- v::by_refs in
-         V.ChangeTo( UNARY( MEMOF, e ) )
-       else
-         V.DoChildren
-  | _ -> V.DoChildren
-
-  method vstmt s = match s with
-    RETURN (e, loc) -> V.DoChildren (* XXX if > 0, set activity rv *)
-  | GOTO _ ->       V.DoChildren (* XXX No gotos from activity body to outer scope *)
-  | COMPGOTO _ ->   V.DoChildren (* XXX No gotos from activity body to outer scope *)
-  | DEFINITION _ -> V.DoChildren (* XXX Gota def here *)
   | _ -> V.DoChildren (* XXX audit the rest of the statement kinds *)
 
 end (* extract_activity_class *)

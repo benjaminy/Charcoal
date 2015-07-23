@@ -466,6 +466,11 @@ and childrenStatement vis s =
   | NOYIELD_STMT( body, l ) ->
       let body' = vs l body in
       if body' != body then NOYIELD_STMT( body', l ) else s
+  | ACTIVATE( a, bv, b, l ) ->
+      let a' = visitCabsExpression vis a in
+      let b' = vs l b in
+      (* XXX List.map let s' = vis#vvar s in *)
+      if a' != a || b' != b then ACTIVATE( a', bv, b', l ) else s
 
           
 and visitCabsExpression vis (e: expression) : expression = 
@@ -533,18 +538,6 @@ and childrenExpression vis e =
   | GNU_BODY b -> 
       let b' = visitCabsBlock vis b in
       if b' != b then GNU_BODY b' else e
-  | ACTIVATE( act, by_vals, body ) ->
-      let act' = ve act in
-      let body' =
-        match visitCabsStatement vis body with
-          [s'] -> s'
-        | sl -> BLOCK ({blabels = []; battrs = []; bstmts = sl }, cabslu)
-      in
-      (* XXX cabslu and visit by-vals? *)
-      if act != act' || body != body' then
-        ACTIVATE( act', by_vals, body' )
-      else
-        e
   | EXPR_PATTERN _ -> e
         
 and visitCabsInitExpression vis (ie: init_expression) : init_expression = 

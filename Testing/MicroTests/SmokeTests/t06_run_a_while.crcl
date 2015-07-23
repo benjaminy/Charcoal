@@ -27,10 +27,10 @@ int main( int argc, char **argv, char **env )
 {
     printf( "Hello World\n" );
     activity_p a = (activity_p)malloc( sizeof( a[0] ) );
-    activate {a} ()
+    activate[ a ] ()
     {
         blah( "O" );
-    };
+    }
     blah( "X" );
     return 0;
 }

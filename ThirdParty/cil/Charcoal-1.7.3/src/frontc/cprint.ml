@@ -406,7 +406,6 @@ and get_operator exp =
   | MEMBEROFPTR (exp, fld) -> ("", 15)
   | GNU_BODY _ -> ("", 17)
   | EXPR_PATTERN _ -> ("", 16)     (* sm: not sure about this *)
-  | ACTIVATE _ -> ("", 16)
 
 and print_comma_exps exps =
   print_commas false print_expression exps
@@ -545,8 +544,6 @@ and print_expression_level (lvl: int) (exp : expression) =
       print ")"
   | EXPR_PATTERN (name) ->
       printl ["@expr";"(";name;")"]
-  | ACTIVATE( act, by_vals, body ) ->
-      printl ["@expr";"(AcTiViTy)"]
   in
   ()
     
@@ -720,6 +717,11 @@ and print_statement stat =
       setLoc(loc);
       printl ["no_yield"];
       print_substatement body
+  | ACTIVATE( act, by_vals, body, loc ) ->
+      setLoc( loc );
+      printl ["activate"]; (* XXX UNIMP *)
+      print_substatement body
+
       
 and print_block blk = 
   new_line();

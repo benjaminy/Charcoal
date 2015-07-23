@@ -85,6 +85,7 @@ begin
   | TRY_EXCEPT(_, _, _, loc) -> loc
   | TRY_FINALLY(_, _, loc) -> loc
   | NOYIELD_STMT(_, loc) -> loc
+  | ACTIVATE( _, _, _, loc ) -> loc
 end
 
 

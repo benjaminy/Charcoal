@@ -25,7 +25,7 @@ int main( int argc, char **argv )
     {
         csemaphore_t *s1 = &sems[ i ];
         csemaphore_t *s2 = &sems[ ( i + 1 ) % N ];
-        activate{ &activities[i] }( i, s1, s2 )
+        activate[ &activities[i] ]( i, s1, s2 )
         {
             int j;
             for( j = 0; j < m; ++j )
@@ -34,7 +34,7 @@ int main( int argc, char **argv )
                 semaphore_incr( s2 );
             }
             printf( "Activity %d done\n", i );
-        };
+        }
     }
     semaphore_incr( &sems[0] );
     wait_activity_done( &activities[ N - 1 ] );

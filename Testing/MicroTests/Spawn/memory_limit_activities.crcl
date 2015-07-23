@@ -18,10 +18,10 @@ int main( int argc, char ** argv )
         activity_p acts = (activity_p)malloc( limit * sizeof( acts[0] ) );
         for( i = 0; i < limit; ++i )
         {
-            activate{ &acts[i] } ()
+            activate[ &acts[i] ] ()
             {
                 semaphore_decr( &sem );
-            };
+            }
         }
         for( i = 0; i < limit; ++i )
         {

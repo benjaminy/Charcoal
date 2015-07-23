@@ -24,10 +24,10 @@ void f1( int i )
     if( i < m )
     {
         // printf( "ACTIVATE %d\n", i );
-        activate { &activities[ i % 2 ] } ( i )
+        activate[ &activities[ i % 2 ] ] ( i )
         {
             f1( i );
-        };
+        }
     }
     else
     {
@@ -41,10 +41,10 @@ int main( int argc, char **argv )
     m = ( argc > 1 ) ? (int)atol( argv[1] ) : N;
     m = 1 << m;
     semaphore_open( &sem, 0 );
-    activate { &activities[0] } ()
+    activate[ &activities[0] ] ()
     {
         f1( 0 );
-    };
+    }
     semaphore_decr( &sem );
     printf( "DONE!!!\n" );
     return 0;

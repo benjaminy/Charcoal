@@ -12,10 +12,10 @@ int main( int argc, char **argv, char **env )
     for( i = 0; i < N; ++i )
     {
         activity_p a = (activity_p)malloc( sizeof( a[0] ) );
-        activate {a} ( i )
+        activate[ a ] ( i )
         {
             printf( "I'm active %d\n", i );
-        };
+        }
     }
     printf( "After the activations\n" );
     return 0;

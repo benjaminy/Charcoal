@@ -7,11 +7,11 @@ int main( int argc, char **argv, char **env )
 {
     printf( "Hello World\n" );
     activity_p a = (activity_p)malloc( sizeof( a[0] ) );
-    activate {a} ()
+    activate[ a ] ()
     {
         yield();
         printf( "I'm active\n" );
-    };
+    }
     printf( "After the activate\n" );
     return 0;
 }

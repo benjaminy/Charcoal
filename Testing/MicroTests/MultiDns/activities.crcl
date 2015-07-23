@@ -19,10 +19,10 @@ int main( int argc, char **argv, char **env )
 
     for( int i = 0; i < urls_to_get; ++i )
     {
-        activate{ &as[i] }( i )
+        activate[ &as[i] ]( i )
         {
             get_one( i );
-        };
+        }
     }
 
     printf( "Activated all\n" );

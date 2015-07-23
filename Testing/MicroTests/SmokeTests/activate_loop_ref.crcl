@@ -14,7 +14,7 @@ int main( int argc, char **argv )
     for( i = 0; i < N; ++i )
     {
         activity_t *a = (activity_t *)malloc( sizeof( a[0] ) );
-        activate{ a }( i )
+        activate[ a ]( i )
         {
             j += i;
             c += 1;
@@ -22,7 +22,7 @@ int main( int argc, char **argv )
             {
                 semaphore_incr( &sem );
             }
-        };
+        }
     }
     semaphore_decr( &sem );
     printf( "Here's j: %d\n", j );

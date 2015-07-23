@@ -261,10 +261,6 @@ class label_gather_class : V.cabsVisitor = object (self)
 
   val mutable labels = SS.empty
 
-  method vexpr e = match e with
-  | ACTIVATE _ -> V.SkipChildren
-  | _ -> V.DoChildren
-
   method vblock b =
     let () = labels <- List.fold_right SS.add b.blabels labels in
     V.DoChildren
@@ -274,6 +270,7 @@ class label_gather_class : V.cabsVisitor = object (self)
         LABEL(label, _, _) ->
           let () = labels <- SS.add label labels in
           V.DoChildren
+      | ACTIVATE _ -> V.SkipChildren
       | _ -> V.DoChildren
 end (* label_gather_class *)
 
@@ -285,10 +282,6 @@ object (self)
 
   val mutable breakable_depth = 0
   val mutable contable_depth = 0
-
-  method vexpr e = match e with
-  | ACTIVATE _ -> V.SkipChildren
-  | _ -> V.DoChildren
 
   method vstmt s =
     let cond_insert c = if c then V.ChangeDoChildrenPost ([stmt_to_insert;s], fun s -> s)
@@ -327,6 +320,7 @@ object (self)
       | NOP _ | COMPUTATION _ | BLOCK _ | SEQUENCE _
       | IF _ | CASE _ | CASERANGE _ | DEFAULT _ | LABEL _
       | DEFINITION _ | NOYIELD_STMT _ (* XXX ??? *) -> V.DoChildren
+      | ACTIVATE _ -> V.SkipChildren
 
 end (* insert_shit_class *)
 
@@ -637,10 +631,6 @@ unary_expression:   /*(* 6.5.3 *)*/
 |               AND_AND IDENT  { LABELADDR (fst $2), $1 }
 |               YIELD LPAREN RPAREN
                         { CALL( VARIABLE "__charcoal_yield", [] ), $1 }
-|               ACTIVATE LBRACE cast_expression RBRACE var_list_opt comma_expression
-                        {ACTIVATE (fst $3, $5, RETURN (smooth_expression (fst $6), snd $6)), $1}
-|               ACTIVATE LBRACE cast_expression RBRACE var_list_opt statement
-                        {ACTIVATE (fst $3, $5, $6), $1}
 |               NOYIELD cast_expression { UNARY( NOYIELD, fst $2 ), $1 }
 |               SYNCHRONIZED paren_comma_expression statement { (* XXX I guess this has to be translated later because of escaping *)
            GNU_BODY{ blabels=[]; battrs=[];
@@ -1048,6 +1038,8 @@ statement:
                             parse_error "try/finally in GCC code";
                           TRY_FINALLY (b, h, (*handleLoc*) $1) }
 |   NOYIELD statement {NOYIELD_STMT( $2, (*handleLoc*) $1 ) }
+|   ACTIVATE LBRACKET cast_expression RBRACKET var_list_opt statement
+        { ACTIVATE ( fst $3, $5, $6, $1 ) }
 
 |   error location   SEMICOLON   { (NOP $2)}
 ;
