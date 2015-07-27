@@ -97,6 +97,14 @@ static int wake_up_waiters( activity_p *waiters )
     return 0;
 }
 
+static void sleep_callback( uv_timer_t *timer )
+{
+    crcl(io_cmd_t) *cmd = (crcl(io_cmd_t) *)timer->data;
+    zlog_debug( crcl(c), "SLEEP CALLBACK %d\n", cmd->_.sleep.seconds );
+    cmd->_.sleep.remaining = 0; /* XXX for sure??? */
+    wake_up_waiters( &cmd->waiters );
+}
+
 static void getaddrinfo_callback(
     uv_getaddrinfo_t* req, int rc, struct addrinfo* res )
 {
@@ -108,7 +116,7 @@ static void getaddrinfo_callback(
     wake_up_waiters( &cmd->waiters );
 }
 
-void crcl(io_cmd_cb)( uv_async_t *handle )
+static void io_cmd_cb( uv_async_t *handle )
 {
     /* zlog_debug( crcl(c), "IO THING\n" ); */
     crcl(io_cmd_t) *cmd;
@@ -145,6 +153,17 @@ void crcl(io_cmd_cb)( uv_async_t *handle )
             }
             free( cmd );
             break;
+        case CRCL(IO_CMD_SLEEP):
+        {
+            int rc = uv_timer_start(
+                cmd->_.sleep.timer,
+                sleep_callback,
+                1000 * cmd->_.sleep.seconds,
+                0 );
+            if( rc )
+                exit( -1 );
+            break;
+        }
         case CRCL(IO_CMD_GETADDRINFO):
         {
             int rc;
@@ -192,7 +211,7 @@ int crcl(init_io_loop)( int (*f)( void ) )
     RET_IF_ERROR( uv_key_create( &crcl(self_key) ) );
     crcl(io_loop) = uv_default_loop();
     RET_IF_ERROR(
-        uv_async_init( crcl(io_loop), &crcl(io_cmd), crcl(io_cmd_cb) ) );
+        uv_async_init( crcl(io_loop), &crcl(io_cmd), io_cmd_cb ) );
 
     crcl(cmd_queue).front = NULL;
     crcl(cmd_queue).back = NULL;

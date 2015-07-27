@@ -130,10 +130,13 @@ int semaphore_try_decr( semaphore_p s )
     }
 }
 
-static int crcl(send_io_cmd)( crcl(io_cmd_t) *cmd, activity_p act )
+static int crcl(send_io_cmd)( crcl(io_cmd_t) *cmd )
 {
+    activity_p self = self_activity();
+    cmd->activity = self;
+    cmd->waiters = NULL;
     enqueue( cmd );
-    crcl(push_waiting_queue)( act, &cmd->waiters );
+    crcl(push_waiting_queue)( self, &cmd->waiters );
     int rc;
     if( ( rc = uv_async_send( &crcl(io_cmd) ) ) )
     {
@@ -141,6 +144,21 @@ static int crcl(send_io_cmd)( crcl(io_cmd_t) *cmd, activity_p act )
     }
     crcl(activity_wait)();
     return 0;
+}
+
+unsigned int sleep_crcl( unsigned int seconds )
+{
+    uv_timer_t timer;
+    crcl(io_cmd_t) cmd;
+
+    if( uv_timer_init( crcl(io_loop), &timer ) )
+        exit( -1 );
+    cmd.command = CRCL(IO_CMD_SLEEP);
+    timer.data = &cmd;
+    cmd._.sleep.timer = &timer;
+    cmd._.sleep.seconds = seconds;
+    RET_IF_ERROR( crcl(send_io_cmd)( &cmd ) );
+    return cmd._.sleep.remaining;
 }
 
 int getaddrinfo_crcl(
@@ -152,17 +170,15 @@ int getaddrinfo_crcl(
     /* XXX if no_yield, just call directly -- WRONG! interruption!! */
     crcl(io_cmd_t) cmd;
     uv_getaddrinfo_t resolver;
-    activity_p self = self_activity();
     // zlog_debug( crcl(c), "getaddrinfo self:%p  &waiters:%p", self, &cmd.waiters );
-    resolver.data = &cmd;
-    cmd.waiters = NULL;
     cmd.command = CRCL(IO_CMD_GETADDRINFO);
+    resolver.data = &cmd;
     cmd._.addrinfo.resolver = &resolver;
     cmd._.addrinfo.node     = node;
     cmd._.addrinfo.service  = service;
     cmd._.addrinfo.hints    = hints;
     cmd._.addrinfo.res      = res;
-    RET_IF_ERROR( crcl(send_io_cmd)( &cmd, self ) );
+    RET_IF_ERROR( crcl(send_io_cmd)( &cmd ) );
     return cmd._.addrinfo.rc;
 }
 

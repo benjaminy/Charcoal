@@ -337,13 +337,14 @@ crcl(frame_p) crcl(activity_waiting_or_done)( crcl(frame_p) frm, void *ret_addr 
     cthread_p  thd = act->thread;
     uv_mutex_lock( &thd->thd_management_mtx );
     activity_p next = crcl(pop_ready_queue)( thd );
-    // zlog_debug( crcl(c) , "Activity waiting/done %d n:%p", done, next );
+    int num_waiting = atomic_load_int( &thd->waiting_activities ) > 0;
+    // zlog_debug( crcl(c) , "Activity waiting/done waiters:%d n:%p",
+    //             num_waiting, next );
     if( next )
     {
         /* Hooray! */
     }
-    else if( atomic_load_int( &thd->waiting_activities ) > 0
-             /* TODO: || keep thread alive */ )
+    else if( num_waiting > 0 /* TODO: || keep thread alive */ )
     {
         next = &thd->idle_act;
     }
@@ -377,10 +378,15 @@ crcl(frame_p) crcl(activity_epilogue)( crcl(frame_p) frame )
     }
     uv_mutex_unlock( &thd->thd_management_mtx );
     crcl(frame_p) rv = crcl(activity_waiting_or_done)( frame, NULL );
-    /* XXX I think this return value business is broken currently. */
-    crcl(frame_t) dummy;
-    dummy.callee = frame;
-    act->epilogueB( &dummy, 0 );
+    /* Explicitly not calling epilogueB on the main activity doesn't
+     * seem super elegant.  Think about this some more. */
+    if( act != &crcl(main_activity) )
+    {
+        /* XXX I think this return value business is broken currently. */
+        crcl(frame_t) dummy;
+        dummy.callee = frame;
+        act->epilogueB( &dummy, 0 );
+    }
     return rv;
 }
 

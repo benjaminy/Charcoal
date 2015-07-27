@@ -1322,7 +1322,9 @@ let completeFunctionTranslation fdec loc =
       C.ChangeTo[ C.GFun( epilogueB, loc ) ]
     else if fvar.C.vid = frame.yielding.C.vid then
       let n = after_prefix fvar.C.vname yielding_pfx in
-      let is_activity_entry = starts_with n ( crcl "act_" ) in
+      let is_activity_entry =
+        starts_with n ( crcl "act_" ) || n = "__charcoal_application_main"
+      in
       let yielding = make_yielding fdec frame is_activity_entry in
       C.ChangeTo[ C.GFun( yielding, loc ) ]
     else if fvar.C.vid = frame.epilogueA.C.vid then
