@@ -1,0 +1,13 @@
+extern "C" {
+#include <stdio.h>
+}
+
+int fA( int (*f)( int ), int y )
+{
+    printf( "A1 %d", y );
+    
+}
+
+int fB( int x )
+{
+}

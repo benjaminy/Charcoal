@@ -10,14 +10,14 @@ int main( int argc, char **argv, char **env )
     activate[ &a1 ] ()
     {
         printf( "Sleeping for 2 seconds ...\n" ); fflush( stdout );
-        sleep_crcl( 2 );
+        sleep( 2 );
         printf( "I slept 2 seconds\n" ); fflush( stdout );
     }
     activity_t a2;
     activate[ &a2 ] ()
     {
         printf( "Sleeping for 5 seconds ...\n" ); fflush( stdout );
-        sleep_crcl( 5 );
+        sleep( 5 );
         printf( "I slept 5 seconds\n" ); fflush( stdout );
     }
     printf( "Started the sleepers\n" ); fflush( stdout );

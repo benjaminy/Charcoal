@@ -48,7 +48,7 @@ void get_one( int idx )
     const char *name = pick_name( idx );
     struct addrinfo *info;
 
-    int rc = getaddrinfo_crcl( name, NULL, NULL, &info );
+    int rc = getaddrinfo( name, NULL, NULL, &info );
     if( rc )
     {
         printf( "Error %d %d %s\n", rc, idx, name );
