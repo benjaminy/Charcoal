@@ -1,6 +1,6 @@
 <html>
 <head>
-<title>Charcoal: Simple, Safe and Efficient Interactive Software</title>
+<title>Charcoal: Simple, Safe and Efficient Multitasking Software</title>
 <link rel="stylesheet" media="screen" type="text/css" href="charcoal.css"/>
 
 
@@ -14,7 +14,7 @@
 <table width="100%"><tbody><tr>
 <td valign="top"><h1>Charcoal</h1>
 <hr/>
-<h3>Simple, Safe and Efficient Interactive Software</h3></td>
+<h3>Simple, Safe and Efficient Multitasking Software</h3></td>
 <td><img src="activated_charcoal_3.png"/></td>
 </tr></tbody></table>
 
@@ -27,9 +27,8 @@ characteristics are:</p>
     <li>Calling C from Charcoal and vice-versa works with minimal fuss
     <li>Follows the "C philosophy"
   </ul>
-  <li>Charcoal makes the design and implementation of
-  interactive/&#8203;reactive/&#8203;asynchronous/&#8203;concurrent software more accessible to
-  application programmers
+  <li>Charcoal makes the design and implementation of multitasking
+  software more accessible to application programmers (a.k.a. asynchronous/&#8203;reactive/&#8203;concurrent/&#8203;interactive)
 </ul>
 <p>Charcoal is currently in a very early stage of development.  As of
 this writing the Charcoal implementation is very incomplete, though
