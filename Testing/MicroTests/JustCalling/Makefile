@@ -13,7 +13,7 @@ TARGETS = hello_world one_activity activate_loop
 clean:
 	rm -f $(BUILD_DIR)/*
 
-CFLAGS+= -O2
+CFLAGS+= -O2 -Wall
 
 all:
 	echo $(BUILD_DIR)
@@ -27,6 +27,9 @@ $(BUILD_DIR)/non_rec: non_rec.c
 	$(CC) $(CFLAGS) -o $@ $<
 
 $(BUILD_DIR)/just_calling_rec: just_calling_rec.c
+	$(CC) $(CFLAGS) -o $@ $<
+
+$(BUILD_DIR)/rec_coro_array: rec_coro_array.c
 	$(CC) $(CFLAGS) -o $@ $<
 
 $(BUILD_DIR)/non_rec_coro: non_rec_coro.c

@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <stdio.h>
 
 int A[ 9 ] = { 4, 8, 3, 5, 6, 7, 2, 1, 0 };
