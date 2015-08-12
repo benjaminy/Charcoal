@@ -66,8 +66,7 @@ let locals_pfx    = "__charcoal_fn_locals_"
 let specific_pfx  = "__charcoal_fn_specific_"
 let prologue_pfx  = "__charcoal_fn_prologue_"
 let yielding_pfx  = "__charcoal_fn_yielding_"
-let epilogueA_pfx = "__charcoal_fn_epilogueA_"
-let epilogueB_pfx = "__charcoal_fn_epilogueB_"
+let epilogue_pfx  = "__charcoal_fn_epilogue_"
 let charcoal_pfx_len = String.length charcoal_pfx
 
 let charcoal_pfx_regex = Str.regexp charcoal_pfx
@@ -75,8 +74,7 @@ let charcoal_pfx_regex = Str.regexp charcoal_pfx
 let crcl s = "__charcoal_" ^ s
 
 let gen_prologue_uid  = 11
-let gen_epilogueA_uid = 12
-let gen_epilogueB_uid = 13
+let gen_epilogue_uid  = 12
 let act_intermed_uid  = 14
 let mode_test_uid     = 15
 let self_activity_uid = 16
@@ -91,8 +89,7 @@ let builtin_uids : ( string, int ) H.t = H.create 20
 let () = L.iter ( fun ( x, y ) -> H.add builtin_uids x y )
 [
     ( crcl "fn_generic_prologue" ,     gen_prologue_uid );
-    ( crcl "fn_generic_epilogueA",     gen_epilogueA_uid );
-    ( crcl "fn_generic_epilogueB",     gen_epilogueB_uid );
+    ( crcl "fn_generic_epilogue" ,     gen_epilogue_uid );
     ( crcl "activate_intermediate",    act_intermed_uid );
     ( crcl "yielding_mode",            mode_test_uid );
     ( "self_activity",                 self_activity_uid );
@@ -108,8 +105,7 @@ let builtins = IH.create 20
 let find_builtin = IH.find builtins
 
 let gen_prologue()  = find_builtin gen_prologue_uid
-let gen_epilogueA() = find_builtin gen_epilogueA_uid
-let gen_epilogueB() = find_builtin gen_epilogueB_uid
+let gen_epilogue()  = find_builtin gen_epilogue_uid
 let act_intermed()  = find_builtin act_intermed_uid
 let mode_test()     = find_builtin mode_test_uid
 let self_activity() = find_builtin self_activity_uid
@@ -121,8 +117,7 @@ let yield_impl()    = find_builtin yield_impl_uid
 let activate()      = find_builtin activate_uid
 
 let gen_prologue_e  = var2exp -| gen_prologue
-let gen_epilogueA_e = var2exp -| gen_epilogueA
-let gen_epilogueB_e = var2exp -| gen_epilogueB
+let gen_epilogue_e  = var2exp -| gen_epilogue
 let act_intermed_e  = var2exp -| act_intermed
 let mode_test_e     = var2exp -| mode_test
 let self_activity_e = var2exp -| self_activity
@@ -139,20 +134,18 @@ type frame_info =
     specific_cast   : C.typ -> C.lval -> C.exp;
     typ             : C.typ;
     typ_ptr         : C.typ;
-    epilogueB_typ   : C.typ;
     activity_sel    : C.exp -> C.lval;
     caller_sel      : C.exp -> C.lval;
     callee_sel      : C.exp -> C.lval;
     return_addr_sel : C.exp -> C.lval;
     oldest_sel      : C.exp -> C.lval;
-    dummy_var       : C.varinfo;
     (* function-specific: *)
     sizeof_specific : C.exp;
     locals_sel      : C.lval -> C.lval;
+    ret_val_ptr_sel : C.lval -> C.lval;
     return_sel      : C.lval -> C.lval;
     locals_type     : C.typ;
-    epilogueA       : C.varinfo;
-    epilogueB       : C.varinfo;
+    epilogue        : C.varinfo;
     yielding        : C.varinfo;
     locals          : C.exp -> ( ( C.offset -> C.lval ) IH.t );
     ret_type        : C.typ;
@@ -342,55 +335,65 @@ let make_specific fdec fname frame_info =
 (* For this function definition:
  *     rt f( p1, p2, p3 ) { ... }
  * Generate this prologue:
- *     frame_p __prologue_f( frame_p caller, void *ret_ptr, p1, p2, p3 )
+ *     frame_p __prologue_f( frame_p caller, void *ret_addr, rt *lhs, p1, p2, p3 )
  *     {
- *        /* NOTE: Using a call here to keep code size down.  The system is
- *         * welcome to inline it, if that's a good idea. */
  *        frame_p frame = __generic_prologue(
- *           sizeof( __specific_f ), ret_ptr, caller, __yielding_f );
+ *           sizeof( __specific_f ),
+ *           ret_addr,
+ *           caller,
+ *           __yielding_f );
  *        ( __locals_f ) *locals = select_locals_field( frame );
  *        locals->p1 = p1;
  *        locals->p2 = p2;
  *        locals->p3 = p3;
+ *        locals->__ret_val_ptr = lhs;
  *        /* TODO: Verify that Cil doesn't use inits on local variables (i.e. an
  *         * init in source will turn into expressions) */
  *        return frame;
  *     }
+ * Notes:
+ * - The call to "generic" (as opposed to generating the code in-line)
+     helps keep overall code size down.  Do measurement later.
+ * - If the return type is void, the return value business is absent.
  *)
 let make_prologue prologue frame =
-  let fname = prologue.C.svar in
-  let fdef_loc = fname.C.vdecl in
-  let this = C.makeLocalVar prologue "frame" frame.typ_ptr in
-  let call =
-    let caller  = C.makeFormalVar prologue "caller"  frame.typ_ptr in
-    let ret_ptr = C.makeFormalVar prologue "ret_ptr" C.voidPtrType in
-    let ps = L.map var2exp [ ret_ptr; caller; frame.yielding ] in
-    C.Call( Some( C.var this ), gen_prologue_e(), frame.sizeof_specific::ps, fdef_loc )
+  let makeFormal = C.makeFormalVar prologue in
+  let makeLocal  = C.makeLocalVar  prologue in
+  let fdef_loc   = prologue.C.svar.C.vdecl in
+  let this       = C.var( makeLocal "frame" frame.typ_ptr ) in
+  let call_to_generic =
+    let caller  =  makeFormal "caller"   frame.typ_ptr in
+    let ret_addr = makeFormal "ret_addr" C.voidPtrType in
+    let ps = L.map var2exp [ ret_addr; caller; frame.yielding ] in
+    C.Call( Some this, gen_prologue_e(), frame.sizeof_specific::ps, fdef_loc )
   in
-  (* If the yielding function has zero parameters, skip this *)
-  let param_assignments = match frame.formals with
-      [] -> []
-    | fs ->
-       let ( locals, locals_init ) =
-         let l = C.makeLocalVar prologue "locals" frame.locals_type in
-         let locals_val = C.AddrOf( frame.locals_sel( C.var this ) ) in
-         let locals_init = C.Set( C.var l, locals_val, fdef_loc ) in
-         ( frame.locals( var2exp l ), locals_init )
+  let assignments = match frame.formals, frame.ret_type with
+      (* If no need for assignments, don't even get the locals address *)
+      [], C.TVoid _ -> []
+    | fs, _ ->
+       let locals_var   = C.var( makeLocal "locals" frame.locals_type ) in
+       let locals_val   = C.AddrOf( frame.locals_sel this ) in
+       let locals_init  = C.Set( locals_var, locals_val, fdef_loc ) in
+       let locals_table = frame.locals( C.Lval locals_var ) in
+       let set_ret_val_ptr = match frame.ret_type with
+           C.TVoid _ -> []
+         | t -> let lhs = makeFormal "lhs" ( C.TPtr( t, [] ) ) in
+                [ C.Set( frame.ret_val_ptr_sel locals_var, var2exp lhs, fdef_loc ) ]
        in
        let assign_param ( _, _, _, v ) =
          let local_var =
-           match IH.tryfind locals v.C.vid with
+           match IH.tryfind locals_table v.C.vid with
              Some f -> f C.NoOffset
            | _ -> E.s( E.error "Missing local \"%s\"" v.C.vname )
          in
-         let formal = C.makeFormalVar prologue v.C.vname v.C.vtype in
+         let formal = makeFormal v.C.vname v.C.vtype in
          C.Set( local_var, var2exp formal, fdef_loc )
        in
-       locals_init::( L.map assign_param fs )
+       locals_init::( L.map assign_param fs @ set_ret_val_ptr )
   in
   let body =
-    let instrs = call::param_assignments in
-    let r = C.mkStmt( C.Return( Some( var2exp this ), fdef_loc ) ) in
+    let instrs = call_to_generic::assignments in
+    let r = C.mkStmt( C.Return( Some( C.Lval this ), fdef_loc ) ) in
     C.mkBlock[ C.mkStmt( C.Instr instrs ); r ]
   in
   let real_type = match prologue.C.svar.C.vtype with
@@ -404,35 +407,39 @@ let make_prologue prologue frame =
 
 (* For this function definition:
  *     rt f( p1, p2, p3 ) { ... }
- * Generate this epilogueA:
- *     frame_p __epilogueA( frame_p frame, rt v )
+ * Generate this epilogue:
+ *     frame_p __epilogue( frame_p frame, rt *rv )
  *     {
- *         return_cast( frame ) = v;
- *         return __generic_epilogueA( frame );
+ *         *frame->locals.ret_val_ptr = *rv;
+ *         return __generic_epilogue( frame );
  *     }
  *)
-let make_epilogueA epilogueA frame =
-  let fdef_loc = epilogueA.C.svar.C.vdecl in
+let make_epilogue epilogue frame =
+  let makeFormal = C.makeFormalVar epilogue in
+  let fdef_loc = epilogue.C.svar.C.vdecl in
   let () =
-    let () = C.setFormals epilogueA [] in
-    let () = epilogueA.C.slocals <- [] in
-    C.setFunctionType epilogueA
+    let () = C.setFormals epilogue [] in
+    let () = epilogue.C.slocals <- [] in
+    C.setFunctionType epilogue
         ( C.TFun( frame.typ_ptr, Some [], false, [] ) )
   in
-  let this = C.var( C.makeFormalVar epilogueA "frame" frame.typ_ptr ) in
-  let caller = C.var( C.makeTempVar epilogueA ~name:"caller" frame.typ_ptr ) in
+  let this   = C.var( makeFormal "frame" frame.typ_ptr ) in
+  let caller = C.var( C.makeTempVar epilogue ~name:"caller" frame.typ_ptr ) in
   let instrs =
-    let call_instr = C.Call( Some caller, gen_epilogueA_e(), [ C.Lval this ], fdef_loc ) in
+    let call_instr = C.Call( Some caller, gen_epilogue_e(), [ C.Lval this ], fdef_loc ) in
     match frame.ret_type with
       C.TVoid _ -> [ call_instr ]
-    | _ ->
-       let rval = var2exp( C.makeFormalVar epilogueA "v" frame.ret_type ) in
-       [ C.Set( frame.return_sel this, rval, fdef_loc ); call_instr ]
+    | t ->
+       let rval = var2exp( makeFormal "rv" ( C.TPtr( t, [] ) ) ) in
+       let lhs = ( C.Mem( C.Lval( frame.ret_val_ptr_sel( frame.locals_sel this ) ) ),
+                   C.NoOffset )
+       in
+       [ C.Set( lhs, rval, fdef_loc ); call_instr ]
   in
   let return_stmt = C.mkStmt( C.Return( Some( C.Lval caller ), fdef_loc ) ) in
   let body = C.mkBlock[ C.mkStmt( C.Instr instrs ); return_stmt ] in
-  let () = epilogueA.C.sbody <- body in
-  epilogueA
+  let () = epilogue.C.sbody <- body in
+  epilogue
 
 
 (* For this function definition:
@@ -446,6 +453,7 @@ let make_epilogueA epilogueA frame =
  *         __generic_epilogueB( frame );
  *     }
  *)
+    (*
 let make_epilogueB epilogueB frame =
   let fdef_loc = epilogueB.C.svar.C.vdecl in
   let () =
@@ -472,13 +480,13 @@ let make_epilogueB epilogueB frame =
   in
   let () = epilogueB.C.sbody <- body in
   epilogueB
-
+     *)
 (*
  * Translate:
  *     __activate_intermediate( act, fn, p1, p2, p3 );
  * to:
  *     act_frame = __prologue_fn( frame, 0, p1, p2, p3 );
- *     return __activate( frame, &__return_N, act, act_frame, __epilogueB_fn XXX );
+ *     return __activate( frame, &__return_N, act, act_frame, __epilogueB_fn XXX XXX );
  *   __return_N:
  *)
 let coroutinify_activate params fdec loc frame =
@@ -487,11 +495,11 @@ let coroutinify_activate params fdec loc frame =
       a::e::r -> a, e, r
     | _ -> E.s( E.bug "Call to activate_intermediate with too few params" )
   in
-  let prologue, epilogueB =
+  let prologue =
     match entry_fn with
       C.AddrOf( C.Var v, C.NoOffset ) ->
       ( match lookup_fun_decl v with
-          Some ( _, p, eB ) -> p, (C.mkCast eB frame.epilogueB_typ)
+          Some ( _, p, _ ) -> p
         | None -> E.s( E.bug "Missing translation for activate entry %a"
                              C.d_lval( C.var v ) ) )
     | _ -> E.s( E.bug "Activate entry exp is not a variable! %a" C.d_exp entry_fn )
@@ -509,7 +517,7 @@ let coroutinify_activate params fdec loc frame =
   let next_frame = C.var( C.makeTempVar fdec ~name:"next_frame" frame.typ_ptr ) in
   let activate_call =
     let ps = [ frame.exp; C.AddrOfLabel( ref after_act ); act;
-               C.Lval act_frame; epilogueB ] in
+               C.Lval act_frame ] in
     C.Call( Some next_frame, activate_e(), ps, loc )
   in
   let return_next_frame = C.mkStmt( C.Return( Some( C.Lval next_frame ), loc ) )  in
@@ -682,26 +690,14 @@ let coroutinify_call visitor fdec frame instr =
 (* Translate returns from:
  *     return exp;
  * to:
- *     return __epilogueA_f( frame, exp );
+ *     #if exp exists
+ *         *locals_select( frame ).lhs_ptr = exp;
+ *     #if activity entry
+ *         return __activity_epilogue( frame );
+ *     #else
+ *         return __generic_epilogue( frame );
  *
  * Prereq: exp should be coroutinified already
- *)
-(*
- * Experimenting with not calling epilogue functions
- * Translate returns from:
- *     return exp;
- * to:
- *     return_cast( frame ) = exp;
- *     return frame->caller;
- *
- * Prereq: exp should be coroutinified already
- *)
-(*
- * If is activity entry:
- *     return exp;
- * to:
- *     __epilogueA_f( frame, exp );
- *     return activity_epilogue( frame );
  *)
 let coroutinify_return fdec rval_opt loc frame is_activity_entry =
   if false then
@@ -973,42 +969,29 @@ let make_no_yield no_yield frame_info =
 
 (* XXX Need to replace &fn with &__indirect_fn ... Maybe not ... *)
 (* XXX Need to replace fun ptr types w/ our craziness *)
+(* XXX varargs seems tricky *)
 
 (* For this function definition
  *     rt f( p1, p2, p3 ) { ... }
  * Generate the function for indirect calling:
- * NOTE: This function can be called in three different contexts:
+ * NOTE: This function can be called in two different contexts:
  *   - no_yield mode (indicated by caller == NULL)
  *   - yielding mode prologue (indicated by ret != NULL)
- *   - yielding mode epilogueB (neither of the above cases)
  *
- *     frame_p __indirect_f( frame_p caller, void *ret, rt *lhs, struct *ps )
+ *     frame_p __indirect_f( frame_p caller, void *ret_addr, rt *lhs, p1, p2, p3 )
  *     {
  *         /* UNIMP assertions */
- *         assert( lhs ==> !( caller && ret ) );
- *         assert( ret ==> caller );
- *         assert( ( ps && caller ) ==> !lhs );
+ *         assert( lhs ); /* no lhs param if void return type */
+ *         assert( ret <==> caller );
  *         rt temp;
  *         if( caller ) /* Caller in yielding mode */
  *         {
  *     #if yielding version exists
- *             if( ret )
- *                 return __prologue_f( caller, ret, ps->p1, ps->p2, ps->p3 );
- *             else
- *                 __epilogueB_f( caller, lhs );
- *                 return 0;
+ *             return __prologue_f( caller, ret, ps->p1, ps->p2, ps->p3 );
  *     #else
- *             if( ret )
- *             {
- *                 frame_p frame = __generic_prologue(
- *                     sizeof( __specific_f ), ret, caller, 0 );
- *                 return_cast( frame ) = __no_yield_f( ps->p1, ps->p2, ps->p3 );
- *             }
- *             else
- *             {
- *                 temp = return_cast( caller->callee );
- *                 __generic_epilogueB( caller );
- *             }
+ *             frame_p frame = __generic_prologue(
+ *                 sizeof( __specific_f ), ret, caller, 0 );
+ *             return_cast( frame ) = __no_yield_f( ps->p1, ps->p2, ps->p3 );
  *     #endif
  *         }
  *         else /* Caller in no_yield mode */
@@ -1131,11 +1114,11 @@ let examine_frame_t_struct ci dummy_var =
     callee_sel      = ( fun e -> ( C.Mem e, C.Field( ce,  C.NoOffset ) ) );
     return_addr_sel = ( fun e -> ( C.Mem e, C.Field( r,   C.NoOffset ) ) );
     oldest_sel      = ( fun e -> ( C.Mem e, C.Field( cr , C.NoOffset ) ) );
-    dummy_var       = dummy_var;
     (* function-specific *)
     sizeof_specific = dummy_exp;
     locals_sel      = ( fun e -> dummy_lval );
     return_sel      = ( fun e -> dummy_lval );
+    ret_val_ptr_sel = ( fun l -> dummy_lval );
     locals_type     = dummy_type;
     yielding        = dummy_var;
     epilogueA       = dummy_var;

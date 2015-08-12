@@ -499,23 +499,27 @@ crcl(frame_p) crcl(fn_generic_prologue)(
     /* WARNING: The following line is correct when used for procedure
      * calls, but not activates.  To keep calls as fast as possible we
      * allow this wrongness here and compensate for it in activate. */
+    /* NOTE: We might be able to get away with updating newest only on
+     * context switches. */
     caller->activity->newest_frame = frm;
     return frm;
 }
 
-crcl(frame_p) crcl(fn_generic_epilogueA)( crcl(frame_p) frm )
+crcl(frame_p) crcl(fn_generic_epilogue)( crcl(frame_p) frm )
 {
-    frm->activity->newest_frame = frm->caller;
-    return frm->caller;
-}
-
-void crcl(fn_generic_epilogueB)( crcl(frame_p) frm )
-{
+    frame_p caller = frm->caller;
+    /* NOTE: We might be able to get away with updating newest only on
+     * context switches. */
+    frm->activity->newest_frame = caller;
     /* XXX make malloc/free configurable? */
-    free( frm->callee );
-    /* NOTE Zeroing the callee field is not strictly necessary, and
+    free( frm );
+#if 0
+    /* NOTE: Zeroing the callee field is not strictly necessary, and
      * therefore might be wasteful.  However, one should not be
      * nickel-and-diming the performance of yielding calls anyway (use
      * no_yield calls instead). */
-    frm->callee = NULL;
+    if( caller )
+        caller->callee = NULL;
+#endif
+    return caller;
 }

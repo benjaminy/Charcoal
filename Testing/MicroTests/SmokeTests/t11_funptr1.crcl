@@ -5,9 +5,18 @@ extern "C" {
 int fA( int (*f)( int ), int y )
 {
     printf( "A1 %d", y );
-    
+    y = f( y );
+    printf( "A2 %d", y );
+    return y;
 }
 
 int fB( int x )
 {
+    printf( "B %d", x );
+    return x + 4;
+}
+
+int main( int argc, char **argv )
+{
+    return fA( fB, argc );
 }
