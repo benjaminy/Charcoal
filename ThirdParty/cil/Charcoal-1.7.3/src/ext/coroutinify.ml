@@ -127,6 +127,7 @@ type frame_info =
     return_addr_sel : C.exp -> C.lval;
     (* function-specific: *)
     specific_type   : C.typ;
+    specific_sel    : C.lval -> C.exp;
     lhs_sel         : C.exp -> C.lval;
     specifics       : C.exp -> ( ( C.offset -> C.lval ) IH.t );
     yielding        : C.varinfo;
@@ -186,6 +187,11 @@ let exp_is_charcoal_fn exp =
        C.Lval( C.Var v, C.NoOffset ) -> IH.mem crcl_fun_decls v.C.vid
      | _ -> false
 
+let clear_formals_locals f return_type =
+  let () = C.setFormals f [] in
+  let () = f.C.slocals <- [] in
+  C.setFunctionType f ( C.TFun( return_type, Some [], false, [] ) )
+
 (* For this function definition:
  *     rt f( p1, p2, p3 ) { ... }
  * Generate this type:
@@ -220,64 +226,8 @@ let make_specific fdec fname frame_info =
   in
 
   let fdef_loc  = fname.C.vdecl in
-  let ( lhs_sel, specific_type, specifics, tag ) =
-    match frame_info.ret_type,
-          L.filter ( fun v -> (* XXX always false??? v.C.vreferenced *) true )
-                   ( fdec.C.sformals @ fdec.C.slocals )
-    with
-      (* special case when the specific struct is empty; It's illegal to
-       * have a struct with no fields. *)
-      C.TVoid _, [] ->
-      ( ( fun p -> ( C.Mem p, C.NoOffset ) ),
-        C.TArray( C.charType, None, [] ),
-        ( fun _ -> IH.create 0 ),
-        [] )
 
-    | rt, all ->
-       let field v =
-         let () = sanity v in
-         ( v.C.vname, v.C.vtype, None, [(*attrs*)], v.C.vdecl )
-       in
-       let fields =
-         let fields_no_lhs = L.map field all in
-         match rt with
-           C.TVoid _ -> fields_no_lhs
-         | _ ->
-            let lhs = ( crcl "lhs", C.TPtr( rt, [] ), None, [], fdef_loc ) in
-            lhs::fields_no_lhs
-       in
-       let struct_name = spf "%s%s" specific_pfx fname.C.vname in
-       let ci = C.mkCompInfo true struct_name ( fun _ -> fields ) [] in
-
-       (* Given exp, a pointer to a specifics struct, map variable x to exp->x *)
-       let lhs_sel =
-         match rt with
-           C.TVoid _ -> fun p -> ( C.Mem p, C.NoOffset )
-         | _ ->
-            let field =
-              { C.fcomp = ci; C.fname = crcl "lhs"; C.ftype = C.TPtr( rt, [] );
-                C.fbitfield = None; C.fattr = []; C.floc = fdef_loc }
-            in
-            fun p -> ( C.Mem p, C.Field( field, C.NoOffset ) )
-       in
-       let specifics_gen specifics_ptr =
-         let specifics_tbl = IH.create( L.length all ) in
-         let field_select v =
-           let field =
-             { C.fcomp = ci; C.fname = v.C.vname; C.ftype = v.C.vtype;
-               C.fbitfield = None; C.fattr = []; C.floc = v.C.vdecl }
-           in
-           IH.replace specifics_tbl v.C.vid
-                      ( fun o -> ( C.Mem specifics_ptr, C.Field( field, o ) ) )
-         in
-         let () = L.iter field_select all in
-         specifics_tbl
-       in
-       let specific_type = C.TComp( ci, [(*attrs*)] ) in
-       let specific_tag = C.GCompTag( ci, fdef_loc ) in
-       ( lhs_sel, C.TComp( ci, [] ), specifics_gen, [ C.GCompTag( ci, fdef_loc ) ] )
-  in
-  let ( real_return_type, orig_ps, va, attrs ) = getTFunInfo fname.C.vtype "FOO" in
+  let ( return_type, orig_ps, va, attrs ) = getTFunInfo fname.C.vtype "FOO" in
   let formals =
     try
       List.map ( fun( ( w, x, y ), z ) -> ( w, x, y, z ) )
@@ -285,19 +235,69 @@ let make_specific fdec fname frame_info =
     with Invalid_argument _ ->
       E.s( E.bug "Too many or too few formals" )
   in
-  let updated_frame_info =
-    { frame_info with
-      specific_type   = specific_type;
-      lhs_sel         = lhs_sel;
-      specifics       = specifics;
-      yielding        = frame_info.yielding;
-      ret_type        = real_return_type;
-      formals         = formals;
-      vararg          = va;
-      attrs           = attrs;
-    }
+  let frame_with_fun_info =
+    { frame_info with ret_type = return_type; formals = formals;
+                      vararg = va; attrs = attrs; }
   in
-  ( tag, updated_frame_info )
+
+  let all_vars =
+    L.filter ( fun v -> (* XXX always false??? v.C.vreferenced *) true )
+             ( fdec.C.sformals @ fdec.C.slocals )
+  in
+  match return_type, all_vars with
+    (* special case when the specific struct is empty; It's illegal to
+     * have a struct with no fields. *)
+    C.TVoid _, [] -> ( [], frame_with_fun_info )
+
+  | rt, all ->
+     let field v = sanity v; ( v.C.vname, v.C.vtype, None, [], v.C.vdecl ) in
+     let fields =
+       let fields_no_lhs = L.map field all in
+       match rt with
+         C.TVoid _ -> fields_no_lhs
+       | _ ->
+          let lhs = ( crcl "lhs", C.TPtr( rt, [] ), None, [], fdef_loc ) in
+          lhs::fields_no_lhs
+     in
+     let struct_name = spf "%s%s" specific_pfx fname.C.vname in
+     let ci = C.mkCompInfo true struct_name ( fun _ -> fields ) [] in
+     let specific_type = C.TComp( ci, [(*attrs*)] ) in
+     let specific_sel = frame_info.specific_cast specific_type in
+     let specific_tag = C.GCompTag( ci, fdef_loc ) in
+
+     (* Given exp, a pointer to a specifics struct, map variable x to exp->x *)
+     let lhs_sel =
+       match rt with
+         C.TVoid _ -> fun p -> ( C.Mem p, C.NoOffset )
+       | _ ->
+          let field =
+            { C.fcomp = ci; C.fname = crcl "lhs"; C.ftype = C.TPtr( rt, [] );
+              C.fbitfield = None; C.fattr = []; C.floc = fdef_loc }
+          in
+          fun p -> ( C.Mem p, C.Field( field, C.NoOffset ) )
+     in
+     let specifics_gen specifics_ptr =
+       let specifics_tbl = IH.create( L.length all ) in
+       let field_select v =
+         let field =
+           { C.fcomp = ci; C.fname = v.C.vname; C.ftype = v.C.vtype;
+             C.fbitfield = None; C.fattr = []; C.floc = v.C.vdecl }
+         in
+         IH.replace specifics_tbl v.C.vid
+                    ( fun o -> ( C.Mem specifics_ptr, C.Field( field, o ) ) )
+       in
+       let () = L.iter field_select all in
+       specifics_tbl
+     in
+     let updated_frame_info =
+       { frame_with_fun_info with
+         specific_type   = specific_type;
+         specific_sel    = specific_sel;
+         lhs_sel         = lhs_sel;
+         specifics       = specifics_gen;
+       }
+     in
+     ( [ specific_tag ], updated_frame_info )
 
 
 (* For this function definition:
@@ -339,10 +339,12 @@ let make_prologue prologue frame =
       (* If no need for assignments, don't even get the specifics address *)
       [], C.TVoid _ -> []
     | fs, _ ->
-       let specifics_var   = C.var( makeLocal "specifics" frame.specific_type ) in
-       let specifics_val   = frame.specific_cast frame.specific_type this in
+       let specifics_var   = C.var(
+           makeLocal "specifics" ( C.TPtr( frame.specific_type, [] ) ) ) in
+       let specifics_exp   = C.Lval specifics_var in
+       let specifics_val   = frame.specific_sel this in
        let specifics_init  = C.Set( specifics_var, specifics_val, fdef_loc ) in
-       let specifics_table = frame.specifics( C.Lval specifics_var ) in
+       let specifics_table = frame.specifics specifics_exp in
        let set_ret_val_ptr = match frame.ret_type with
            C.TVoid _ -> []
          | t -> let lhs = makeFormal "lhs" ( C.TPtr( t, [] ) ) in
@@ -385,14 +387,9 @@ let make_prologue prologue frame =
 let make_epilogue epilogue frame =
   let makeFormal = C.makeFormalVar epilogue in
   let fdef_loc = epilogue.C.svar.C.vdecl in
-  let () =
-    let () = C.setFormals epilogue [] in
-    let () = epilogue.C.slocals <- [] in
-    C.setFunctionType epilogue
-        ( C.TFun( frame.typ_ptr, Some [], false, [] ) )
-  in
+  let () = clear_formals_locals epilogue frame.typ_ptr in
   let this   = C.var( makeFormal "frame" frame.typ_ptr ) in
-  let caller = C.var( C.makeTempVar epilogue ~name:"caller" frame.typ_ptr ) in
+  let caller = C.var( C.makeLocalVar epilogue "caller" frame.typ_ptr ) in
   let instrs =
     let call_instr = C.Call( Some caller, gen_epilogue_e(), [ C.Lval this ], fdef_loc ) in
     match frame.ret_type with
@@ -864,19 +861,16 @@ let make_yielding yielding frame_no_this is_activity_entry =
   (*   trc( P.dprintf "%a\n" C.d_block yielding.C.sbody ) *)
   (* in *)
   let fdef_loc = yielding.C.svar.C.vdecl in
-  let () =
-    let () = C.setFormals yielding [] in
-    let () = yielding.C.slocals <- [] in
-    C.setFunctionType yielding
-        ( C.TFun( frame_no_this.typ_ptr, Some [], false, [] ) )
-  in
+  let () = clear_formals_locals yielding frame_no_this.typ_ptr in
   let this = C.makeFormalVar yielding "frame" frame_no_this.typ_ptr in
   let frame =
     { frame_no_this with lval = C.var this; exp = var2exp this; }
   in
   let ( specifics_tbl, specifics_init ) =
-    let specifics = C.var( C.makeTempVar yielding ~name:"specifics" frame.specifics_type ) in
-    let specifics_val = C.AddrOf( frame.specifics_sel( C.var this ) ) in
+    let specifics = C.var(
+        C.makeTempVar yielding ~name:"specifics"
+                      ( C.TPtr( frame.specific_type, [] ) ) ) in
+    let specifics_val = frame.specific_sel( C.var this ) in
     let specifics_init_instr = C.Set( specifics, specifics_val, fdef_loc ) in
     let specifics_init = C.mkStmt( C.Instr[ specifics_init_instr ] ) in
     ( frame.specifics( C.Lval( specifics ) ), specifics_init )
@@ -944,12 +938,7 @@ let make_no_yield no_yield frame_info =
 let make_indirect original frame =
   let original_formals = original.C.sformals in
   let return_type_opt =
-    let () =
-      let () = C.setFormals original [] in
-      let () = original.C.slocals <- [] in
-      C.setFunctionType original
-          ( C.TFun( frame.typ_ptr, Some [], false, [] ) ) (* XXX *)
-    in
+    let () = clear_formals_locals original frame.typ_ptr (* XXX *) in
     ( match frame.ret_type with
         C.TVoid _ -> None
       | r -> Some frame.ret_type
@@ -974,9 +963,9 @@ let make_indirect original frame =
 (* When we find the definition of the generic frame type, examine it and
  * record some stuff. *)
 let examine_frame_t_struct ci dummy_var =
-  let dummy_lval  = ( C.Var dummy_var, C.NoOffset ) in
-  let dummy_exp   = C.zero in
-  let dummy_type  = C.voidType in
+  let dummy_exp  = C.zero in
+  let dummy_lval = ( C.Var dummy_var, C.NoOffset ) in
+  let dummy_type = C.voidType in
 
   let ac, s, r, ce, cr =
     let ar, sr, ra, cer, crr =
@@ -998,7 +987,7 @@ let examine_frame_t_struct ci dummy_var =
   in
   let specific_cast specific_type frame =
     let t = C.TPtr( specific_type, [(*attrs*)] ) in
-    let e = C.AddrOf( C.Mem( frame ), C.Field( s, C.NoOffset ) ) in
+    let e = C.AddrOf( C.Mem( C.Lval frame ), C.Field( s, C.NoOffset ) ) in
     C.mkCast e t
   in
   let frame_typ = C.TComp( ci, [(*attrs*)] ) in
@@ -1014,15 +1003,12 @@ let examine_frame_t_struct ci dummy_var =
     caller_sel      = ( fun e -> ( C.Mem e, C.Field( cr,  C.NoOffset ) ) );
     callee_sel      = ( fun e -> ( C.Mem e, C.Field( ce,  C.NoOffset ) ) );
     return_addr_sel = ( fun e -> ( C.Mem e, C.Field( r,   C.NoOffset ) ) );
-    oldest_sel      = ( fun e -> ( C.Mem e, C.Field( cr , C.NoOffset ) ) );
     (* function-specific *)
-    sizeof_specific = dummy_exp;
-    locals_sel      = ( fun e -> dummy_lval );
-    return_sel      = ( fun e -> dummy_lval );
-    ret_val_ptr_sel = ( fun l -> dummy_lval );
-    locals_type     = dummy_type;
+    specific_sel    = ( fun e -> dummy_exp );
+    lhs_sel         = ( fun e -> dummy_lval );
+    specific_type   = dummy_type;
     yielding        = dummy_var;
-    locals          = ( fun _ -> IH.create 0 );
+    specifics       = ( fun _ -> IH.create 0 );
     ret_type        = dummy_type;
     formals         = [];
     vararg          = false;
@@ -1057,7 +1043,6 @@ class phase1 = object(self)
     match ( frame_opt, frame_struct, activity_struct ) with
       ( None, Some fci, Some aci ) ->
       let frame_info = examine_frame_t_struct fci v in
-      let frame_info = examine_activity_t_struct aci frame_info in
       let () = frame_opt <- Some( frame_info ) in
       let () = frame_struct <- None in
       let () = activity_struct <- None in
@@ -1247,7 +1232,7 @@ let do_coroutinify( f : C.file ) =
   let () =
     let check name uid =
       if not( IH.mem builtins uid ) then
-        E.s( E.bug "Missing builting %s" name )
+        E.s( E.bug "Missing builtin %s" name )
     in
     H.iter check builtin_uids
   in
