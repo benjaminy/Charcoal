@@ -28,3 +28,17 @@ let list_map f l = count_map f l 0
 
 let equals x1 x2 : bool =
   (compare x1 x2) = 0
+
+let (|-) f1 f2 x = f2 ( f1 x )
+let (-|) f1 f2 x = f1 ( f2 x )
+let map2 f ( x1, x2 ) = ( f x1, f x2 )
+let map3 f ( x1, x2, x3 ) = ( f x1, f x2, f x3 )
+let opt_map f x = match x with None -> None | Some y -> Some( f y )
+let opt_default d x = match x with None -> d | Some y -> y
+let starts_with haystack needle =
+  try needle = String.sub haystack 0 ( String.length needle )
+  with Invalid_argument _ -> false
+let after_prefix s prefix =
+  let p = String.length prefix in
+  try String.sub s p ( String.length s - p )
+  with Invalid_argument _ -> ""

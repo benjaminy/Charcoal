@@ -12,6 +12,7 @@
  * 3) Put labels everywhere and use computed gotos.
  *)
 
+(* Module and simple alias stuff *)
 module L  = List
 module C  = Cil
 module E  = Errormsg
@@ -20,34 +21,17 @@ module IH = Inthash
 module Pf = Printf
 module T  = Trace
 module P  = Pretty
+open Util
+let spf = Printf.sprintf
+let trc = T.trace "coroutinify"
+let change_do_children x = C.ChangeDoChildrenPost( x, fun e -> e )
+let var2exp v = C.Lval( C.var v )
 
 module OrderedBuiltin = struct
   type t = string * int
   let compare ( n1, _ ) ( n2, _ ) = compare n1 n2
 end
 module BS = Set.Make( OrderedBuiltin )
-
-let spf = Printf.sprintf
-
-let (|-) f1 f2 x = f2 ( f1 x )
-let (-|) f1 f2 x = f1 ( f2 x )
-let map2 f ( x1, x2 ) = ( f x1, f x2 )
-let map3 f ( x1, x2, x3 ) = ( f x1, f x2, f x3 )
-let opt_map f x = match x with None -> None | Some y -> Some( f y )
-let opt_default d x = match x with None -> d | Some y -> y
-let starts_with haystack needle =
-  try needle = String.sub haystack 0 ( String.length needle )
-  with Invalid_argument _ -> false
-let after_prefix s prefix =
-  let p = String.length prefix in
-  try String.sub s p ( String.length s - p )
-  with Invalid_argument _ -> ""
-
-let trc = T.trace "coroutinify"
-
-let change_do_children x = C.ChangeDoChildrenPost( x, fun e -> e )
-
-let var2exp v = C.Lval( C.var v )
 
 let label_counter = ref 1
 let fresh_return_label loc =
@@ -60,30 +44,33 @@ let getTFunInfo t msg =
     C.TFun( r, ps, v, atts ) -> ( r, ps, v, atts )
   | _ -> E.s( E.error "Expecting function type; %s" msg )
 
-let charcoal_pfx  = "__charcoal_"
-let no_yield_pfx  = "__charcoal_fn_no_yield_"
-let locals_pfx    = "__charcoal_fn_locals_"
-let specific_pfx  = "__charcoal_fn_specific_"
-let prologue_pfx  = "__charcoal_fn_prologue_"
-let yielding_pfx  = "__charcoal_fn_yielding_"
-let epilogue_pfx  = "__charcoal_fn_epilogue_"
-let charcoal_pfx_len = String.length charcoal_pfx
-
-let charcoal_pfx_regex = Str.regexp charcoal_pfx
-
 let crcl s = "__charcoal_" ^ s
 
-let gen_prologue_uid  = 11
-let gen_epilogue_uid  = 12
-let act_intermed_uid  = 14
-let mode_test_uid     = 15
-let self_activity_uid = 16
-let act_epilogue_uid  = 17
-let activity_wait_uid = 18
-let act_wait_done_uid = 19
-let yield_uid         = 20
-let yield_impl_uid    = 21
-let activate_uid      = 22
+let charcoal_pfx  = crcl ""
+let no_yield_pfx  = crcl "fn_no_yield_"
+let specific_pfx  = crcl "fn_specific_"
+let prologue_pfx  = crcl "fn_prologue_"
+let yielding_pfx  = crcl "fn_yielding_"
+let epilogue_pfx  = crcl "fn_epilogue_"
+let charcoal_pfx_len = String.length charcoal_pfx
+let charcoal_pfx_regex = Str.regexp charcoal_pfx
+
+let internal_uid = ref 11
+let internal_uid_gen () =
+  let x = !internal_uid in
+  let () = internal_uid := x + 1 in
+  x
+let gen_prologue_uid  = internal_uid_gen ()
+let gen_epilogue_uid  = internal_uid_gen ()
+let act_intermed_uid  = internal_uid_gen ()
+let mode_test_uid     = internal_uid_gen ()
+let self_activity_uid = internal_uid_gen ()
+let act_epilogue_uid  = internal_uid_gen ()
+let activity_wait_uid = internal_uid_gen ()
+let act_wait_done_uid = internal_uid_gen ()
+let yield_uid         = internal_uid_gen ()
+let yield_impl_uid    = internal_uid_gen ()
+let activate_uid      = internal_uid_gen ()
 
 let builtin_uids : ( string, int ) H.t = H.create 20
 let () = L.iter ( fun ( x, y ) -> H.add builtin_uids x y )
@@ -104,17 +91,17 @@ let () = L.iter ( fun ( x, y ) -> H.add builtin_uids x y )
 let builtins = IH.create 20
 let find_builtin = IH.find builtins
 
-let gen_prologue()  = find_builtin gen_prologue_uid
-let gen_epilogue()  = find_builtin gen_epilogue_uid
-let act_intermed()  = find_builtin act_intermed_uid
-let mode_test()     = find_builtin mode_test_uid
+let gen_prologue () = find_builtin gen_prologue_uid
+let gen_epilogue () = find_builtin gen_epilogue_uid
+let act_intermed () = find_builtin act_intermed_uid
+let mode_test    () = find_builtin mode_test_uid
 let self_activity() = find_builtin self_activity_uid
-let act_epilogue()  = find_builtin act_epilogue_uid
+let act_epilogue () = find_builtin act_epilogue_uid
 let activity_wait() = find_builtin activity_wait_uid
 let act_wait_done() = find_builtin act_wait_done_uid
-let yield()         = find_builtin yield_uid
-let yield_impl()    = find_builtin yield_impl_uid
-let activate()      = find_builtin activate_uid
+let yield        () = find_builtin yield_uid
+let yield_impl   () = find_builtin yield_impl_uid
+let activate     () = find_builtin activate_uid
 
 let gen_prologue_e  = var2exp -| gen_prologue
 let gen_epilogue_e  = var2exp -| gen_epilogue
@@ -138,15 +125,11 @@ type frame_info =
     caller_sel      : C.exp -> C.lval;
     callee_sel      : C.exp -> C.lval;
     return_addr_sel : C.exp -> C.lval;
-    oldest_sel      : C.exp -> C.lval;
     (* function-specific: *)
-    sizeof_specific : C.exp;
-    locals_sel      : C.lval -> C.lval;
-    ret_val_ptr_sel : C.lval -> C.lval;
-    return_sel      : C.lval -> C.lval;
-    locals_type     : C.typ;
+    specific_type   : C.typ;
+    lhs_sel         : C.exp -> C.lval;
+    specifics       : C.exp -> ( ( C.offset -> C.lval ) IH.t );
     yielding        : C.varinfo;
-    locals          : C.exp -> ( ( C.offset -> C.lval ) IH.t );
     ret_type        : C.typ;
     formals         : ( string * C.typ * C.attributes * C.varinfo ) list;
     vararg          : bool;
@@ -237,68 +220,64 @@ let make_specific fdec fname frame_info =
   in
 
   let fdef_loc  = fname.C.vdecl in
-  let ( locals_type, locals, tags ) =
+  let ( lhs_sel, specific_type, specifics, tag ) =
     match frame_info.ret_type,
           L.filter ( fun v -> (* XXX always false??? v.C.vreferenced *) true )
                    ( fdec.C.sformals @ fdec.C.slocals )
     with
+      (* special case when the specific struct is empty; It's illegal to
+       * have a struct with no fields. *)
       C.TVoid _, [] ->
-      ( C.TArray( C.charType, Some( C.zero ), [(*attrs*)] ),
+      ( ( fun p -> ( C.Mem p, C.NoOffset ) ),
+        C.TArray( C.charType, None, [] ),
         ( fun _ -> IH.create 0 ),
         [] )
+
     | rt, all ->
        let field v =
          let () = sanity v in
          ( v.C.vname, v.C.vtype, None, [(*attrs*)], v.C.vdecl )
        in
-       let fields_no_lhs = L.map field all in
-       let fields = match rt with
+       let fields =
+         let fields_no_lhs = L.map field all in
+         match rt with
            C.TVoid _ -> fields_no_lhs
          | _ ->
             let lhs = ( crcl "lhs", C.TPtr( rt, [] ), None, [], fdef_loc ) in
             lhs::fields_no_lhs
        in
-       let struct_name = spf "%s%s" locals_pfx fname.C.vname in
-       let ci = C.mkCompInfo true struct_name ( fun _ -> fields ) [(*attrs*)] in
-       (* Given exp, an expression for a locals pointer, map variable x to exp->x *)
-       let locals_gen locals_ptr =
-         let field_select t v =
+       let struct_name = spf "%s%s" specific_pfx fname.C.vname in
+       let ci = C.mkCompInfo true struct_name ( fun _ -> fields ) [] in
+
+       (* Given exp, a pointer to a specifics struct, map variable x to exp->x *)
+       let lhs_sel =
+         match rt with
+           C.TVoid _ -> fun p -> ( C.Mem p, C.NoOffset )
+         | _ ->
+            let field =
+              { C.fcomp = ci; C.fname = crcl "lhs"; C.ftype = C.TPtr( rt, [] );
+                C.fbitfield = None; C.fattr = []; C.floc = fdef_loc }
+            in
+            fun p -> ( C.Mem p, C.Field( field, C.NoOffset ) )
+       in
+       let specifics_gen specifics_ptr =
+         let specifics_tbl = IH.create( L.length all ) in
+         let field_select v =
            let field =
              { C.fcomp = ci; C.fname = v.C.vname; C.ftype = v.C.vtype;
-               C.fbitfield = None; C.fattr = [(*attrs*)]; C.floc = v.C.vdecl }
+               C.fbitfield = None; C.fattr = []; C.floc = v.C.vdecl }
            in
-           IH.replace t v.C.vid
-                      ( fun o -> ( C.Mem !locals_ptr, C.Field( field, o ) ) )
+           IH.replace specifics_tbl v.C.vid
+                      ( fun o -> ( C.Mem specifics_ptr, C.Field( field, o ) ) )
          in
-         let locals = IH.create( L.length all ) in
-         let () = L.iter ( field_select locals ) all in
-         locals
+         let () = L.iter field_select all in
+         specifics_tbl
        in
-       ( C.TComp( ci, [(*attrs*)] ), locals_gen, [ C.GCompTag( ci, fdef_loc ) ] )
+       let specific_type = C.TComp( ci, [(*attrs*)] ) in
+       let specific_tag = C.GCompTag( ci, fdef_loc ) in
+       ( lhs_sel, C.TComp( ci, [] ), specifics_gen, [ C.GCompTag( ci, fdef_loc ) ] )
   in
   let ( real_return_type, orig_ps, va, attrs ) = getTFunInfo fname.C.vtype "FOO" in
-  let return_type =
-    match real_return_type with
-      C.TVoid _ -> unit_type
-    | _ -> real_return_type
-  in
-  let specific =
-    let f n t = ( n, t, None, [(*attrs*)], fdef_loc ) in
-    let fields = [ f "L" locals_type; f "R" return_type ] in
-    let specific_name = spf "%s%s" specific_pfx fname.C.vname in
-    C.mkCompInfo false specific_name ( fun _ -> fields ) [(*attrs*)]
-  in
-  let specific_type = C.TComp( specific, [(*attrs*)] ) in
-  let select name ftype =
-    let field =
-      { C.fcomp = specific; C.fname = name; C.ftype = ftype;
-        C.fbitfield = None; C.fattr = [(*attrs*)]; C.floc = fdef_loc }
-    in
-    fun frame ->
-      ( C.Mem( frame_info.specific_cast specific_type frame ),
-        C.Field( field, C.NoOffset ) )
-  in
-  let specific_tag = C.GCompTag( specific, fdef_loc ) in
   let formals =
     try
       List.map ( fun( ( w, x, y ), z ) -> ( w, x, y, z ) )
@@ -308,19 +287,17 @@ let make_specific fdec fname frame_info =
   in
   let updated_frame_info =
     { frame_info with
-      sizeof_specific = C.SizeOf( specific_type );
-      locals_sel      = select "L" locals_type;
-      return_sel      = select "R" return_type;
-      locals_type     = C.TPtr( locals_type, [(*attrs*)] );
+      specific_type   = specific_type;
+      lhs_sel         = lhs_sel;
+      specifics       = specifics;
       yielding        = frame_info.yielding;
-      locals          = locals;
       ret_type        = real_return_type;
       formals         = formals;
       vararg          = va;
       attrs           = attrs;
     }
   in
-  ( tags @ [ specific_tag ], updated_frame_info )
+  ( tag, updated_frame_info )
 
 
 (* For this function definition:
@@ -333,11 +310,11 @@ let make_specific fdec fname frame_info =
  *           ret_addr,
  *           caller,
  *           __yielding_f );
- *        ( __locals_f ) *locals = select_locals_field( frame );
- *        locals->p1 = p1;
- *        locals->p2 = p2;
- *        locals->p3 = p3;
- *        locals->__ret_val_ptr = lhs;
+ *        ( __specifics_f ) *specifics = __specifics_select( frame );
+ *        specifics->p1 = p1;
+ *        specifics->p2 = p2;
+ *        specifics->p3 = p3;
+ *        specifics->__ret_val_ptr = lhs;
  *        /* TODO: Verify that Cil doesn't use inits on local variables (i.e. an
  *         * init in source will turn into expressions) */
  *        return frame;
@@ -356,31 +333,31 @@ let make_prologue prologue frame =
     let caller  =  makeFormal "caller"   frame.typ_ptr in
     let ret_addr = makeFormal "ret_addr" C.voidPtrType in
     let ps = L.map var2exp [ ret_addr; caller; frame.yielding ] in
-    C.Call( Some this, gen_prologue_e(), frame.sizeof_specific::ps, fdef_loc )
+    C.Call( Some this, gen_prologue_e(), ( C.SizeOf frame.specific_type )::ps, fdef_loc )
   in
   let assignments = match frame.formals, frame.ret_type with
-      (* If no need for assignments, don't even get the locals address *)
+      (* If no need for assignments, don't even get the specifics address *)
       [], C.TVoid _ -> []
     | fs, _ ->
-       let locals_var   = C.var( makeLocal "locals" frame.locals_type ) in
-       let locals_val   = C.AddrOf( frame.locals_sel this ) in
-       let locals_init  = C.Set( locals_var, locals_val, fdef_loc ) in
-       let locals_table = frame.locals( C.Lval locals_var ) in
+       let specifics_var   = C.var( makeLocal "specifics" frame.specific_type ) in
+       let specifics_val   = frame.specific_cast frame.specific_type this in
+       let specifics_init  = C.Set( specifics_var, specifics_val, fdef_loc ) in
+       let specifics_table = frame.specifics( C.Lval specifics_var ) in
        let set_ret_val_ptr = match frame.ret_type with
            C.TVoid _ -> []
          | t -> let lhs = makeFormal "lhs" ( C.TPtr( t, [] ) ) in
-                [ C.Set( frame.ret_val_ptr_sel locals_var, var2exp lhs, fdef_loc ) ]
+                [ C.Set( frame.lhs_sel ( C.Lval this ), var2exp lhs, fdef_loc ) ]
        in
        let assign_param ( _, _, _, v ) =
-         let local_var =
-           match IH.tryfind locals_table v.C.vid with
+         let specific_var =
+           match IH.tryfind specifics_table v.C.vid with
              Some f -> f C.NoOffset
            | _ -> E.s( E.error "Missing local \"%s\"" v.C.vname )
          in
          let formal = makeFormal v.C.vname v.C.vtype in
-         C.Set( local_var, var2exp formal, fdef_loc )
+         C.Set( specific_var, var2exp formal, fdef_loc )
        in
-       locals_init::( L.map assign_param fs @ set_ret_val_ptr )
+       specifics_init::( L.map assign_param fs @ set_ret_val_ptr )
   in
   let body =
     let instrs = call_to_generic::assignments in
@@ -422,7 +399,7 @@ let make_epilogue epilogue frame =
       C.TVoid _ -> [ call_instr ]
     | t ->
        let rval = var2exp( makeFormal "rv" ( C.TPtr( t, [] ) ) ) in
-       let lhs = ( C.Mem( C.Lval( frame.ret_val_ptr_sel( frame.locals_sel this ) ) ),
+       let lhs = ( C.Mem( C.Lval( frame.lhs_sel( C.Lval this ) ) ),
                    C.NoOffset )
        in
        [ C.Set( lhs, rval, fdef_loc ); call_instr ]
@@ -669,7 +646,7 @@ let coroutinify_return fdec rval_opt loc frame is_activity_entry =
   let set_return_val = match rval_opt with
       None -> []
     | Some e ->
-       [ C.Set( (* XXX *) frame.return_sel frame.lval, e, loc ) ]
+       [ C.Set( (* XXX *) frame.lhs_sel frame.exp, e, loc ) ]
   in
   let next =
     C.var( C.makeTempVar fdec ~name:"next_frame" frame.typ_ptr )
@@ -866,7 +843,7 @@ end
  * to:
  *     frame_p __yielding_f( frame_p frame )
  *     {
- *         __locals_f *locals = &locals_cast( frame );
+ *         __specifics_f *specifics = &specifics_cast( frame );
  *         if( frame->return_addr )
  *             goto frame->return_addr;
  *         coroutinify( ... )
@@ -897,12 +874,12 @@ let make_yielding yielding frame_no_this is_activity_entry =
   let frame =
     { frame_no_this with lval = C.var this; exp = var2exp this; }
   in
-  let ( locals_tbl, locals_init ) =
-    let locals = C.var( C.makeTempVar yielding ~name:"locals" frame.locals_type ) in
-    let locals_val = C.AddrOf( frame.locals_sel( C.var this ) ) in
-    let locals_init_instr = C.Set( locals, locals_val, fdef_loc ) in
-    let locals_init = C.mkStmt( C.Instr[ locals_init_instr ] ) in
-    ( frame.locals( C.Lval( locals ) ), locals_init )
+  let ( specifics_tbl, specifics_init ) =
+    let specifics = C.var( C.makeTempVar yielding ~name:"specifics" frame.specifics_type ) in
+    let specifics_val = C.AddrOf( frame.specifics_sel( C.var this ) ) in
+    let specifics_init_instr = C.Set( specifics, specifics_val, fdef_loc ) in
+    let specifics_init = C.mkStmt( C.Instr[ specifics_init_instr ] ) in
+    ( frame.specifics( C.Lval( specifics ) ), specifics_init )
   in
   let goto_stmt =
     let ret_addr_field = C.Lval( frame.return_addr_sel( var2exp this ) ) in
@@ -911,10 +888,10 @@ let make_yielding yielding frame_no_this is_activity_entry =
     C.mkStmt( C.If( ret_addr_field, C.mkBlock( [ goto ] ), empty_block, fdef_loc ) )
   in
   let v = new coroutinifyYieldingVisitor
-              yielding locals_tbl frame is_activity_entry
+              yielding specifics_tbl frame is_activity_entry
   in
   let y = C.visitCilFunction ( v :> C.cilVisitor ) yielding in
-  let () = y.C.sbody.C.bstmts <- locals_init :: goto_stmt :: y.C.sbody.C.bstmts in
+  let () = y.C.sbody.C.bstmts <- specifics_init :: goto_stmt :: y.C.sbody.C.bstmts in
   y
 
 let make_no_yield no_yield frame_info =
@@ -996,29 +973,6 @@ let make_indirect original frame =
 
 (* When we find the definition of the generic frame type, examine it and
  * record some stuff. *)
-let examine_activity_t_struct ci frame_info =
-
-  let old =
-    let oldr = ref None in
-    let fields = [ ( "oldest_frame", oldr ); ] in
-    let extract field =
-      let find_field ( name, field_ref ) =
-        if field.C.fname = name then
-          field_ref := Some field
-      in
-      L.iter find_field fields
-    in
-    let () = L.iter extract ci.C.cfields in
-    match !oldr with
-      Some old -> old
-    | _ -> E.s( E.error "frame struct missing fields?!?" )
-  in
-  { frame_info with
-    oldest_sel = ( fun e -> ( C.Mem e, C.Field( old, C.NoOffset ) ) );
-  }
-
-(* When we find the definition of the generic frame type, examine it and
- * record some stuff. *)
 let examine_frame_t_struct ci dummy_var =
   let dummy_lval  = ( C.Var dummy_var, C.NoOffset ) in
   let dummy_exp   = C.zero in
@@ -1044,7 +998,7 @@ let examine_frame_t_struct ci dummy_var =
   in
   let specific_cast specific_type frame =
     let t = C.TPtr( specific_type, [(*attrs*)] ) in
-    let e = C.AddrOf( C.Mem( C.Lval frame ), C.Field( s, C.NoOffset ) ) in
+    let e = C.AddrOf( C.Mem( frame ), C.Field( s, C.NoOffset ) ) in
     C.mkCast e t
   in
   let frame_typ = C.TComp( ci, [(*attrs*)] ) in
@@ -1173,7 +1127,7 @@ class phase1 = object(self)
     (* We need to find various struct definitions *)
     | C.GCompTag( ci, loc ), _ ->
        (* let () = Pf.printf "ffv - gct - %s\n" ci.C.cname in *)
-       if ci.C.cname = "__charcoal_frame_t" then
+       if ci.C.cname = crcl "frame_t" then
          let () = frame_struct <- Some ci in
          C.DoChildren
        else if ci.C.cname = "activity_t" then
@@ -1235,7 +1189,7 @@ let completeFunctionTranslation fdec loc =
     else if fvar.C.vid = frame.yielding.C.vid then
       let n = after_prefix fvar.C.vname yielding_pfx in
       let is_activity_entry =
-        starts_with n ( crcl "act_" ) || n = "__charcoal_application_main"
+        starts_with n ( crcl "act_" ) || n = crcl "application_main"
       in
       let yielding = make_yielding fdec frame is_activity_entry in
       C.ChangeTo[ C.GFun( yielding, loc ) ]
