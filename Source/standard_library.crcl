@@ -161,7 +161,7 @@ unsigned int sleep( unsigned int seconds )
     return cmd._.sleep.remaining;
 }
 
-int getaddrinfo(
+int getaddrinfo_crcl(
     const char *node,
     const char *service,
     const struct addrinfo *hints,
