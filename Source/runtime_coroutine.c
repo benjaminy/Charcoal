@@ -507,7 +507,7 @@ crcl(frame_p) crcl(fn_generic_prologue)(
 
 crcl(frame_p) crcl(fn_generic_epilogue)( crcl(frame_p) frm )
 {
-    frame_p caller = frm->caller;
+    crcl(frame_p) caller = frm->caller;
     /* NOTE: We might be able to get away with updating newest only on
      * context switches. */
     frm->activity->newest_frame = caller;

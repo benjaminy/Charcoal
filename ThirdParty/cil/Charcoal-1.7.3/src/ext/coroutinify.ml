@@ -347,8 +347,9 @@ let make_prologue prologue frame =
        let specifics_table = frame.specifics specifics_exp in
        let set_ret_val_ptr = match frame.ret_type with
            C.TVoid _ -> []
-         | t -> let lhs = makeFormal "lhs" ( C.TPtr( t, [] ) ) in
-                [ C.Set( frame.lhs_sel ( C.Lval this ), var2exp lhs, fdef_loc ) ]
+         | t -> let lhs_param = makeFormal "lhs" ( C.TPtr( t, [] ) ) in
+                let lhs_frm = frame.lhs_sel( frame.specific_sel this ) in
+                [ C.Set( lhs_frm, var2exp lhs_param, fdef_loc ) ]
        in
        let assign_param ( _, _, _, v ) =
          let specific_var =
@@ -374,78 +375,6 @@ let make_prologue prologue frame =
   let () = prologue.C.sbody <- body in
   prologue
 
-
-(* For this function definition:
- *     rt f( p1, p2, p3 ) { ... }
- * Generate this epilogue:
- *     frame_p __epilogue( frame_p frame, rt *rv )
- *     {
- *         *frame->locals.ret_val_ptr = *rv;
- *         return __generic_epilogue( frame );
- *     }
- *)
-let make_epilogue epilogue frame =
-  let makeFormal = C.makeFormalVar epilogue in
-  let fdef_loc = epilogue.C.svar.C.vdecl in
-  let () = clear_formals_locals epilogue frame.typ_ptr in
-  let this   = C.var( makeFormal "frame" frame.typ_ptr ) in
-  let caller = C.var( C.makeLocalVar epilogue "caller" frame.typ_ptr ) in
-  let instrs =
-    let call_instr = C.Call( Some caller, gen_epilogue_e(), [ C.Lval this ], fdef_loc ) in
-    match frame.ret_type with
-      C.TVoid _ -> [ call_instr ]
-    | t ->
-       let rval = var2exp( makeFormal "rv" ( C.TPtr( t, [] ) ) ) in
-       let lhs = ( C.Mem( C.Lval( frame.lhs_sel( C.Lval this ) ) ),
-                   C.NoOffset )
-       in
-       [ C.Set( lhs, rval, fdef_loc ); call_instr ]
-  in
-  let return_stmt = C.mkStmt( C.Return( Some( C.Lval caller ), fdef_loc ) ) in
-  let body = C.mkBlock[ C.mkStmt( C.Instr instrs ); return_stmt ] in
-  let () = epilogue.C.sbody <- body in
-  epilogue
-
-
-(* For this function definition:
- *     rt f( p1, p2, p3 ) { ... }
- * Generate this epilogueB:
- *     void __epilogueB_f( frame_p frame, rt *lhs )
- *     {
- *         /* Order is important because generic frees the callee */
- *         if( lhs )
- *             *lhs = return_cast( frame->callee );
- *         __generic_epilogueB( frame );
- *     }
- *)
-    (*
-let make_epilogueB epilogueB frame =
-  let fdef_loc = epilogueB.C.svar.C.vdecl in
-  let () =
-    let () = C.setFormals epilogueB [] in
-    C.setFunctionType epilogueB
-        ( C.TFun( C.voidType, Some [], false, [] ) )
-  in
-  let () = epilogueB.C.slocals <- [] in
-  let this = C.var( C.makeFormalVar epilogueB "frame" frame.typ_ptr ) in
-  let call_to_generic = C.Call( None, gen_epilogueB_e(), [ C.Lval this ], fdef_loc ) in
-  let body = match frame.ret_type with
-      C.TVoid _ -> C.mkBlock[ C.mkStmt( C.Instr[ call_to_generic ] ) ]
-    | _ ->
-       let lhsp =
-         var2exp( C.makeFormalVar epilogueB "lhs"
-                                  ( C.TPtr( frame.ret_type, [(*attrs*)] ) ) )
-       in
-       let rhs = C.Lval( frame.return_sel( frame.callee_sel( C.Lval this ) ) ) in
-       let assign = C.Set( ( C.Mem lhsp, C.NoOffset ), rhs, fdef_loc ) in
-       let assign_block = C.mkBlock( [ C.mkStmt( C.Instr( [ assign ] ) ) ] ) in
-       let empty_block = C.mkBlock( [ C.mkEmptyStmt() ] ) in
-       let null_check = C.mkStmt( C.If( lhsp, assign_block, empty_block, fdef_loc ) ) in
-       C.mkBlock[ null_check; C.mkStmt( C.Instr[ call_to_generic ] ) ]
-  in
-  let () = epilogueB.C.sbody <- body in
-  epilogueB
-     *)
 (*
  * Translate:
  *     __activate_intermediate( act, fn, p1, p2, p3 );
@@ -530,6 +459,7 @@ type dir_indir =
 let coroutinify_normal_call lhs_opt orig_params call_stuff fdec loc frame =
   let callee = C.var( C.makeTempVar fdec ~name:"callee" frame.typ_ptr ) in
   let after_return = C.mkEmptyStmt () in
+  let () = after_return.C.labels <- [ fresh_return_label loc ] in
   let params =
     match frame.ret_type, lhs_opt with
       C.TVoid _, _ -> orig_params
@@ -643,7 +573,8 @@ let coroutinify_return fdec rval_opt loc frame is_activity_entry =
   let set_return_val = match rval_opt with
       None -> []
     | Some e ->
-       [ C.Set( (* XXX *) frame.lhs_sel frame.exp, e, loc ) ]
+       let lhs = C.Lval( frame.lhs_sel( frame.specific_sel frame.lval ) ) in
+       [ C.Set( ( C.Mem lhs, C.NoOffset ), e, loc ) ]
   in
   let next =
     C.var( C.makeTempVar fdec ~name:"next_frame" frame.typ_ptr )
