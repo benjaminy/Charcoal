@@ -15,15 +15,13 @@
 #define SIG SIGRTMIN
 
 #define app_main_prologue crcl(fn_prologue___charcoal_application_main)
-#define app_main_epilogueB crcl(fn_epilogueB___charcoal_application_main)
 
 cthread_t crcl(main_thread);
 activity_t crcl(main_activity);
 int crcl(process_return_value);
 
 crcl(frame_p) app_main_prologue(
-    crcl(frame_p) caller, void *ret_addr, int argc, char **argv, char **env );
-void app_main_epilogueB( crcl(frame_p) caller, int *lhs );
+    crcl(frame_p) caller, void *ret_addr, int *lhs, int argc, char **argv, char **env );
 
 static int __argc;
 static char **__argv;
@@ -102,7 +100,7 @@ static int start_application_main( void )
     crcl(frame_t) dummy_frm;
     dummy_frm.activity = &dummy_act;
     crcl(frame_p) main_frame = app_main_prologue(
-        &dummy_frm, 0, __argc, __argv, __env );
+        &dummy_frm, 0, &crcl(process_return_value), __argc, __argv, __env );
     if( !main_frame )
     {
         return -3;
@@ -111,8 +109,7 @@ static int start_application_main( void )
         &crcl(main_thread),
         &crcl(main_activity),
         &dummy_frm,
-        main_frame,
-        (crcl(epilogueB_t))app_main_epilogueB );
+        main_frame );
     crcl(push_ready_queue)( &crcl(main_activity), &crcl(main_thread) );
     uv_cond_signal( &crcl(main_thread).thd_management_cond );
     return 0;

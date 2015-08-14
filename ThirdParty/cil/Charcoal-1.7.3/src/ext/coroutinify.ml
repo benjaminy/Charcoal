@@ -463,9 +463,9 @@ let coroutinify_normal_call lhs_opt orig_params call_stuff fdec loc frame =
   let params =
     match frame.ret_type, lhs_opt with
       C.TVoid _, _ -> orig_params
-    | t, Some lhs -> ( C.Lval lhs )::orig_params
+    | t, Some lhs -> ( C.AddrOf lhs )::orig_params
     | t, None ->
-       let tmp = C.var( C.makeTempVar fdec ~name:"lhs" t ) in
+       let tmp = C.var( C.makeTempVar fdec ~name:"lhs" ( C.TPtr( t, [] ) ) ) in
        ( C.AddrOf tmp )::orig_params
   in
   (* XXX fix to be direct or indirect *)

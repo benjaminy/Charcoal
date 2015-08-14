@@ -130,9 +130,6 @@ struct activity_t
      * updated when an activity switches for sure. */
     crcl(frame_p) oldest_frame, newest_frame;
 
-    /* The procedure to call to finalize the activity entry procedure. */
-    void (*epilogueB)( crcl(frame_p), void * );
-
     /* Debug and profiling stuff */
     int yield_calls;
 };
@@ -178,16 +175,13 @@ struct cthread_t
 
 int thread_start( cthread_p thd, void *options );
 
-typedef void (*crcl(epilogueB_t))( crcl(frame_p), void * );
-
 int MYSTERIOUS_CIL_BUG( void );
 
 crcl(frame_p) crcl(activate)(
     crcl(frame_p) f,
     void *p,
     activity_p a,
-    crcl(frame_p) f2,
-    crcl(epilogueB_t) e );
+    crcl(frame_p) f2 );
 int crcl(yield)( void );
 crcl(frame_p) crcl(yield_impl)( crcl(frame_p) frame, void *ret_addr );
 crcl(frame_p) crcl(activity_waiting_or_done)( crcl(frame_p) frm, void *ret_addr );

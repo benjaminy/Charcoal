@@ -18,8 +18,7 @@ void activate_in_thread(
     cthread_p,
     activity_p,
     crcl(frame_p),
-    crcl(frame_p),
-    crcl(epilogueB_t) );
+    crcl(frame_p) );
 
 crcl(frame_p) crcl(activity_waiting)( crcl(frame_p) frame );
 

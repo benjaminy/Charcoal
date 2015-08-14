@@ -385,7 +385,7 @@ crcl(frame_p) crcl(activity_epilogue)( crcl(frame_p) frame )
         /* XXX I think this return value business is broken currently. */
         crcl(frame_t) dummy;
         dummy.callee = frame;
-        act->epilogueB( &dummy, 0 );
+        // XXX act->epilogueB( &dummy, 0 );
     }
     return rv;
 }
@@ -396,15 +396,13 @@ void activate_in_thread(
     cthread_p thread,
     activity_p activity,
     crcl(frame_p) caller,
-    crcl(frame_p) frame,
-    crcl(epilogueB_t) epi )
+    crcl(frame_p) frame )
 {
     assert( activity );
     assert( frame );
     assert( caller );
     assert( caller->activity );
     assert( thread );
-    assert( epi );
     assert( caller->activity != activity );
 
     // zlog_debug( crcl(c), "Activate %p", activity );
@@ -417,7 +415,6 @@ void activate_in_thread(
     activity->snext         = NULL;
     activity->sprev         = NULL;
     activity->waiters       = NULL;
-    activity->epilogueB     = epi;
     frame->caller           = NULL;
     frame->activity         = activity;
     /* Compensate for the wrongness introduced by generic_prologue: */
@@ -435,19 +432,17 @@ crcl(frame_p) crcl(activate)(
     crcl(frame_p)     caller,
     void             *ret_addr,
     activity_p        activity,
-    crcl(frame_p)     frm,
-    crcl(epilogueB_t) epi )
+    crcl(frame_p)     frm )
 {
     assert( !caller == !ret_addr );
     assert( activity );
     assert( frm );
-    assert( epi );
     if( caller )
     {   /* Currently in yielding context */
         // zlog_info( crcl(c), "crcl(activate) Y new:%p old:%p", activity, caller->activity );
         caller->return_addr = ret_addr;
         activity_p caller_act = caller->activity;
-        activate_in_thread( caller_act->thread, activity, caller, frm, epi );
+        activate_in_thread( caller_act->thread, activity, caller, frm );
         return switch_from_to( caller_act, activity );
     }
     else

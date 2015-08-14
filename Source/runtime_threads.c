@@ -169,8 +169,8 @@ int crcl(join_thread)( cthread_p t )
     {
         crcl(frame_t) dummy_frm;
         dummy_frm.callee = crcl(main_activity).oldest_frame;
-        crcl(main_activity).epilogueB(
-            &dummy_frm, &crcl(process_return_value) );
+        // XXX crcl(main_activity).epilogueB(
+        //    &dummy_frm, &crcl(process_return_value) );
     }
     if( t == t->next )
     {
