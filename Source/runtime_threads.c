@@ -165,13 +165,6 @@ int crcl(join_thread)( cthread_p t )
     int rv = 0;
     zlog_info( crcl(c), "Joining thread %p n:%p p:%p ts:%p\n",
                t, t->next, t->prev, crcl(threads) );
-    if( t == &crcl(main_thread) )
-    {
-        crcl(frame_t) dummy_frm;
-        dummy_frm.callee = crcl(main_activity).oldest_frame;
-        // XXX crcl(main_activity).epilogueB(
-        //    &dummy_frm, &crcl(process_return_value) );
-    }
     if( t == t->next )
     {
         zlog_info( crcl(c), "Joining the last thread" );

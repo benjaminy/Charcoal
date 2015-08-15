@@ -365,7 +365,7 @@ crcl(frame_p) crcl(activity_epilogue)( crcl(frame_p) frame )
     activity_p act = frame->activity;
     // zlog_debug( crcl(c) , "Activity finished %p %p %p", frame, act, act->newest_frame );
     assert( frame == act->oldest_frame );
-    assert( NULL == act->newest_frame );
+    assert( frame == act->newest_frame );
     CRCL(SET_FLAG)( *act, CRCL(ACTF_DONE) );
     cthread_p thd = act->thread;
     /* XXX locking necessary? */
@@ -378,15 +378,7 @@ crcl(frame_p) crcl(activity_epilogue)( crcl(frame_p) frame )
     }
     uv_mutex_unlock( &thd->thd_management_mtx );
     crcl(frame_p) rv = crcl(activity_waiting_or_done)( frame, NULL );
-    /* Explicitly not calling epilogueB on the main activity doesn't
-     * seem super elegant.  Think about this some more. */
-    if( act != &crcl(main_activity) )
-    {
-        /* XXX I think this return value business is broken currently. */
-        crcl(frame_t) dummy;
-        dummy.callee = frame;
-        // XXX act->epilogueB( &dummy, 0 );
-    }
+    free( frame );
     return rv;
 }
 

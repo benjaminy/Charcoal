@@ -717,7 +717,7 @@ and print_statement stat =
       setLoc(loc);
       printl ["no_yield"];
       print_substatement body
-  | ACTIVATE( act, by_vals, body, loc ) ->
+  | ACTIVATE( act, lhs_opt, by_vals, body, loc ) ->
       setLoc( loc );
       printl ["activate"]; (* XXX UNIMP *)
       print_substatement body

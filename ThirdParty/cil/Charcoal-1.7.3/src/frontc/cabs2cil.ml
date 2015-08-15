@@ -6849,7 +6849,7 @@ object (self)
      *         __activate_intermediate( a, __activate_fN, x1, &x2, ... );
      *     }
      *)
-  | ACTIVATE( act_pre, by_vals_pre, body_pre, loc_pre ) ->
+  | ACTIVATE( act_pre, lhs_opt_pre, by_vals_pre, body_pre, loc_pre ) ->
       let () = activate_depth <- activate_depth + 1 in
         (* XXX activate nesting??? *)
       let () = by_vals_opt <- Some by_vals_pre in
@@ -6859,8 +6859,8 @@ object (self)
       else
         let after_children e =
           let () = by_vals_opt <- None in
-          let ( act_ref, by_vals, body, loc ) = match e with
-              ACTIVATE( a, v, b, l ) -> a, v, b, l
+          let ( act_ref, lhs_opt, by_vals, body, loc ) = match e with
+              ACTIVATE( a, lo, v, b, l ) -> a, lo, v, b, l
             | _ -> E.s( bug "Mysterious ACTIVATE transmogrification" )
           in
           let safe_name =
@@ -6937,8 +6937,9 @@ object (self)
               None -> []
             | Some( _, ( actuals:expression list ) ) -> actuals
           in
+          let lhs = Util.opt_default ( CONSTANT( CONST_INT "0" ) ) lhs_opt in
           COMPUTATION( CALL( VARIABLE "__charcoal_activate_intermediate",
-                [ act_ref; VARIABLE safe_name ] @ params ), loc )
+                [ act_ref; lhs; VARIABLE safe_name ] @ params ), loc )
 (*
           in
             GNU_BODY{ blabels = []; Cabs.battrs = [];
@@ -6961,7 +6962,7 @@ object (self)
         in
         (match V.visitCabsStatement (self :> V.cabsVisitor) body_pre with
            [b] -> V.ChangeTo( [ after_children(
-                       ACTIVATE( act_pre, by_vals_pre, b, loc_pre ) ) ] )
+                       ACTIVATE( act_pre, lhs_opt_pre, by_vals_pre, b, loc_pre ) ) ] )
          | bs -> E.s( bug "Visiting activate body gave weirdness" ) )
   (* End of ACTIVATE case *)
   | _ -> V.DoChildren (* XXX audit the rest of the statement kinds *)

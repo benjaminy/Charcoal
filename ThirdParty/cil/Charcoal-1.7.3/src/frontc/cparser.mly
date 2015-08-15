@@ -1039,7 +1039,9 @@ statement:
                           TRY_FINALLY (b, h, (*handleLoc*) $1) }
 |   NOYIELD statement {NOYIELD_STMT( $2, (*handleLoc*) $1 ) }
 |   ACTIVATE LBRACKET cast_expression RBRACKET var_list_opt statement
-        { ACTIVATE ( fst $3, $5, $6, $1 ) }
+        { ACTIVATE ( fst $3, None, $5, $6, $1 ) }
+|   ACTIVATE LBRACKET cast_expression COMMA cast_expression RBRACKET var_list_opt statement
+        { ACTIVATE ( fst $3, Some( fst $5 ), $7, $8, $1 ) }
 
 |   error location   SEMICOLON   { (NOP $2)}
 ;

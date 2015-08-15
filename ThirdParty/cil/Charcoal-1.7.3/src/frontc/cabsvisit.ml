@@ -466,11 +466,12 @@ and childrenStatement vis s =
   | NOYIELD_STMT( body, l ) ->
       let body' = vs l body in
       if body' != body then NOYIELD_STMT( body', l ) else s
-  | ACTIVATE( a, bv, b, l ) ->
+  | ACTIVATE( a, lo, bv, b, l ) ->
       let a' = visitCabsExpression vis a in
+      let lo' = Util.opt_map ( visitCabsExpression vis ) lo in
       let b' = vs l b in
       (* XXX List.map let s' = vis#vvar s in *)
-      if a' != a || b' != b then ACTIVATE( a', bv, b', l ) else s
+      if a' != a || lo' != lo || b' != b then ACTIVATE( a', lo', bv, b', l ) else s
 
           
 and visitCabsExpression vis (e: expression) : expression = 
