@@ -146,7 +146,7 @@ static int crcl(send_io_cmd)( crcl(io_cmd_t) *cmd )
     return 0;
 }
 
-unsigned int sleep( unsigned int seconds )
+unsigned int sleep_crcl( unsigned int seconds )
 {
     uv_timer_t timer;
     crcl(io_cmd_t) cmd;
