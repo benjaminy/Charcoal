@@ -29,6 +29,28 @@ int wait_activity_done( activity_p waitee )
     return 1;
 }
 
+extern "C" {
+void crcl(activity_cancel_impl)( activity_p act );
+}
+
+void activity_cancel( activity_p act )
+{
+    assert( act );
+    activity_p self = self_activity();
+    if( act->thread != self->thread )
+    {
+        /* XXX UNIMP */
+        exit( -1 );
+    }
+    if( act == self )
+    {
+        /* XXX weird */
+        exit( -1 );
+    }
+    /* "else" */
+    crcl(activity_cancel_impl)( act );
+}
+
 /* XXX the semaphore implementation is not thread-safe yet.  Fix
  * eventually. */
 

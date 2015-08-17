@@ -300,6 +300,24 @@ static void insert_activity_into_thread( activity_p a, cthread_p t )
     }
 }
 
+static void crcl(remove_activity_from_xxx)( activity_p a)
+{
+    activity_p xxx;
+    /* zlog_debug( crcl(c), "Remove activity %p  %p\n", a, t ); */
+    if( a == a->snext )
+    {
+        xxx = NULL;
+    }
+    if( xxx == a )
+    {
+        xxx = a->next;
+    }
+    a->snext->sprev = a->sprev;
+    a->sprev->snext = a->snext;
+    a->snext = NULL;
+    a->sprev = NULL;
+}
+
 static void crcl(remove_activity_from_thread)( activity_p a, cthread_p t)
 {
     /* zlog_debug( crcl(c), "Remove activity %p  %p\n", a, t ); */
@@ -359,14 +377,8 @@ crcl(frame_p) crcl(activity_waiting_or_done)( crcl(frame_p) frm, void *ret_addr 
     return rv;
 }
 
-crcl(frame_p) crcl(activity_epilogue)( crcl(frame_p) frame )
+static void clean_up_activity( activity_p act )
 {
-    assert( frame );
-    activity_p act = frame->activity;
-    // zlog_debug( crcl(c) , "Activity finished %p %p %p", frame, act, act->newest_frame );
-    assert( frame == act->oldest_frame );
-    assert( frame == act->newest_frame );
-    CRCL(SET_FLAG)( *act, CRCL(ACTF_DONE) );
     cthread_p thd = act->thread;
     /* XXX locking necessary? */
     uv_mutex_lock( &thd->thd_management_mtx );
@@ -377,6 +389,17 @@ crcl(frame_p) crcl(activity_epilogue)( crcl(frame_p) frame )
         crcl(push_ready_queue)( waiter, thd );
     }
     uv_mutex_unlock( &thd->thd_management_mtx );
+}
+
+crcl(frame_p) crcl(activity_epilogue)( crcl(frame_p) frame )
+{
+    assert( frame );
+    activity_p act = frame->activity;
+    // zlog_debug( crcl(c) , "Activity finished %p %p %p", frame, act, act->newest_frame );
+    assert( frame == act->oldest_frame );
+    assert( frame == act->newest_frame );
+    CRCL(SET_FLAG)( *act, CRCL(ACTF_DONE) );
+    clean_up_activity( act );
     crcl(frame_p) rv = crcl(activity_waiting_or_done)( frame, NULL );
     free( frame );
     return rv;
@@ -442,6 +465,22 @@ crcl(frame_p) crcl(activate)(
         zlog_info( crcl(c), "UNIMP crcl(activate) NY %p", activity );
         exit( 1 );
     }
+}
+
+/*
+ * Assume: act and currently running activity belong to the same thread
+ * Assume: act is different from the currently running activity
+ */
+void crcl(activity_cancel_impl)( activity_p act )
+{
+    crcl(frame_p) frm = act->newest_frame;
+    while( frm )
+    {
+        crcl(frame_p) caller = frm->caller;
+        free( frm );
+        frm = caller;
+    }
+    clean_up_activity( act );
 }
 
 #if 0

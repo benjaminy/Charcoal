@@ -10,6 +10,7 @@
  * thread.  To use it, you have to move activities into it. */
 
 int wait_activity_done( activity_p waitee );
+void activity_cancel( activity_p act );
 
 /* XXX name colision with semaphore_t in Mach */
 typedef struct csemaphore_t csemaphore_t, *semaphore_p;

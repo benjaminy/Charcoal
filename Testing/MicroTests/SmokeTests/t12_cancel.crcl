@@ -1,0 +1,39 @@
+extern "C" {
+#include <stdlib.h>
+#include <stdio.h>
+}
+
+#include <standard_library.crclh>
+
+#define N 1000
+#define M 100000
+int A[10] = { 1, 3, 6, 9, 0, 2, 4, 5, 8, 7 };
+
+void blah( char *s )
+{
+    int x = 0, i;
+    for( i = 0; i < N; ++i )
+    {
+        printf( "%s", s );
+        fflush( stdout );
+        for( int j = 0; j < M; ++j );
+        {
+            x = ( x + rand() ) % 10;
+            x = ( x + A[x] ) % 10;
+        }
+    }
+    printf( "After the %ss %d\n", s, i );
+}
+
+int main( int argc, char **argv, char **env )
+{
+    printf( "Hello World\n" );
+    activity_t a;
+    activate[ &a ] ()
+    {
+        blah( "O" );
+    }
+    activity_cancel( &a );
+    printf( "\nCanceled!\n" );
+    return 0;
+}
