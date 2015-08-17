@@ -156,16 +156,20 @@ let add_fun_decl v u p i = IH.replace crcl_fun_decls v.C.vid ( u, p, i )
 let lookup_fun_def v = IH.tryfind crcl_fun_defs v.C.vid
 let add_fun_def v = IH.replace crcl_fun_defs v.C.vid
 
+let remove_charcoal_linkage_from_attrs expect_crcl attrs =
+  let is_crcl attr = attr = C.Attr( "linkage_charcoal", [] ) in
+  ( match L.partition is_crcl attrs with
+      ( _::_, others ) -> Some others
+    | _ -> if expect_crcl then
+             E.s( E.error "Linkage angry?!?" )
+           else
+             None )
+
 let remove_charcoal_linkage_from_type expect_crcl t =
   match t with
     C.TFun( rt, ps, va, attrs ) ->
-    let foo attr = attr = C.Attr( "linkage_charcoal", [] ) in
-    ( match L.partition foo attrs with
-        ( [_], others ) -> Some( C.TFun( rt, ps, va, others ) )
-      | _ -> if expect_crcl then
-               E.s( E.error "Linkage angry?!?" )
-             else
-               None )
+    opt_map ( fun others -> C.TFun( rt, ps, va, others ) )
+            ( remove_charcoal_linkage_from_attrs expect_crcl attrs )
   | _ -> None
 
 let remove_charcoal_linkage_var v =
@@ -694,6 +698,11 @@ class coroutinifyNoYieldVisitor fdec frame = object(self)
   method vexpr e = match e with
       C.UnOp( C.NoYield, exp, _ (* Could type matter? *) ) ->
       change_do_children exp
+    | C.AddrOf( C.Var v, C.NoOffset ) ->
+       ( match lookup_fun_decl_var v with
+           Some( _, _, i ) -> change_do_children( C.AddrOf( C.Var i, C.NoOffset ) )
+         | None -> C.DoChildren )
+
     | _ -> C.DoChildren
 
   method vinst i = no_yield_call i fdec frame
@@ -728,6 +737,11 @@ class coroutinifyYieldingVisitor fdec locals frame is_activity_entry = object(se
         x
       in
       C.ChangeDoChildrenPost( exp, dumb_post )
+    | C.AddrOf( C.Var v, C.NoOffset ) ->
+       ( match lookup_fun_decl_var v with
+           Some( _, _, i ) -> change_do_children( C.AddrOf( C.Var i, C.NoOffset ) )
+         | None -> C.DoChildren )
+
     | _ -> C.DoChildren
 
   method vinst i =
@@ -848,57 +862,70 @@ let make_no_yield no_yield frame_info =
  *     frame_p __indirect_f( frame_p caller, void *ret_addr, rt *lhs, p1, p2, p3 )
  *     {
  *         /* UNIMP assertions */
- *         assert( lhs ); /* no lhs param if void return type */
+ *         assert( lhs ); /* lhs only exists if non-void return type */
  *         assert( ret <==> caller );
- *         rt temp;
  *         if( caller ) /* Caller in yielding mode */
  *         {
  *     #if yielding version exists
- *             return __prologue_f( caller, ret, ps->p1, ps->p2, ps->p3 );
+ *             return __prologue_f( caller, ret, lhs, p1, p2, p3 );
  *     #else
- *             frame_p frame = __generic_prologue(
- *                 sizeof( __specific_f ), ret, caller, 0 );
- *             return_cast( frame ) = __no_yield_f( ps->p1, ps->p2, ps->p3 );
+ *             *lhs = __no_yield_f( p1, p2, p3 );
  *     #endif
  *         }
  *         else /* Caller in no_yield mode */
  *         {
  *     #if no_yield version exists
- *             temp = __no_yield_f( ps->p1, ps->p2, ps->p3 );
+ *             *lhs = __no_yield_f( p1, p2, p3 );
  *     #else
  *             ERROR Cannot call yielding-only functions in no_yield mode!!!
  *             exit();
  *     #endif
  *         }
- *         if( lhs )
- *             *lhs = temp;
  *         return caller;
  *     }
  *)
-(* NOTE: We're taking "ownership" of the original Charcoal function here, because
- * it makes less work for finding address-of operations later. *)
-let make_indirect original frame =
-  let original_formals = original.C.sformals in
-  let return_type_opt =
-    let () = clear_formals_locals original frame.typ_ptr (* XXX *) in
-    ( match frame.ret_type with
-        C.TVoid _ -> None
-      | r -> Some frame.ret_type
-    )
+let make_indirect indirect no_yield prologue frame =
+  let loc = indirect.C.svar.C.vdecl in
+  let makeFormal = C.makeFormalVar indirect in
+  let caller   = var2exp( makeFormal "caller"  frame.typ_ptr ) in
+  let ret_addr = var2exp( makeFormal "ret_ptr" C.voidPtrType ) in
+  let lhs_opt  = match frame.ret_type with
+      C.TVoid _ -> None
+    | t -> Some( var2exp( makeFormal "lhs" ( C.TPtr( t, [] ) ) ) )
   in
-  let caller  = C.makeFormalVar original "caller"  frame.typ_ptr in
-  let ret_ptr = C.makeFormalVar original "ret_ptr" C.voidPtrType in
-  let lhs_opt =
-    let l rt = C.makeFormalVar original "lhs" ( C.TPtr( rt, [(*attrs*)] ) ) in
-    opt_map l return_type_opt
+  let app_formals =
+    L.map ( fun( n, t, a, v ) -> var2exp( makeFormal n t ) ) frame.formals
   in
-
-(* let locals = C.var( C.makeTempVar yielding ~name:"locals" frame_info.locals_type ) in *)
-
-  let return_stmt = C.mkStmt( C.Return( Some( var2exp caller ),
-                                        original.C.svar.C.vdecl ) ) in
-  let () = original.C.sbody.C.bstmts <- [ return_stmt ] in
-  original (* XXX *)
+  let yielding_blk =
+    let callee = C.var( C.makeTempVar indirect ~name:"callee" frame.typ_ptr ) in
+    let ps = match lhs_opt with
+        None -> caller::ret_addr::app_formals
+      | Some lhs -> caller::ret_addr::lhs::app_formals
+    in
+    let call = C.mkStmt( C.Instr(
+        [ C.Call( Some callee, var2exp prologue, ps, loc ) ] ) ) in
+    let r = C.mkStmt( C.Return( Some( C.Lval callee ), loc ) ) in
+    C.mkBlock [ call; r ]
+  in
+  let no_yield_blk =
+    let lhs = opt_map( fun l -> ( C.Mem l, C.NoOffset ) ) lhs_opt in
+    C.mkBlock [ C.mkStmt( C.Instr(
+        [ C.Call( lhs, var2exp no_yield, app_formals, loc ) ] ) ) ]
+  in
+  let body =
+    let i = C.mkStmt( C.If( caller, yielding_blk, no_yield_blk, loc ) ) in
+    let r = C.mkStmt( C.Return( Some( caller ), loc ) ) in
+    C.mkBlock[ i; r ]
+  in
+  let () =
+    let real_type = match indirect.C.svar.C.vtype with
+        C.TFun( _, ps, va, attrs ) -> C.TFun( frame.typ_ptr, ps, va, attrs )
+      | _ -> E.s( E.bug "ANGRY" )
+    in
+    let () = C.setFunctionType indirect real_type in
+    indirect.C.sbody <- body
+  in
+  indirect
 
 (* XXX varargs charcoal functions blah! *)
 
@@ -914,7 +941,6 @@ class phase1 = object(self)
     | C.GFun( fdef, loc ) when type_is_charcoal_fn fdef.C.svar.C.vtype ->
        let () = fdef_opt <- Some fdef in
        C.ChangeDoChildrenPost( [g], fun g' -> let () = fdef_opt <- None in g' )
-
     | _ -> C.SkipChildren
 
   method vinst i =
@@ -1111,7 +1137,6 @@ end
  *)
 let coroutinifyVariableDeclaration var loc frame =
   if type_is_charcoal_fn var.C.vtype then
-    let () = remove_charcoal_linkage_var var in
     let ( n, p, i ) =
       match IH.tryfind crcl_fun_decls var.C.vid with
         Some( n, p, i ) -> ( n, p, i )
@@ -1145,29 +1170,30 @@ let coroutinifyVariableDeclaration var loc frame =
 let completeFunctionTranslation fdef loc =
   let fvar = fdef.C.svar in
   try
-    let frame    = IH.find crcl_fun_defs  fvar.C.vid in
+    let frame = IH.find crcl_fun_defs fvar.C.vid in
     let ( n, p, i ) = IH.find crcl_fun_decls fvar.C.vid in
-    if fvar.C.vid = n.C.vid then
-      let no_yield = make_no_yield fdef frame in
-      C.ChangeTo[ C.GFun( no_yield, loc ) ]
-    else if fvar.C.vid = p.C.vid then
-      let prologue = make_prologue fdef frame in
-      C.ChangeTo[ C.GFun( prologue, loc ) ]
-    else if fvar.C.vid = frame.yielding.C.vid then
-      let n = after_prefix fvar.C.vname yielding_pfx in
-      let is_activity_entry =
-        starts_with n ( crcl "act_" ) || n = crcl "application_main"
-      in
-      let yielding = make_yielding fdef frame is_activity_entry in
-      C.ChangeTo[ C.GFun( yielding, loc ) ]
-    else if fvar.C.vid = p.C.vid then
-      let prologue = make_prologue fdef frame in
-      C.ChangeTo[ C.GFun( prologue, loc ) ]
-    else if fvar.C.vid = p.C.vid then
-      let indirect = make_indirect fdef frame in
-      C.ChangeTo[ C.GFun( indirect, loc ) ]
-    else (* The original definiton *)
-      C.ChangeTo[]
+    let funs =
+      if fvar.C.vid = n.C.vid then
+        let no_yield = make_no_yield fdef frame in
+        [ C.GFun( no_yield, loc ) ]
+      else if fvar.C.vid = p.C.vid then
+        let prologue = make_prologue fdef frame in
+        [ C.GFun( prologue, loc ) ]
+      else if fvar.C.vid = frame.yielding.C.vid then
+        let n = after_prefix fvar.C.vname yielding_pfx in
+        let is_activity_entry =
+          (* XXX can't call main. blah. *)
+          starts_with n ( crcl "act_" ) || n = crcl "application_main"
+        in
+        let yielding = make_yielding fdef frame is_activity_entry in
+        [ C.GFun( yielding, loc ) ]
+      else if fvar.C.vid = i.C.vid then
+        let indirect = make_indirect fdef n p frame in
+        [ C.GFun( indirect, loc ) ]
+      else (* The original definiton *)
+        []
+    in
+    change_do_children funs
   with Not_found -> C.DoChildren
 
 class phase3 generic_frame = object( self )
@@ -1176,16 +1202,39 @@ class phase3 generic_frame = object( self )
   method vglob g =
     match g with
     | C.GFun( fdef, loc ) ->
-       let () = trc( P.dprintf "P2 DEFN %b %s\n"
+       let () = trc( P.dprintf "P3 DEFN %b %s\n"
            (type_is_charcoal_fn fdef.C.svar.C.vtype) fdef.C.svar.C.vname ) in
        completeFunctionTranslation fdef loc
     | C.GVarDecl( var, loc ) ->
-       let () = trc( P.dprintf "P2 DECL %b %s %a\n"
+       let () = trc( P.dprintf "P3 DECL %b %s %a\n"
            (type_is_charcoal_fn var.C.vtype) var.C.vname C.d_type var.C.vtype ) in
        coroutinifyVariableDeclaration var loc generic_frame
-    | _ -> C.SkipChildren
+    | _ -> C.DoChildren
 
+  method vtype t =
+    let () = () (* trc( P.dprintf "P3 type %a\n" C.d_type t ) *) in
+    match t with
+      C.TPtr( C.TFun( ret_type, params_opt, varargs, fun_attrs ), ptr_attrs ) ->
+      ( match remove_charcoal_linkage_from_attrs false fun_attrs with
+          Some others ->
+          let ymps = [ ( "caller", generic_frame.typ_ptr, [] );
+                     ( "ret_addr", C.voidPtrType, [] ) ]
+          in
+          let params = opt_default [] params_opt in
+          let ps = match ret_type with
+              C.TVoid _ -> ymps @ params
+            | t -> ymps @ [ ( "lhs", C.TPtr( t, [] ), [] ) ] @ params
+          in
+          change_do_children
+            ( C.TPtr( C.TFun( generic_frame.typ_ptr, Some ps, varargs, others ), ptr_attrs ) )
+        | None -> C.DoChildren )
+    | _ -> C.DoChildren
 
+  method vattr attr =
+    let () = () (* trc( P.dprintf "P3 attr\n" ) *) in
+    match attr with
+      C.Attr( "linkage_charcoal", [] ) -> C.ChangeTo []
+    | _ -> C.DoChildren
 
          (* let () = *)
          (*   match lookup_fn_translation_var orig_var with *)
