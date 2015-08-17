@@ -2,21 +2,21 @@ extern "C" {
 #include <stdio.h>
 }
 
-int fA( int (*f)( int ), int y )
+float fA( float (*f)( float ), float y )
 {
-    printf( "A1 %d", y );
+    printf( "A1 %e\n", y );
     y = f( y );
-    printf( "A2 %d", y );
+    printf( "A2 %e\n", y );
     return y;
 }
 
-int fB( int x )
+float fB( float x )
 {
-    printf( "B %d", x );
-    return x + 4;
+    printf( "B %e\n", x );
+    return x + 4.0;
 }
 
 int main( int argc, char **argv )
 {
-    return fA( fB, argc );
+    return fA( fB, (float)argc );
 }
