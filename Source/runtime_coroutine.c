@@ -66,13 +66,13 @@ crcl(frame_p) crcl(activity_start_resume)( activity_p act )
 
 #if 0
     deprecated?
-static void crcl(print_special_queue)( activity_p *q )
+static void crcl(print_activity_queue)( activity_p *q )
 {
     assert( q );
     activity_p a = *q, first = a;
     if( a )
     {
-        zlog_info( crcl(c), "Special queue: " );
+        zlog_info( crcl(c), "Activity queue: " );
         do {
             zlog_info( crcl(c), "%p  ", a );
             a = a->snext;
@@ -81,19 +81,20 @@ static void crcl(print_special_queue)( activity_p *q )
     }
     else
     {
-        zlog_info( crcl(c), "Special queue empty\n" );
+        zlog_info( crcl(c), "Activity queue empty\n" );
     }
 }
 #endif
 
 /* Precondition: The thread mgmt mutex is held, if necessary. */
-static activity_p crcl(pop_special_queue)( unsigned flag, activity_p *q )
+static activity_p crcl(pop_activity_queue)( unsigned flag, activity_p *q )
 {
     assert( q );
     activity_p act = NULL;
     if( *q )
     {
         act = *q;
+        act->in_queue = NULL;
         if( act->snext == act )
         {
             *q = NULL;
@@ -115,7 +116,7 @@ static activity_p crcl(pop_special_queue)( unsigned flag, activity_p *q )
 activity_p crcl(pop_ready_queue)( cthread_p thd )
 {
     assert( thd );
-    activity_p act = crcl(pop_special_queue)( CRCL(ACTF_READY), &thd->ready );
+    activity_p act = crcl(pop_activity_queue)( CRCL(ACTF_READY), &thd->ready );
     // zlog_debug( crcl(c), "POP READY a:%p f:%x thd:%p q:%p",
     //             act, act ? act->flags : 0xFFFFFFFF, thd, &thd->ready );
     return act;
@@ -123,7 +124,7 @@ activity_p crcl(pop_ready_queue)( cthread_p thd )
 
 activity_p crcl(pop_waiting_queue)( activity_p *q )
 {
-    activity_p act = crcl(pop_special_queue)( CRCL(ACTF_WAITING), q );
+    activity_p act = crcl(pop_activity_queue)( CRCL(ACTF_WAITING), q );
     // zlog_debug( crcl(c), "POP WAITING a:%p q:%p *q:%p", act, q, *q );
     if( act )
     {
@@ -134,8 +135,74 @@ activity_p crcl(pop_waiting_queue)( activity_p *q )
     return act;
 }
 
+static void crcl(remove_activity_from_queue)( activity_p act, activity_p *q )
+{
+    assert( act );
+    assert( q );
+    assert( *q );
+    if( a == a->snext )
+    {
+        *q = NULL;
+    }
+    if( *q == a )
+    {
+        *q = a->next;
+    }
+    a->snext->sprev = a->sprev;
+    a->sprev->snext = a->snext;
+    a->snext = NULL;
+    a->sprev = NULL;
+    if( CRCL(CHECK_FLAG)( *act, CRCL(ACTF_WAITING) ) )
+    {
+        cthread_p thd = act->thread;
+        assert( atomic_load_int( &thd->waiting_activities ) > 0 );
+        atomic_decr_int( &thd->waiting_activities );
+    }
+    CRCL(CLEAR_FLAG)( *act, CRCL(ACTF_WAITING) );
+    CRCL(CLEAR_FLAG)( *act, CRCL(ACTF_READY) );
+}
+
+static void crcl(remove_activity_from_queue)( activity_p act )
+{
+    assert( act )
+    if( !act->in_queue )
+    {
+        return;
+    }
+    activity_p *q = act->in_queue;
+    if( a == a->snext )
+    {
+        *q = NULL;
+    }
+    if( *q == a )
+    {
+        *q = a->next;
+    }
+    a->snext->sprev = a->sprev;
+    a->sprev->snext = a->snext;
+    a->snext = NULL;
+    a->sprev = NULL;
+    if( CRCL(CHECK_FLAG)( *act, CRCL(ACTF_WAITING) ) )
+    {
+        cthread_p thd = act->thread;
+        assert( atomic_load_int( &thd->waiting_activities ) > 0 );
+        atomic_decr_int( &thd->waiting_activities );
+    }
+    CRCL(CLEAR_FLAG)( *act, CRCL(ACTF_WAITING) );
+    CRCL(CLEAR_FLAG)( *act, CRCL(ACTF_READY) );
+}
+
+activity_p crcl(pop_waiting_queue)( activity_p *q )
+{
+    activity_p act = crcl(pop_activity_queue)( CRCL(ACTF_WAITING), q );
+    // zlog_debug( crcl(c), "POP WAITING a:%p q:%p *q:%p", act, q, *q );
+    if( act )
+    {
+    }
+}
+
 /* Precondition: The thread mgmt mutex is held, if necessary. */
-static void crcl(push_special_queue)(
+static void crcl(push_activity_queue)(
     unsigned flag, activity_p act, activity_p *q )
 {
     assert( act );
@@ -146,6 +213,7 @@ static void crcl(push_special_queue)(
         return;
     }
     CRCL(SET_FLAG)( *act, flag );
+    act->in_queue = q;
     if( *q )
     {
         activity_p front = *q, rear = front->sprev;
@@ -167,7 +235,7 @@ void crcl(push_ready_queue)( activity_p act, cthread_p thd )
 {
     // zlog_debug( crcl(c), "PUSH READY a:%p thd:%p q:%p", act, thd, &thd->ready );
     assert( thd );
-    crcl(push_special_queue)( CRCL(ACTF_READY), act, &thd->ready );
+    crcl(push_activity_queue)( CRCL(ACTF_READY), act, &thd->ready );
     /* XXX maybe start the timer here */
 }
 
@@ -175,7 +243,7 @@ void crcl(push_waiting_queue)( activity_p act, activity_p *q )
 {
     // zlog_debug( crcl(c), "PUSH WAITING a:%p q:%p *q:%p", act, q, *q );
     atomic_incr_int( &act->thread->waiting_activities );
-    crcl(push_special_queue)( CRCL(ACTF_WAITING), act, q );
+    crcl(push_activity_queue)( CRCL(ACTF_WAITING), act, q );
 }
 
 static crcl(frame_p) switch_from_to( activity_p from, activity_p to )
@@ -298,24 +366,6 @@ static void insert_activity_into_thread( activity_p a, cthread_p t )
         a->prev = a;
         a->next = a;
     }
-}
-
-static void crcl(remove_activity_from_xxx)( activity_p a)
-{
-    activity_p xxx;
-    /* zlog_debug( crcl(c), "Remove activity %p  %p\n", a, t ); */
-    if( a == a->snext )
-    {
-        xxx = NULL;
-    }
-    if( xxx == a )
-    {
-        xxx = a->next;
-    }
-    a->snext->sprev = a->sprev;
-    a->sprev->snext = a->snext;
-    a->snext = NULL;
-    a->sprev = NULL;
 }
 
 static void crcl(remove_activity_from_thread)( activity_p a, cthread_p t)

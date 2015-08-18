@@ -118,7 +118,7 @@ struct activity_t
      * - None (Currently executing)
      * - Ready to execute
      * - Waiting for a particular event */
-    activity_p snext, sprev;
+    activity_p snext, sprev, *in_queue;
 
     /* A list of activities that are waiting for this one to finish. */
     /* TODO: Might replace these with a more generic event
