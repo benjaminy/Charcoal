@@ -90,6 +90,7 @@ static void crcl(print_activity_queue)( activity_p *q )
 static activity_p crcl(pop_activity_queue)( unsigned flag, activity_p *q )
 {
     assert( q );
+    int q_idx = flag ? 1 : 0;
     activity_p act = NULL;
     if( *q )
     {

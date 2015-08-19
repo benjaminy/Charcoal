@@ -109,16 +109,16 @@ struct activity_t
     /* Various status bits */
     unsigned flags;
 
-    /* The doubly-linked list of all activities that belong to a
-     * particular thread */
-    activity_p next, prev;
+    /* Two doubly linked lists.
+     *  0 - This is the list of all activities in a thread
+     *  1 - This is either the ready queue or a waiting queue
+     *      The executing activity is in neither; these will be null. */
+    struct {
+        activity_p next, prev;
+    } qs[2];
 
-    /* Another doubly-linked list of activities. The current
-     * possiblities are:
-     * - None (Currently executing)
-     * - Ready to execute
-     * - Waiting for a particular event */
-    activity_p snext, sprev, *in_queue;
+    /* The queue that this activity is in (if it's in a queue) */
+    activity_p *in_queue;
 
     /* A list of activities that are waiting for this one to finish. */
     /* TODO: Might replace these with a more generic event
