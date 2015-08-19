@@ -115,13 +115,12 @@ struct activity_t
     unsigned flags;
 
     /* Two doubly linked lists.
-     *  0 - This is the list of all activities in a thread
-     *  1 - This is either the ready queue or a waiting queue
-     *      The executing activity is in neither; these will be null. */
+     *  0 - Either the ready queue or the queue of waiters for a particular event
+     *  1 - The list of waiting activities that belong to a particular thread */
     crcl(act_list_t) qs[2];
 
     /* The queue that this activity is in (if it's in a queue) */
-    activity_p *in_queue;
+    activity_p *waiting_queue;
 
     /* A list of activities that are waiting for this one to finish. */
     /* TODO: Might replace these with a more generic event
@@ -155,8 +154,9 @@ struct cthread_t
     /* For execution quantum expiration */
     uv_timer_t    timer_req;
 
-    /* The lists of all and ready-to-execute activities */
-    activity_p    activities, ready;
+    /* waiting and ready are references to lists of activities; running
+     * is the single activity that is running. Any can be NULL. */
+    activity_p    waiting, ready, running;
 
     /* Thread management mutex and condition variable */
     uv_mutex_t    thd_management_mtx;

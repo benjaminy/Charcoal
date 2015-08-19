@@ -110,7 +110,8 @@ static int start_application_main( void )
         &crcl(main_activity),
         &dummy_frm,
         main_frame );
-    crcl(push_ready_queue)( &crcl(main_activity), &crcl(main_thread) );
+    crcl(push_ready_queue)( &crcl(main_activity) );
+    crcl(main_thread).running = &crcl(main_activity);
     uv_cond_signal( &crcl(main_thread).thd_management_cond );
     return 0;
 }

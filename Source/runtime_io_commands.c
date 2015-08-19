@@ -89,7 +89,7 @@ static int wake_up_waiters( activity_p *waiters )
         next_waiter = crcl(pop_waiting_queue)( waiters );
         cthread_p thd = waiter->thread;
         uv_mutex_lock( &thd->thd_management_mtx );
-        crcl(push_ready_queue)( waiter, thd );
+        crcl(push_ready_queue)( waiter );
         uv_mutex_unlock( &thd->thd_management_mtx );
         /* If idle */
         uv_cond_signal( &thd->thd_management_cond );

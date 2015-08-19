@@ -90,7 +90,7 @@ int semaphore_incr( semaphore_p s )
     {
         cthread_p thd = waiter->thread;
         uv_mutex_lock( &thd->thd_management_mtx );
-        crcl(push_ready_queue)( waiter, thd );
+        crcl(push_ready_queue)( waiter );
         uv_mutex_unlock( &thd->thd_management_mtx );
     }
     return 0;
@@ -127,7 +127,7 @@ int semaphore_decr( semaphore_p s )
         {
             cthread_p thd = waiter->thread;
             uv_mutex_lock( &thd->thd_management_mtx );
-            crcl(push_ready_queue)( waiter, thd );
+            crcl(push_ready_queue)( waiter );
             uv_mutex_unlock( &thd->thd_management_mtx );
         }
     }

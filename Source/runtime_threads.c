@@ -116,7 +116,7 @@ static crcl(frame_p) thread_init( thread_entry_params *params )
 
     thd->flags               = 0;
     atomic_store_int( &thd->waiting_activities, 0 );
-    thd->activities          = NULL;
+    thd->waiting             = NULL;
     thd->ready               = NULL;
     // thd->sys initialized in thread_start
     CRCL(SET_FLAG)( *thd, CRCL(THDF_IDLE) );

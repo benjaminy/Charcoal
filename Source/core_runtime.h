@@ -7,7 +7,7 @@
 extern zlog_category_t *crcl( c );
 extern uv_key_t crcl(self_key);
 
-void crcl(push_ready_queue)( activity_p a, cthread_p t );
+void crcl(push_ready_queue)( activity_p a );
 activity_p crcl(pop_ready_queue)( cthread_p t );
 void crcl(push_waiting_queue)( activity_p a, activity_p *q );
 activity_p crcl(pop_waiting_queue)( activity_p *q );
