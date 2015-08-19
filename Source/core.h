@@ -54,9 +54,10 @@ typedef struct { volatile int v; } atomic_int;
 
 /* XXX super annoying name collision on thread_t with Mach header.
  * Look into it more some day. */
-typedef struct    cthread_t     cthread_t,     *cthread_p;
-typedef struct   activity_t    activity_t,    *activity_p;
-typedef struct crcl(frame_t) crcl(frame_t), *crcl(frame_p);
+typedef struct       cthread_t        cthread_t,        *cthread_p;
+typedef struct      activity_t       activity_t,       *activity_p;
+typedef struct    crcl(frame_t)    crcl(frame_t),    *crcl(frame_p);
+typedef struct crcl(act_list_t) crcl(act_list_t), *crcl(act_list_p);
 
 /* The size of a frame is currently 5 pointers (20/40 bytes) plus the
  * procedure-specific data. */
@@ -97,6 +98,10 @@ struct crcl(frame_t)
 */
 };
 
+struct crcl(act_list_t) {
+    activity_p next, prev;
+};
+
 /* I think the Charcoal type for activities and the C type need to be
  * different.  The Charcoal type should have the return type as a
  * parameter. */
@@ -113,9 +118,7 @@ struct activity_t
      *  0 - This is the list of all activities in a thread
      *  1 - This is either the ready queue or a waiting queue
      *      The executing activity is in neither; these will be null. */
-    struct {
-        activity_p next, prev;
-    } qs[2];
+    crcl(act_list_t) qs[2];
 
     /* The queue that this activity is in (if it's in a queue) */
     activity_p *in_queue;

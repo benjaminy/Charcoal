@@ -123,10 +123,10 @@ static crcl(frame_p) thread_init( thread_entry_params *params )
     CRCL(SET_FLAG)( *thd, CRCL(THDF_NEVER_RUN) );
     thd->idle_act.thread                    = thd;
     thd->idle_act.flags                     = 0;
-    thd->idle_act.next                      = NULL;
-    thd->idle_act.prev                      = NULL;
-    thd->idle_act.snext                     = NULL;
-    thd->idle_act.sprev                     = NULL;
+    thd->idle_act.qs[0].next                = NULL;
+    thd->idle_act.qs[0].prev                = NULL;
+    thd->idle_act.qs[1].next                = NULL;
+    thd->idle_act.qs[1].prev                = NULL;
     thd->idle_act.waiters                   = NULL;
     thd->idle_act.newest_frame              = &thd->idle_frm;
     thd->idle_act.oldest_frame              = &thd->idle_frm;
