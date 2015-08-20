@@ -147,9 +147,8 @@ static activity_p pop_activity( activity_p *q, unsigned flag )
     assert( !( ready && waiting ) );
     assert( q );
     activity_p act = NULL;
-    if( *q )
+    if( ( act = *q ) )
     {
-        act = *q;
         if( waiting )
         {
             assert( q == act->waiting_queue );
