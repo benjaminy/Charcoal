@@ -691,6 +691,15 @@ let no_yield_call i fdec frame =
 
   | _ -> C.DoChildren
 
+exception FoundIt
+class hasAddrOfLabelVisitor = object(self)
+  inherit C.nopCilVisitor
+  method vexpr e =
+    match e with
+      C.AddrOfLabel _ -> raise FoundIt
+    | _ -> C.DoChildren
+end
+
 (* In the body of f, change calls to no_yield versions *)
 class coroutinifyNoYieldVisitor fdec frame = object(self)
   inherit C.nopCilVisitor
@@ -831,17 +840,28 @@ let make_yielding yielding frame_no_this is_activity_entry =
     let specifics_init = C.mkStmt( C.Instr[ specifics_init_instr ] ) in
     ( frame.specifics( C.Lval( specifics ) ), specifics_init )
   in
-  let goto_stmt =
-    let ret_addr_field = C.Lval( frame.return_addr_sel( var2exp this ) ) in
-    let empty_block = C.mkBlock( [ C.mkEmptyStmt() ] ) in
-    let goto = C.mkStmt( C.ComputedGoto( ret_addr_field, fdef_loc ) ) in
-    C.mkStmt( C.If( ret_addr_field, C.mkBlock( [ goto ] ), empty_block, fdef_loc ) )
-  in
   let v = new coroutinifyYieldingVisitor
               yielding specifics_tbl frame is_activity_entry
   in
   let y = C.visitCilFunction ( v :> C.cilVisitor ) yielding in
-  let () = y.C.sbody.C.bstmts <- specifics_init :: goto_stmt :: y.C.sbody.C.bstmts in
+  let stmts =
+    let hasComputedGoto =
+      try let _ = C.visitCilFunction ( new hasAddrOfLabelVisitor ) y in
+          false
+      with FoundIt -> true
+    in
+    if hasComputedGoto then
+      let goto_stmt =
+        let ret_addr_field = C.Lval( frame.return_addr_sel( var2exp this ) ) in
+        let empty_block = C.mkBlock( [ C.mkEmptyStmt() ] ) in
+        let goto = C.mkStmt( C.ComputedGoto( ret_addr_field, fdef_loc ) ) in
+        C.mkStmt( C.If( ret_addr_field, C.mkBlock( [ goto ] ), empty_block, fdef_loc ) )
+      in
+      specifics_init :: goto_stmt :: y.C.sbody.C.bstmts
+  else
+    specifics_init :: y.C.sbody.C.bstmts
+  in
+  let () = y.C.sbody.C.bstmts <- stmts in
   y
 
 let make_no_yield no_yield frame_info =

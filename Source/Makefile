@@ -1,12 +1,14 @@
 # _very_ incomplete
 
+CC = clang-3.6
 BUILD_DIR = ../Build
 INSTALL_DIR = ../Install
 LIB_DIR = $(INSTALL_DIR)/lib
 ETC_DIR = $(INSTALL_DIR)/etc
 INCLUDE_DIR = $(INSTALL_DIR)/include
 INCLUDE_DIRS = -I. -I $(INCLUDE_DIR)
-CFLAGS += -Wall -O1 -g
+CFLAGS += -Wall -O0 -g
+# CFLAGS += -Wall -O1 -g
 # CFLAGS += -Wall -g -pg
 # CFLAGS += -Wall -O2
 CIL_DIR = ../ThirdParty/cil/Charcoal-1.7.3
