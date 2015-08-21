@@ -18,7 +18,7 @@
 
 cthread_t crcl(main_thread);
 activity_t crcl(main_activity);
-int crcl(process_return_value);
+int crcl(process_exit_code);
 
 crcl(frame_p) app_main_prologue(
     crcl(frame_p) caller, void *ret_addr, int *lhs, int argc, char **argv, char **env );
@@ -74,15 +74,16 @@ int main( int argc, char **argv, char **env )
         return rc;
     }
 
-    zlog_info( crcl(c), "Charcoal app finished!!! return code:%d\n",
-               crcl(process_return_value) );
+    zlog_info( crcl(c), "Charcoal application finished.  Exit code: %d",
+               crcl(process_exit_code) );
     zlog_fini();
-    return crcl(process_return_value);
+    return crcl(process_exit_code);
 }
 
 static int start_application_main( void )
 {
-    zlog_info( crcl(c), "Starting app main %d %p %p\n", __argc, __argv, __env );
+    zlog_info( crcl(c), "Charcoal application starting.  argc: %d  argv: %p  env: %p",
+               __argc, __argv, __env );
     int rc;
     /* There's nothing particularly special about the thread that runs
      * the application's 'main' procedure.  The application will
@@ -100,7 +101,7 @@ static int start_application_main( void )
     crcl(frame_t) dummy_frm;
     dummy_frm.activity = &dummy_act;
     crcl(frame_p) main_frame = app_main_prologue(
-        &dummy_frm, 0, &crcl(process_return_value), __argc, __argv, __env );
+        &dummy_frm, 0, &crcl(process_exit_code), __argc, __argv, __env );
     if( !main_frame )
     {
         return -3;
