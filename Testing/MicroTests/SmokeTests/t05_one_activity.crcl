@@ -9,7 +9,7 @@ int main( int argc, char **argv, char **env )
     activity_p a = (activity_p)malloc( sizeof( a[0] ) );
     activate[ a ] ()
     {
-        printf( "I'm active\n" );
+        printf( "I'm leaking the activity memory\n" );
     }
     printf( "After the activity\n" );
     return 0;

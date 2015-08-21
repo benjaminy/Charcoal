@@ -3,15 +3,18 @@ extern "C" {
 #include <stdio.h>
 }
 
+#include <standard_library.crclh>
+
 int main( int argc, char **argv, char **env )
 {
     printf( "Hello World\n" );
-    activity_p a = (activity_p)malloc( sizeof( a[0] ) );
-    activate[ a ] ()
+    activity_t a;
+    activate[ &a ] ()
     {
         yield();
         printf( "I'm active\n" );
     }
     printf( "After the activate\n" );
+    wait_activity_done( &a );
     return 0;
 }
