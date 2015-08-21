@@ -49,6 +49,7 @@ crcl(frame_p) crcl(activity_start_resume)( activity_p act )
     /* XXX Races with other interruptions coming in!!! */
     atomic_store_int( &thd->interrupt_activity, 0 );
     thd->running = act;
+    // zlog_debug( crcl(c) , "Activity start: %p", act );
     /* XXX: Lots to fix here. */
     if( thd->ready && !CRCL(CHECK_FLAG)( *thd, CRCL(THDF_TIMER_ON) ) )
     {

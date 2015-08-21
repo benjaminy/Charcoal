@@ -100,7 +100,7 @@ static int wake_up_waiters( activity_p *waiters )
 static void sleep_callback( uv_timer_t *timer )
 {
     crcl(io_cmd_t) *cmd = (crcl(io_cmd_t) *)timer->data;
-    zlog_debug( crcl(c), "SLEEP CALLBACK %d\n", cmd->_.sleep.seconds );
+    // zlog_debug( crcl(c), "SLEEP CALLBACK %d", cmd->_.sleep.seconds );
     cmd->_.sleep.remaining = 0; /* XXX for sure??? */
     wake_up_waiters( &cmd->waiters );
 }
