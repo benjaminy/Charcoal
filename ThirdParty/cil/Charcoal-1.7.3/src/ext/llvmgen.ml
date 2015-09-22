@@ -659,6 +659,7 @@ class llvmGeneratorClass : llvmGenerator = object (self)
 	    else
 	      LCmp (LCne, v, lzero t)
 	  in LSelect (cond, lzero t, lint 1 t)
+      | NoYield -> raise (Unimplemented "LLVM + NoYield = ???")
 
     and iBinop op (e1:exp) (e2:exp) (t:typ) : llvmValue = 
       let v1 = self#mkConstantExp e1 in
@@ -823,6 +824,7 @@ class llvmGeneratorClass : llvmGenerator = object (self)
       | Block b -> gBlock slabel b
       | TryFinally (_, _, _) -> raise (Unimplemented "TryFinally")
       | TryExcept (_, _, _, _) -> raise (Unimplemented "TryExcept")
+      | NoYieldStmt _ -> raise (Unimplemented "NoYield LLVM")
 
     and gReturnVoid (label:string) sterm sbrk scont : llvmBlock = 
       mkBlock label [] (TRet [])
@@ -1013,6 +1015,7 @@ class llvmGeneratorClass : llvmGenerator = object (self)
 	    let istrue = nextTemp i1Type in
 	    [ mkTrueIns istrue v;
 	      mkIns LIselect res [ LLocal istrue; lzero t; lint 1 t ] ]
+        | NoYield -> raise (Unimplemented "LLVM + NoYield = ???")
       in (il @ ins, LLocal res)
 
     and iBinop op (e1:exp) (e2:exp) (t:typ) : llvmInstruction list * llvmValue = 

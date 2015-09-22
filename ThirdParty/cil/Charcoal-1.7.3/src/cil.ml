@@ -547,6 +547,7 @@ and unop =
     Neg                                 (** Unary minus *)
   | BNot                                (** Bitwise complement (~) *)
   | LNot                                (** Logical Not (!) *)
+  | NoYield                             (** No yield *)
 
 (** Binary operations *)
 and binop =
@@ -800,7 +801,8 @@ and stmtkind =
          exception !!! The location corresponds to the try keyword. 
      *)      
   | TryExcept of block * (instr list * exp) * block * location
-    
+  | NoYieldStmt of block * location
+
 
 (** Instructions. They may cause effects directly but may not have control
     flow.*)
@@ -1129,6 +1131,7 @@ let rec get_stmtLoc (statement : stmtkind) =
                  else get_stmtLoc ((List.hd b.bstmts).skind)
     | TryFinally (_, _, l) -> l
     | TryExcept (_, _, _, l) -> l
+    | NoYieldStmt( _, l ) -> l
 
 
 (* The next variable identifier to use. Counts up *)
@@ -1566,6 +1569,15 @@ let typeRemoveAttributes (anl: string list) t =
   | TNamed (t, a) -> TNamed (t, drop a)
   | TBuiltin_va_list a -> TBuiltin_va_list (drop a)
 
+let linkage_charcoal =
+  let lcrcl a =
+    match a with
+      Attr( astr, [] ) -> astr = "linkage_charcoal"
+    | _ -> false
+  in
+  List.exists lcrcl
+let linkage_c attrs = not( linkage_charcoal attrs )
+
 let unrollType (t: typ) : typ = 
   let rec withAttrs (al: attributes) (t: typ) : typ =     
     match t with 
@@ -1802,7 +1814,7 @@ let getParenthLevel (e: exp) =
   | AddrOf(_) -> 30
   | AddrOfLabel(_) -> 30
   | StartOf(_) -> 30
-  | UnOp((Neg|BNot|LNot),_,_) -> 30
+  | UnOp((Neg|BNot|LNot|NoYield),_,_) -> 30
 
                                         (* Lvals *)
   | Lval(Mem _ , _) -> derefStarLevel (* 20 *)                   
@@ -2576,6 +2588,7 @@ and constFold (machdep: bool) (e: exp) : exp =
               Neg -> kintegerCilint tk (neg_cilint ic)
             | BNot -> kintegerCilint tk (lognot_cilint ic)
             | LNot -> if is_zero_cilint ic then one else zero
+            | NoYield -> kintegerCilint tk ic
             end
         | e1c -> UnOp(unop, e1c, tres)
       with Not_found -> e
@@ -2826,6 +2839,7 @@ let d_unop () u =
     Neg -> text "-"
   | BNot -> text "~"
   | LNot -> text "!"
+  | NoYield -> text "no_yield"
 
 let d_binop () b =
   match b with
@@ -3919,6 +3933,9 @@ class defaultCilPrinterClass : cilPrinter = object (self)
           ++ text ") " ++ unalign
           ++ self#pBlock () h
 
+    | NoYieldStmt( b, l ) ->
+       self#pLineDirective l
+         ++ ( align ++ text "no_yield" ++ self#pBlock () b )
 
   (*** GLOBALS ***)
   method pGlobal () (g:global) : doc =       (* global (vars, types, etc.) *)
@@ -5357,6 +5374,10 @@ and childrenStmt (toPrepend: instr list ref) : cilVisitor -> stmt -> stmt =
         if b' != b || il'' != il || e' != e || h' != h then 
           TryExcept(b', (il'', e'), h', l) 
         else s.skind
+    | NoYieldStmt( b, l ) ->
+       let b' = fBlock b in
+       if b' != b then NoYieldStmt( b', l ) else s.skind
+
   in
   if skind' != s.skind then s.skind <- skind';
   (* Visit the labels *)
@@ -5851,7 +5872,9 @@ let rec peepHole1 (* Process one instruction and possibly replace it *)
           peepHole1 doone b.bstmts; 
           peepHole1 doone h.bstmts;
           s.skind <- TryExcept(b, (doInstrList il, e), h, l);
-      | Return _ | Goto _ | ComputedGoto _ | Break _ | Continue _ -> ())
+      | Return _ | Goto _ | ComputedGoto _ | Break _ | Continue _ -> ()
+      | NoYieldStmt( b, _ ) -> peepHole1 doone b.bstmts
+    )
     ss
 
 let rec peepHole2  (* Process two instructions and possibly replace them both *)
@@ -5885,7 +5908,9 @@ let rec peepHole2  (* Process two instructions and possibly replace them both *)
           peepHole2 dotwo h.bstmts;
           s.skind <- TryExcept (b, (doInstrList il, e), h, l)
 
-      | Return _ | Goto _ | ComputedGoto _ | Break _ | Continue _ -> ())
+      | Return _ | Goto _ | ComputedGoto _ | Break _ | Continue _ -> ()
+      | NoYieldStmt( b, _ ) -> peepHole2 dotwo b.bstmts
+    )
     ss
 
 
@@ -6530,6 +6555,11 @@ and succpred_stmt s fallthrough rlabels =
                 end
   | TryExcept _ | TryFinally _ -> 
       failwith "computeCFGInfo: structured exception handling not implemented"
+  | NoYieldStmt( b, _ ) -> begin match b.bstmts with
+                  [] -> trylink s fallthrough
+                | hd :: tl -> link s hd ;
+                    succpred_block b fallthrough rlabels
+                end
 
 let caseRangeFold (l: label list) =
   let rec fold acc = function
@@ -6717,6 +6747,7 @@ let rec xform_switch_stmt s break_dest cont_dest = begin
           let new_block = mkBlock [ this_stmt ; break_stmt ] in
           s.skind <- Block new_block
   | Block(b) -> xform_switch_block b break_dest cont_dest
+  | NoYieldStmt _ -> E.s( E.unimp "xfrom switch" )
 
   | TryExcept _ | TryFinally _ -> 
       failwith "xform_switch_statement: structured exception handling not implemented"

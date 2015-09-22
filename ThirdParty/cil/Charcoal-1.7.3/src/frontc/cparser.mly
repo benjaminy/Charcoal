@@ -92,9 +92,9 @@ let smooth_expression lst =
 let add_yield before_not_after loc stmt =
   let stmts =
     if before_not_after then
-      [ COMPUTATION( CALL( VARIABLE "yield", [] ), loc ); stmt ]
+      [ COMPUTATION( CALL( VARIABLE "__charcoal_yield", [] ), loc ); stmt ]
     else
-      [ stmt; COMPUTATION( CALL( VARIABLE "yield", [] ), loc ) ]
+      [ stmt; COMPUTATION( CALL( VARIABLE "__charcoal_yield", [] ), loc ) ]
   in
   BLOCK( { blabels=[]; battrs=[]; bstmts=stmts }, loc )
 
@@ -261,10 +261,6 @@ class label_gather_class : V.cabsVisitor = object (self)
 
   val mutable labels = SS.empty
 
-  method vexpr e = match e with
-  | ACTIVATE _ -> V.SkipChildren
-  | _ -> V.DoChildren
-
   method vblock b =
     let () = labels <- List.fold_right SS.add b.blabels labels in
     V.DoChildren
@@ -274,6 +270,7 @@ class label_gather_class : V.cabsVisitor = object (self)
         LABEL(label, _, _) ->
           let () = labels <- SS.add label labels in
           V.DoChildren
+      | ACTIVATE _ -> V.SkipChildren
       | _ -> V.DoChildren
 end (* label_gather_class *)
 
@@ -285,10 +282,6 @@ object (self)
 
   val mutable breakable_depth = 0
   val mutable contable_depth = 0
-
-  method vexpr e = match e with
-  | ACTIVATE _ -> V.SkipChildren
-  | _ -> V.DoChildren
 
   method vstmt s =
     let cond_insert c = if c then V.ChangeDoChildrenPost ([stmt_to_insert;s], fun s -> s)
@@ -326,7 +319,8 @@ object (self)
 
       | NOP _ | COMPUTATION _ | BLOCK _ | SEQUENCE _
       | IF _ | CASE _ | CASERANGE _ | DEFAULT _ | LABEL _
-      | DEFINITION _ -> V.DoChildren
+      | DEFINITION _ | NOYIELD_STMT _ (* XXX ??? *) -> V.DoChildren
+      | ACTIVATE _ -> V.SkipChildren
 
 end (* insert_shit_class *)
 
@@ -376,7 +370,7 @@ end (* insert_shit_class *)
 %token<Cabs.cabsloc> SEMICOLON
 %token COMMA ELLIPSIS QUEST
 
-%token<Cabs.cabsloc> BREAK CONTINUE GOTO GOTO_NY RETURN ACTIVATE UNYIELDING SYNCHRONIZED
+%token<Cabs.cabsloc> BREAK CONTINUE GOTO GOTO_NY RETURN ACTIVATE YIELD NOYIELD SYNCHRONIZED
 %token<Cabs.cabsloc> SWITCH CASE DEFAULT
 %token<Cabs.cabsloc> WHILE WHILE_NY DO DO_NY FOR FOR_NY
 %token<Cabs.cabsloc> IF TRY EXCEPT FINALLY
@@ -635,11 +629,9 @@ unary_expression:   /*(* 6.5.3 *)*/
 |		TILDE cast_expression
 		        {UNARY (BNOT, fst $2), $1}
 |               AND_AND IDENT  { LABELADDR (fst $2), $1 }
-|               ACTIVATE LBRACE cast_expression RBRACE var_list_opt comma_expression
-                        {ACTIVATE (fst $3, $5, RETURN (smooth_expression (fst $6), snd $6)), $1}
-|               ACTIVATE LBRACE cast_expression RBRACE var_list_opt statement
-                        {ACTIVATE (fst $3, $5, $6), $1}
-|               UNYIELDING { UNARY( PLUS, CONSTANT( CONST_INT "0" ) ), $1 (* XXX *) }
+|               YIELD LPAREN RPAREN
+                        { CALL( VARIABLE "__charcoal_yield", [] ), $1 }
+|               NOYIELD cast_expression { UNARY( NOYIELD, fst $2 ), $1 }
 |               SYNCHRONIZED paren_comma_expression statement { (* XXX I guess this has to be translated later because of escaping *)
            GNU_BODY{ blabels=[]; battrs=[];
                      bstmts=[
@@ -1045,6 +1037,11 @@ statement:
                           if not !Cprint.msvcMode then 
                             parse_error "try/finally in GCC code";
                           TRY_FINALLY (b, h, (*handleLoc*) $1) }
+|   NOYIELD statement {NOYIELD_STMT( $2, (*handleLoc*) $1 ) }
+|   ACTIVATE LBRACKET cast_expression RBRACKET var_list_opt statement
+        { ACTIVATE ( fst $3, None, $5, $6, $1 ) }
+|   ACTIVATE LBRACKET cast_expression COMMA cast_expression RBRACKET var_list_opt statement
+        { ACTIVATE ( fst $3, Some( fst $5 ), $7, $8, $1 ) }
 
 |   error location   SEMICOLON   { (NOP $2)}
 ;

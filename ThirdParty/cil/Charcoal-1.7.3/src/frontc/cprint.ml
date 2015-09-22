@@ -357,7 +357,8 @@ and get_operator exp =
       | PREINCR -> ("++", 13)
       | PREDECR -> ("--", 13)
       | POSINCR -> ("++", 14)
-      | POSDECR -> ("--", 14))
+      | POSDECR -> ("--", 14)
+      | NOYIELD -> ("no_yield", 15))
   | LABELADDR s -> ("", 16)  (* Like a constant *)
   | BINARY (op, _, _) ->
       (match op with
@@ -405,7 +406,6 @@ and get_operator exp =
   | MEMBEROFPTR (exp, fld) -> ("", 15)
   | GNU_BODY _ -> ("", 17)
   | EXPR_PATTERN _ -> ("", 16)     (* sm: not sure about this *)
-  | ACTIVATE _ -> ("", 16)
 
 and print_comma_exps exps =
   print_commas false print_expression exps
@@ -544,8 +544,6 @@ and print_expression_level (lvl: int) (exp : expression) =
       print ")"
   | EXPR_PATTERN (name) ->
       printl ["@expr";"(";name;")"]
-  | ACTIVATE( act, by_vals, body ) ->
-      printl ["@expr";"(AcTiViTy)"]
   in
   ()
     
@@ -715,6 +713,15 @@ and print_statement stat =
       print_block b;
       printl ["__except";"("]; print_expression e; print ")";
       print_block h
+  | NOYIELD_STMT( body, loc ) ->
+      setLoc(loc);
+      printl ["no_yield"];
+      print_substatement body
+  | ACTIVATE( act, lhs_opt, by_vals, body, loc ) ->
+      setLoc( loc );
+      printl ["activate"]; (* XXX UNIMP *)
+      print_substatement body
+
       
 and print_block blk = 
   new_line();

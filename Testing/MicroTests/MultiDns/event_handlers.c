@@ -11,16 +11,16 @@ void got_one( uv_getaddrinfo_t *resolver, int status, struct addrinfo *res );
 
 int main( int argc, char **argv, char **env )
 {
-    int urls_to_get;
+    int i, urls_to_get;
     get_cmd_line_args( argc, argv, &urls_to_get );
     uv_loop_t *dispatcher = uv_default_loop();
     uv_getaddrinfo_t *resolvers =
         (uv_getaddrinfo_t *)malloc( urls_to_get * sizeof(resolvers[0]) );
 
-    // slow_one = NULL;
-    slow_one = &resolvers[3];
+    slow_one = NULL;
+    // slow_one = &resolvers[3];
 
-    for( int i = 0; i < urls_to_get; ++i )
+    for( i = 0; i < urls_to_get; ++i )
     {
         register_one( i, dispatcher, &resolvers[i] );
     }

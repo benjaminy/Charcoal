@@ -1,0 +1,42 @@
+#ifndef __CHARCOAL_CORE_APPLICATION
+#define __CHARCOAL_CORE_APPLICATION
+
+/* This file is for definitions needed to compile Charcoal code, but not
+ * the Charcoal runtime system. */
+
+/* XXX this should really be a static assertion */
+#ifdef __CHARCOAL_CIL
+#pragma cilnoremove( "__charcoal_activate_intermediate" )
+#pragma cilnoremove( "__charcoal_activity_epilogue" )
+#pragma cilnoremove( "__charcoal_activity_wait" )
+#pragma cilnoremove( "__charcoal_fn_generic_prologue" )
+#pragma cilnoremove( "__charcoal_fn_generic_epilogue" )
+#pragma cilnoremove( "self_activity" )
+#pragma cilnoremove( "__charcoal_yielding_mode" )
+#endif
+
+extern "C" {
+
+/* calls to "intermediate" only exist temporarily, between stages of compilation */
+int crcl(activate_intermediate)( activity_p activity, ... );
+
+/* Activity support from the runtime system */
+crcl(frame_p) crcl(activity_epilogue)( crcl(frame_p) frame );
+
+/* Procedure calling support from the runtime system: */
+crcl(frame_p) crcl(fn_generic_prologue)(
+    size_t sz,
+    void *return_ptr,
+    crcl(frame_p) caller,
+    crcl(frame_p) (*fn)( crcl(frame_p) ) );
+
+crcl(frame_p) crcl(fn_generic_epilogue)( crcl(frame_p) frame );
+
+void crcl(activity_wait)( void );
+
+activity_p self_activity( void );
+
+int crcl(yielding_mode)( void );
+}
+
+#endif /* __CHARCOAL_CORE_APPLICATION */

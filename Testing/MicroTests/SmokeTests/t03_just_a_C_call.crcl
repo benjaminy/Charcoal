@@ -1,0 +1,7 @@
+extern "C" { int printf( const char *, ... ); }
+
+int main( int argc, char **argv, char **env )
+{
+    printf( "Hello %s\n", argv[0] );
+    return argc;
+}

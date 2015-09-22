@@ -20,7 +20,7 @@ static void close_cb( uv_handle_t* handle )
     printf( "Close! %d\n", ((ctx_t*)w->data)->i );
 }
 
-static void callback( uv_async_t *handle, int status /*UNUSED*/ )
+static void callback( uv_async_t *handle )
 {
     ctx_t *ctx = (ctx_t*)handle->data;
     ++ctx->ctr;
@@ -52,6 +52,7 @@ int main( int argc, char **argv )
     unsigned i;
 
     m = ( argc > 1 ) ? (int)atol( argv[1] ) : N;
+    m = ( 1 << m ) / N;
 
     for( i = 0; i < N; ++i )
     {

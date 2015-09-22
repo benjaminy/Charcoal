@@ -247,8 +247,35 @@ let interpret_character_constant char_list =
                                         (* We collect here the program *)
 let theFile : global list ref = ref []
 let theFileTypes : global list ref = ref []
+let linkage_stack : ( string * location ) list ref = ref []
 
-let initGlobals () = theFile := []; theFileTypes := []
+let push_linkage x = linkage_stack := x::!linkage_stack
+let pop_linkage () =
+  match !linkage_stack with
+    [] -> None
+  | x::l -> linkage_stack := l; Some x
+let peak_linkage () =
+  match !linkage_stack with
+    [] -> None
+  | x::l -> Some x
+let in_c_mode () =
+  match peak_linkage () with
+    None -> false
+  | Some( n, _ ) -> n = "C"
+let just_crcl_linkage = [ Attr( "linkage_charcoal", [] ) ]
+let linkage_attrs () =
+  if in_c_mode () then
+    []
+  else
+    just_crcl_linkage
+
+let add_linkage attrs =
+  if in_c_mode () || linkage_charcoal attrs then
+    attrs (* XXX filter out Charcoal? *)
+  else
+    Attr( "linkage_charcoal", [] )::attrs
+
+let initGlobals () = theFile := []; theFileTypes := []; linkage_stack := []
 
     
 let cabsPushGlobal (g: global) = 
@@ -1651,6 +1678,8 @@ let rec combineTypes (what: combineWhat) (oldt: typ) (t: typ) : typ =
   | TFun (oldrt, oldargs, oldva, olda), TFun (rt, args, va, a) ->
       if oldva != va then 
         raise (Failure "diferent vararg specifiers");
+      if linkage_charcoal olda <> linkage_charcoal a then
+        raise (Failure "different linkage (C vs Charcoal)");
       let defrt = combineTypes 
           (if what = CombineFundef then CombineFunret else CombineOther) 
           oldrt rt in
@@ -2966,7 +2995,7 @@ and doType (nameortype: attributeClass) (* This is AttrName if we are doing
             TArray(t,lo,attr) -> turnArrayIntoPointer t lo attr
           | _ -> bt
         in
-        doDeclType (TFun (tres, args, isva', [])) acc d
+        doDeclType (TFun ( tres, args, isva', linkage_attrs() )) acc d
 
   in
   doDeclType bt [] dt
@@ -3262,6 +3291,7 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
                  not (isFunctionType vi.vtype) && 
                  not (isArrayType vi.vtype)then
                 E.s (error "variable appears in constant"); *)
+
               finishExp empty (Lval(var vi)) vi.vtype
           | EnvEnum (tag, typ), _ ->
               if !Cil.lowerConstants then 
@@ -3821,7 +3851,14 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
            end
         | _ -> E.s (error "Unexpected operand for suffix ++ or --")
     end
-          
+
+    | A.UNARY( NOYIELD, e ) ->
+       let ( se, e', t ) = doExp asconst e ( AExp None ) in
+       let () = if se.cases <> [] then E.s (unimp "no_yield cases???") in
+       let ny = mkStmt( NoYieldStmt( c2block se, !currentLoc ) ) in
+       let se' = { stmts=[ ny ]; postins=[]; cases=[] } in
+       finishExp se' ( UnOp( NoYield, e', t ) ) t
+
     | A.BINARY(A.ASSIGN, e1, e2) -> begin
         match e1 with 
           A.COMMA el -> (* GCC extension *)
@@ -4007,8 +4044,9 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
                                                  * AExp None  *)
               with Not_found -> begin
                 ignore (warnOpt "Calling function %s without prototype." n);
+                let attrs = linkage_attrs() in
                 let ftype = TFun(intType, None, false, 
-                                 [Attr("missingproto",[])]) in
+                                 (Attr("missingproto",[]))::attrs) in
                 (* Add a prototype to the environment *)
                 let proto, _ = 
                   makeGlobalVarinfo false (makeGlobalVar n ftype) in
@@ -4623,9 +4661,6 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
         finishExp empty (makeCast (integer addrval) voidPtrType) voidPtrType
     end
 
-    | A.ACTIVATE( act, by_vals, body ) ->
-      E.s (E.bug "activate should be gone before cabs2cil")
-
     | A.EXPR_PATTERN _ -> E.s (E.bug "EXPR_PATTERN in cabs2cil input")
 
   with e when continueOnError -> begin
@@ -4992,7 +5027,7 @@ and doInit
 	  (* ISO 6.7.8 para 14: final NUL added only if no size specified, or
 	   * if there is room for it; btw, we can't rely on zero-init of
 	   * globals, since this array might be a local variable *)
-          if ((isNone leno) or ((String.length s) < (integerArrayLength leno)))
+          if ((isNone leno) || ((String.length s) < (integerArrayLength leno)))
             then ref [init Int64.zero]
             else ref []  
         in
@@ -5054,7 +5089,7 @@ and doInit
 	  (* ISO 6.7.8 para 14: final NUL added only if no size specified, or
 	   * if there is room for it; btw, we can't rely on zero-init of
 	   * globals, since this array might be a local variable *)
-          if ((isNone leno) or ((List.length s) < (integerArrayLength leno)))
+          if ((isNone leno) || ((List.length s) < (integerArrayLength leno)))
             then [init Int64.zero]
             else [])
 (*
@@ -5873,7 +5908,7 @@ and doDecl (isglobal: bool) : A.definition -> chunk = function
                                Some (Util.list_map (fun f -> (f.vname,
                                                          f.vtype, 
                                                          f.vattr)) formals), 
-                               isvararg, funta) in
+                               isvararg, add_linkage( funta )) in
               (*
               ignore (E.log "Funtype of %s: %a\n" n' d_type ftype);
               *)
@@ -6066,6 +6101,7 @@ and doDecl (isglobal: bool) : A.definition -> chunk = function
               | Block b -> blockFallsThrough b
               | TryFinally (b, h, _) -> blockFallsThrough h
               | TryExcept (b, _, h, _) -> true (* Conservative *)
+              | NoYieldStmt( b, _ ) -> blockFallsThrough b
             and blockFallsThrough b = 
               let rec fall = function
                   [] -> true
@@ -6113,6 +6149,7 @@ and doDecl (isglobal: bool) : A.definition -> chunk = function
               | Block b -> blockCanBreak b
               | TryFinally (b, h, _) -> blockCanBreak b || blockCanBreak h
               | TryExcept (b, _, h, _) -> blockCanBreak b || blockCanBreak h
+              | NoYieldStmt( b, _ ) -> blockCanBreak b
             and blockCanBreak b = 
               List.exists stmtCanBreak b.bstmts
             in
@@ -6154,12 +6191,20 @@ and doDecl (isglobal: bool) : A.definition -> chunk = function
       if not isglobal then 
         E.s (error "Encountered linkage specification in local scope");
       (* For now drop the linkage on the floor !!! *)
+      let cilloc = !currentLoc in
+      let () = push_linkage( n, cilloc ) in
       List.iter 
         (fun d -> 
           let s = doDecl isglobal d in
           if isNotEmpty s then 
             E.s (bug "doDecl returns non-empty statement for global"))
         dl;
+      let () = match pop_linkage () with
+          None -> E.s( error "Missing linkage" )
+        | Some( n', loc' ) when n <> n' || cilloc <> loc' ->
+           E.s( error "Corrupt linkage" )
+        | _ -> ()
+      in
       empty
 
   | _ -> E.s (error "unexpected form of declaration")
@@ -6640,6 +6685,16 @@ and doStatement (s : A.statement) : chunk =
         in
         s2c (mkStmt (TryExcept (c2block b', (il', e'), c2block h', loc')))
 
+    | NOYIELD_STMT( body, loc ) ->
+       let () = currentLoc := convLoc loc in
+       let ch = doStatement body in
+       let () = if ch.cases <> [] then E.s (unimp "no_yield cases???") in
+       let ny = mkStmt( NoYieldStmt( c2block ch, !currentLoc ) ) in
+       { stmts=[ ny ]; postins=[]; cases=[] }
+
+    | A.ACTIVATE _ ->
+      E.s( E.bug "activate should be gone before cabs2cil" )
+
   with e when continueOnError -> begin
     (ignore (E.log "Error in doStatement (%s)\n" (Printexc.to_string e)));
     E.hadErrors := true;
@@ -6667,17 +6722,22 @@ let stripParenFile file = V.visitCabsFile (new stripParenClass) file
 (* NOTE: For nested activities, if the inner uses a by-ref from way out,
    add the new var name to the inner activate's by-val list. *)
 
+let trc = trace "coroutinify"
+
 class extract_activity_class : V.cabsVisitor =
 object (self)
   inherit V.nopCabsVisitor as super
 
+  val mutable uid             = 1
   val mutable activate_depth  = 0
   val mutable by_vals_opt     = None
   val mutable by_refs         = []
   val mutable fun_def_depth   = 0
-  val mutable activity_bodies = []
-  val mutable local_vars      = []
+  val mutable activity_bodies : ( definition * definition ) list = []
+  val mutable local_vars : ( specifier * name list ) list list = []
   val mutable fun_name        = None
+
+  method vdecltype t = V.DoChildren
 
   method vdef d : definition list V.visitAction = match d with
     FUNDEF(fname, body, loc, lend) ->
@@ -6687,7 +6747,9 @@ object (self)
           PROTO( ret_ty, params, var_args ) ->
             let single_name_to_name_group( spec, name ) = ( spec, [name] ) in
             List.map single_name_to_name_group params
-        | _ -> E.s (bug "Function with type other than PROTO")
+        | _ ->
+           let () = withCprint ( Cprint.print_decl "foo" ) fun_ty in
+           E.s (bug "Function '%s' with type other than PROTO" name)
       in
       let () = match local_vars with [] -> () | _ ->
         E.s (bug "Function def, but there are already locals")
@@ -6697,13 +6759,13 @@ object (self)
       let () = fun_name <- Some name in
 
       let after defs =
-        let acts = activity_bodies in
+        let ( acts, protos ) = List.split activity_bodies in
         let () = fun_def_depth   <- fun_def_depth - 1 in
         let () = activity_bodies <- [] in
         let () = local_vars      <- [] in
         let () = fun_name        <- None in
         match defs with
-          [def] -> acts @ defs
+          [def] -> protos @ defs @ acts
         | _ -> failwith "wrong number of defs"
       in
       V.ChangeDoChildrenPost ([d], after)
@@ -6735,160 +6797,194 @@ object (self)
     | _::l -> local_vars <- l
 
   method vexpr e = match e with
-    ACTIVATE( act, by_vals, body ) ->
+      VARIABLE v ->
+       let check_locals =
+         match by_vals_opt with
+           None -> false (* Not in activate *)
+         | Some by_vals -> (* This var is by-val *)
+            not( List.mem v by_vals )
+       in
+       let is_by_ref_local =
+         check_locals &&
+           (* XXX performance could be pretty bad here *)
+           let is_local_var =
+             let is_in_env =
+               let is_in_names ( _, names ) =
+                 List.exists ( fun (n,_,_,_) -> n = v ) names
+               in
+               List.exists is_in_names
+             in
+             List.exists is_in_env
+           in
+           is_local_var local_vars
+       in
+       if is_by_ref_local then
+         let () = by_refs <- v::by_refs in
+         V.ChangeTo( UNARY( MEMOF, e ) )
+       else
+         V.DoChildren
+  | _ -> V.DoChildren
+
+  method vstmt s = match s with
+    RETURN (e, loc) -> V.DoChildren (* XXX if > 0, set activity rv *)
+  | GOTO _ ->       V.DoChildren (* XXX No gotos from activity body to outer scope *)
+  | COMPGOTO _ ->   V.DoChildren (* XXX No gotos from activity body to outer scope *)
+  | DEFINITION _ -> V.DoChildren (* XXX Gota def here *)
+    (* Translate:
+     *     t f()
+     *     {
+     *         activate rt a ( x1, ... )
+     *         {
+     *             S;
+     *         }
+     *     }
+     * to:
+     *     rt __activate_fN( t1 x1, t2 *x2, ... )
+     *     {
+     *         S[ replace x2 with *x2 ];
+     *     }
+     *
+     *     t f()
+     *     {
+     *         __activate_intermediate( a, __activate_fN, x1, &x2, ... );
+     *     }
+     *)
+  | ACTIVATE( act_pre, lhs_opt_pre, by_vals_pre, body_pre, loc_pre ) ->
       let () = activate_depth <- activate_depth + 1 in
         (* XXX activate nesting??? *)
-      let () = by_vals_opt <- Some by_vals in
+      let () = by_vals_opt <- Some by_vals_pre in
       if activate_depth > 1 then
         let after_children e = let () = activate_depth <- activate_depth - 1 in e in
-        V.ChangeDoChildrenPost (e, after_children)
+        V.ChangeDoChildrenPost( [ s ], after_children )
       else
         let after_children e =
           let () = by_vals_opt <- None in
-          let ACTIVATE( act_ref, by_vals, body ) = e in
+          let ( act_ref, lhs_opt, by_vals, body, loc ) = match e with
+              ACTIVATE( a, lo, v, b, l ) -> a, lo, v, b, l
+            | _ -> E.s( bug "Mysterious ACTIVATE transmogrification" )
+          in
           let safe_name =
             match fun_name with
-              Some n -> "__charcoal_" ^ n ^ "_act_N" (* XXX unique number *)
+              Some n ->
+              let i = uid in
+              let () = uid <- i + 1 in
+              Printf.sprintf "__charcoal_act_%s_%d" n i
             | None -> E.s (bug "Activate without function name")
           in
-          let obj_name = safe_name ^ "_obj" in
-          let filter_locals locals env =
-            let filter_name_group locals' (spec, names) =
-              let by_val_or_ref (n,_,_,_) =
-                List.mem n by_vals || List.mem n by_refs
+          let formals_and_actuals_opt =
+            let locals_of_interest =
+              let filter_locals locals env =
+                let filter_name_group locals' (spec, names) =
+                  let by_val_or_ref (n,_,_,_) =
+                    List.mem n by_vals || List.mem n by_refs
+                  in
+                  match List.filter by_val_or_ref names with
+                    [] -> locals'
+                  | ns -> (spec, ns)::locals'
+                in
+                List.fold_left filter_name_group locals env
               in
-              match List.filter by_val_or_ref names with
-                [] -> locals'
-              | ns -> (spec, ns)::locals'
+              List.fold_left filter_locals [] local_vars
             in
-            List.fold_left filter_name_group locals env
-          in
-          let locals_of_interest = List.fold_left filter_locals [] local_vars in
-          let struct_type =
-            let obj_field f = MEMBEROFPTR( VARIABLE obj_name, f ) in
 
             match locals_of_interest with
               [] ->
                 None
             | _ ->
-              let types_to_business (acs, frs, fgs) ( spec, names ) =
-                let type_to_business (as', frs', fs) ( ( n, dt, attrs, loc ) as name ) =
-                  let x, ty =
+              let types_to_business ( frs, acs ) ( spec, names ) =
+                let type_to_business ( frs', as' ) ( ( n, dt, attrs, loc ) as name ) =
+                  let formal, actual =
                     if List.mem n by_vals then
-                      VARIABLE n,
-                      name
+                      let () = withCprint ( Cprint.print_decl "foo" ) dt in
+                      let () = trc ( dprintf "BYVAL %s\n" n ) in
+                      ( spec, name ), VARIABLE n
                     else
-                      UNARY( ADDROF, VARIABLE n ),
-                      (n, PTR( [], dt ), attrs, loc )
+                      let () = trc ( dprintf "BYREF %s\n" n ) in
+                      ( spec, ( n, PTR( [], dt ), attrs, loc ) ),
+                      UNARY( ADDROF, VARIABLE n )
                   in
-                  let actual = COMPUTATION( BINARY( ASSIGN, obj_field n, x ),
-                                            cabslu ) in
-                  let formal = ty, SINGLE_INIT( obj_field n ) in
-                  (actual::as', formal::frs', (ty,None)::fs)
+                  ( formal::frs', actual::as' )
                 in
-                let (actuals, formals, fields) =
-                  List.fold_left type_to_business ([],[],[]) names
+                let ( formals, actuals ) =
+                  List.fold_left type_to_business ( [],[] ) names
                 in
                   (* Find better locs *)
-                let y = DEFINITION( DECDEF( ( spec, formals ), cabslu ) ) in
-                (actuals @ acs, y::frs, (spec, fields)::fgs)
+                (*let y = DEFINITION( DECDEF( ( spec, formals ), cabslu ) ) in*)
+                ( formals @ frs, actuals @ acs )
               in
-              let (actuals, formals, field_groups) =
-                List.fold_left types_to_business ([],[],[]) locals_of_interest
+              let ( formals, actuals ) =
+                List.fold_left types_to_business ([],[]) locals_of_interest
               in
-              let ty = Tstruct( safe_name ^ "_struct", Some field_groups, [] ) in
-              Some( actuals, formals, ty )
+              Some( formals, actuals )
           in
           let () = activate_depth <- activate_depth - 1 in
           let () = by_refs <- [] in
-          let body_bk =
-            match struct_type with
-              None ->
-                { blabels = []; Cabs.battrs = []; bstmts = [body] }
-            | Some( _, formals, ty ) ->
-                (* XXX better locs *)
-              let spec = [SpecType ty] in
-              let decl = PTR( [], JUSTBASE ) in
-              let name = ( obj_name, decl, [], cabslu ) in
-              let init = SINGLE_INIT( CAST( ( spec, decl ),
-                                            SINGLE_INIT( VARIABLE "p" ) ) ) in
-              let cast = DEFINITION( DECDEF( ( spec, [(name,init)]), cabslu ) ) in
-              let free = COMPUTATION( CALL( VARIABLE( "free" ), [VARIABLE( "p" )] ),
-                                      cabslu ) in
-              { blabels = []; Cabs.battrs = []; bstmts = cast::(formals)@[free;body] }
-          in
-            (* Find better locs *)
           let act_fun =
-            let ty = ([SpecType Tvoid], ("p", PTR( [], JUSTBASE ), [], cabslu)) in
-            let name = ([], (safe_name, PROTO(JUSTBASE, [ty], false), [], cabslu)) in
-            FUNDEF( name, body_bk, cabslu, cabslu )
+            let return_type = [ SpecType Tvoid ] in (* XXX *)
+            let formals = match formals_and_actuals_opt with
+                None -> []
+              | Some( f, _ ) -> f
+            in
+            let name = ( safe_name, PROTO( JUSTBASE, formals, false ), [], loc ) in
+            let body_block = { blabels=[]; battrs=[]; bstmts=[ body ] } in
+            ( FUNDEF( ( return_type, name ), body_block, loc, loc ),
+              DECDEF( ( return_type, [ ( name, NO_INIT ) ] ), loc ) )
           in
           let () = activity_bodies <- act_fun::activity_bodies in
 
-          match struct_type with
-            None -> CALL( VARIABLE "__charcoal_activate",
-                          [act_ref; VARIABLE safe_name; CONSTANT( CONST_INT "0" ) ] )
-          | Some( (actuals:statement list), _, ty ) ->
-            let sizeof = EXPR_SIZEOF( INDEX( VARIABLE obj_name,
-                                             CONSTANT( CONST_INT "0" ) ) ) in
-            let malloc = SINGLE_INIT( CALL( VARIABLE "malloc", [sizeof] ) ) in
-            let spec = [SpecType ty] in
-            let decl = PTR( [], JUSTBASE ) in
-            let name = ( obj_name, decl, [], cabslu ) in
-            let init = SINGLE_INIT( CAST( ( spec, decl ), malloc ) ) in
+          let params =
+            match formals_and_actuals_opt with
+              None -> []
+            | Some( _, ( actuals:expression list ) ) -> actuals
+          in
+          let lhs = Util.opt_default ( CONSTANT( CONST_INT "0" ) ) lhs_opt in
+          COMPUTATION( CALL( VARIABLE "__charcoal_activate_intermediate",
+                [ act_ref; lhs; VARIABLE safe_name ] @ params ), loc )
+(*
+          in
+            GNU_BODY{ blabels = []; Cabs.battrs = [];
+                      bstmts = cast::actuals@[call] }
+
+
+                    None -> CALL( VARIABLE "__charcoal_activate_intermediate",
+                          [ act_ref; VARIABLE safe_name ] )
+          | Some( _, ( actuals:expression list ) ) ->
             let cast = DEFINITION( DECDEF( ( spec, [(name,init)]), cabslu ) ) in
             let call =
-              COMPUTATION( CALL( VARIABLE "__charcoal_activate",
+              COMPUTATION( CALL( VARIABLE "__charcoal_activate_intermediate",
                                  [act_ref;
                                   VARIABLE safe_name;
                                   VARIABLE obj_name ] ), cabslu )
             in
             GNU_BODY{ blabels = []; Cabs.battrs = [];
                       bstmts = cast::actuals@[call] }
+ *)
         in
-        (match V.visitCabsStatement (self :> V.cabsVisitor) body with
-          [b] -> V.ChangeTo( after_children( ACTIVATE( act, by_vals, b ) ) )
-        | bs -> E.s( bug "Visiting activate body gave weirdness" ) )
+        (match V.visitCabsStatement (self :> V.cabsVisitor) body_pre with
+           [b] -> V.ChangeTo( [ after_children(
+                       ACTIVATE( act_pre, lhs_opt_pre, by_vals_pre, b, loc_pre ) ) ] )
+         | bs -> E.s( bug "Visiting activate body gave weirdness" ) )
   (* End of ACTIVATE case *)
-  | VARIABLE v ->
-    (match by_vals_opt with
-      None -> V.DoChildren
-    | Some by_vals ->
-      let rec is_local_var loc_vars =
-        match loc_vars with
-          [] -> false
-        | env::loc_vars' ->
-          let rec is_in_env specs =
-            match specs with
-              [] -> false
-            | (spec, names)::specs' ->
-              let rec is_in_names names =
-                match names with
-                  [] -> false
-                | (n,_,_,_)::names' ->
-                  n = v || is_in_names names'
-              in
-              is_in_names names || is_in_env specs'
-          in
-          is_in_env env || is_local_var loc_vars'
-      in
-      let is_local = is_local_var local_vars in
-      let is_by_val = List.mem v by_vals in
-      if is_local && not is_by_val then
-        let () = by_refs <- v::by_refs in
-        V.ChangeTo( UNARY( MEMOF, e ) )
-      else
-        V.DoChildren)
-  | _ -> V.DoChildren
-
-  method vstmt s = match s with
-    RETURN (e, loc) -> V.DoChildren (* XXX if > 0, set activity rv *)
-  | GOTO _ -> V.DoChildren (* XXX No gotos from activity body to outer scope *)
-  | COMPGOTO _ -> V.DoChildren (* XXX No gotos from activity body to outer scope *)
-  | DEFINITION _ ->
-    let () = Printf.printf "Gota def here!!!\n" in
-    V.DoChildren
   | _ -> V.DoChildren (* XXX audit the rest of the statement kinds *)
+
+end (* extract_activity_class *)
+
+(* There's some tricky business here related to nested activates *)
+let rec extract_one vis defs def : definition list =
+  let visited = V.visitCabsDefinition vis def in
+  match visited with
+    []  -> E.s( bug "Replace main didn't return one" )
+  | [d] -> defs @ [ d ]
+  | _   -> defs @ ( extract_all visited )
+
+and extract_all defs : definition list =
+  let vis = new extract_activity_class in
+  List.fold_left ( extract_one vis ) [] defs
+
+
+class replace_main_class : V.cabsVisitor =
+object (self)
+  inherit V.nopCabsVisitor as super
 
   method vvar name =
     if name = "main" then
@@ -6896,40 +6992,13 @@ object (self)
     else
       name
 
-end (* extract_activity_class *)
-
-let rec extract_one def : definition list option =
-  let vis = new extract_activity_class in
-  let defs = V.visitCabsDefinition vis def in
-  match defs with
-      [d] -> None
-    | _ -> Some defs
-
-let rec extract_all defs : definition list =
-  match defs with
-      [] -> []
-    | def::rest ->
-      (match extract_one def with
-          None -> def::(extract_all rest)
-        | Some new_defs -> (extract_all new_defs) @ (extract_all rest))
-
-class replace_main_class : V.cabsVisitor =
-object (self)
-  inherit V.nopCabsVisitor as super
-
-  method vdef d : definition list V.visitAction = match d with
-      FUNDEF((spec, (name, ty, attrs, loc1)), body, loc2, lend) ->
-        let repl_name =
-          if name = "main" then
-            "__charcoal_application_main"
-          else
-            name
-        in
-        if repl_name <> name then
-          V.ChangeTo [FUNDEF((spec, (repl_name, ty, attrs, loc1)), body, loc2, lend)]
-        else
-          V.SkipChildren
-    | _ -> V.DoChildren
+  (* XXX problem with local named main??? *)
+  method vname _ _ ( name, ty, attrs, loc ) =
+    if name = "main" then
+      V.ChangeDoChildrenPost ( ( "__charcoal_application_main", ty, attrs, loc ),
+                               fun n -> n )
+    else
+      V.DoChildren
 end
 
 let just_main_thing fname def_with_main =
@@ -6967,7 +7036,7 @@ let convFile (f : A.file) : Cil.file =
       makeGlobalVar name (TFun(resTyp, 
                                Some (Util.list_map (fun at -> ("", at, [])) 
                                        argTypes),
-                               isva, [])) in
+                               isva, linkage_attrs() )) in
     ignore (alphaConvertVarAndAddToEnv true v);
     (* Add it to the file as well *)
     cabsPushGlobal (GVarDecl (v, Cil.builtinLoc))

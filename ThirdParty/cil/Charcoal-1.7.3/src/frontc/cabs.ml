@@ -227,6 +227,8 @@ and statement =
    (** MS SEH *)
  | TRY_EXCEPT of block * expression * block * cabsloc
  | TRY_FINALLY of block * block * cabsloc
+ | NOYIELD_STMT of statement * cabsloc
+ | ACTIVATE of expression * expression option * string list * statement * cabsloc
  
 and for_clause = 
    FC_EXP of expression
@@ -247,6 +249,7 @@ and binary_operator =
 and unary_operator =
     MINUS | PLUS | NOT | BNOT | MEMOF | ADDROF
   | PREINCR | PREDECR | POSINCR | POSDECR
+  | NOYIELD
 
 and expression =
     NOTHING
@@ -275,7 +278,6 @@ and expression =
   | MEMBEROFPTR of expression * string
   | GNU_BODY of block
   | EXPR_PATTERN of string     (* pattern variable, and name *)
-  | ACTIVATE of expression * string list * statement
 
 and constant =
   | CONST_INT of string   (* the textual representation *)

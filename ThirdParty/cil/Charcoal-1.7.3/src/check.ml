@@ -512,6 +512,8 @@ and checkExp (isconst: bool) (e: exp) : typ =
           typeMatch tres intType;
           tres
 
+      | UnOp( NoYield, e, tres ) -> checkExpType isconst e tres; tres
+
       | BinOp (bop, e1, e2, tres) -> begin
           let t1 = checkExp isconst e1 in
           let t2 = checkExp isconst e2 in
@@ -809,7 +811,12 @@ and checkStmt (s: stmt) =
           checkExpType false e intType;
           checkBlock h
 
-      | Instr il -> List.iter checkInstr il)
+      | Instr il -> List.iter checkInstr il
+
+      | NoYieldStmt( b, l ) ->
+         let () = currentLoc := l in
+         checkBlock b
+    )
     () (* argument of withContext *)
 
 and checkBlock (b: block) : unit = 

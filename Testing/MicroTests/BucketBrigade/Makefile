@@ -1,14 +1,22 @@
 # TODO: Header
-# 
-# 
+#
+#
 
 CRCL_ROOT=../../..
 
 include $(CRCL_ROOT)/Testing/generic.mk
 
-TARGETS = bucket_brigade_setcontext bucket_brigade_setcontext_jmp bucket_brigade_libuv bucket_brigade_pthread bucket_brigade_silly_loop bucket_brigade_crcl
+TARGETS = bucket_brigade_setcontext bucket_brigade_setcontext_jmp bucket_brigade_libuv bucket_brigade_pthread bucket_brigade_silly_loop bucket_brigade_crcl bucket_brigade
+
+CFLAGS+= -O2
+# CFLAGS+= -g -pg
+
+.SECONDARY:
 
 all: $(TARGETS)
+
+clean:
+	rm -rf $(addprefix $(BUILD_DIR)/, $(addsuffix *, $(TARGETS)))
 
 include $(CRCL_ROOT)/Testing/cil_rules.mk
 
@@ -18,11 +26,13 @@ bucket_brigade_setcontext: bucket_brigade_setcontext.c
 bucket_brigade_setcontext_jmp: bucket_brigade_setcontext_jmp.c
 	gcc -g -O1 $(INCLUDE_DIRS) -o bucket_brigade_setcontext_jmp bucket_brigade_setcontext_jmp.c
 
-bucket_brigade_libuv: bucket_brigade_libuv.c
-	gcc -g -O1 $(INCLUDE_DIRS) -o bucket_brigade_libuv bucket_brigade_libuv.c $(LIBUV_FLAGS) -pthread
+bucket_brigade_libuv: $(BUILD_DIR)/bucket_brigade_libuv
 
-bucket_brigade_pthread: bucket_brigade_pthread.c
-	gcc -g -O1 -o bucket_brigade_pthread bucket_brigade_pthread.c -pthread
+$(BUILD_DIR)/bucket_brigade_libuv: bucket_brigade_libuv.c
+	$(CC) $(CFLAGS) $(INCLUDE_DIRS) -o  $@ $< $(LIBUV_FLAGS) -pthread
+
+$(BUILD_DIR)/bucket_brigade_pthread: bucket_brigade_pthread.c
+	$(CC) $(CFLAGS) -o $@ $< -pthread
 
 bucket_brigade_silly_loop: bucket_brigade_silly_loop.c
 	gcc -g -O1 -o bucket_brigade_silly_loop bucket_brigade_silly_loop.c
@@ -32,6 +42,3 @@ bucket_brigade_crcl: bucket_brigade_crcl.c
 
 bucket_brigade.class: bucket_brigade.java
 	javac bucket_brigade.java
-
-clean:
-	rm -rf $(TARGETS)

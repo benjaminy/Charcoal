@@ -1,0 +1,9 @@
+int add_4( int x )
+{
+    return x + 4;
+}
+
+int main( int argc, char **argv, char **env )
+{
+    return add_4( argc );
+}

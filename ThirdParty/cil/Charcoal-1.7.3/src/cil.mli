@@ -666,6 +666,7 @@ and unop =
     Neg                                 (** Unary minus *)
   | BNot                                (** Bitwise complement (~) *)
   | LNot                                (** Logical Not (!) *)
+  | NoYield                             (** No yield *)
 
 (** Binary operations *)
 and binop =
@@ -1010,7 +1011,8 @@ and stmtkind =
          exception !!!
      *)      
   | TryExcept of block * (instr list * exp) * block * location
-  
+  | NoYieldStmt of block * location
+
 
 (** {b Instructions}. 
  An instruction {!Cil.instr} is a statement that has no local
@@ -1836,6 +1838,8 @@ val typeAddAttributes: attribute list -> typ -> typ
     their uses *)
 val typeRemoveAttributes: string list -> typ -> typ
 
+val linkage_charcoal: attributes -> bool
+val linkage_c: attributes -> bool
 
 (** Convert an expression into an attrparam, if possible. Otherwise raise
     NotAnAttrParam with the offending subexpression *)

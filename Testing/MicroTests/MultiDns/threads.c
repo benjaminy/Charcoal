@@ -13,20 +13,20 @@ const char *slow_one;
 
 int main( int argc, char **argv, char **env )
 {
-    int urls_to_get;
+    int i, urls_to_get;
     get_cmd_line_args( argc, argv, &urls_to_get );
     pthread_t *thread_handles =
         (pthread_t *)malloc( urls_to_get * sizeof(thread_handles[0]) );
 
-    // slow_one = "";
-    slow_one = pick_name( 3 );
+    slow_one = "";
+    // slow_one = pick_name( 3 );
 
-    for( int i = 0; i < urls_to_get; ++i )
+    for( i = 0; i < urls_to_get; ++i )
     {
         launch_one( i, &thread_handles[i] );
     }
 
-    for( int i = 0; i < urls_to_get; ++i )
+    for( i = 0; i < urls_to_get; ++i )
     {
         wait_one( thread_handles[i] );
     }
@@ -68,7 +68,7 @@ void wait_one( pthread_t thread_handle )
     int rc = pthread_join( thread_handle, (void **)(&thread_return) );
     if( rc )
     {
-        printf( "Error joining thread %p %d\n", thread_handle, rc );
+        printf( "Error joining thread %p %d\n", &thread_handle, rc );
         ++dns_error_count;
     }
     else if( thread_return )

@@ -155,7 +155,8 @@ let init_lexicon _ =
       ("else", fun _ -> ELSE);
       (*** Begin Charcoal keywords ***)
       ("activate",       fun loc -> dbgToken( ACTIVATE     loc ) );
-      ("unyielding",     fun loc -> dbgToken( UNYIELDING   loc ) );
+      ("yield",          fun loc -> dbgToken( YIELD        loc ) );
+      ("no_yield",       fun loc -> dbgToken( NOYIELD      loc ) );
       ("synchronized",   fun loc -> dbgToken( SYNCHRONIZED loc ) );
       ("for_no_yield",   fun loc -> dbgToken( FOR_NY       loc ) );
       ("while_no_yield", fun loc -> dbgToken( WHILE_NY     loc ) );

@@ -1,12 +1,21 @@
+extern "C" {
+#include <stdlib.h>
+#include <stdio.h>
+#include <assert.h>
+}
+
+#include <standard_library.crclh>
+
 #define N 10
 
 int main( int argc, char **argv )
 {
-    semaphore_t sems[N];
+    csemaphore_t sems[N];
     activity_t *activities = (activity_t *)malloc( N * sizeof( activities[0] ) );
     if( !activities )
         return ENOMEM;
     int i, m = ( argc > 1 ) ? (int)atol( argv[1] ) : N;
+    m = ( 1 << m ) / N;
 
     for( i = 0; i < N; ++i )
     {
@@ -14,18 +23,21 @@ int main( int argc, char **argv )
     }
     for( i = 0; i < N; ++i )
     {
-        activate{ &activities[i] }( i )
+        csemaphore_t *s1 = &sems[ i ];
+        csemaphore_t *s2 = &sems[ ( i + 1 ) % N ];
+        activate[ &activities[i] ]( i, s1, s2 )
         {
             int j;
             for( j = 0; j < m; ++j )
             {
-                semaphore_decr( &sems[ i ] );
-                semaphore_incr( &sems[ ( i + 1 ) % N ] );
+                semaphore_decr( s1 );
+                semaphore_incr( s2 );
             }
+            printf( "Activity %d done\n", i );
         }
     }
     semaphore_incr( &sems[0] );
-    activity_wait( &activities[ N - 1 ] );
+    wait_activity_done( &activities[ N - 1 ] );
     for( i = 0; i < N; ++i )
     {
         semaphore_close( &sems[i] );

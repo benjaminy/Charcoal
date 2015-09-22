@@ -1,0 +1,22 @@
+extern "C" {
+#include <stdio.h>
+}
+
+float fA( float (*f)( float ), float y )
+{
+    printf( "A1 %e\n", y );
+    y = f( y );
+    printf( "A2 %e\n", y );
+    return y;
+}
+
+float fB( float x )
+{
+    printf( "B %e\n", x );
+    return x + 4.0;
+}
+
+int main( int argc, char **argv )
+{
+    return fA( fB, (float)argc );
+}

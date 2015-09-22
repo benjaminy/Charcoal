@@ -1,34 +1,43 @@
-#include <charcoal_base.h>
+extern "C" {
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <charcoal_std_lib.h>
 #include <multi_dns_utils.h>
+}
+
+#include <standard_library.crclh>
 
 void get_one( int idx );
 
-crcl(main)( int argc, char **argv, char **env )
+int main( int argc, char **argv, char **env )
 {
+    activity_p self = self_activity();
+    printf( "Main activity: %p\n", self ); fflush( stdout );
     int urls_to_get;
     get_cmd_line_args( argc, argv, &urls_to_get );
-    activity_t *as = (activity_t *)malloc( urls_to_get * sizeof( as[0] ) );
+    activity_p as = (activity_p)malloc( urls_to_get * sizeof( as[0] ) );
 
     for( int i = 0; i < urls_to_get; ++i )
     {
-        activate{ &as[i] }( i )
+        activate[ &as[i] ]( i )
         {
             get_one( i );
-        };
+        }
     }
+
+    printf( "Activated all\n" );
 
     for( int i = 0; i < urls_to_get; ++i )
     {
-        int rc = crcl(activity_join)( &as[i], NULL );
+        // printf( "Waiting for activity %p\n", &as[ i ] );
+        wait_activity_done( &as[ i ] );
+#if 0
         if( rc )
         {
             printf( "Error joining activity %p %d\n", as[i], rc );
             ++dns_error_count;
         }
+#endif
     }
 
     FINISH_DNS( 0 );
@@ -39,10 +48,10 @@ void get_one( int idx )
     const char *name = pick_name( idx );
     struct addrinfo *info;
 
-    int rc = crcl_getaddrinfo( name, NULL, NULL, &info );
+    int rc = getaddrinfo( name, NULL, NULL, &info );
     if( rc )
     {
-        printf( "Error %d %d %s\n", rc, i + j, name );
+        printf( "Error %d %d %s\n", rc, idx, name );
         ++dns_error_count;
         return;
     }

@@ -1,0 +1,168 @@
+plain C:
+
+.L7:
+        cmpb    %dl, %al
+        jne     .L3
+        movq    %rcx, %rsi
+.L5:
+        addq    $1, %rdi
+        movsbl  (%rdi), %eax
+        leaq    1(%rsi), %rcx
+        movsbl  1(%rsi), %edx
+        testb   %al, %al
+        jne     .L7
+
+
+plain yielding:
+
+__charcoal_fn_yielding_my_strcmp:
+.LFB0:
+	.cfi_startproc
+.L2:
+	movq	40(%rdi), %rcx
+	movsbl	(%rcx), %eax
+	testb	%al, %al
+	je	.L6
+	movq	48(%rdi), %rsi
+	movsbl	(%rsi), %edx
+	cmpb	%dl, %al
+	je	.L8
+	subl	%edx, %eax
+	movl	%eax, 40(%rdi)
+	jmp	__charcoal_fn_generic_epilogueA
+	.p2align 4,,10
+	.p2align 3
+.L6:
+	movq	48(%rdi), %rdx
+	movsbl	(%rdx), %edx
+	subl	%edx, %eax
+	movl	%eax, 40(%rdi)
+	jmp	__charcoal_fn_generic_epilogueA
+	.p2align 4,,10
+	.p2align 3
+.L8:
+	addq	$1, %rsi
+	addq	$1, %rcx
+	movq	%rsi, 48(%rdi)
+	movq	%rcx, 40(%rdi)
+	movl	$.L2, %esi
+	jmp	__charcoal_yield_impl
+	.cfi_endproc
+.LFE0:
+	.size	__charcoal_fn_yielding_my_strcmp, .-__charcoal_fn_yielding_my_strcmp
+
+
+no-yield: (Why is this different from plain C? A: Because of locals)
+
+.L8:
+	addq	$1, %rax
+	cmpb	%dl, %cl
+	jne	.L4
+	movq	%rsi, %rdx
+.L6:
+	leaq	1(%rdx), %rsi
+	movq	%rax, 40(%rdi)
+	movq	%rsi, 48(%rdi)
+	movsbl	(%rax), %ecx
+	movsbl	1(%rdx), %edx
+	testb	%cl, %cl
+	jne	.L8
+
+
+blocking:
+
+__charcoal_fn_yielding_my_strcmp:
+.LFB0:
+	.cfi_startproc
+.L2:
+	movq	40(%rdi), %rdx
+	movsbl	(%rdx), %eax
+	testb	%al, %al
+	je	.L8
+	movq	48(%rdi), %rsi
+	movsbl	(%rsi), %ecx
+	cmpb	%cl, %al
+	je	.L9
+	subl	%ecx, %eax
+	movl	%eax, 40(%rdi)
+	jmp	__charcoal_fn_generic_epilogueA
+	.p2align 4,,10
+	.p2align 3
+.L8:
+	movq	48(%rdi), %rdx
+	movsbl	(%rdx), %ecx
+	subl	%ecx, %eax
+	movl	%eax, 40(%rdi)
+	jmp	__charcoal_fn_generic_epilogueA
+	.p2align 4,,10
+	.p2align 3
+.L9:
+	addq	$1, %rdx
+	addq	$1, %rsi
+	movq	%rdx, 40(%rdi)
+	andl	$31, %edx
+	movq	%rsi, 48(%rdi)
+	jne	.L2
+	movl	$.L2, %esi
+	jmp	__charcoal_yield_impl
+	.cfi_endproc
+.LFE0:
+	.size	__charcoal_fn_yielding_my_strcmp, .-__charcoal_fn_yielding_my_strcmp
+
+blocking with manual variable localization:
+
+__charcoal_fn_yielding_my_strcmp:
+.LFB0:
+	.cfi_startproc
+	pushq	%r12
+	.cfi_def_cfa_offset 16
+	.cfi_offset 12, -16
+	pushq	%rbp
+	.cfi_def_cfa_offset 24
+	.cfi_offset 6, -24
+	pushq	%rbx
+	.cfi_def_cfa_offset 32
+	.cfi_offset 3, -32
+	movq	40(%rdi), %rbp
+	movq	%rdi, %rbx
+	movq	48(%rdi), %r12
+.L2:
+	movsbl	0(%rbp), %eax
+	movsbl	(%r12), %edx
+	testb	%al, %al
+	je	.L3
+	cmpb	%dl, %al
+	je	.L9
+.L3:
+	subl	%edx, %eax
+	movq	%rbx, %rdi
+	movl	%eax, 40(%rbx)
+	call	__charcoal_fn_generic_epilogueA
+	movq	%rbp, 40(%rbx)
+	movq	%r12, 48(%rbx)
+.L4:
+	popq	%rbx
+	.cfi_remember_state
+	.cfi_def_cfa_offset 24
+	popq	%rbp
+	.cfi_def_cfa_offset 16
+	popq	%r12
+	.cfi_def_cfa_offset 8
+	ret
+	.p2align 4,,10
+	.p2align 3
+.L9:
+	.cfi_restore_state
+	addq	$1, %rbp
+	addq	$1, %r12
+	testb	$31, %bpl
+	jne	.L2
+	movl	$.L2, %esi
+	movq	%rbx, %rdi
+	call	__charcoal_yield_impl
+	movq	%rbp, 40(%rbx)
+	movq	%r12, 48(%rbx)
+	jmp	.L4
+	.cfi_endproc
+.LFE0:
+	.size	__charcoal_fn_yielding_my_strcmp, .-__charcoal_fn_yielding_my_strcm

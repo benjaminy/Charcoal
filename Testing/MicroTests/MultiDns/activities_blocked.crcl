@@ -20,13 +20,13 @@ crcl(application_main)( int argc, char **argv, char **env )
     int multi = 1;
     for( i = 0; i < N; i += BLOCK_SIZE )
     {
-        activate{ &as[i] }( i )
+        activate[ &as[i] ]( i )
         {
             unsigned j;
             for( j = 0; j < BLOCK_SIZE; ++j )
             {
             }
-        };
+        }
     }
     for( i = 0; i < N; ++i )
     {

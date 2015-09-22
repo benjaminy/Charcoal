@@ -1,0 +1,11 @@
+int define_me_later( int );
+
+int main( int argc, char **argv )
+{
+    return define_me_later( argc );
+}
+
+int define_me_later( int x )
+{
+    return x + 4;
+}

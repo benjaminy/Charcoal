@@ -1,0 +1,39 @@
+#extern "C" {
+#include <stdlib.h>
+#include <stdio.h>
+}
+#include <charcoal_std_lib.h>
+
+#define N 10
+int m = N;
+crcl(activity_t) acts[2];
+semaphore_t done_sem;
+
+void f( int i )
+{
+    if( i > 0 )
+    {
+        join( &acts[ ( i + 1 ) % 2 ], NULL );
+    }
+    ++i;
+    if( i < m )
+    {
+        activate[ &acts[ i % 2 ] ] () { f( i ); }
+    }
+    else
+    {
+        semaphore_incr( &done_sem );
+    }
+}
+
+int crcl(application_main)( int argc, char **argv )
+{
+    printf( "Hello World\n" );
+    m = ( argc > 1 ) ? (int)atol( argv[1] ) : N;
+    semaphore_open( &done_sem, 0 );
+    activate[ &acts[0] ] () { f( 0 ); }
+    semaphore_decr( &done_sem );
+    semaphore_close( &done_sem );
+    printf( "%d\n", i );
+    return 0;
+}
