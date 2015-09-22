@@ -8,188 +8,122 @@
 import argparse, sqlite3
 import matplotlib.pyplot as plt
 
-class Process(object):
-    pass
-
-class Thread(object):
-    pass
-
-class RawEvent(object):
-    pass
-
-class Event(object):
-    pass
-
-class Processor(object):
-    pass
-
-next_id     = 1
-process_ids = {}
-processes   = {}
-threads     = {}
-
-def get_fresh_id():
-    global next_id
-    id = next_id
-    next_id = next_id + 1
-    return id
-
-def get_process(process_name):
-    global process_ids
-    global processes
-
-    if process_name in process_ids:
-        process = processes[process_ids[process_name]]
-    else:
-        process                   = Process()
-        process.id                = get_fresh_id()
-        process_ids[process_name] = process.id
-        process.name              = process_name
-        process.threads           = []
-        process.thread_ids        = {}
-        process.cpu_time          = 0
-        processes[process.id]     = process
-    return process
-
-def get_thread(process, thread_name):
-    global threads
-
-    if thread_name in process.thread_ids:
-        thread = threads[process.thread_ids[thread_name]]
-    else:
-        thread                          = Thread()
-        thread.id                       = get_fresh_id()
-        thread.name                     = thread_name
-        process.thread_ids[thread_name] = thread.id
-        thread.process                  = process
-        thread.events                   = []
-        thread.cpu_time                 = 0
-        threads[thread.id]              = thread
-        process.threads.append(thread)
-    return thread
-
-def parse_timestamp(row_csv):
-    timestamp_s  = int(row_csv[0])
-    timestamp_ms = int(row_csv[1])
-    timestamp_us = int(row_csv[2])
-    timestamp_ns = int(row_csv[3])
-    # XXX: numerical overflow? I guess Python will use 64 bits automagically
-    timestamp = timestamp_s * 1000 + timestamp_ms
-    timestamp = timestamp   * 1000 + timestamp_us
-    return      timestamp   * 1000 + timestamp_ns
-
-def parse_event_kind(name):
-    if name == "create":
-        return EVKIND_CREATE
-    elif name == "destroy":
-        return EVKIND_DESTROY
-    elif name == "start":
-        return EVKIND_START
-    elif name == "stop":
-        return EVKIND_STOP
-    else:
-        raise Exception('weird event kind', name)
-
-def compare_timestamps(x,y):
-    return x.timestamp - y.timestamp
-
-def is_app_proc( proc, processes ):
-    return proc in processes or (1 > len(processes))
-
-def is_app_thread( thread, processes ):
-    return is_app_proc(thread[1], processes)
-
 def main():
-    argp = argparse.ArgumentParser(description="""Thread analyzer command line parser.  The format is: ...
-        Hello""")
-    argp.add_argument('trace_file', metavar='T',
-                      help='Name of the input trace file')
-    argp.add_argument('processes', metavar='P', type=int, nargs='*',
-                      help='List of process IDs to consider part of the application')
-    argp.add_argument('--background_app', dest='does_background_count', action='store_true',
-                      help="If present, consider all processes to be part of the application")
-    args = argp.parse_args()
+    args = read_command_line_args()
+    (db_connection, db_cursor) = init_db(args.trace_file)
 
-    conn = sqlite3.connect(args.trace_file)
-    c = conn.cursor()
+    cores            = {}
+    processes        = {}
+    threads          = {}
+    app_processes    = []
+    app_threads      = []
+    read_process_table(db_cursor, processes)
+    read_thread_table (db_cursor, threads, processes)
 
-    cores = {}
-    active_intervals = []
+    for pid in args.processes:
+        p = processes[pid]
+        app_processes.append(p)
+        app_threads += p.threads
 
-    processes = {}
-    for process in c.execute('SELECT * FROM processes'):
-        pid    = process[0]
-        pname  = process[1]
-        pfname = process[2]
-        processes[pid] = (pname, pfname, 0.0)
+    prev_timestamp        = -1
+    tlp_app               = {}
+    tlp_non_app           = {}
+    for event_sql in db_cursor.execute('SELECT * FROM events ORDER BY timestamp, kind DESC, id'):
+        event   = read_event(event_sql)
+        thread  = threads[event.tid]
+        process = processes[thread.pid]
 
-    threads = {}
-    for thread in c.execute('SELECT * FROM threads'):
-        tid   = thread[0]
-        tname = thread[1]
-        pid   = thread[2]
-        threads[tid] = (tname, pid)
+        do_tlp_accounting(tlp_app, tlp_non_app, prev_timestamp, event,
+                          cores, threads, app_threads)
 
-    active_interval_count = 0
-    total_run_time = 0
-    app_run_time = 0
-    non_app_run_time = 0
-    for event in c.execute('SELECT * FROM events ORDER BY timestamp, kind DESC, id'):
-        event_id   = event[0]
-        thread_id  = event[1]
-        core       = event[2]
-        event_kind = event[3]
-        timestamp  = event[4]
-        if event_kind == 2:
-            if core in cores:
-                duration = timestamp - cores[core]
-                thread = threads[thread_id]
-                proc = processes[thread[1]]
-                total_run_time += duration
-                processes[thread[1]] = (proc[0], proc[1], proc[2] + duration)
-                if is_app_thread( thread, args.processes ):
-                    active_interval_count += 1
-                    app_run_time += duration
-                    active_intervals.append((duration, thread_id))
-                else:
-                    non_app_run_time += duration
-                del cores[core]
-        elif event_kind == 1:
-            cores[core] = timestamp
-        # print event
+        try:
+            min_timestamp = min(min_timestamp, event.timestamp)
+            max_timestamp = max(max_timestamp, event.timestamp)
+        except NameError:
+            min_timestamp = event.timestamp
+            max_timestamp = event.timestamp
 
-    print "Active interval count:", active_interval_count
-    if 0 < len(args.processes):
+        if event.kind == 2:
+            if event.core in cores:
+                duration = event.timestamp - cores[event.core].timestamp
+                thread.run_time += duration
+                process.run_time += duration
+                thread.intervals.append(duration)
+                process.intervals.append(duration)
+                del cores[event.core]
+            else:
+                print "Warning: No thread on core at end event", event
+        elif event.kind == 1:
+            if event.core in cores:
+                print "Warning: Thread on core at begin event", event
+            cores[event.core] = event
+        else:
+            print event
+            raise Exception("Mystery event")
+        prev_timestamp = event.timestamp
+
+    print "Time range:", ((max_timestamp - min_timestamp)/1000000)
+
+    calculate_tlp(tlp_app)
+
+    app_run_time      = 0
+    non_app_run_time  = 0
+    app_intervals     = []
+    non_app_intervals = []
+    for (pid, p) in processes.items():
+        if in_or_empty(p, app_processes):
+            app_run_time += p.run_time
+            for t in p.threads:
+                def add_t(i):
+                    return (i,t)
+                app_intervals += map(add_t, t.intervals)
+        else:
+            non_app_run_time += p.run_time
+            for t in p.threads:
+                def add_t(i):
+                    return (i,t)
+                non_app_intervals += map(add_t, t.intervals)
+    total_run_time  = app_run_time + non_app_run_time
+    total_intervals = app_intervals + non_app_intervals
+
+    print "App run time: %12d (%.2f%%)  App intervals: %12d (%.2f%%)" % (app_run_time, 100.0 * app_run_time / total_run_time, len(app_intervals), 100.0 * len(app_intervals) / len(total_intervals))
+
+    if 0 < len(app_processes):
         print 'Ignored processes account for %.6f%% of total CPU time' % (100.0 * non_app_run_time / total_run_time)
 
-    def cmp_snd_third((pid1, (a1, b1, c1)), (pid2, (a2, b2, c2))):
-        diff = c1 - c2
-        if diff < 0:
-            return -1
-        elif diff > 0:
-            return 1
-        else:
-            return 0
+    def cmp_proc_time((pid1, p1), (pid2, p2)):
+        return cmp(p1.run_time, p2.run_time)
 
-    for (pid, proc) in sorted(processes.items(), cmp=cmp_snd_third):
-        if is_app_proc( pid, args.processes ):
-            print pid, proc, ('APP %6.2f' % (100.0 * proc[2] / app_run_time))
+    print "Processes, sorted by run time"
+    for (pid, proc) in sorted(processes.items(), cmp=cmp_proc_time):
+        if in_or_empty(proc, app_processes):
+            print proc, ('APP %6.2f' % (100.0 * proc.run_time / app_run_time))
         else:
-            print pid, proc, ('NON-APP %6.2f' % (100.0 * proc[2] / non_app_run_time))
+            print proc, ('NON-APP %6.2f' % (100.0 * proc.run_time / non_app_run_time))
+
+    def cmp_thread_time((tid1, t1), (tid2, t2)):
+        diff1 = cmp(t1.process.run_time, t2.process.run_time)
+        if diff1 == 0:
+            return cmp(t1.run_time, t2.run_time)
+        return diff1
+
+    print "Threads, sorted by containing process's run time"
+    for (tid, thread) in sorted(threads.items(), cmp=cmp_thread_time):
+        print thread, ('%.4f' % (100.0 * thread.run_time / total_run_time))
 
     # The default comparison function should be fine, because we only
     # care about the first field of the tuple
-    active_intervals_sorted = sorted(active_intervals)
+    app_intervals_sorted = sorted(app_intervals)
 
     ai_count = 0
     cumm_run_time = 0
     just_active_intervals = []
     pct_run_time = []
     pct_active_intervals = []
-    for (ai,t) in active_intervals_sorted:
+    for (ai,t) in app_intervals_sorted:
         ai_count += 1
         cumm_run_time += ai
-        pct_active = 100.0*ai_count     /active_interval_count
+        pct_active = 100.0*ai_count     /len(app_intervals)
         pct_run    = 100.0*cumm_run_time/app_run_time
         # print ("%5.1f  %5.1f  %12d" % (pct_active, pct_run, ai)),
         # (tname, pid) = threads[t]
@@ -209,24 +143,96 @@ def main():
         plt.plot(just_active_intervals, pct_run_time, 'ro', just_active_intervals, pct_active_intervals, 'b-')
         # plt.axis([0, 6, 0, 20])
     plt.show()
+    db_connection.close()
 
+# end of main()
 
-    # # It seems possible that the events will not be in chronological
-    # # order, so do a shallow parse then sort them by timestamp
-    # raw_events = []
-    # for row_csv in trace_reader:
-    #     # print row_csv
-    #     raw_event              = RawEvent()
-    #     raw_event.timestamp    = parse_timestamp(row_csv)
-    #     raw_event.process_name = row_csv[4]
-    #     raw_event.thread_name  = row_csv[5]
-    #     raw_event.core         = int(row_csv[6])
-    #     raw_event.kind         = parse_event_kind(row_csv[7])
-    #     raw_events.append(raw_event)
+def do_tlp_accounting(tlp_app, tlp_non_app, prev, event, cores, threads, app_threads):
+    if prev != -1:
+        duration = event.timestamp - prev
+        active_cores_app = 0
+        active_cores_non_app = 0
+        for (core, cevent) in cores.items():
+            if in_or_empty(threads[cevent.tid], app_threads):
+                active_cores_app += 1
+            else:
+                active_cores_non_app += 1
 
-    # raw_events_chronological = sorted(raw_events, cmp=compare_timestamps)
+        def dict_incr_default_0(dict, key, incr_val):
+            try:
+                dict[key] += incr_val
+            except KeyError:
+                dict[key] = incr_val
+        dict_incr_default_0(tlp_app, active_cores_app, duration)
+        dict_incr_default_0(tlp_non_app, active_cores_non_app, duration)
 
-    # active_intervals = []
+def in_or_empty(thing, things):
+    return (thing in things) or not things
+
+class Process(object):
+    def __str__(self):
+        return '{id=%8d, nt=%4d, rt=%12d, n=%30s, fn=%30s}' %(self.pid, len(self.threads), self.run_time, self.name, self.fname)
+    def __unicode__(self):
+        return u__str__(self)
+
+def read_process_table(db_cursor, processes):
+    for process_sql in db_cursor.execute('SELECT * FROM processes'):
+        process           = Process()
+        process.pid       = process_sql[0]
+        process.name      = process_sql[1]
+        process.fname     = process_sql[2]
+        process.threads   = []
+        # The run_time and intervals fields are redundant with the
+        # same-named fields in the Thread objects.  They are here for
+        # performance and readability reasons.
+        process.run_time  = 0
+        process.intervals = []
+        processes[process.pid] = process
+
+class Thread(object):
+    def __str__(self):
+        i = len(self.intervals)
+        return '{id=%8d, n=%40s, p=%8d, rt=%12d, i=%12d, avg=%9d}' %(self.tid, self.name, self.pid, self.run_time, i, self.run_time / i if i > 0 else 0)
+    def __unicode__(self):
+        return u__str__(self)
+
+def read_thread_table(db_cursor, threads, processes):
+    for thread_sql in db_cursor.execute('SELECT * FROM threads'):
+        thread           = Thread()
+        thread.tid       = thread_sql[0]
+        thread.name      = thread_sql[1]
+        thread.pid       = thread_sql[2]
+        thread.process   = processes[thread.pid]
+        thread.run_time  = 0
+        thread.intervals = []
+        threads[thread.tid] = thread
+        thread.process.threads.append(thread)
+
+class Event(object):
+    def __str__(self):
+        return '{id=%8d, t=%4d, c=%2d, k=%d, ts=%12d}' %(self.eid, self.tid, self.core, self.kind, self.timestamp)
+    def __unicode__(self):
+        return u__str__(self)
+
+def read_event(event_sql):
+    e = Event()
+    e.eid       = event_sql[0]
+    e.tid       = event_sql[1]
+    e.core      = event_sql[2]
+    e.kind      = event_sql[3]
+    e.timestamp = event_sql[4]
+    return e
+
+def calculate_tlp(tlp):
+    print tlp
+    final_tlp = 0
+    tlp_time_that_counts = 0
+    for (p, t) in tlp.items():
+        final_tlp += p * t
+        if p > 0:
+            tlp_time_that_counts += t
+    print 'TLP: %.2f'% (1.0 * final_tlp / tlp_time_that_counts)
+
 
     # event_counter  = 0
     # timestamp_min  = raw_events_chronological[0].timestamp
@@ -289,18 +295,22 @@ def main():
 
     # for id, process in processes.items():
     #     print process.name, " ", (process)
-    conn.close()
 
-def calculate_tlp(data):
-    tlp_numerator = 0
-    tlp_denominator = 0
-    for core_count, time in data.items():
-        tlp_numerator += time * core_count
-        if core_count > 0:
-            tlp_denominator += time
-        print core_count, time
 
-    print "TLP:", float(tlp_numerator) / tlp_denominator
+def read_command_line_args():
+    argp = argparse.ArgumentParser(description="""Thread analyzer command line parser.  The format is: ...
+        Hello""")
+    argp.add_argument('trace_file', metavar='T',
+                      help='Name of the input trace file')
+    argp.add_argument('processes', metavar='P', type=int, nargs='*',
+                      help='List of process IDs to consider part of the application')
+    argp.add_argument('--background_app', dest='does_background_count', action='store_true',
+                      help="If present, consider all processes to be part of the application")
+    return argp.parse_args()
+
+def init_db(f):
+    conn = sqlite3.connect(f)
+    return (conn, conn.cursor())
 
 if __name__ == '__main__':
     main()
