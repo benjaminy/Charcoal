@@ -117,7 +117,31 @@ Activities solve these problems!
 
 Cooperative threads can be seen as a compromise between coroutines and (preemptive) threads.
 Like coroutines, cooperative threads must invoke a yield primitive to switch from one task to another.
-Like threads, cooperative thread abstractions do not have a separate kind of procedure (i.e. coroutine/async) and yield can be invoked anywhere.
+Like threads, cooperative thread abstractions do not have a separate kind of procedure (i.e. coroutine/async) and yield can be invoked anywhere (i.e. not restricted to coroutine bodies).
+
+Cooperative threads have a tension with procedural abstraction that is complementary to the problem coroutines have.
+The atomicity properties of a particular procedure depend on whether or not any of the procedures it calls will invoke yield.
+This can be annoying when initially writing code, and it is especially problematic during maintenance.
+If yield is added to a procedure that did not previously have it, there is the possibility that any caller of that procedure will have its atomicity properties violated.
+This is extra nasty when indirect calls are considered, because it is not possible in general to identify all possible call sites to a particular procedure.
+
+\subsubsection{Others}
+
+There are other approaches to multitasking that we briefly mention here only to argue that they are not directly relevant to the main point of this paper.
+
+Isolated processes can be used for multitasking, but are far too heavy for the kinds of applications we are focused on (like GUI events and asynchronous network downloads).
+
+Functional reactive programming (FRP) is an entirely different approach to multitasking.
+It is interesting, but still at an early enough stage of development that it is not clear whether it can be integrated with mainstream programming practice.
+
+\section{Pseudo-Preemptive Threads}
+
+In this section we describe the new abstraction we call \emph{pseudo-preemptive threads}, or \emph{activities}.
+Activities can be seen as a compromise between cooperative threads and preemptive threads.
+Like cooperative threads, only one activity can be running at a time and a yield primitive must be invoked to allow task switching.
+However, in order for a language to support threads it must implicitly and frequently invoke yield.
+(What we mean by frequently is explained in detail below.)
+This implicit frequent yielding makes the behavior of activities from an application programmer's perspective more like preemptive threads.
 
 \section{Implementation}
 
