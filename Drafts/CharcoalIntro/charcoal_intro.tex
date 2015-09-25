@@ -49,8 +49,75 @@ keyword1, keyword2
 
 \section{Introduction}
 
-Interactive software is harder to get right than batch software.  So
-much so that most 
+Writing safe, efficient and maintainable multitasking software is hard.
+The most popular abstractions for building such software (event loops, threads, coroutines) all have significant weaknesses.
+This paper describes a new abstraction called pseudo-preemptive threads (or \emph{activities}) that promises to make writing multitasking software easier.
+We have implemented a dialect of C that has activities, written a collection of microbenchmarks and translated a couple of nontrivial multithreaded C programs to use activities instead of threads.
+This paper presents both abstract arguments in favor of acitivities and the results of the prototype experiments.
+
+\subsection{Established Multitasking Abstractions}
+
+The three most widely used abstractions for multitasking software each suffers from serious software engineering difficulties.
+
+\subsubsection{Event Loops}
+
+Event loops are the most popular multitasking abstraction for relatively simple applications.
+Most GUI frameworks use event loops to dispatch events like mouse clicks and keyboard presses to event handler procedures.
+Until recently this was the only available multitasking abstraction for JavaScript code running in browsers.
+
+The primary strength of event loops is that relative to other multitasking abstractions it is easy for application programmers to avoid concurrency bugs.
+Only one event handler can be running at a time and the active handler must complete before another handler can run.
+
+The primary weakness of event loops is that long-running tasks must be manually broken up into smaller pieces by the application programmer.
+This can lead to a style of programming referred to as ``callback hell''.
+Though the callback-heavy coding style has its defenders, there are also good arguments against it; a starting point for the large volumes of critique is \cite{Behren2003a}.
+
+Another piece of evidence for the unsatisfactoryness of event loops is that several modern programming ecosystems have moved from event loops to coroutines; example include async/await in C#/.NET and generator functions (\texttt{function*}) in recent versions of JavaScript.
+
+\subsubsection{Threads}
+
+Event loops are at the safest and least flexible end of the multitasking abstraction spectrum and threads occupy the opposite corner.
+(In this paper we use \emph{thread} to mean preemptive thread.)
+
+The primary strength of threads is that if one is blocked waiting for an event to happen, other threads can make progress.
+This makes it possible to write multitasking software in a natural single-task style (i.e. threads completely avoid callback hell).
+
+The primary weakness of threads is that they make it very hard to avoid concurrency bugs like data races, deadlocks, atomicity violations and livelocks.
+In the last decade a significant amount of research effort has been devoted to making threads easier to use, because of their application to programming multicore processors.
+While some of this research is quite impressive, most mainstream application programmers still view threads as too dangerous for multitasking programming (correctly in the current authors' opinion).
+
+Among the multitasking abstractions discussed in this paper, threads are unique in that they permit the parallel execution of tasks.
+From the perspective of multitasking, parallelism is largely irrelevant; multitasking abstractions like event loops and coroutines can be used in tandem with parallelism abstractions like threads and processes.
+
+\subsubsection{Coroutines}
+
+Coroutines have an interesting history.
+According to Knuth, the term was coined in 1958, but coroutines remained on the margins of mainstream software practice until recently.
+For example, the async/await framework was added to C# in version 5, which was released in 2012.
+
+Using the coroutine abstraction requires application programmers to partition procedures into normal procedures (functions, methods, subroutines, whatever) and coroutines.
+In most implementations the procedure calling syntax is overloaded; calling a coroutine is actually a task spawn.
+Within the static scope of a coroutine, a yield (or await) primitive can be used to context switch to a different task.
+Invoking yield in a normal procedure is not permitted.
+
+Relative to event loops, coroutines provide greater flexibility, because multiple tasks can be in progress at the same time.
+Coroutines are much more resistant to concurrency bugs than threads, because only one coroutine can be active at a time, and the application explicitly states when switching between tasks is permitted.
+
+The primary weakness of coroutines is a subtle tension with conventional procedural abstraction.
+It is not possible to yield from a procedure called by a coroutine.
+This can be quite inconvenient on its own, and it makes refactoring patterns like procedure extraction much trickier to apply.
+Another consequence of this issue is that coroutines tend to be viral; if a programmer decides to convert a procedure to a coroutine (for example because it needs to wait for an event), it tends to be the case that any callers of that procedure need to be converted to coroutines as well.
+Similarly, higher-order function patterns get more complicated as well.
+There are now two distinct kinds of procedure-like-things.
+
+These software engineering awkwardnesses have not prevented the adoption of coroutines, but they are annoying.
+Activities solve these problems!
+
+\subsubsection{Cooperative Threads}
+
+Cooperative threads can be seen as a compromise between coroutines and (preemptive) threads.
+Like coroutines, cooperative threads must invoke a yield primitive to switch from one task to another.
+Like threads, cooperative thread abstractions do not have a separate kind of procedure (i.e. coroutine/async) and yield can be invoked anywhere.
 
 \section{Implementation}
 
