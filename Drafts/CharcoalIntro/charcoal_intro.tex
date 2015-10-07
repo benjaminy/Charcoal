@@ -1,4 +1,4 @@
-\documentclass[11pt,preprint]{sigplanconf}
+\documentclass[10pt,preprint]{sigplanconf}
 
 % The following \documentclass options may be useful:
 
@@ -8,6 +8,8 @@
 % authoryear    To obtain author/year citation style instead of numeric.
 
 \begin{document}
+
+\newcommand{\charcoal}{Charcoal}
 
 \special{papersize=8.5in,11in}
 \setlength{\pdfpageheight}{\paperheight}
@@ -21,8 +23,8 @@
 \titlebanner{Preprint.  Please do not redistribute}        % These are ignored unless
 \preprintfooter{Preprint.  Please do not redistribute}   % 'preprint' option specified.
 
-\title{Activities: A Framework for Writing Reliable, Modular and Maintainable Interactive Software}
-\subtitle{Threads and Events Considered Harmful}
+\title{Pseudo-Preemptive Threads: A Framework for Writing Reliable, Composable and Maintainable Multitasking Software}
+\subtitle{Threads and Events Are a Both Bad Ideas}
 
 \authorinfo{Benjamin Ylvisaker}
            {Affiliation1}
@@ -49,8 +51,156 @@ keyword1, keyword2
 
 \section{Introduction}
 
-Interactive software is harder to get right than batch software.  So
-much so that most 
+It is hard to write multitasking software that is reliable, composable and maintainable.
+The most popular abstractions for building such software (events, threads, coroutines) all have significant weaknesses.
+This paper describes a new abstraction called \emph{pseudo-preemptive threads} (or \emph{activities}) that promises to make writing multitasking software easier.
+To validate the ideas proposed in this paper we implements a dialect of C called \charcoal, that has activities.
+We wrote several microbenchmarks to explore the performance implications of activities.
+We also tweaked two real-world multithreaded C programs to use activities instead of threads to explore the software engineering implications.
+
+This paper starts with brief descriptions of the dominant multitasking abstractions.
+We analyze the software engineering weaknesses of these abstractions.
+
+Next we describe activities and provide abstract arguments for why activities do not suffer from the reliability, composability and maintainability weakness of other abstractions.
+
+Next the paper describes the high points of the \charcoal implementation.
+All the code for the implementation and tests described in this paper is available in a public repository on GitHub.
+
+Finally, we report on the results of our microbenchmarks and real-world application implementations.
+
+\subsection{Established Multitasking Abstractions}
+
+The three most widely used abstractions for multitasking today are event loops, threads and coroutines.
+Each suffers from serious software engineering problems that we categorize into reliability, composability and/or maintainability.
+In this section we describe these problems; in later sections we argue that activities avoid or substantially mitigate all of them.
+
+\subsubsection{Event Loops}
+
+Event loops are the most popular abstraction for relatively simple multitasking patterns.
+Most GUI frameworks use event loops to dispatch events like mouse clicks and keyboard presses to event handler procedures.
+Until recently this was the only available multitasking abstraction in the browser JavaScript ecosystem.
+
+When an event loop calls a handler procedure, that call must return before another event can be handled.
+This makes avoiding many kinds of concurrency bugs easy.
+However, it comes at a high cost in maintainability and reliability of complex applications.
+
+Potentially long-running tasks must be manually broken up into smaller handler procedures by application programmers.
+This leads to a style of programming referred to as \emph{stack ripping}\cite{Adya2002}, or more colloquially \emph{callback hell}.
+Callback hell can make it hard to decipher the logical flow of a single task through multiple callbacks.
+This is bad for reliability, because it is easy to make a mistake in the lifetime of some piece of data (compared with, for example, threads) \cite{Behren2003a}.
+Callback hell is even worse for maintainability, because choices about how to break an application up into handlers can be hard to figure out down the road.
+
+\subsubsection{Threads (Preemptive)}
+
+Event loops are at the safest and least flexible end of the multitasking abstraction spectrum and threads occupy the opposite corner.
+(In this paper we use \emph{thread} to mean preemptive thread.)
+
+The primary strength of threads is that if one is blocked waiting for an event to happen, other threads can make progress.
+This makes it possible to write multitasking software in a natural single-task style (i.e. threads completely avoid callback hell).
+
+The primary weakness of threads is that they make it very hard to avoid concurrency bugs like data races, deadlocks, atomicity violations and livelocks.
+In the last decade a significant amount of research effort has been devoted to making threads easier to use, because of their application to programming multicore processors.
+While some of this research is quite impressive, most mainstream application programmers still view threads as too dangerous for multitasking programming (correctly in the current authors' opinion).
+
+Among the multitasking abstractions discussed in this paper, threads are unique in that they permit the parallel execution of tasks.
+From the perspective of multitasking, parallelism is largely irrelevant; multitasking abstractions like event loops and coroutines can be used in tandem with parallelism abstractions like threads and processes.
+
+\subsubsection{Coroutines}
+
+Another piece of evidence for the unsatisfactoryness of event loops is that several modern programming ecosystems have moved from event loops to coroutines; example include async/await in C\#/.NET and generator functions (\texttt{function*}) in recent versions of JavaScript.
+
+
+
+Coroutines have an interesting history.
+According to Knuth, the term was coined in 1958, but coroutines remained on the margins of mainstream software practice until recently.
+For example, the async/await framework was added to C\# in version 5, which was released in 2012, and \texttt{function*} was added to the 2015 revision of ECMAScript.
+
+Using the coroutine abstraction requires application programmers to partition procedures into normal procedures (functions, methods, subroutines, whatever) and coroutines.
+In most implementations the procedure calling syntax is overloaded; calling a coroutine is actually a task spawn.
+Within the static scope of a coroutine, a yield (or await) primitive can be used to context switch to a different task.
+Invoking yield in a normal procedure is not permitted.
+
+Relative to event loops, coroutines provide greater flexibility, because multiple tasks can be in progress at the same time.
+Coroutines are much more resistant to concurrency bugs than threads, because only one coroutine can be active at a time, and the application explicitly states when switching between tasks is permitted.
+
+The primary weakness of coroutines is a subtle tension with conventional procedural abstraction.
+It is not possible to yield from a procedure called by a coroutine.
+This can be quite inconvenient on its own, and it makes refactoring patterns like procedure extraction much trickier to apply.
+Another consequence of this issue is that coroutines tend to be viral; if a programmer decides to convert a procedure to a coroutine (for example because it needs to wait for an event), it tends to be the case that any callers of that procedure need to be converted to coroutines as well.
+Similarly, higher-order function patterns get more complicated as well.
+There are now two distinct kinds of procedure-like-things.
+
+These software engineering awkwardnesses have not prevented the adoption of coroutines, but they are annoying.
+Activities solve these problems!
+
+\subsubsection{Cooperative Threads}
+
+Cooperative threads can be seen as a compromise between coroutines and (preemptive) threads.
+Like coroutines, cooperative threads must invoke a yield primitive to switch from one task to another.
+Like threads, cooperative thread abstractions do not have a separate kind of procedure (i.e. coroutine/async) and yield can be invoked anywhere (i.e. not restricted to coroutine bodies).
+
+Cooperative threads have a tension with procedural abstraction that is complementary to the problem coroutines have.
+The atomicity properties of a particular procedure depend on whether or not any of the procedures it calls will invoke yield.
+This can be annoying when initially writing code, and it is especially problematic during maintenance.
+If yield is added to a procedure that did not previously have it, there is the possibility that any caller of that procedure will have its atomicity properties violated.
+This is extra nasty when indirect calls are considered, because it is not possible in general to identify all possible call sites to a particular procedure.
+
+\subsubsection{Others}
+
+There are other approaches to multitasking that we briefly mention here only to argue that they are not directly relevant to the main point of this paper.
+
+Isolated processes can be used for multitasking, but are far too heavy for the kinds of applications we are focused on (like GUI events and asynchronous network downloads).
+
+Functional reactive programming (FRP) is an entirely different approach to multitasking.
+It is interesting, but still at an early enough stage of development that it is not clear whether it can be integrated with mainstream programming practice.
+
+\section{Pseudo-Preemptive Threads}
+
+In this section we describe the new abstraction we call \emph{pseudo-preemptive threads}, or \emph{activities}.
+Activities can be seen as a compromise between cooperative threads and preemptive threads.
+Like cooperative threads, only one activity can be running at a time and task switching between activities can only happen when yield is invoked.
+However, in order for a language to support activities it must implicitly and frequently invoke yield.
+(What we mean by frequently is explained in detail below.)
+This implicit frequent yielding makes the behavior of activities from an application programmer's perspective more like preemptive threads.
+
+\subsection{Yield Frequency}
+
+Part of the definition of activities is that by default yields should happen ``frequently''.
+But what does this mean precisely?
+The answer depends on the details of the rest of the programming language definition.
+However we can state two design rules that apply to any language.
+These rules are in strong tension with each other:
+
+\begin{enumerate}
+\item It should \textbf{not} be possible for an activity to run indefinitely without executing a yield.
+\item Yields should happen as infrequently as possible.
+\end{enumerate}
+
+One clear consequence of these rules is that anything that would cause an activity to pause indefinitely (e.g. a syscall) by default must be modified to allow other activities to run while the paused activity waits.
+More challenging, loops must be interrupted.
+
+\subsubsection{Recursive Procedure Calls}
+
+The current design of Charcoal does not follow rule \#1 perfectly.
+Function calls and returns do not implicitly yield, which means that recursion can be used to make an activity run indefinitely without yielding.
+We consider this a bug, not a feature, in the language design, but we have not found any less bad alternatives.
+
+The most obvious approach to avoiding yield-free recursion is to say that every call and/or return has an implicit yield.
+This idea is bad for two reasons.
+The simpler reason is that it violates rule \#2; calls and returns happen all the time and introducing a yield for every call would be very costly for performance.
+The more important reason has to do with procedural abstraction.
+If calls carried implicit yields, then the function extraction refactoring pattern would change the concurrency behavior of the program.
+This seems totally unacceptable.
+
+One could imagine trying to identify recursive calls specifically and saying that only recursive calls carry an implicit yield.
+However, with indirect calls it is impossible to precisely statically analyze which calls are recursive in general.
+This means that the language design would have to codify some rules about which classes of calls could be guaranteed to be analyzed as recursive, which seems like a fragile design.
+
+\subsubsection{Programmer Control}
+
+It would be bad if programmers could not control activity yielding in some way.
+In Charcoal there are two primary tools for controlling yielding: no-yield and explicit yielding.
+Any procedure or statement can be marked ``\texttt{no\_yield}'' which means that the activity will not yield during the execution of the statement or call to the procedure.
 
 \section{Implementation}
 
@@ -68,7 +218,7 @@ allocation.  When a thread reaches the end of its segment it allocates a
 new one and links them together.  This idea has a lot of appeal (the
 implementers of Rust and Go both used it), but it has some really
 unpleasant uncommon case behavior (the implementers of Rust and Go both
-abandonded it in later versions).
+abandoned it in later versions).
 
 \subsection{Fast and Slow}
 
@@ -86,6 +236,107 @@ be excised as dead code.
 
 This is kinda related to ideas from the Cilk-5 implementation
 \cite{Frigo1998}.
+
+\section{Benchmarking}
+
+To establish the practicality of activities, we implemented N
+microbenchmarks to compare our implementation of Charcoal against C with
+threads and/or libuv (a popular event loop library written in C).
+
+The first couple microbenchmarks demonstrate that basic concurrency primitives, like task spawning and task switching, are far faster with activities than threads.
+This is not particularly surprising.
+Because threads can be interrupted at any time, context switching requires the operating system to copy all processor state to memory.
+Thread creation requires the allocation of lots of system resources.
+
+\subsection{Task Limit}
+
+The first microbenchmark measures how many concurrent tasks can exist.
+To measure this the benchmark simply spawns tasks until the program crashes; however many tasks existed before the crash is the limit.
+This benchmark really measures the memory overhead of a task.
+For activities and event listeners this overhead is small and more or less fixed.
+For threads this overhead is harder to quantify, because most multithreading APIs allow the amount of memory reserved for the call stack to be controlled by the application.
+For this benchmark we simply used the default stack size in the installed pthreads implementation.
+The results of this test are not surprising, but we believe it is worth emphasizing that it is not practical to use more than a few hundred or maybe a few thousand threads, whereas the limit on activities or event listeners is several orders of magnitude higher.
+
+\subsection{Task Spawn Speed}
+
+% wait for previous task
+% spawn new task
+
+The second microbenchmark measures how quickly new tasks can be spawned.
+The task in this test waits for the previous task to finish, then spawns the next task.
+With pthreads, our test system was able to spawn about 60 threads per millisecond; our activities implementation was about to spawn over 2,000 per millisecond.
+This difference of well over an order of magnitude is significant, because it means that it can be efficient to spawn an activity for much smaller units of work than it would be to spawn a thread.
+In other words, there is no reason to build \emph{activity pools}; it is always a better idea to simply spawn an activity for the task at hand.
+
+\subsection{Task Switching}
+
+The third microbenchmark measures how quickly the system can switch from one task to another.
+For this test we spawned 20 tasks and organized them in a ring, each waiting for a signal of some kind from its neighbor.
+The test injects a signal at one point and then measures how quickly it can cycle around the ring.
+On our system we measured about 600 switches per millisecond with pthreads and 5,000 per millisecond with activities.
+This difference is almost an order of magnitude.
+Like the spawning benchmark, the main takeaway is that the overhead for activities is low enough that individual activities can do quite small units of work per context switch without paying a high overall efficiency penalty.
+
+\subsection{Just Calling}
+
+% int f( int d, int x )
+%     if( d > 0 )
+%         return f( d - 1, f( d - 1, x ) )
+%     else
+%         return small_computation( x )
+
+The fourth microbenchmark measures the overhead of heap-allocating call frames.
+This test has a very simple recursive function that calls itself twice.
+At the leaves of the recursion is a very small computation, just complicated enough to prevent a smart compiler from just statically computing the whole answer.
+For this benchmark plain C is more than an order of magnitude faster than Charcoal.
+This difference is painful, but there are several things to say about it.
+First, the Charcoal implementation is a research prototype, so it is quite likely that good engineering work would close the gap to some extent.
+Second, this is a microbenchmark; no application spends all of its time in calls and returns, so real application performance impact will be proportionally smaller.
+Third, procedure calling in no-yield mode is just as efficient as plain C, which means that the programmer has some control over this overhead.
+
+To investigate this foo further, ...
+
+\subsection{Yielding}
+
+The yield primitive is implemented to be very fast when the current activity will continue executing (i.e. not switch to another activity).
+The key implementation trick here is described in section \ref{sec:blah}.
+Even with this clever implementation, yielding is still not free.
+To quantify its expense, we benchmarked a simple but problematic function: \texttt{strcmp}.
+\texttt{strcmp} is tricky for a few reasons:
+First, the strings passed in might be very long, so it is not acceptable to make the implementation simply never yield.
+Second, the body of the loop is extremely simple; good implementations are just a few assembly instructions.
+This means that yielding every iteration would be extremely painful.
+Third, whether each iteration executes depends on the computation of the previous iteration, so simple loop tiling/blocking tricks don't work.
+The best-performing implementation we have found so far looks like:
+
+%    while_no_yield( *s1 )
+%        if( *s1 - *s2 )
+%            break;
+%        ++s1; ++s2;
+%        if( !( s1 & B ) )
+%            yield
+
+\texttt{while\_no\_yield} is a special variant of the regular while loop that does not have an implicit yield after every iteration.
+This is different from wrapping a regular while loop in \texttt{no\_yield}, because the latter would prevent nested yields from happening, whereas the former does not.
+
+In the code about \texttt{B} is a bit-mask with some number of the low bits set to one.
+The effect is that once every $2^N$ iterations there is a yield, where $N$ is the number of bits set in the mask.
+This implementation gets the overhead down to 15\% (???), which is neither awful nor good enough to never think about this issue again.
+One reasonable workaround is that when callers of \texttt{strcmp} are certain that the strings are not especially long, they can make the call in no-yield mode.
+In this case, it should be just as efficient as plain C.
+
+memory limit: thread: 1,000 activity: 1,000,000 libuv: 1,000,000,000
+
+spawns per ms: thread: 60 activity: 2,400 libuv: 7,100
+
+context switching (bucket brigade): thread: 630  activity: 4,900
+
+just calling: C: 590  Charcoal: 13
+
+strcmp: C: 1000 Charcoal: 100
+
+
 
 \section{Foreign Code}
 
