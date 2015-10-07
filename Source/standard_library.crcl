@@ -152,7 +152,7 @@ int semaphore_try_decr( semaphore_p s )
     }
 }
 
-static int crcl(send_io_cmd)( crcl(io_cmd_t) *cmd )
+static int crcl(send_io_cmd)( crcl(io_cmd_p) cmd )
 {
     activity_p self = self_activity();
     cmd->activity = self;

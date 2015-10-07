@@ -14,7 +14,7 @@ typedef enum
     CRCL(IO_CMD_SLEEP),
 } crcl(io_cmd_op);
 
-typedef struct crcl(io_cmd_t) crcl(io_cmd_t);
+typedef struct crcl(io_cmd_t) crcl(io_cmd_t), *crcl(io_cmd_p);
 
 struct crcl(io_cmd_t)
 {

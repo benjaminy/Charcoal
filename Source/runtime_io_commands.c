@@ -14,13 +14,13 @@ static uv_idle_t start_the_world;
 /* NOTE: Using the classic two-stack queue implementation */
 typedef struct
 {
-    crcl(io_cmd_t) *front, *back;
+    crcl(io_cmd_p) front, back;
     uv_mutex_t mtx;
 } crcl(cmd_queue_t);
 
 static crcl(cmd_queue_t) crcl(cmd_queue);
 
-void enqueue( crcl(io_cmd_t) *cmd )
+void enqueue( crcl(io_cmd_p) cmd )
 {
     /* The queue takes ownership of *cmd */
     uv_mutex_lock( &crcl(cmd_queue).mtx );

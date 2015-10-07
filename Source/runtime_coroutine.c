@@ -54,7 +54,8 @@ crcl(frame_p) crcl(activity_start_resume)( activity_p act )
     if( thd->ready && !CRCL(CHECK_FLAG)( *thd, CRCL(THDF_TIMER_ON) ) )
     {
         CRCL(SET_FLAG)( *thd, CRCL(THDF_TIMER_ON) );
-        crcl(io_cmd_t) *cmd = (crcl(io_cmd_t) *)malloc( sizeof( cmd[0] ) );
+        /* XXX pre-alloc somewhere else? in the activity struct? */
+        crcl(io_cmd_p) cmd = (crcl(io_cmd_p))malloc( sizeof( cmd[0] ) );
         cmd->command = CRCL(IO_CMD_START);
         cmd->_.thread = thd;
         // zlog_debug( crcl(c) , "Send timer req cmd: %p\n", cmd );
@@ -470,7 +471,7 @@ void activate_in_thread(
 
 /*
  * Assume: "activity" is allocated but uninitialized
- * Assume: "f" is the frame returned by the relevant init procedure
+ * Assume: "frm" is the frame returned by the relevant init procedure
  */
 crcl(frame_p) crcl(activate)(
     crcl(frame_p)     caller,
@@ -480,11 +481,15 @@ crcl(frame_p) crcl(activate)(
 {
     assert( !caller == !ret_addr );
     assert( activity );
-    assert( frm );
+    caller->return_addr = ret_addr;
+    if( !frm )
+    {
+        CRCL(SET_FLAG)( *activity, CRCL(ACTF_OOM) );
+        return caller;
+    }
     if( caller )
     {   /* Currently in yielding context */
         // zlog_info( crcl(c), "crcl(activate) Y new:%p old:%p", activity, caller->activity );
-        caller->return_addr = ret_addr;
         activity_p caller_act = caller->activity;
         activate_in_thread( caller_act->thread, activity, caller, frm );
         return switch_from_to( caller_act, activity );
@@ -552,7 +557,7 @@ crcl(frame_p) crcl(fn_generic_prologue)(
     crcl(frame_p) frm = (crcl(frame_p))malloc( sz + sizeof( frm[0] ) );
     if( !frm )
     {
-        exit( -ENOMEM );
+        return NULL;
     }
     // zlog_debug( crcl(c), "generic_prologue %p %p", caller, caller->activity );
     caller->callee      = frm;

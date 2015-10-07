@@ -320,6 +320,8 @@ let make_specific fdec fname frame_info =
  *           ret_addr,
  *           caller,
  *           __yielding_f );
+ *        if( !frame )
+ *            return frame;
  *        ( __specifics_f ) *specifics = __specifics_select( frame );
  *        specifics->p1 = p1;
  *        specifics->p2 = p2;
@@ -351,10 +353,9 @@ let make_prologue prologue frame =
     | fs, _ ->
        let specifics_var   = C.var(
            makeLocal "specifics" ( C.TPtr( frame.specific_type, [] ) ) ) in
-       let specifics_exp   = C.Lval specifics_var in
        let specifics_val   = frame.specific_sel this in
        let specifics_init  = C.Set( specifics_var, specifics_val, fdef_loc ) in
-       let specifics_table = frame.specifics specifics_exp in
+       let specifics_table = frame.specifics ( C.Lval specifics_var ) in
        let set_ret_val_ptr = match frame.ret_type with
            C.TVoid _ -> []
          | t -> let lhs_param = makeFormal "lhs" ( C.TPtr( t, [] ) ) in
@@ -373,9 +374,11 @@ let make_prologue prologue frame =
        specifics_init::( L.map assign_param fs @ set_ret_val_ptr )
   in
   let body =
-    let instrs = call_to_generic::assignments in
-    let r = C.mkStmt( C.Return( Some( C.Lval this ), fdef_loc ) ) in
-    C.mkBlock[ C.mkStmt( C.Instr instrs ); r ]
+    let ms = C.mkStmt in
+    let then_block = C.mkBlock[ ms( C.Instr assignments ) ] in
+    C.mkBlock[ ms( C.Instr [ call_to_generic ] );
+               ms( C.If( C.Lval this, then_block, C.mkBlock[], fdef_loc ) );
+               ms( C.Return( Some( C.Lval this ), fdef_loc ) ) ]
   in
   let real_type = match prologue.C.svar.C.vtype with
       C.TFun( _, ps, va, attrs ) -> C.TFun( frame.typ_ptr, ps, va, attrs )
@@ -451,6 +454,7 @@ let coroutinify_wait fdec frame loc =
 (* Translate direct calls from:
  *     lhs = f( p1, p2, p3 );
  * to:
+ *     XXX OOM to worry about
  *     return __prologue_f( frame, &__return_N, &lhs, p1, p2, p3 );
  *   __return_N:
  *

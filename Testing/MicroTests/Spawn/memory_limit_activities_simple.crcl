@@ -1,0 +1,33 @@
+extern "C" {
+#include <stdlib.h>
+#include <stdio.h>
+#include <assert.h>
+}
+
+#include <standard_library.crclh>
+
+csemaphore_t sem;
+
+int main( int argc, char ** argv )
+{
+    long long i;
+    semaphore_open( &sem, 0 );
+    for( i = 0; i < 1000000000000; ++i )
+    {
+        activity_p act = (activity_p)malloc( sizeof( act[0] ) );
+        if( act )
+        {
+            activate[ act ] ()
+            {
+                semaphore_decr( &sem );
+            }
+        }
+        if( ( !act ) || __CHARCOAL_CHECK_FLAG( *act, (1 << 4) ) )
+        {
+            printf( "Made it to %lld activities\n", i );
+            fflush( stdout );
+            exit( 0 );
+        }
+    }
+    return 0;
+}

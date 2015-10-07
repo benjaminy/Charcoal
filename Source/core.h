@@ -51,6 +51,7 @@ typedef struct { volatile int v; } atomic_int;
 #define __CHARCOAL_ACTF_WAITING   (1 << 1)
 #define __CHARCOAL_ACTF_READY     (1 << 2)
 #define __CHARCOAL_ACTF_DONE      (1 << 3)
+#define __CHARCOAL_ACTF_OOM       (1 << 4)
 
 /* XXX super annoying name collision on thread_t with Mach header.
  * Look into it more some day. */
