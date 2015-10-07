@@ -40,7 +40,7 @@ crcl(frame_p) crcl(activity_start_resume)( activity_p act )
     cthread_p thd = act->thread;
     /* XXX: enqueue command */
     /* XXX: start heartbeat if runnable > 1 */
-    // HUH??? ABORT_ON_FAIL( uv_async_send( &crcl(io_cmd) ) );
+    // HUH??? ABORT_ON_FAIL( uv_async_send( &crcl(async_call) ) );
     uv_key_set( &crcl(self_key), act );
     // XXX don't think we're using alarm anymore
     // XXX alarm((int) self->container->max_time);
@@ -55,7 +55,7 @@ crcl(frame_p) crcl(activity_start_resume)( activity_p act )
     {
         CRCL(SET_FLAG)( *thd, CRCL(THDF_TIMER_ON) );
         /* XXX pre-alloc somewhere else? in the activity struct? */
-        crcl(io_cmd_p) cmd = (crcl(io_cmd_p))malloc( sizeof( cmd[0] ) );
+        crcl(async_call_p) async = &thd->timer_call;
         cmd->command = CRCL(IO_CMD_START);
         cmd->_.thread = thd;
         // zlog_debug( crcl(c) , "Send timer req cmd: %p\n", cmd );

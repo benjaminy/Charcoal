@@ -55,10 +55,19 @@ typedef struct { volatile int v; } atomic_int;
 
 /* XXX super annoying name collision on thread_t with Mach header.
  * Look into it more some day. */
-typedef struct       cthread_t        cthread_t,        *cthread_p;
-typedef struct      activity_t       activity_t,       *activity_p;
-typedef struct    crcl(frame_t)    crcl(frame_t),    *crcl(frame_p);
-typedef struct crcl(act_list_t) crcl(act_list_t), *crcl(act_list_p);
+typedef struct         cthread_t          cthread_t,          *cthread_p;
+typedef struct        activity_t         activity_t,         *activity_p;
+typedef struct      crcl(frame_t)      crcl(frame_t),      *crcl(frame_p);
+typedef struct   crcl(act_list_t)   crcl(act_list_t),   *crcl(act_list_p);
+typedef struct crcl(async_call_t) crcl(async_call_t), *crcl(async_call_p);
+
+struct crcl(async_call_t)
+{
+    void (*f)( void * );
+    void *data;
+    activity_p activity, waiters;
+    crcl(async_call_p) next;
+};
 
 /* The size of a frame is currently 5 pointers (20/40 bytes) plus the
  * procedure-specific data. */
@@ -162,6 +171,10 @@ struct cthread_t
     /* Thread management mutex and condition variable */
     uv_mutex_t    thd_management_mtx;
     uv_cond_t     thd_management_cond;
+
+    /* These might should go somewhere else at some point. Putting them
+     * here to avoid mallocs in the code. */
+    crcl(async_call_t) timer_call, finished_call;
 
     /* The idle activity and its frame (for when all activities are
      * waiting) */

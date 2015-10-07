@@ -150,7 +150,8 @@ static void thread_finish( cthread_p thread )
 {
     zlog_info( crcl(c), "Thread finished %p", thread );
 
-    crcl(io_cmd_t) *cmd = (crcl(io_cmd_t) *)malloc( sizeof( cmd[0] ) );
+    /* XXX alloc issues??? */
+    crcl(io_cmd_p) cmd = &thread->finished_cmd;
     cmd->command = CRCL(IO_CMD_JOIN_THREAD);
     /* XXX Whoa! use after free? */
     cmd->_.thread = thread;

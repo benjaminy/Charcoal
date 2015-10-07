@@ -1,0 +1,15 @@
+/*
+ * Charcoal Standard Library
+ */
+
+/* XXX These should be scraped from the system headers during some kind
+ * of installation process */
+typedef unsigned long size_t;
+typedef signed long ssize_t;
+
+extern "C" {
+void * malloc( size_t size );
+void     free(  void *ptr );
+void * calloc( size_t nmemb, size_t size );
+void *realloc(  void *ptr  , size_t size );
+}
