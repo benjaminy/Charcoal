@@ -56,10 +56,10 @@ crcl(frame_p) crcl(activity_start_resume)( activity_p act )
         CRCL(SET_FLAG)( *thd, CRCL(THDF_TIMER_ON) );
         /* XXX pre-alloc somewhere else? in the activity struct? */
         crcl(async_call_p) async = &thd->timer_call;
-        cmd->command = CRCL(IO_CMD_START);
-        cmd->_.thread = thd;
+        async->f = crcl(async_fn_start);
+        async->data = (void *)thd;
         // zlog_debug( crcl(c) , "Send timer req cmd: %p\n", cmd );
-        enqueue( cmd );
+        enqueue( async );
         ABORT_ON_FAIL( uv_async_send( &crcl(io_cmd) ) );
     }
 

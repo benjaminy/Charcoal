@@ -40,9 +40,9 @@ void crcl(async_fn_sleep)( void * );
 /*     crcl(io_cmd_p) next; */
 /* }; */
 
-void enqueue( crcl(io_cmd_p) cmd );
+void enqueue( crcl(async_call_p) cmd );
 
-crcl(io_cmd_p) dequeue( void );
+crcl(async_call_p) dequeue( void );
 
 int crcl(init_io_loop)( int (*)( void ) );
 
