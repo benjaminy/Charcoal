@@ -1,0 +1,32 @@
+/*
+ *
+ */
+
+extern "C" {
+static void crcl(async_fn_sleep)()
+{
+    int rc = uv_timer_start(
+        cmd->_.sleep.timer,
+        sleep_callback,
+        1000 * cmd->_.sleep.seconds,
+        0 );
+    if( rc )
+        exit( -1 );
+}
+}
+
+unsigned int sleep( unsigned int seconds )
+{
+    uv_timer_t timer;
+    crcl(async_call_t) call;
+
+    if( uv_timer_init( crcl(io_loop), &timer ) )
+        exit( -1 );
+    call.f = crcl(async_fn_sleep);
+    timer.data = &cmd;
+    cmd._.sleep.timer = &timer;
+    cmd._.sleep.seconds = seconds;
+    RET_IF_ERROR( crcl(send_io_cmd)( &cmd ) );
+    return cmd._.sleep.remaining;
+}
+

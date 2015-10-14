@@ -139,17 +139,6 @@ void crcl(async_fn_finish)()
     }
 }
 
-void crcl(async_fn_sleep)()
-{
-    int rc = uv_timer_start(
-        cmd->_.sleep.timer,
-        sleep_callback,
-        1000 * cmd->_.sleep.seconds,
-        0 );
-    if( rc )
-        exit( -1 );
-}
-
 void crcl(async_fn_getaddrinfo)()
 {
             int rc;
