@@ -594,3 +594,14 @@ crcl(frame_p) crcl(fn_generic_epilogue)( crcl(frame_p) frm )
 #endif
     return caller;
 }
+
+/* Or maybe realloc the frame. That feels more in the spirit with
+ * alloca, but need to think hard about all of the possible pointers to
+ * the frame. */
+void *crcl(alloca)( crcl(frame_p) frm, size_t s )
+{
+    void *ptr = malloc( s + sizeof( void * ) );
+    *((void **)ptr) = frm->allocad_ptrs;
+    frm->allocad_ptrs = ptr;
+    return ptr + sizeof( void * );
+}

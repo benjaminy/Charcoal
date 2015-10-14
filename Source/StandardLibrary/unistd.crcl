@@ -3,7 +3,16 @@
  */
 
 extern "C" {
-static void crcl(async_fn_sleep)()
+
+static void sleep_callback( uv_timer_t *timer )
+{
+    crcl(io_cmd_p) cmd = (crcl(io_cmd_p))timer->data;
+    // zlog_debug( crcl(c), "SLEEP CALLBACK %d", cmd->_.sleep.seconds );
+    cmd->_.sleep.remaining = 0; /* XXX for sure??? */
+    wake_up_waiters( &cmd->waiters );
+}
+
+static void sleep_impl()
 {
     int rc = uv_timer_start(
         cmd->_.sleep.timer,
@@ -13,6 +22,7 @@ static void crcl(async_fn_sleep)()
     if( rc )
         exit( -1 );
 }
+
 }
 
 unsigned int sleep( unsigned int seconds )
@@ -22,7 +32,7 @@ unsigned int sleep( unsigned int seconds )
 
     if( uv_timer_init( crcl(io_loop), &timer ) )
         exit( -1 );
-    call.f = crcl(async_fn_sleep);
+    call.f = sleep_impl;
     timer.data = &cmd;
     cmd._.sleep.timer = &timer;
     cmd._.sleep.seconds = seconds;

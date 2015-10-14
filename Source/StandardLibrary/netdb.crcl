@@ -1,0 +1,55 @@
+
+extern "C" {
+
+static void getaddrinfo_callback(
+    uv_getaddrinfo_t* req, int rc, struct addrinfo* res )
+{
+    crcl(io_cmd_p) cmd = (crcl(io_cmd_p))req->data;
+    // zlog_debug( crcl(c), "getaddrinfo CB  &waiters:%p  waiters:%p",
+    //             &cmd->waiters, cmd->waiters );
+    *cmd->_.addrinfo.res = res;
+    cmd->_.addrinfo.rc = rc;
+    wake_up_waiters( &cmd->waiters );
+}
+
+static void getaddrinfo_impl()
+{
+            int rc;
+            if( ( rc = uv_getaddrinfo(crcl(io_loop),
+                                      cmd->_.addrinfo.resolver,
+                                      getaddrinfo_callback,
+                                      cmd->_.addrinfo.node,
+                                      cmd->_.addrinfo.service,
+                                      cmd->_.addrinfo.hints ) ) )
+            {
+                cmd->_.addrinfo.rc = rc;
+                wake_up_waiters( &cmd->waiters );
+            }
+            else
+            {
+                /* it worked! */
+            }
+}
+
+}
+
+int getaddrinfo_crcl(
+    const char *node,
+    const char *service,
+    const struct addrinfo *hints,
+    struct addrinfo **res )
+{
+    /* XXX if no_yield, just call directly -- WRONG! interruption!! */
+    crcl(io_cmd_t) cmd;
+    uv_getaddrinfo_t resolver;
+    // zlog_debug( crcl(c), "getaddrinfo self:%p  &waiters:%p", self, &cmd.waiters );
+    cmd.command = CRCL(IO_CMD_GETADDRINFO);
+    resolver.data = &cmd;
+    cmd._.addrinfo.resolver = &resolver;
+    cmd._.addrinfo.node     = node;
+    cmd._.addrinfo.service  = service;
+    cmd._.addrinfo.hints    = hints;
+    cmd._.addrinfo.res      = res;
+    RET_IF_ERROR( crcl(send_io_cmd)( &cmd ) );
+    return cmd._.addrinfo.rc;
+}

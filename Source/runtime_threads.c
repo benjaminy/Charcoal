@@ -151,11 +151,11 @@ static void thread_finish( cthread_p thread )
     zlog_info( crcl(c), "Thread finished %p", thread );
 
     /* XXX alloc issues??? */
-    crcl(io_cmd_p) cmd = &thread->finished_cmd;
-    cmd->command = CRCL(IO_CMD_JOIN_THREAD);
+    crcl(async_call_p) async = &thread->finished_call;
+    async->f = crcl(async_fn_finish);
     /* XXX Whoa! use after free? */
-    cmd->_.thread = thread;
-    enqueue( cmd );
+    async->data = (void *)thread;
+    enqueue( async );
     assert( !uv_async_send( &crcl(io_cmd) ) );
     /* zlog_debug( crcl(c), "After!!!\n" ); */
     /* XXX a ha! we're getting here too soon! */

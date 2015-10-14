@@ -83,6 +83,10 @@ struct crcl(frame_t)
      * the beginning */
     void *return_addr;
 
+    /* Pointer to the head of a list of memory blocks allocated with
+     * alloca */
+    void *allocad_ptrs;
+
     /* Doubly linked call chain.  The callee link could probably be
      * optimized away, but it's not trivial and seems nice for debugging
      * anyway. */
