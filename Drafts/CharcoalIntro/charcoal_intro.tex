@@ -307,7 +307,7 @@ However, even the most efficient implementations that we are aware of are still 
 
 \subsubsection{Split/Segmented Stacks}
 
-For completeness, we briefly mention another strategy called ``split'' or ``segmented'' stacks.
+For completeness, we briefly mention another strategy called \emph{split} or \emph{segmented} stacks.
 The idea is that stack space is allocated in small chunks (or segments).
 The common case call/return execution looks like traditional contiguous allocation.
 When a thread reaches the end of its segment it allocates a new one and links them together.
@@ -320,11 +320,15 @@ The new call frame allocation strategy that we implemented is a hybridization of
 The idea is based on the observation that the slowness of heap allocation only matters for short-lived calls.
 For long-lived calls (i.e. calls nearer the base of the call stack), the overhead of the call and return operations can be amortized over the long running time of the call and its callees.
 
-That was not our focus here.  Important
-observation: we do not \emph{need} super-fast call and return in the
-might-yield context, because calls that really matter in that way should
-happen in an unyielding context.
+How can the implementation know which calls will be short-lived and which long-lived?
+In a language with activities, the programmer explicitly says that with no-yield annotations!
+With activities it is good style to mark short-running procedures as no-yield to avoid the possibility of context switching in the middle of executing them.
+This is good for avoiding concurrency bugs and it interacts perfectly with our frame allocation strategy.
+Only one activitiy can be running in no-yield mode at a time, so an application only needs a single large region of memory for contiguous frame allocation.
+All activities can share this single chunk of memory.
 
+So our implementation of \charcoal uses individual heap allocation for calls made in yielding mode and contiguous allocation in a single shared area of memory in no-yield mode.
+In the microbenchmarking section below we provide evidence that this strategy captures most of the benefits of heap allocation (no large per-activity memory overhead) and contiguous allocation (fast calls and returns when it matters most).
 
 \subsection{Fast and Slow}
 
@@ -343,6 +347,7 @@ be excised as dead code.
 This is kinda related to ideas from the Cilk-5 implementation
 \cite{Frigo1998}.
 
+\subsection{Yield Implementation}
 
 \section{Benchmarking}
 
