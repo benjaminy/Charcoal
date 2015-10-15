@@ -1,0 +1,22 @@
+extern "C" {
+#include <stdio.h>
+}
+
+int mystery( int x )
+{
+    printf( "Charcoal version\n" );
+    return x + 4;
+}
+
+extern "C" {
+int mystery( int x )
+{
+    printf( "C version\n" );
+    return x + 4;
+}
+}
+
+int main( int argc, char **argv, char **env )
+{
+    return mystery( argc );
+}

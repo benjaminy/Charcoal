@@ -1,0 +1,7 @@
+/*
+ * Charcoal Standard Library
+ */
+
+extern "C" {
+int printf( const char * restrict format, ... );
+}

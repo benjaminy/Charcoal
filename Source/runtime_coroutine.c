@@ -40,7 +40,7 @@ crcl(frame_p) crcl(activity_start_resume)( activity_p act )
     cthread_p thd = act->thread;
     /* XXX: enqueue command */
     /* XXX: start heartbeat if runnable > 1 */
-    // HUH??? ABORT_ON_FAIL( uv_async_send( &crcl(io_cmd) ) );
+    // HUH??? ABORT_ON_FAIL( uv_async_send( &crcl(async_call) ) );
     uv_key_set( &crcl(self_key), act );
     // XXX don't think we're using alarm anymore
     // XXX alarm((int) self->container->max_time);
@@ -49,15 +49,17 @@ crcl(frame_p) crcl(activity_start_resume)( activity_p act )
     /* XXX Races with other interruptions coming in!!! */
     atomic_store_int( &thd->interrupt_activity, 0 );
     thd->running = act;
+    // zlog_debug( crcl(c) , "Activity start: %p", act );
     /* XXX: Lots to fix here. */
     if( thd->ready && !CRCL(CHECK_FLAG)( *thd, CRCL(THDF_TIMER_ON) ) )
     {
         CRCL(SET_FLAG)( *thd, CRCL(THDF_TIMER_ON) );
-        crcl(io_cmd_t) *cmd = (crcl(io_cmd_t) *)malloc( sizeof( cmd[0] ) );
-        cmd->command = CRCL(IO_CMD_START);
-        cmd->_.thread = thd;
+        /* XXX pre-alloc somewhere else? in the activity struct? */
+        crcl(async_call_p) async = &thd->timer_call;
+        async->f = crcl(async_fn_start);
+        async->data = (void *)thd;
         // zlog_debug( crcl(c) , "Send timer req cmd: %p\n", cmd );
-        enqueue( cmd );
+        enqueue( async );
         ABORT_ON_FAIL( uv_async_send( &crcl(io_cmd) ) );
     }
 
@@ -469,7 +471,7 @@ void activate_in_thread(
 
 /*
  * Assume: "activity" is allocated but uninitialized
- * Assume: "f" is the frame returned by the relevant init procedure
+ * Assume: "frm" is the frame returned by the relevant init procedure
  */
 crcl(frame_p) crcl(activate)(
     crcl(frame_p)     caller,
@@ -479,11 +481,15 @@ crcl(frame_p) crcl(activate)(
 {
     assert( !caller == !ret_addr );
     assert( activity );
-    assert( frm );
+    caller->return_addr = ret_addr;
+    if( !frm )
+    {
+        CRCL(SET_FLAG)( *activity, CRCL(ACTF_OOM) );
+        return caller;
+    }
     if( caller )
     {   /* Currently in yielding context */
         // zlog_info( crcl(c), "crcl(activate) Y new:%p old:%p", activity, caller->activity );
-        caller->return_addr = ret_addr;
         activity_p caller_act = caller->activity;
         activate_in_thread( caller_act->thread, activity, caller, frm );
         return switch_from_to( caller_act, activity );
@@ -551,7 +557,7 @@ crcl(frame_p) crcl(fn_generic_prologue)(
     crcl(frame_p) frm = (crcl(frame_p))malloc( sz + sizeof( frm[0] ) );
     if( !frm )
     {
-        exit( -ENOMEM );
+        return NULL;
     }
     // zlog_debug( crcl(c), "generic_prologue %p %p", caller, caller->activity );
     caller->callee      = frm;
@@ -587,4 +593,15 @@ crcl(frame_p) crcl(fn_generic_epilogue)( crcl(frame_p) frm )
         caller->callee = NULL;
 #endif
     return caller;
+}
+
+/* Or maybe realloc the frame. That feels more in the spirit with
+ * alloca, but need to think hard about all of the possible pointers to
+ * the frame. */
+void *crcl(alloca)( crcl(frame_p) frm, size_t s )
+{
+    void *ptr = malloc( s + sizeof( void * ) );
+    *((void **)ptr) = frm->allocad_ptrs;
+    frm->allocad_ptrs = ptr;
+    return ptr + sizeof( void * );
 }

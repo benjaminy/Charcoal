@@ -51,13 +51,23 @@ typedef struct { volatile int v; } atomic_int;
 #define __CHARCOAL_ACTF_WAITING   (1 << 1)
 #define __CHARCOAL_ACTF_READY     (1 << 2)
 #define __CHARCOAL_ACTF_DONE      (1 << 3)
+#define __CHARCOAL_ACTF_OOM       (1 << 4)
 
 /* XXX super annoying name collision on thread_t with Mach header.
  * Look into it more some day. */
-typedef struct       cthread_t        cthread_t,        *cthread_p;
-typedef struct      activity_t       activity_t,       *activity_p;
-typedef struct    crcl(frame_t)    crcl(frame_t),    *crcl(frame_p);
-typedef struct crcl(act_list_t) crcl(act_list_t), *crcl(act_list_p);
+typedef struct         cthread_t          cthread_t,          *cthread_p;
+typedef struct        activity_t         activity_t,         *activity_p;
+typedef struct      crcl(frame_t)      crcl(frame_t),      *crcl(frame_p);
+typedef struct   crcl(act_list_t)   crcl(act_list_t),   *crcl(act_list_p);
+typedef struct crcl(async_call_t) crcl(async_call_t), *crcl(async_call_p);
+
+struct crcl(async_call_t)
+{
+    void (*f)( void * );
+    void *data;
+    activity_p activity, waiters;
+    crcl(async_call_p) next;
+};
 
 /* The size of a frame is currently 5 pointers (20/40 bytes) plus the
  * procedure-specific data. */
@@ -72,6 +82,10 @@ struct crcl(frame_t)
     /* The address to resume execution in the code.  If NULL, start at
      * the beginning */
     void *return_addr;
+
+    /* Pointer to the head of a list of memory blocks allocated with
+     * alloca */
+    void *allocad_ptrs;
 
     /* Doubly linked call chain.  The callee link could probably be
      * optimized away, but it's not trivial and seems nice for debugging
@@ -161,6 +175,10 @@ struct cthread_t
     /* Thread management mutex and condition variable */
     uv_mutex_t    thd_management_mtx;
     uv_cond_t     thd_management_cond;
+
+    /* These might should go somewhere else at some point. Putting them
+     * here to avoid mallocs in the code. */
+    crcl(async_call_t) timer_call, finished_call;
 
     /* The idle activity and its frame (for when all activities are
      * waiting) */

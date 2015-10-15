@@ -6,47 +6,43 @@
 extern uv_loop_t *crcl(io_loop);
 extern uv_async_t crcl(io_cmd);
 
-typedef enum
-{
-    CRCL(IO_CMD_START),
-    CRCL(IO_CMD_JOIN_THREAD),
-    CRCL(IO_CMD_GETADDRINFO),
-    CRCL(IO_CMD_SLEEP),
-} crcl(io_cmd_op);
+void crcl(async_fn_start)( void * );
+void crcl(async_fn_join_thread)( void * );
+void crcl(async_fn_getaddrinfo)( void * );
+void crcl(async_fn_sleep)( void * );
 
-typedef struct crcl(io_cmd_t) crcl(io_cmd_t);
+/* typedef struct crcl(io_cmd_t) crcl(io_cmd_t), *crcl(io_cmd_p); */
 
-struct crcl(io_cmd_t)
-{
-    crcl(io_cmd_op) command;
-    /* XXX Not _every_ command needs an activity, but I guess most will */
-    activity_p activity, waiters;
-    union
-    {
-        cthread_p thread;
-        struct
-        {
-            uv_getaddrinfo_t *resolver;
-            const char *node;
-            const char *service;
-            const struct addrinfo *hints;
-            struct addrinfo **res;
-            int rc;
-        } addrinfo;
-        struct
-        {
-            uv_timer_t   *timer;
-            unsigned int seconds;
-            unsigned int remaining;
-        } sleep;
-    } _;
-    uint64_t time_ns;
-    crcl(io_cmd_t) *next;
-};
+/* struct crcl(io_cmd_t) */
+/* { */
+/*     crcl(io_cmd_op) command; */
+/*     /\* XXX Not _every_ command needs an activity, but I guess most will *\/ */
+/*     activity_p activity, waiters; */
+/*     union */
+/*     { */
+/*         cthread_p thread; */
+/*         struct */
+/*         { */
+/*             uv_getaddrinfo_t *resolver; */
+/*             const char *node; */
+/*             const char *service; */
+/*             const struct addrinfo *hints; */
+/*             struct addrinfo **res; */
+/*             int rc; */
+/*         } addrinfo; */
+/*         struct */
+/*         { */
+/*             uv_timer_t   *timer; */
+/*             unsigned int seconds; */
+/*             unsigned int remaining; */
+/*         } sleep; */
+/*     } _; */
+/*     crcl(io_cmd_p) next; */
+/* }; */
 
-void enqueue( crcl(io_cmd_t) *cmd );
+void enqueue( crcl(async_call_p) cmd );
 
-crcl(io_cmd_t) *dequeue( void );
+crcl(async_call_p) dequeue( void );
 
 int crcl(init_io_loop)( int (*)( void ) );
 

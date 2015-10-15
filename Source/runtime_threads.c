@@ -31,7 +31,7 @@ static void add_to_threads_list( cthread_p thd );
 int thread_start( cthread_p thd, void *options )
 {
     int rc;
-    zlog_info( crcl(c), "Starting Charcoal thread %p( %p )\n", thd, options );
+    zlog_info( crcl(c), "Thread start.  thread: %p  opts: %p", thd, options );
 
     // pthread_attr_t attr;
     // ABORT_ON_FAIL( pthread_attr_init( &attr ) );
@@ -72,7 +72,7 @@ int thread_start( cthread_p thd, void *options )
     assert( !rc );
     // assert( !pthread_attr_destroy( &attr ) );
 
-    zlog_info( crcl(c), "Charcoal thread started %p( %p )\n", thd, options );
+    // zlog_info( crcl(c), "Charcoal thread started %p( %p )", thd, options );
     return 0;
 }
 
@@ -98,7 +98,7 @@ static crcl(frame_p) thread_init( thread_entry_params *params )
     if( !params->thd )    exit( -1 );
     if( !params ) exit( -1 );
     cthread_p thd = params->thd;
-    zlog_info( crcl(c), "Charcoal thread initializing %p( %p )\n", thd, params );
+    zlog_info( crcl(c), "New thread.  thread: %p  params: %p", thd, params );
     /* XXX  init can-run */
     // atomic_store_int( &thd->timeout, 0 );
     atomic_store_int( &thd->interrupt_activity, 0 );
@@ -148,13 +148,14 @@ static crcl(frame_p) thread_init( thread_entry_params *params )
 
 static void thread_finish( cthread_p thread )
 {
-    zlog_info( crcl(c), "Charcoal thread finished %p\n", thread );
+    zlog_info( crcl(c), "Thread finished %p", thread );
 
-    crcl(io_cmd_t) *cmd = (crcl(io_cmd_t) *)malloc( sizeof( cmd[0] ) );
-    cmd->command = CRCL(IO_CMD_JOIN_THREAD);
+    /* XXX alloc issues??? */
+    crcl(async_call_p) async = &thread->finished_call;
+    async->f = crcl(async_fn_finish);
     /* XXX Whoa! use after free? */
-    cmd->_.thread = thread;
-    enqueue( cmd );
+    async->data = (void *)thread;
+    enqueue( async );
     assert( !uv_async_send( &crcl(io_cmd) ) );
     /* zlog_debug( crcl(c), "After!!!\n" ); */
     /* XXX a ha! we're getting here too soon! */
@@ -163,11 +164,11 @@ static void thread_finish( cthread_p thread )
 int crcl(join_thread)( cthread_p t )
 {
     int rv = 0;
-    zlog_info( crcl(c), "Joining thread %p n:%p p:%p ts:%p\n",
+    zlog_info( crcl(c), "Cleaning up thread %p  n: %p  p: %p  ts: %p",
                t, t->next, t->prev, crcl(threads) );
     if( t == t->next )
     {
-        zlog_info( crcl(c), "Joining the last thread" );
+        // zlog_info( crcl(c), "Joining the last thread" );
         rv = 1;
     }
     else
@@ -195,7 +196,7 @@ static crcl(frame_p) idle( crcl(frame_p) idle_frame )
         /* XXX Add the ability to cleanly kill a thread? */
     }
     // zlog_info( crcl(c), "IDLE WAKE UP i:%p n:%p\n", idle, next );
-    crcl(frame_p) next_frame = next->newest_frame;
+    crcl(frame_p) next_frame = crcl(activity_start_resume)( next );
     CRCL(CLEAR_FLAG)( *thd, CRCL(THDF_IDLE) );
     uv_mutex_unlock( &thd->thd_management_mtx );
 

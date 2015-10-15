@@ -1,5 +1,11 @@
 # _very_ incomplete
 
+OPTIMIZATION_LEVEL = "-O1"
+DEBUG_SYMBOLS = "-g"
+PROFILING = ""
+# SANITIZE = "-fsanitize=address"
+SANITIZE = "-fsanitize=address"
+
 CC = clang-3.6
 BUILD_DIR = ../Build
 INSTALL_DIR = ../Install
@@ -7,10 +13,7 @@ LIB_DIR = $(INSTALL_DIR)/lib
 ETC_DIR = $(INSTALL_DIR)/etc
 INCLUDE_DIR = $(INSTALL_DIR)/include
 INCLUDE_DIRS = -I. -I $(INCLUDE_DIR)
-CFLAGS += -Wall -O0 -g
-# CFLAGS += -Wall -O1 -g
-# CFLAGS += -Wall -g -pg
-# CFLAGS += -Wall -O2
+CFLAGS += -Wall $(OPTIMIZATION_LEVEL) $(DEBUG_SYMBOLS) $(PROFILING) $(SANITIZE)
 CIL_DIR = ../ThirdParty/cil/Charcoal-1.7.3
 
 CRCL_DOT_H_EXT=.crcl.with.h.c

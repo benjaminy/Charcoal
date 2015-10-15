@@ -24,6 +24,6 @@ crcl(frame_p) crcl(activity_waiting)( crcl(frame_p) frame );
 
 extern cthread_t crcl(main_thread);
 extern activity_t crcl(main_activity);
-extern int crcl(process_return_value);
+extern int crcl(process_exit_code);
 
 #endif /* __CHARCOAL_RUNTIME_COROUTINE */

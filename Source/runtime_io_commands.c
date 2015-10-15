@@ -14,13 +14,13 @@ static uv_idle_t start_the_world;
 /* NOTE: Using the classic two-stack queue implementation */
 typedef struct
 {
-    crcl(io_cmd_t) *front, *back;
+    crcl(async_call_p) front, back;
     uv_mutex_t mtx;
 } crcl(cmd_queue_t);
 
 static crcl(cmd_queue_t) crcl(cmd_queue);
 
-void enqueue( crcl(io_cmd_t) *cmd )
+void enqueue( crcl(async_call_p) cmd )
 {
     /* The queue takes ownership of *cmd */
     uv_mutex_lock( &crcl(cmd_queue).mtx );
@@ -33,14 +33,14 @@ void enqueue( crcl(io_cmd_t) *cmd )
  * Removes an item from the command queue.  The caller takes ownership
  * of the memory.
  */
-crcl(io_cmd_t) *dequeue( void )
+crcl(async_call_p) dequeue( void )
 {
     if( !crcl(cmd_queue).front )
     {
         uv_mutex_lock( &crcl(cmd_queue).mtx );
         while( crcl(cmd_queue).back )
         {
-            crcl(io_cmd_t) *tmp = crcl(cmd_queue).back->next;
+            crcl(async_call_p) tmp = crcl(cmd_queue).back->next;
             crcl(cmd_queue).back->next = crcl(cmd_queue).front;
             crcl(cmd_queue).front = crcl(cmd_queue).back;
             crcl(cmd_queue).back = tmp;
@@ -49,7 +49,7 @@ crcl(io_cmd_t) *dequeue( void )
     }
     if( crcl(cmd_queue).front )
     {
-        crcl(io_cmd_t) *f = crcl(cmd_queue).front;
+        crcl(async_call_p) f = crcl(cmd_queue).front;
         crcl(cmd_queue).front = f->next;
         return f;
     }
@@ -71,7 +71,7 @@ static void timer_expired( uv_timer_t* handle )
     uv_mutex_unlock( &thd->thd_management_mtx );
 }
 
-static void crcl(io_cmd_close)( uv_handle_t *h )
+static void crcl(async_call_close)( uv_handle_t *h )
 {
     /* uv_async_t *a = (uv_async_t *)h; */
     /* zlog_debug( crcl(c), "CLOSE %p\n", a ); fflush(stdout); */
@@ -97,96 +97,40 @@ static int wake_up_waiters( activity_p *waiters )
     return 0;
 }
 
-static void sleep_callback( uv_timer_t *timer )
+void crcl(async_fn_start)( void *data )
 {
-    crcl(io_cmd_t) *cmd = (crcl(io_cmd_t) *)timer->data;
-    zlog_debug( crcl(c), "SLEEP CALLBACK %d\n", cmd->_.sleep.seconds );
-    cmd->_.sleep.remaining = 0; /* XXX for sure??? */
-    wake_up_waiters( &cmd->waiters );
+    cthread_p thd = cmd->_.thread;
+    // zlog_debug( crcl(c) , "Timer req recved cmd: %p thd: %p\n", cmd, thd );
+    if( CRCL(CHECK_FLAG)( *thd, CRCL(THDF_TIMER_ON) ) )
+    {
+        /* Very weird timing, but probably possible */
+        uv_timer_stop( &thd->timer_req );
+    }
+    rc = uv_timer_start( &thd->timer_req, timer_expired, 10, 0);
+    assert( !rc );
 }
 
-static void getaddrinfo_callback(
-    uv_getaddrinfo_t* req, int rc, struct addrinfo* res )
+void crcl(async_fn_finish)()
 {
-    crcl(io_cmd_t) *cmd = (crcl(io_cmd_t) *)req->data;
-    // zlog_debug( crcl(c), "getaddrinfo CB  &waiters:%p  waiters:%p",
-    //             &cmd->waiters, cmd->waiters );
-    *cmd->_.addrinfo.res = res;
-    cmd->_.addrinfo.rc = rc;
-    wake_up_waiters( &cmd->waiters );
+    if( crcl(join_thread)( cmd->_.thread ) )
+    {
+        /* zlog_debug( stderr, "Close, please\n" ); */
+        /* XXX What about when there are more events???. */
+        uv_close( (uv_handle_t *)handle, crcl(async_cmd_close) );
+    }
 }
 
 static void io_cmd_cb( uv_async_t *handle )
 {
     /* zlog_debug( crcl(c), "IO THING\n" ); */
-    crcl(io_cmd_t) *cmd;
+    crcl(async_call_p) call;
     /* Multiple async_sends might result in a single callback call, so
      * we need to loop until the queue is empty.  (I assume it will be
      * extremely uncommon for this queue to actually grow
      * signnificantly.) */
-    while( ( cmd = dequeue() ) )
+    while( ( call = dequeue() ) )
     {
-        int rc;
-        /* XXX implement stuff */
-        switch( cmd->command )
-        {
-        case CRCL(IO_CMD_START):
-        {
-            cthread_p thd = cmd->_.thread;
-            // zlog_debug( crcl(c) , "Timer req recved cmd: %p thd: %p\n", cmd, thd );
-            if( CRCL(CHECK_FLAG)( *thd, CRCL(THDF_TIMER_ON) ) )
-            {
-                /* Very weird timing, but probably possible */
-                uv_timer_stop( &thd->timer_req );
-            }
-            rc = uv_timer_start( &thd->timer_req, timer_expired, 10, 0);
-            assert( !rc );
-            free( cmd );
-            break;
-        }
-        case CRCL(IO_CMD_JOIN_THREAD):
-            if( crcl(join_thread)( cmd->_.thread ) )
-            {
-                /* zlog_debug( stderr, "Close, please\n" ); */
-                /* XXX What about when there are more events???. */
-                uv_close( (uv_handle_t *)handle, crcl(io_cmd_close) );
-            }
-            free( cmd );
-            break;
-        case CRCL(IO_CMD_SLEEP):
-        {
-            int rc = uv_timer_start(
-                cmd->_.sleep.timer,
-                sleep_callback,
-                1000 * cmd->_.sleep.seconds,
-                0 );
-            if( rc )
-                exit( -1 );
-            break;
-        }
-        case CRCL(IO_CMD_GETADDRINFO):
-        {
-            int rc;
-            if( ( rc = uv_getaddrinfo(crcl(io_loop),
-                                      cmd->_.addrinfo.resolver,
-                                      getaddrinfo_callback,
-                                      cmd->_.addrinfo.node,
-                                      cmd->_.addrinfo.service,
-                                      cmd->_.addrinfo.hints ) ) )
-            {
-                cmd->_.addrinfo.rc = rc;
-                wake_up_waiters( &cmd->waiters );
-            }
-            else
-            {
-                /* it worked! */
-            }
-            break;
-        }
-        default:
-            /* XXX error message? */
-            exit( 1 );
-        }
+        call->f( call->activity, call->waiters, call->data );
     }
 }
 

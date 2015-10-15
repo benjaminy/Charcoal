@@ -219,7 +219,7 @@ let clear_formals_locals f return_type =
  *     };
  *)
 let make_specific fdec fname frame_info =
-  let () = trc( P.dprintf "SPECIFIC %s\n" fdec.C.svar.C.vname ) in
+  (* let () = trc( P.dprintf "SPECIFIC %s\n" fdec.C.svar.C.vname ) in *)
   (* Crash if v doesn't have the properties expected of locals. *)
   let sanity v =
     let () = match v.C.vstorage with
@@ -320,6 +320,8 @@ let make_specific fdec fname frame_info =
  *           ret_addr,
  *           caller,
  *           __yielding_f );
+ *        if( !frame )
+ *            return frame;
  *        ( __specifics_f ) *specifics = __specifics_select( frame );
  *        specifics->p1 = p1;
  *        specifics->p2 = p2;
@@ -351,10 +353,9 @@ let make_prologue prologue frame =
     | fs, _ ->
        let specifics_var   = C.var(
            makeLocal "specifics" ( C.TPtr( frame.specific_type, [] ) ) ) in
-       let specifics_exp   = C.Lval specifics_var in
        let specifics_val   = frame.specific_sel this in
        let specifics_init  = C.Set( specifics_var, specifics_val, fdef_loc ) in
-       let specifics_table = frame.specifics specifics_exp in
+       let specifics_table = frame.specifics ( C.Lval specifics_var ) in
        let set_ret_val_ptr = match frame.ret_type with
            C.TVoid _ -> []
          | t -> let lhs_param = makeFormal "lhs" ( C.TPtr( t, [] ) ) in
@@ -373,9 +374,11 @@ let make_prologue prologue frame =
        specifics_init::( L.map assign_param fs @ set_ret_val_ptr )
   in
   let body =
-    let instrs = call_to_generic::assignments in
-    let r = C.mkStmt( C.Return( Some( C.Lval this ), fdef_loc ) ) in
-    C.mkBlock[ C.mkStmt( C.Instr instrs ); r ]
+    let ms = C.mkStmt in
+    let then_block = C.mkBlock[ ms( C.Instr assignments ) ] in
+    C.mkBlock[ ms( C.Instr [ call_to_generic ] );
+               ms( C.If( C.Lval this, then_block, C.mkBlock[], fdef_loc ) );
+               ms( C.Return( Some( C.Lval this ), fdef_loc ) ) ]
   in
   let real_type = match prologue.C.svar.C.vtype with
       C.TFun( _, ps, va, attrs ) -> C.TFun( frame.typ_ptr, ps, va, attrs )
@@ -451,6 +454,7 @@ let coroutinify_wait fdec frame loc =
 (* Translate direct calls from:
  *     lhs = f( p1, p2, p3 );
  * to:
+ *     XXX OOM to worry about
  *     return __prologue_f( frame, &__return_N, &lhs, p1, p2, p3 );
  *   __return_N:
  *
@@ -512,16 +516,16 @@ let coroutinify_yield lhs_opt params fdec loc frame =
   [ C.mkStmt( C.Instr[ yield_call ] ); return_next; post_yield_stmt ]
 
 let coroutinify_call visitor fdec frame instr =
-  let () = trc( P.dprintf "coroutinify_call %a %a\n"
-                               C.d_lval ( C.var fdec.C.svar )
-                               C.d_instr instr ) in
+  (* let () = trc( P.dprintf "coroutinify_call %a %a\n" *)
+  (*                              C.d_lval ( C.var fdec.C.svar ) *)
+  (*                              C.d_instr instr ) in *)
   match instr with
     C.Call( lhs_opt_pre_vis, fn_exp_pre_vis, params_pre_vis, loc ) ->
-    let () =
-      trc( P.dprintf "CORO CALL exp: %a   type:%a\n"
-                          C.d_exp fn_exp_pre_vis
-                          C.d_type( C.typeOf fn_exp_pre_vis ) )
-    in
+    (* let () = *)
+    (*   trc( P.dprintf "CORO CALL exp: %a   type:%a\n" *)
+    (*                       C.d_exp fn_exp_pre_vis *)
+    (*                       C.d_type( C.typeOf fn_exp_pre_vis ) ) *)
+    (* in *)
     let callee_ret_type, callee_param_types, callee_varargs, callee_attrs =
       getTFunInfoP ( C.typeOf fn_exp_pre_vis ) "OH NOES"
     in
@@ -821,7 +825,7 @@ end
 (* XXX Also some day we can do register allocation style optimizations to
  * share slots in the locals struct *)
 let make_yielding yielding frame_no_this is_activity_entry =
-  let () = trc( P.dprintf "MAKE YIELDING %s\n" yielding.C.svar.C.vname ) in
+  (* let () = trc( P.dprintf "MAKE YIELDING %s\n" yielding.C.svar.C.vname ) in *)
   (* let () = *)
   (*   trc( P.dprintf "%a\n" C.d_block yielding.C.sbody ) *)
   (* in *)
@@ -1085,8 +1089,8 @@ class phase2 = object(self)
     | ( C.GFun( original, loc ), Some generic_frame ) ->
        let orig_var  = original.C.svar in
        let orig_name = orig_var.C.vname in
-       let () = trc( P.dprintf "P1 DEFN %b %s\n"
-           (type_is_charcoal_fn orig_var.C.vtype) orig_name ) in
+       (* let () = trc( P.dprintf "P2 DEFN %b %s\n" *)
+       (*     (type_is_charcoal_fn orig_var.C.vtype) orig_name ) in *)
        if type_is_charcoal_fn original.C.svar.C.vtype then
          let( yielding, no_yield, prologue, indirect ) =
            make_function_skeletons original orig_name
@@ -1123,8 +1127,8 @@ class phase2 = object(self)
        E.s( E.error "GFun before frame_t def  :(  %s !" f.C.svar.C.vname )
 
     | C.GVarDecl( v, _ ), _ ->
-       let () = trc( P.dprintf "P1 DECL %b %s %a\n"
-           (type_is_charcoal_fn v.C.vtype) v.C.vname C.d_type v.C.vtype ) in
+       (* let () = trc( P.dprintf "P2 DECL %b %s %a\n" *)
+       (*     (type_is_charcoal_fn v.C.vtype) v.C.vname C.d_type v.C.vtype ) in *)
        let () = self#fill_in_frame v in
        C.DoChildren
 
@@ -1167,8 +1171,8 @@ let coroutinifyVariableDeclaration var loc frame =
          (* prologue *)
          let ( rt, ps_opt, vararg, attrs ) = getTFunInfo var.C.vtype "DECL" in
          let ps_no_lhs = opt_default [] ps_opt in
-         let () = trc( P.dprintf "DECL %s %d rt: %a\n" var.C.vname
-             ( L.length ps_no_lhs ) C.d_type rt ) in
+         (* let () = trc( P.dprintf "DECL %s %d rt: %a\n" var.C.vname *)
+         (*     ( L.length ps_no_lhs ) C.d_type rt ) in *)
          let ps = match rt with
              C.TVoid _ -> ps_no_lhs
            | _ -> ( "lhs", C.TPtr( rt, [] ), [] )::ps_no_lhs
@@ -1183,7 +1187,7 @@ let coroutinifyVariableDeclaration var loc frame =
          ( n, p, i )
     in
     let decl x = C.GVarDecl( x, loc ) in
-    change_do_children ( L.map decl [ n; p; i; var ] )
+    change_do_children ( L.map decl [ n; p; i ] )
   else
     C.DoChildren
 
@@ -1194,12 +1198,15 @@ let completeFunctionTranslation fdef loc =
     let ( n, p, i ) = IH.find crcl_fun_decls fvar.C.vid in
     let funs =
       if fvar.C.vid = n.C.vid then
+        (* let () = trc( P.dprintf "*** no-yield\n" ) in *)
         let no_yield = make_no_yield fdef frame in
         [ C.GFun( no_yield, loc ) ]
       else if fvar.C.vid = p.C.vid then
+        (* let () = trc( P.dprintf "*** prologue\n" ) in *)
         let prologue = make_prologue fdef frame in
         [ C.GFun( prologue, loc ) ]
       else if fvar.C.vid = frame.yielding.C.vid then
+        (* let () = trc( P.dprintf "*** yielding\n" ) in *)
         let n = after_prefix fvar.C.vname yielding_pfx in
         let is_activity_entry =
           (* XXX can't call main. blah. *)
@@ -1208,9 +1215,11 @@ let completeFunctionTranslation fdef loc =
         let yielding = make_yielding fdef frame is_activity_entry in
         [ C.GFun( yielding, loc ) ]
       else if fvar.C.vid = i.C.vid then
+        (* let () = trc( P.dprintf "*** indirect\n" ) in *)
         let indirect = make_indirect fdef n p frame in
         [ C.GFun( indirect, loc ) ]
       else (* The original definiton *)
+        (* let () = trc( P.dprintf "*** original\n" ) in *)
         []
     in
     change_do_children funs
@@ -1222,12 +1231,12 @@ class phase3 generic_frame = object( self )
   method vglob g =
     match g with
     | C.GFun( fdef, loc ) ->
-       let () = trc( P.dprintf "P3 DEFN %b %s\n"
-           (type_is_charcoal_fn fdef.C.svar.C.vtype) fdef.C.svar.C.vname ) in
+       (* let () = trc( P.dprintf "P3 DEFN %b %s\n" *)
+       (*     (type_is_charcoal_fn fdef.C.svar.C.vtype) fdef.C.svar.C.vname ) in *)
        completeFunctionTranslation fdef loc
     | C.GVarDecl( var, loc ) ->
-       let () = trc( P.dprintf "P3 DECL %b %s %a\n"
-           (type_is_charcoal_fn var.C.vtype) var.C.vname C.d_type var.C.vtype ) in
+       (* let () = trc( P.dprintf "P3 DECL %b %s %a\n" *)
+       (*     (type_is_charcoal_fn var.C.vtype) var.C.vname C.d_type var.C.vtype ) in *)
        coroutinifyVariableDeclaration var loc generic_frame
     | _ -> C.DoChildren
 

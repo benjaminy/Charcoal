@@ -48,7 +48,7 @@ int thrd_detach( thrd_t thr );
 int thrd_join( thrd_t thr, int *res );
 #endif
 
-unsigned int sleep_crcl( unsigned int seconds );
+unsigned int sleep( unsigned int seconds );
 
 int getaddrinfo_crcl(
     const char *node,
