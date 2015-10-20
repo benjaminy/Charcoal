@@ -25,8 +25,8 @@
 \titlebanner{Preprint.  Please do not redistribute}        % These are ignored unless
 \preprintfooter{Preprint.  Please do not redistribute}   % 'preprint' option specified.
 
-\title{Pseudo-Preemptive Threads: A Framework for Writing Reliable, Composable and Maintainable Multitasking Software}
-\subtitle{Threads and Events Are a Both Bad Ideas}
+\title{Pseudo-Preemptive Threads: A New Multitasking Primitive for Reliable, Composable and Maintainable Software}
+\subtitle{Why Events, Threads and Coroutines are All Bad Ideas\footnotemark}
 
 \authorinfo{Benjamin Ylvisaker}
            {Affiliation1}
@@ -51,13 +51,16 @@ term1, term2
 \keywords
 keyword1, keyword2
 
+\footnotetext{This tongue-in-cheek subtitle is a reference to opinion pieces by John Ousterhout \cite{Ousterhout1996} and
+Ron von Behren, et al. \cite{Behren2003a}}
+
 \section{Introduction}
 
 It is hard to write multitasking software that is reliable, composable and maintainable.
 The most popular abstractions for building such software (events, threads, coroutines) all have significant weaknesses.
 
 This paper describes a new abstraction called \emph{pseudo-preemptive threads} (or \emph{activities}) that promises to make writing multitasking software easier.
-To validate the ideas proposed in this paper we implemented activities in a dialect of C called \charcoal.
+To validate the ideas proposed in this paper we implemented activities in a dialect of C called \charcoal{}.
 We wrote several microbenchmarks to explore the performance implications of activities.
 We also tweaked two real-world multithreaded C programs to use activities instead of threads to explore the software engineering implications.
 
@@ -101,24 +104,26 @@ The primary strength of threads is that they can wait/block indefinitely and/or 
 This makes it possible to write multitasking software in a natural single-task style (i.e. threads completely avoid callback hell).
 
 The primary weakness of threads is that they make it far too easy to introduce concurrency bugs like data races, deadlocks, atomicity violations and livelocks.
-In the last decade a significant amount of research effort has been devoted to making it easier to write reliable multithreaded applications, because of the connection to multicore processors.
-While some of this research is quite impressive, most mainstream application programmers still view threads as too dangerous for multitasking programming (correctly in the current authors' opinion).
+In the last decade a significant amount of research effort has been devoted to making it easier to write reliable multithreaded applications, because of the emergence of mainstream multiprocessor computers.
+While this body of work is quite impressive, most mainstream application programmers still view threads as too dangerous for multitasking programming (correctly in the current authors' opinion).
 
 Applications that use threads and conventional concurrency control mechanisms also suffer from serious composability issues \cite{Harris2005, Grossman2007}.
-The very brief summary of the arguments from the cited papers is that when using locks and semaphores, application programmers must design and (somehow) enforce subtle global concurrency control properties.
+The very brief summary of the arguments from the cited papers is that when using mutexes, semaphores and their cousins, application programmers must design and (somehow) enforce subtle global concurrency control properties.
 Using transactions instead of conventional concurrency control mechanisms promises to make threads much safer and more composable.
 Unfortunately, it is not clear that it is possible to build a practical implementation of transactional memory that is compatible with mainstream programming practices.
 
-Among the multitasking abstractions discussed in this paper, threads are unique in that they permit the parallel execution of tasks.
+Among the multitasking abstractions discussed in this paper, threads are unique in that they naturally allow the parallel execution of tasks.
 From the perspective of multitasking, parallelism is largely irrelevant; multitasking abstractions like events and coroutines can be used in tandem with parallelism abstractions like threads and processes.
 Nevertheless, in the discussion section at the end of this paper we speculate on the feasibility of running activities in parallel.
 
 \subsection{Coroutines}
 
 Coroutines have an interesting history.
-According to Knuth, the term was coined by Melvin Conway in 1958, but coroutines remained on the margins of mainstream software practice until recently.
+According to Knuth, the term was coined by Melvin Conway in 1958, but coroutines remained on the margins of mainstream software practice until quite recently, a gap of more than 5 decades.
 For example, the async/await framework (coroutines by a different name) was added to C\# in version 5, which was released in 2012, \texttt{function*} (coroutines by a different name) was added to the 2015 revision of ECMAScript, and D4134 is a proposal to add coroutines to C++17.
-We consider the adoption of coroutines in these extremely widely used ecosystems to be evidence that mainstream software developers have been writing increasingly sophisticated multitasking patterns in recent years, making life in callback hell even more painful.
+
+Our interpretation of this interesting history is that (1) coroutines are far from perfect as a multitasking primitive (otherwise they would have been widely adopted much sooner), and (2) mainstream applications have gotten more sophisticated in their use of multitasking, making life in callback hell ever more painful.
+Coroutines have been adopted as the least bad alternative to events.
 
 Using the coroutine abstraction requires application programmers to partition procedures into normal procedures (functions, methods, subroutines, whatever) and coroutines.
 In most implementations the procedure calling syntax is overloaded; what appears to be a call to coroutine is actually a task spawn.
@@ -134,7 +139,7 @@ This can be quite inconvenient on its own, and it makes refactoring strategies l
 Another consequence of this issue is that coroutines tend to be viral; if a programmer decides to convert a procedure to a coroutine (for example because it needs to wait for the arrival of a network message), it tends to be the case that any callers of that procedure need to be converted to coroutines as well.
 
 Similarly, higher-order function patterns get more complicated as well.
-There are now two distinct kinds of procedure-like-things [clarify/expand].
+There are now two distinct types of procedure-like-things [clarify/expand].
 
 These software engineering awkwardnesses have not prevented the adoption of coroutines, but they are annoying.
 Activities solve these problems!
@@ -166,11 +171,11 @@ It is interesting, but still at an early enough stage of research that it is not
 
 \section{Pseudo-Preemptive Threads}
 
-Before defining pseudo-preemptive threads, we start with an exampel stolen from \cite{Krohn2007}.
-This example function concurrently fetches DNS information using the standard \texttt{getaddrinfo} procedure.
+Before defining pseudo-preemptive threads, we start with an example stolen from \cite{Krohn2007}.
+This example concurrently fetches DNS information using the standard \texttt{getaddrinfo} procedure.
 
 \hspace{-0.5cm}
-\includegraphics{multi_getaddrinfo.pdf}
+\includegraphics{multi_getaddrinfo}
 
 There are things worth noting about this code.
 The central syntactic addition is the \emph{activate} statement (line 10).
@@ -181,15 +186,15 @@ Also every loop has an implicit (in the source code) yield at the end of every i
 
 These automatically-inserted yields make activities behave more like threads than events or coroutines from an application programmer's perspective.
 However, there is a big difference between activities and threads.
-Notice that multiple activities read and write the local variable \texttt{requested}.
-If these were threads, this would cause a data race, which would make the whole program undefined under the currently dominant memory models.
-With activities this is not a problem at all; the system (compiler, processors, etc) is not permitted to move memory operations across yields, which makes the concurrent memory model problem go away.
+Notice that multiple activities read and write the (shared) local variable \texttt{requested}.
+If these were threads, this would cause a data race, which at best leads to unpredictable results and at worst makes the whole program undefined.
+With activities this is not a problem at all; the system (compiler, processors, etc.) is not permitted to move memory operations across yields, which dramatically simplifies the concurrent memory model problem.
 
 The activate statement takes as a parameter a pointer to application-allocated memory for storing necessary metadata about the new activity.
 In the above example the memory for storing activity information is allocated locally.
-Because of this the example procedure must bock waiting for all the activities to finish.
-(Returning before they finish would cause those activities to access deallocated memory).
-It would be possible to change the interface so that the caller would have to pass in the backing memory.
+Because of this the example procedure must wait for all the activities to finish.
+(Returning before they finish would cause the runtime system to access deallocated memory).
+It would be possible to change the interface so that the caller passes in the backing memory.
 In that case, the procedure could return while the activities were still fetching DNS information, allowing the application to go on with other work.
 
 Note that as compact as this example is, it incorporates a slightly fancy feature of limiting the number of concurrent network connections to an application-specified number.
@@ -206,30 +211,24 @@ Additionally, like all properly implemented cooperative threads, activities cann
 
 \cite{Boehm2011}
 
+\subsection{Activate}
 
-\subsection{}
+The activate statement creates a new activity, which runs concurrently with the activity that spawned it.
+The runtime system is responsible for scheduling activities.
+Context switching is only possible when an activity executes a yield primitive.
+The semantics of a program with activities can be seen as batches of actions separated by yield invocations.
+Batches from different activities are interleaved to execute a complete program.
+Actions are not permitted to cross yield boundaries.
+In other words, yields define the minimum granularity of interleaving.
+In this way activities are identical to conventional cooperative threads.
 
-In this section we describe the new abstraction we call \emph{pseudo-preemptive threads}, or \emph{activities}.
-Activities can be seen as a compromise between cooperative threads and preemptive threads.
-Like cooperative threads, only one activity can be running at a time and switching between activities can only happen when yield is invoked.
-However, in order for a language to support activities it must implicitly and frequently invoke yield.
-(What we mean by frequently is explained in detail below.)
-This frequent yielding makes the behavior of activities from an application programmer's perspective more like preemptive threads.
+\subsection{Yield Insertion}
 
-If there was no way to limit yielding, activities would suffer from many of the same concurrency bug challenges as threads.
-To combat this we add no-yield, a property that can be added to statements and procedures.
-No-yield is syntactically similar to \texttt{synchronized} in Java.
-In the dynamic scope of a no-yield block (statement or procedure), the current activity cannot be interrupted.
-This is a simple and powerful tool for enforcing atomicity.
-We expect that most of the uses of locks in current multithreading practice can be directly replaced by the simpler and safer no-yield.
+What distinguishes activities from cooperative threads is yield insertion.
+Informally, to support activities properly a language definition must ensure that a program cannot block or run indefinitely without executing a yield action.
+This is achieved by automatically inserting yields in certain places before a program is compiled or interpreted.
 
-Because activities are like threads in that tasks can be written in a natural (not callback hell) style, activities do not suffer from the maintenance problems of events.
-Because the primary concurrency control mechanism (no-yield) enforces a simple global property, activities do not suffer from the composability problems of threads.
-Because the concurrency control is generally simple, activities do not suffer from the reliability problems of threads.
-To be fair, applications written with activities will surely have concurrency bugs; it seems impossible to write multitasking software with zero exposure to concurrency bugs.
-However, ...
 
-\subsection{Yield Frequency}
 
 Part of the definition of activities is that by default yields should happen ``frequently''.
 But what does this mean precisely?
@@ -245,9 +244,29 @@ These rules are in strong tension with each other:
 One clear consequence of these rules is that anything that could cause an activity to pause indefinitely (e.g. a syscall) by default must be modified to allow other activities to run while the paused activity waits.
 More challenging, loops must be interrupted.
 
+\subsection{No-Yield}
+
+If there was no way to limit yielding, activities would suffer from many of the same concurrency bug challenges as threads.
+To combat this we add no-yield.
+Any statement, expression or procedure declaration can be ``wrapped'' with no-yield.
+In the dynamic scope of a no-yield block (statement, expression, procedure), the current activity cannot be interrupted.
+This is a simple and powerful tool for enforcing atomicity.
+We expect that most of the uses of locks in current multithreading practice can be directly replaced by the simpler and safer no-yield.
+
+Because activities are like threads in that tasks can be written in a natural (not callback hell) style, activities do not suffer from the maintenance problems of events.
+Because the primary concurrency control mechanism (no-yield) enforces a simple global property, activities do not suffer from the composability problems of threads.
+Because the concurrency control is generally simple, activities do not suffer from the reliability problems of threads.
+To be fair, applications written with activities will surely have concurrency bugs; it seems impossible to write multitasking software with zero exposure to concurrency bugs.
+However, ...
+
+With the addition of no-yield, activities can be seen as quite similar to coroutines with a complementary default.
+Normal procedures in an activity framework are like coroutines and normal procedures in a coroutine framework are like no-yield procedures in an activity framework.
+As similar as this argument makes coroutines and activities seem, we believe the differences are still significant.
+For example, in an activities framework, all procedures are part of the same type; normal procedures and no-yield procedures are not distinguished at the type level.
+
 \subsubsection{Recursive Procedure Calls}
 
-The current design of Charcoal does not follow rule \#1 perfectly.
+The current design of \charcoal{} does not follow rule \#1 perfectly.
 Function calls and returns do not implicitly yield, which means that recursion can be used to make an activity run indefinitely without yielding.
 We consider this a bug, not a feature, in the language design, but we have not found any less bad alternatives.
 
@@ -255,12 +274,13 @@ The most obvious approach to avoiding yield-free recursion is to say that every 
 This idea is bad for two reasons.
 The simpler reason is that it violates rule \#2; calls and returns happen all the time and introducing a yield for every call would be very costly for performance.
 The more important reason has to do with procedural abstraction.
-If calls carried implicit yields, then the function extraction refactoring pattern would change the concurrency behavior of the program.
+If yields were inserted around calls, then the function extraction refactoring pattern would change the concurrency behavior of the program.
 This seems totally unacceptable.
 
 One could imagine trying to identify recursive calls specifically and saying that only recursive calls carry an implicit yield.
 However, with indirect calls it is impossible to precisely statically analyze which calls are recursive in general.
 This means that the language design would have to codify some rules about which classes of calls could be guaranteed to be analyzed as recursive, which seems like a fragile design.
+[Check on work in the FP community ]
 
 \subsubsection{Programmer Control}
 
@@ -292,8 +312,12 @@ This is fast and simple, but is not very memory efficient.
 To avoid stack overflows, the application must ensure that the allocated blocks are large enough for the deepest chain of procedure calls.
 Most existing software takes a very conservative approach to this, leading to significant chunks of memory going unused.
 
-Furthermore, the large memory block per thread approach interacts in an unfortuante way with common virtual memory strategies.
+Furthermore, the large memory block per thread approach interacts in an unfortunate way with common virtual memory strategies.
 Threads that have only a couple of frames on their stack generally still need a whole page in physical memory, leading to a significant chunk of physical memory going unused.
+
+These memory efficiency issues are one reason that few applications use more than a few dozen threads.
+For software architectures that might require more than this limit, thread pooling is a common solution.
+However, thread pooling brings its own inefficiencies and software engineering challenges.
 
 \subsubsection{Individual Heap Allocation}
 
@@ -316,7 +340,7 @@ abandoned it in later versions).
 
 \subsubsection{Locally Contiguous Call Frame Allocation}
 
-The new call frame allocation strategy that we implemented is a hybridization of contiguous and individual help allocation.
+The new call frame allocation strategy that we implemented is a hybrid of contiguous and individual help allocation.
 The idea is based on the observation that the slowness of heap allocation only matters for short-lived calls.
 For long-lived calls (i.e. calls nearer the base of the call stack), the overhead of the call and return operations can be amortized over the long running time of the call and its callees.
 
@@ -324,17 +348,18 @@ How can the implementation know which calls will be short-lived and which long-l
 In a language with activities, the programmer explicitly says that with no-yield annotations!
 With activities it is good style to mark short-running procedures as no-yield to avoid the possibility of context switching in the middle of executing them.
 This is good for avoiding concurrency bugs and it interacts perfectly with our frame allocation strategy.
-Only one activitiy can be running in no-yield mode at a time, so an application only needs a single large region of memory for contiguous frame allocation.
+Only one activity can be running in no-yield mode at a time, so an application only needs a single large region of memory for contiguous frame allocation.
 All activities can share this single chunk of memory.
 
-So our implementation of \charcoal uses individual heap allocation for calls made in yielding mode and contiguous allocation in a single shared area of memory in no-yield mode.
+So our implementation of \charcoal{} uses individual heap allocation for calls made in yielding mode and contiguous allocation in a single shared area of memory in no-yield mode.
 In the microbenchmarking section below we provide evidence that this strategy captures most of the benefits of heap allocation (no large per-activity memory overhead) and contiguous allocation (fast calls and returns when it matters most).
 
 \subsection{Fast and Slow}
 
-One of the important features of the implementation is that there are
-two versions of each procedure: an unyielding version and a might-yield
-version.
+To implement our hybrid frame allocation in a relatively simple and efficient way, we decided to compile two versions of every procedure: one for yielding mode and one for no-yield mode.
+It would be possible to implement activities with a single compiled version, but it would require many conditionals based on some mode variable.
+We decided implementing it this way would be both less efficient and more error prone.
+
 
 Wait, don't we know whether a procedure is yielding or not?  Well, yes,
 but \ldots For procedures marked unyielding, we know there is no need to
@@ -344,31 +369,76 @@ either of the contexts.  The compiler might be able to do some analysis
 to prove that one or the other version is never called and can therefore
 be excised as dead code.
 
+Function pointers
+
+This implementation strategy could lead to a substantial increase in code size.
+We address this issue in the microbenchmarks.
+The main intuition about why this does not seem to be a big problem is that most procedures are only ever called in yielding mode or no-yield mode.
+A sufficiently smart linker can identify the large amount of dead code and eliminate it.
+
 This is kinda related to ideas from the Cilk-5 implementation
 \cite{Frigo1998}.
 
 \subsection{Yield Implementation}
 
+The most important factor in the implementation of the yield primitive is that most yield invocations should not result in context switching, even if multiple activities are ready to run.
+In well behaved activity code, yields might happen as frequently as every microsecond.
+Context switching has the moderate direct cost of manipulating a handful of data structures in the runtime system, and the potentially higher indirect cost of using the cache hierarchy poorly because the activities have different working sets.
+Therefore in normal operation yields should lead to context switches at a relatively low frequency, perhaps every few milliseconds.
+
+The speed of the yield operation is somewhat important.
+As described in the previous section, code that is compiled in no-yield mode simply does not have yields at all, so yield performance should not be an issue for the most performance critical loops.
+However, we expect that moderately frequent yielding (perhaps as frequently as many per microsecond) would be common in real-world code.
+Therefore, the performance of the yield primitive does matter to some degree.
+
+The simplest implementation of yield would check a counter or clock of some sort
+
+\subsection{Asynchronous System Calls}
+
+One important part of making activities work properly is having system calls work ``in the background''.
+In our implementation we used libuv for this.
+Using libuv seems to mostly have been a good decision.
+One problem is that libuv was designed with a ``pull'' architecture.
+Such an architecture would have made it possible to do asynchronous calls more easily.
+What we did was run the libuv event loop in a different thread.
+Every time user code wants to call a yielding system function it has to send an asynchronous message to the event loop thread.
+This is clearly not ideal.
+
+\subsection{Translation}
+
+We use Cil \cite{Necula2002} to translate \charcoal{} to plain C with calls to our runtime system.
+
+\subsection{Odds and Ends}
+
+The system described in this paper shares many commonalities with CPC \cite{Kerneis2013}.
+In some of the CPC publications they claimed that it was not possible to implement some more exotic features of C, like setjmp/longjmp and alloca.
+A detailed description of our implementation of these features is beyond the scope of this paper, but a working implementation is available in the project repository.
+If implemented in a more modern programming language, we do not foresee any serious conflicts between activities and exceptions.
+In fact, it should be possible to deliver an exception from one activity to another, where it would be raised at the next yield invocation.
+That's a story for another day, though.
+
 \section{Benchmarking}
 
-To establish the practicality of activities, we implemented N
-microbenchmarks to compare our implementation of Charcoal against C with
-threads and/or libuv (a popular event loop library written in C).
+To establish the practicality of activities, we implemented XXX microbenchmarks to compare our implementation of Charcoal against C with threads and/or libuv (a popular event loop library written in C).
 
 The first couple microbenchmarks demonstrate that basic concurrency primitives, like task spawning and task switching, are far faster with activities than threads.
 This is not particularly surprising.
 Because threads can be interrupted at any time, context switching requires the operating system to copy all processor state to memory.
 Thread creation requires the allocation of lots of system resources.
 
-\subsection{Task Limit}
+\subsection{Task Memory Overhead}
 
-The first microbenchmark measures how many concurrent tasks can exist.
-To measure this the benchmark simply spawns tasks until the program crashes; however many tasks existed before the crash is the limit.
-This benchmark really measures the memory overhead of a task.
+The first microbenchmark gets at memory overhead by measuring how many concurrent tasks can exist.
+To measure this the benchmark simply spawns tasks until memory allocation fails; however many tasks existed before the failure is the limit.
 For activities and event listeners this overhead is small and more or less fixed.
-For threads this overhead is harder to quantify, because most multithreading APIs allow the amount of memory reserved for the call stack to be controlled by the application.
+For threads this overhead is harder to put a single number on, because most multithreading APIs allow the amount of memory reserved for the call stack to be controlled by the application.
 For this benchmark we simply used the default stack size in the installed pthreads implementation.
 The results of this test are not surprising, but we believe it is worth emphasizing that it is not practical to use more than a few hundred or maybe a few thousand threads, whereas the limit on activities or event listeners is several orders of magnitude higher.
+
+A legitimate question is whether it is ever good software architecture to have many concurrent tasks.
+We do not attempt to answer that question definitively here, but only suggest that when there are several orders of magnitude differences between somewhat comparable things in engineering, that usually means that the ``cheaper'' option opens qualitatively different possibilities.
+
+memory limit: thread: 1,000 activity: 1,000,000 libuv: 1,000,000,000
 
 \subsection{Task Spawn Speed}
 
@@ -381,6 +451,8 @@ With pthreads, our test system was able to spawn about 60 threads per millisecon
 This difference of well over an order of magnitude is significant, because it means that it can be efficient to spawn an activity for much smaller units of work than it would be to spawn a thread.
 In other words, there is no reason to build \emph{activity pools}; it is always a better idea to simply spawn an activity for the task at hand.
 
+spawns per ms: thread: 60 activity: 2,400 libuv: 7,100
+
 \subsection{Task Switching}
 
 The third microbenchmark measures how quickly the system can switch from one task to another.
@@ -390,17 +462,16 @@ On our system we measured about 600 switches per millisecond with pthreads and 5
 This difference is almost an order of magnitude.
 Like the spawning benchmark, the main takeaway is that the overhead for activities is low enough that individual activities can do quite small units of work per context switch without paying a high overall efficiency penalty.
 
+context switching (bucket brigade): thread: 630  activity: 4,900
+
 \subsection{Just Calling}
 
-% int f( int d, int x )
-%     if( d > 0 )
-%         return f( d - 1, f( d - 1, x ) )
-%     else
-%         return small_computation( x )
+{\raggedleft \includegraphics{just_calling_benchmark}}
+
 
 The fourth microbenchmark measures the overhead of heap-allocating call frames.
 This test has a very simple recursive function that calls itself twice.
-At the leaves of the recursion is a very small computation, just complicated enough to prevent a smart compiler from just statically computing the whole answer.
+At the leaves of the recursion is a very small computation, just complicated enough to prevent a smart compiler from statically computing the whole answer.
 For this benchmark plain C is more than an order of magnitude faster than Charcoal.
 This difference is painful, but there are several things to say about it.
 First, the Charcoal implementation is a research prototype, so it is quite likely that good engineering work would close the gap to some extent.
@@ -409,6 +480,12 @@ Third, procedure calling in no-yield mode is just as efficient as plain C, which
 
 To investigate this foo further, ...
 
+{\raggedleft \includegraphics{just_calling_n_benchmark}}
+
+This shows that only the N closest calls to the leaves need to be in no-yield mode for calling overhead to get below XX\%.
+
+just calling: C: 590  Charcoal: 13
+
 \subsection{Yielding}
 
 The yield primitive is implemented to be very fast when the current activity will continue executing (i.e. not switch to another activity).
@@ -416,18 +493,13 @@ The key implementation trick here is described in section \ref{sec:blah}.
 Even with this clever implementation, yielding is still not free.
 To quantify its expense, we benchmarked a simple but problematic function: \texttt{strcmp}.
 \texttt{strcmp} is tricky for a few reasons:
-First, the strings passed in might be very long, so it is not acceptable to make the implementation simply never yield.
+First, the input strings could be very long, so it is not acceptable to make the implementation simply never yield.
 Second, the body of the loop is extremely simple; good implementations are just a few assembly instructions.
-This means that yielding every iteration would be extremely painful.
+This means that yielding every iteration would cause significant performance overhead.
 Third, whether each iteration executes depends on the computation of the previous iteration, so simple loop tiling/blocking tricks don't work.
 The best-performing implementation we have found so far looks like:
 
-%    while_no_yield( *s1 )
-%        if( *s1 - *s2 )
-%            break;
-%        ++s1; ++s2;
-%        if( !( s1 & B ) )
-%            yield
+{\raggedleft \includegraphics{strcmp_benchmark}}
 
 \texttt{while\_no\_yield} is a special variant of the regular while loop that does not have an implicit yield after every iteration.
 This is different from wrapping a regular while loop in \texttt{no\_yield}, because the latter would prevent nested yields from happening, whereas the former does not.
@@ -438,17 +510,11 @@ This implementation gets the overhead down to 15\% (???), which is neither awful
 One reasonable workaround is that when callers of \texttt{strcmp} are certain that the strings are not especially long, they can make the call in no-yield mode.
 In this case, it should be just as efficient as plain C.
 
-memory limit: thread: 1,000 activity: 1,000,000 libuv: 1,000,000,000
-
-spawns per ms: thread: 60 activity: 2,400 libuv: 7,100
-
-context switching (bucket brigade): thread: 630  activity: 4,900
-
-just calling: C: 590  Charcoal: 13
-
 strcmp: C: 1000 Charcoal: 100
 
+\subsection{Code Size}
 
+\subsection{Microbenchmark Summary}
 
 \section{Foreign Code}
 
@@ -473,6 +539,29 @@ We have not thought at all about what the best default is or what syntactic suga
 Another important implementation issue to consider is foreign code that calls back in to activity-aware code.
 There will definitely be some fancy footwork necessary there, no matter which strategy is used.
 
+\section{Related Work}
+
+Continuation Passing C.
+
+Threads without the Pain
+
+\section{Summary and Discussion}
+
+In this paper we introduced pseudo-preemptive threads, a new concurrency primitive, called activities for short.
+Activities have advantages in reliability, composability and/or maintainability over the most common approaches to writing multitasking software (events, threads and coroutines).
+From an application programmer's perspective activities feel most like threads, but they do not suffer from several of the nasty concurrency problems that plague multithreaded software.
+Activities can be thought of as actually working the way naive programmers think threads work.
+
+One weakness that activities share with most multitasking frameworks is that activities cannot easily be run in parallel.
+Naively running activities simultaneously on parallel processors would immediately violate the simple sequential memory model.
+However, it is interesting to consider what it would take to run activities in parallel without violating their semantics.
+The most obvious way to accomplish that would be with a transactional memory system; every activity would always be running in a transaction.
+Yielding would cause one transaction to end and the next to begin.
+
+The authors are not optimistic that such a transaction based system would work well, but similar things have been tried. (Stone OCM)
+
+\cite{ONeill2015}
+
 \acks
 
 Acknowledgments, if needed.
@@ -483,12 +572,11 @@ Acknowledgments, if needed.
 
 % The bibliography should be embedded for final submission.
 
-\begin{thebibliography}{}
-\softraggedright
+\bibliography{../../../../Documents/PapersForReferencing/biy_all_research.bib}
 
-\bibitem[Smith et~al.(2009)Smith, Jones]{smith02}
-P. Q. Smith, and X. Y. Jones. ...reference text...
+%% \begin{thebibliography}{../../../../Documents/PapersForReferencing/biy_all_research.bib}
+%% \softraggedright
 
-\end{thebibliography}
+%% \end{thebibliography}
 
 \end{document}
