@@ -51,8 +51,7 @@ term1, term2
 \keywords
 keyword1, keyword2
 
-\footnotetext{This tongue-in-cheek subtitle is a reference to opinion pieces by John Ousterhout \cite{Ousterhout1996} and
-Ron von Behren, et al. \cite{Behren2003a}}
+\footnotetext{This tongue-in-cheek subtitle is a reference to Ousterhout \cite{Ousterhout1996} and von Behren, et al. \cite{Behren2003a}}
 
 \section{Introduction}
 
@@ -62,7 +61,7 @@ The most popular abstractions for building such software (events, threads, corou
 This paper describes a new abstraction called \emph{pseudo-preemptive threads} (or \emph{activities}) that promises to make writing multitasking software easier.
 To validate the ideas proposed in this paper we implemented activities in a dialect of C called \charcoal{}.
 We wrote several microbenchmarks to explore the performance implications of activities.
-We also tweaked two real-world multithreaded C programs to use activities instead of threads to explore the software engineering implications.
+% We also tweaked two real-world multithreaded C programs to use activities instead of threads to explore the software engineering implications.
 
 This paper starts with brief a description and critique of the dominant multitasking abstractions.
 
@@ -72,6 +71,17 @@ Next the paper describes the high points of the \charcoal{} implementation.
 All the code for the implementation and tests described in this paper is available in a public repository on GitHub.
 
 Finally, we report on the results of our microbenchmarks and real-world application implementations.
+
+\subsection{Contributions}
+
+This paper has two primary contributions:
+
+\begin{itemize}
+\item The definition of pseudo-preemptive threads themselves.
+The most concise version is that they are similar to cooperative threads, with the addition of automatic yield insertion and a scoped no-yield primitive.
+\item A new call frame allocation strategy for multithreaded programs called Hot Stacking.
+With this strategy long-lived call frames are individually heap allocated and most short-lived frames are allocated in a single shared contiguous memory area.
+\end{itemize}
 
 \section{Established Multitasking Abstractions}
 
@@ -120,7 +130,7 @@ Nevertheless, in the discussion section at the end of this paper we speculate on
 
 Coroutines have an interesting history.
 According to Knuth, the term was coined by Melvin Conway in 1958, but coroutines remained on the margins of mainstream software practice until quite recently, a gap of more than 5 decades.
-For example, the async/await framework (coroutines by a different name) was added to C\# in version 5, which was released in 2012, \texttt{function*} (coroutines by a different name) was added to the 2015 revision of ECMAScript, and D4134 is a proposal to add coroutines to C++17.
+For example, the async/await framework (coroutines by a different name) was added to C\# in version 5, which was released in 2012; \texttt{function*} (coroutines by a different name) was added to the 2015 revision of ECMAScript; D4134 is a proposal to add coroutines to C++17.
 
 Our interpretation of this interesting history is that (1) coroutines are far from perfect as a multitasking primitive (otherwise they would have been widely adopted much sooner), and (2) mainstream applications have gotten more sophisticated in their use of multitasking, making life in callback hell ever more painful.
 Coroutines have been adopted as the least bad alternative to events.
