@@ -77,23 +77,22 @@ Finally, we report on the results of our microbenchmarks and real-world applicat
 This paper has two primary contributions:
 
 \begin{itemize}
-\item The definition of pseudo-preemptive threads themselves.
+\item The definition of \emph{pseudo-preemptive threads} (a.k.a. \emph{activities}).
 The most concise version is that they are similar to cooperative threads, with the addition of automatic yield insertion and a scoped no-yield primitive.
-\item A new call frame allocation strategy for multithreaded programs called Hot Stacking.
+\item A new call frame allocation strategy for multithreaded programs called \emph{hot stacking}.
 With this strategy long-lived call frames are individually heap allocated and most short-lived frames are allocated in a single shared contiguous memory area.
 \end{itemize}
 
 \section{Established Multitasking Abstractions}
 
-The three most widely used abstractions for multitasking today are events, threads and coroutines.
+The three most widely used multitasking frameworks are events, threads and coroutines.
 Each suffers from serious software engineering problems that we categorize into reliability, composability and/or maintainability.
 In this section we describe these problems; in later sections we argue that activities completely avoid or substantially mitigate all of them.
 
 \subsection{Events}
 
-Events are the most popular abstraction for relatively simple multitasking patterns.
-Most GUI frameworks use events for things like mouse clicks and keyboard presses.
-Until recently this was the only available multitasking abstraction in some popular ecosystems, like browser JavaScript.
+Events are the most popular abstraction for relatively simple multitasking patterns; many GUI and network programming frameworks use events for things like mouse clicks, keyboard presses and receiving network messages.
+Until recently this was the only available multitasking abstraction in some popular ecosystems (e.g. browser JavaScript).
 
 When an event dispatcher calls a handler/listener procedure, that call must return before another event can be handled.
 This makes avoiding many kinds of concurrency bugs easy.
@@ -101,7 +100,7 @@ However, it comes at a high cost in maintainability and reliability for complex 
 
 Potentially long-running (or blocking) tasks must be manually broken up into smaller handler procedures by application programmers.
 This leads to a style of programming referred to as \emph{stack ripping}\cite{Adya2002}, or more colloquially \emph{callback hell}.
-Callback hell can make it hard to decipher the logical flow of a single task through multiple callbacks.
+Callback hell can make it hard to decipher the logical flow of a task, because it is split among  multiple callback procedures.
 This is bad for reliability, because it is easy to make a mistake in the lifetime of some piece of data (compared with, for example, threads) \cite{Behren2003a}.
 Callback hell is even worse for maintainability, because choices about how to break an application up into handlers can be hard to reconstruct down the road.
 
@@ -113,38 +112,38 @@ Events are at the safest and least flexible end of the multitasking abstraction 
 The primary strength of threads is that they can wait/block indefinitely and/or run for a very long time without preventing other threads from making progress.
 This makes it possible to write multitasking software in a natural single-task style (i.e. threads completely avoid callback hell).
 
-The primary weakness of threads is that they make it far too easy to introduce concurrency bugs like data races, deadlocks, atomicity violations and livelocks.
+The primary weakness of threads is that it is extremely hard to avoid and remove concurrency bugs like data races, deadlocks, atomicity violations and livelocks.
 In the last decade a significant amount of research effort has been devoted to making it easier to write reliable multithreaded applications, because of the emergence of mainstream multiprocessor computers.
 While this body of work is quite impressive, most mainstream application programmers still view threads as too dangerous for multitasking programming (correctly in the current authors' opinion).
 
 Applications that use threads and conventional concurrency control mechanisms also suffer from serious composability issues \cite{Harris2005, Grossman2007}.
 The very brief summary of the arguments from the cited papers is that when using mutexes, semaphores and their cousins, application programmers must design and (somehow) enforce subtle global concurrency control properties.
 Using transactions instead of conventional concurrency control mechanisms promises to make threads much safer and more composable.
-Unfortunately, it is not clear that it is possible to build a practical implementation of transactional memory that is compatible with mainstream programming practices.
+Unfortunately, current implementations of transactional concurrency control systems have problems that have prevented widespread addoption so far.
 
 Among the multitasking abstractions discussed in this paper, threads are unique in that they naturally allow the parallel execution of tasks.
-From the perspective of multitasking, parallelism is largely irrelevant; multitasking abstractions like events and coroutines can be used in tandem with parallelism abstractions like threads and processes.
+From the perspective of multitasking, parallelism is mostly irrelevant; multitasking abstractions like events and coroutines can be used in tandem with parallelism abstractions like threads and processes.
 Nevertheless, in the discussion section at the end of this paper we speculate on the feasibility of running activities in parallel.
 
 \subsection{Coroutines}
 
 Coroutines have an interesting history.
 According to Knuth, the term was coined by Melvin Conway in 1958, but coroutines remained on the margins of mainstream software practice until quite recently, a gap of more than 5 decades.
-For example, the async/await framework (coroutines by a different name) was added to C\# in version 5, which was released in 2012; \texttt{function*} (coroutines by a different name) was added to the 2015 revision of ECMAScript; D4134 is a proposal to add coroutines to C++17.
+A few examples of recent implementations: the async/await framework (coroutines by a different name) was added to C\# in version 5, which was released in 2012; \texttt{function*} (coroutines by a different name) was added to the 2015 revision of ECMAScript; D4134 is a proposal to add coroutines to C++17.
 
 Our interpretation of this interesting history is that (1) coroutines are far from perfect as a multitasking primitive (otherwise they would have been widely adopted much sooner), and (2) mainstream applications have gotten more sophisticated in their use of multitasking, making life in callback hell ever more painful.
 Coroutines have been adopted as the least bad alternative to events.
 
 Using the coroutine abstraction requires application programmers to partition procedures into normal procedures (functions, methods, subroutines, whatever) and coroutines.
-In most implementations the procedure calling syntax is overloaded; what appears to be a call to coroutine is actually a task spawn.
+In most implementations the procedure calling syntax is overloaded; what appears to be a call to coroutine is actually a concurrent task spawn.
 Within the body of a coroutine definition, a \emph{yield} (or \emph{await}) primitive can be used to permit switching execution flow to a different task (i.e. coroutine).
 Invoking yield in a normal procedure (a non-coroutine) is not permitted.
 
 Relative to event loops, coroutines provide greater flexibility, because multiple tasks can be in progress at the same time.
 Coroutines are much more resistant to concurrency bugs than threads, because only one coroutine can be active at a time, and the application explicitly states when switching between tasks is permitted.
 
-The primary weakness of coroutines is a subtle tension with conventional procedural abstraction.
-It is common for application programmers to want to yield in a procedure called by a coroutine, but this is not possible.
+The primary weakness of coroutines is a subtle but nasty tension with conventional procedural abstraction.
+It is common for application programmers to want to yield in a \emph{procedure} called by a coroutine, but this is not possible.
 This can be quite inconvenient on its own, and it makes refactoring strategies like procedure extraction trickier to apply.
 Another consequence of this issue is that coroutines tend to be viral; if a programmer decides to convert a procedure to a coroutine (for example because it needs to wait for the arrival of a network message), it tends to be the case that any callers of that procedure need to be converted to coroutines as well.
 
@@ -307,36 +306,38 @@ The the following sections we describe the allocation of call frames, yielding a
 
 One of the tricky issues in the implementation of any thread-like framework is the allocation of procedure call frames.
 The first few sections below describe existing strategies for frame allocation in multithreaded code.
-Then we describe a new approach that we call locally contiguous allocation.
+Then we describe a new approach that we call \emph{hot stacking}.
 
-\subsubsection{Conventional Contiguous Allocation}
+\subsubsection{Contiguous Allocation}
 
 In single-thread applications it is convenient and efficient to allocate a single large region of memory for \emph{the} stack of call frames.
 Individual frames are allocated contiguously in this space.
-This works well because the live ranges of frames are strictly nested; a callee's frame is deallocated before its caller's.
+% This works well because the live ranges of frames are strictly nested; a callee's frame is deallocated before its caller's.
 In multithreaded applications this strategy does not work, because each thread needs to be able to allocate and deallocate frames independently.
 
-The most common strategy for multithreaded frame allocation is to pre-allocate a moderately large range of memory in the heap for each thread.
-With this approach individual frame allocation can be done exactly as in the single-thread case.
-This is fast and simple, but is not very memory efficient.
-To avoid stack overflows, the application must ensure that the allocated blocks are large enough for the deepest chain of procedure calls.
-Most existing software takes a very conservative approach to this, leading to significant chunks of memory going unused.
+The most common strategy for multithreaded frame allocation is to pre-allocate a moderately large area of memory in the heap for each thread.
+Individual frames can be allocated contiguously within this area, which is fast and simple.
+Unfortunately there is a nasty tension related to memory efficiency.
 
-Furthermore, the large memory block per thread approach interacts in an unfortunate way with common virtual memory strategies.
-Threads that have only a couple of frames on their stack generally still need a whole page in physical memory, leading to a significant chunk of physical memory going unused.
+If the allocated areas are too small, the application will experience stack overflows, which quite likely will cause the whole process to crash.
+If the allocated areas are too large, a significant amount of memory is wasted.
+In practice most existing multithreaded software takes a conservative approach, allocating much larger areas for stacks than is strictly necessary.
 
-These memory efficiency issues are one reason that few applications use more than a few dozen threads.
+Especially in 64-bit address spaces, the virtual memory space needed for stack space is not an accute problem for many applications.
+However, because memory is typically allocated in page-sized chunks this allocation strategy wastes the physical memory between the top of the stack and the end of the page that it happens to be in.
+
+These memory efficiency issues are one reason that most mainstream applications use only a few threads, and very few applications use more than a few dozen.
 For software architectures that might require more than this limit, thread pooling is a common solution.
 However, thread pooling brings its own inefficiencies and software engineering challenges.
 
 \subsubsection{Individual Heap Allocation}
 
 A completely different approach to call frame allocation is to individually allocate each frame in the heap.
-This eliminates the need to pre-allocate a large chunk of memory at thread creation time and the granularity issue mentioned above.
+This eliminates the memory concerns associated with contiguous allocation.
 However, heap allocation of frames comes at a significant performance cost for call and return operations.
 
 Simple implementations of heap allocation are generally more than an order of magnitude slower than contiguous allocation (see more details in the microbenchmarking section below).
-If engineered carefully, heap allocation can be much faster than that (e.g. \cite{Shao2000}).
+More sophisticated implementations can be substantially more efficient (e.g. \cite{Shao2000}).
 However, even the most efficient implementations that we are aware of are still substantially slower than contiguous allocation for call-heavy code.
 
 \subsubsection{Split/Segmented Stacks}
@@ -345,16 +346,21 @@ For completeness, we briefly mention another strategy called \emph{split} or \em
 The idea is that stack space is allocated in small chunks (or segments).
 The common case call/return execution looks like traditional contiguous allocation.
 When a thread reaches the end of its segment it allocates a new one and links them together.
-This idea has a lot of appeal (the implementers of Rust and Go both used it), but it has some really unpleasant uncommon case behavior (the implementers of Rust and Go both
-abandoned it in later versions).
+This idea has a lot of appeal (the implementers of Rust and Go both used it), but it has some really unpleasant uncommon case behavior (the implementers of Rust \cite{Anderson2013} and Go (search ``contiguous stacks in go'') both abandoned it in later versions).
 
-\subsubsection{Locally Contiguous Call Frame Allocation}
+\subsubsection{Hot Stacking}
 
-The new call frame allocation strategy that we implemented is a hybrid of contiguous and individual help allocation.
-The idea is based on the observation that the slowness of heap allocation only matters for short-lived calls.
-For long-lived calls (i.e. calls nearer the base of the call stack), the overhead of the call and return operations can be amortized over the long running time of the call and its callees.
+The call frame allocation strategy introduced in this paper is a hybrid of contiguous and individual heap allocation.
+The important observation is that the slowness of heap allocation only has a significant impact on application performance for short-lived calls.
+For long-lived calls (generally calls nearer the base of the call stack), the overhead of the call and return operations can be amortized over the long running time of the call and its callees.
+So the main idea of hot stacking is that long-lived frames are heap allocated and (most) short-lived frames are contiguously allocated in a memory area shared by multiple activities.
 
-How can the implementation know which calls will be short-lived and which long-lived?
+In order for the sharing to work correctly, all frames allocated in the shared area must be deallocated before execution switches to another activity.
+
+
+The design of activities makes hot stacking practical in two distinct ways:
+
+How can an implementation know which calls will be short-lived and which long-lived?
 In a language with activities, the programmer explicitly says that with no-yield annotations!
 With activities it is good style to mark short-running procedures as no-yield to avoid the possibility of context switching in the middle of executing them.
 This is good for avoiding concurrency bugs and it interacts perfectly with our frame allocation strategy.
@@ -363,6 +369,11 @@ All activities can share this single chunk of memory.
 
 So our implementation of \charcoal{} uses individual heap allocation for calls made in yielding mode and contiguous allocation in a single shared area of memory in no-yield mode.
 In the microbenchmarking section below we provide evidence that this strategy captures most of the benefits of heap allocation (no large per-activity memory overhead) and contiguous allocation (fast calls and returns when it matters most).
+
+The name \emph{hot stacking} is a reference to a practice used in some military and business organizations called \emph{hot racking} or \emph{hot desking}.
+The idea is that some limited resource (e.g. a bunk or desk) is used in shifts by multiple people.
+In our case, the resource is the memory area for contiguous frame allocation, and it is shared in shifts by multiple activities.
+The word \emph{hot} is also a reference to the fact that this top of stack area should remain very hot in the memory hierarchy/cache sense as long as any code is running.
 
 \subsection{Fast and Slow}
 
@@ -560,7 +571,7 @@ Threads without the Pain
 In this paper we introduced pseudo-preemptive threads, a new concurrency primitive, called activities for short.
 Activities have advantages in reliability, composability and/or maintainability over the most common approaches to writing multitasking software (events, threads and coroutines).
 From an application programmer's perspective activities feel most like threads, but they do not suffer from several of the nasty concurrency problems that plague multithreaded software.
-Activities can be thought of as actually working the way naive programmers think threads work.
+Activities can be thought of as actually working the way inexperienced programmers think threads work.
 
 One weakness that activities share with most multitasking frameworks is that activities cannot easily be run in parallel.
 Naively running activities simultaneously on parallel processors would immediately violate the simple sequential memory model.
