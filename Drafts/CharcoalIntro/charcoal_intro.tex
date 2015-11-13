@@ -86,14 +86,14 @@ Language implementations that use this strategy allocate long-lived call frames 
 
 \section{Established Multitasking Abstractions}
 
-The three most widely used multitasking frameworks are events, threads and coroutines.
+The three most widely used multitasking abstractions are events, threads and coroutines.
 Each suffers from serious software engineering problems that we categorize into reliability, composability and/or maintainability.
 In this section we describe these problems; in later sections we argue that activities completely avoid or substantially mitigate all of them.
 
 \subsection{Events}
 
 Events are an extremely widely used abstraction for relatively simple multitasking patterns for tasks like reacting to mouse clicks and network message arrivals.
-Events were the only multitasking abstraction in some popular ecosystems browser JavaScript (until recently).
+Events were the only multitasking abstraction in some popular ecosystems, like browser JavaScript (until recently).
 
 When an event dispatcher calls a handler/listener procedure, that call must return before another event can be handled.
 This pattern makes avoiding many kinds of concurrency bugs easy, because calls to handlers do not overlap in time.
@@ -103,7 +103,7 @@ Potentially long-running (or blocking) tasks must be manually broken up into sma
 This leads to a style of programming referred to as \emph{stack ripping}\cite{Adya2002}, or more colloquially \emph{callback hell}.
 Callback hell can make it hard to decipher the logical flow of a task, because it is split among  multiple callback procedures.
 This is bad for reliability, because it is easy to make a mistake in the lifetime of some piece of data (compared with, for example, threads) \cite{Behren2003a}.
-Callback hell is even worse for maintainability, because like any complex code it is typically much harder to understand and modify later than it was to write in the first place.
+Callback hell is even worse for maintainability, because like any pattern that forces logical units of functionality to be split among multiple pieces of code, it is far too easy to make change in one piece of code without noticing that an associated change is needed in a related piece of code.
 
 \subsection{Threads (Preemptive)}
 
@@ -138,12 +138,12 @@ Our interpretation of this history is that (1) coroutines are far from perfect a
 Coroutines are being adopted as the least bad alternative to events.
 
 Using the coroutine abstraction requires application programmers to partition procedures into normal procedures (functions, methods, subroutines, whatever) and coroutines.
-In most implementations the procedure calling syntax is overloaded; what appears to be a call to coroutine is actually a concurrent task spawn.
+In most implementations the procedure calling syntax is overloaded; what appears to be a call to a coroutine is actually a concurrent task spawn.
 Within the body of a coroutine definition, a \emph{yield} (or \emph{await}) primitive can be used to permit context switching to a different task (i.e. coroutine).
-Invoking yield in a normal procedure (a non-coroutine) is not permitted.
+Invoking yield in a normal procedure is not permitted.
 
 Relative to events, coroutines provide more flexibility, because multiple tasks can be in progress at the same time.
-Coroutines are much more resistant to concurrency bugs than threads, because only one coroutine can be active at a time, and the application explicitly states when switching between tasks is permitted.
+Coroutines are much more resistant to concurrency bugs than threads, because only one coroutine can be active at a time, and context switching is only permitted at explicitly identified points.
 
 The primary weakness of coroutines is a subtle but nasty tension with conventional procedural abstraction.
 It is common for application programmers to want to yield in a \emph{procedure} called by a coroutine, but this is not possible.
@@ -186,7 +186,7 @@ It is interesting, but it is not clear whether it can be integrated with mainstr
 
 \section{Pseudo-Preemptive Threads}
 
-As mentioned in the introduction, \emph{pseudo-preemptive threads\slash activities} can be understood as cooperative threads plus automatic yield insertion.
+\emph{Pseudo-preemptive threads\slash activities} can be understood as cooperative threads plus automatic yield insertion.
 The automatic yield insertion makes activities behave more like preemptive threads from an application programmer's perspective.
 However, activities are still far more resistant to concurrency bugs than threads.
 
