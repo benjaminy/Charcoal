@@ -313,7 +313,23 @@ Any procedure or statement can be marked ``\texttt{no\_yield}'' which means that
 
 \subsection{Comparison to Threads, Events and Coroutines}
 
+Activities avoid or mitigate all the software engineering problems identified in section \ref{}.
 
+The contrast with events is simplest.
+Like threads, activities completely avoid callback hell.
+Multiple activities can be in progress simultaneously and yield can be invoked anywhere (except in no-yield mode) to context switch between tasks.
+
+From an application programmer's prespective, activities are most similar to threads.
+The most obvious difference is that activities cannot easily be run in parallel.
+However, event handlers and coroutines also cannot be run in parallel, and they are widely used for their multitasking features.
+
+Activities are more resistant to concurrency defects than threads.
+Like events, coroutines and (properly implemented) cooperative threads, data races do not exist with activities.
+Higher-level concurrency defects like atomicity violations, deadlocks and livelocks are still possible, of course.
+However, no-yield provides an extremely simple and powerful tool for concurrency control.
+It is very similar to \emph{atomic} in transactional languages, but the implementation of no-yield is vastly simpler and there is no awkwardness around doing I/O operations in no-yield blocks.
+
+From an implementation perspective, 
 
 \section{Implementation}
 
