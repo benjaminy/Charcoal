@@ -73,6 +73,10 @@ struct crcl(async_call_t)
  * procedure-specific data. */
 struct crcl(frame_t)
 {
+    /* The (all-inclusive) size of this frame.  This is necessary for
+     * implementing alloca.  It's also generally handy for debugging. */
+    size_t size;
+
     /* The activity this frame belongs to */
     activity_p activity;
 
@@ -82,10 +86,6 @@ struct crcl(frame_t)
     /* The address to resume execution in the code.  If NULL, start at
      * the beginning */
     void *return_addr;
-
-    /* Pointer to the head of a list of memory blocks allocated with
-     * alloca */
-    void *allocad_ptrs;
 
     /* Doubly linked call chain.  The callee link could probably be
      * optimized away, but it's not trivial and seems nice for debugging

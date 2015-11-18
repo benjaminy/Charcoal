@@ -146,13 +146,32 @@ static crcl(frame_p) thread_init( thread_entry_params *params )
     return thd->idle_act.newest_frame;
 }
 
+/* XXX this is all wrong. Needs fixing for multithreading to work */
+static void async_call_close( uv_handle_t *h )
+{
+    /* uv_async_t *a = (uv_async_t *)h; */
+    /* zlog_debug( crcl(c), "CLOSE %p\n", a ); fflush(stdout); */
+}
+
+static void thread_finish_impl(
+    uv_async_t *handle, activity_p caller, activity_p *waiters, void *p )
+{
+    cthread_p thd = (cthread_p)p;
+    if( crcl(join_thread)( thd ) )
+    {
+        /* zlog_debug( stderr, "Close, please\n" ); */
+        /* XXX What about when there are more events???. */
+        uv_close( (uv_handle_t *)handle, async_call_close );
+    }
+}
+
 static void thread_finish( cthread_p thread )
 {
     zlog_info( crcl(c), "Thread finished %p", thread );
 
     /* XXX alloc issues??? */
     crcl(async_call_p) async = &thread->finished_call;
-    async->f = crcl(async_fn_finish);
+    async->f = thread_finish_impl;
     /* XXX Whoa! use after free? */
     async->data = (void *)thread;
     enqueue( async );
