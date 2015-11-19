@@ -38,7 +38,27 @@
 \maketitle
 
 \begin{abstract}
-This is the text of the abstract.
+  This is the text of the abstract.
+
+  a1
+
+  a2
+
+  a3
+
+  a4
+
+  a5
+
+  a6
+
+  a7
+
+  a8
+
+  a9
+
+  a10
 \end{abstract}
 
 % \category{CR-number}{subcategory}{third-level}
@@ -76,7 +96,7 @@ These and more subtle problems are well analyzed and criticized by von Behren et
 
 \textbf{Threads}.
 Threads allow programmers to write multitasking software in a more natural style than events, because the system automatically interleaves the execution of multiple tasks.
-Threads also open the door to a variety of nasty concurrency defects, which in the context of \emph{events} either do not exist at all or much easier to avoid.
+Threads also open the door to a variety of nasty concurrency defects, which in the context of \emph{events} either cannot happen or are much easier to avoid.
 Fear of these defects (data races, deadlocks, atomicity violations, livelocks, starvation, order violations) has limited the use of threads in many applications and ecosystems.
 One good entry into the vast literature on diagnosing and fixing multithreading defects is \cite{Lu2008}.
 These challenges have been understood for a long time; two decades ago Ousterhout wrote a good analysis and critique of the problems with threads \cite{Ousterhout1996}.
@@ -100,14 +120,15 @@ The primary problem to remember about coroutines is that choosing which procedur
 This problem is compounded during maintenance, when changing a regular procedure to a coroutine (or vice versa) can introduce bugs.
 
 \textbf{Cooperative Threads}.
-Cooperative threads are syntactically similar to preemptive (i.e. normal) threads, except the system is not permitted to context switch at any point of execution, which has profound semantic consequences.
+Cooperative threads are syntactically similar to preemptive (i.e. normal) threads.
+However, cooperative threads cannot be interrupted at any arbitrary point chosen by the system, which has profound semantic consequences.
 Like coroutines, cooperative threads must \emph{explicitly} yield to permit switching.
-Unlike coroutines, cooperative threads may yield anywhere, which eliminates the need for a separate category of procedures.
+Unlike coroutines, programmers are free to add yield invocations anywhere, which eliminates the need for a separate category of procedures.
 
 The biggest software engineering problem with cooperative threads is that it is hard to know which procedures might yield and which will not.
 In other words, which procedure calls are atomic?
 The answer to this question is very important for avoiding concurrency bugs like atomicity violations, but cooperative threads make it tricky.
-This atomicity issue is especially problematic during maintenance, when adding yield to a procedure can break any procedure that calls it (and procedures that call those procedures, and so on, transitively).
+This atomicity issue is especially problematic during maintenance, when adding yield (or removing) a yield can have unexpected negative consequences on the possible interleavings of threads.
 
 Cooperative threads are not as widely used as events, threads and coroutines.
 We are not aware of any thorough analyses of why this is the case, but we suspect the central issue is with the problem of determining which procedure calls are atomic.
@@ -121,7 +142,7 @@ In the related work section we highlight the differences with the ones that are 
 \textbf{Other Multitasking Abstractions}.
 This introduction does not cover multitasking abstractions exhaustively.
 We described the abstractions that are most closely related to activities.
-The related work section at the end of the paper briefly describes connections with more distantly related abstractions.
+The related work section briefly describes connections with more distantly related abstractions.
 
 \subsection{Activities}
 
@@ -133,6 +154,7 @@ The main idea is to start with cooperative threads, then add \emph{automatically
 
 The authors of \cite{Boudol2007} were primarily concerned with \emph{proving} that yields can be inserted in a way that makes unfairness (i.e. a single thread executing indefinitely) impossible.
 Our proposal compromises on provable fairness, but rather focuses on simple programmer control over yielding and implementation efficiency.
+
 After defining activities more precisely in the next section, we provide more detailed comparisons with established multitasking abstractions.
 In particular, we argue that activities combine most of the software engineering strengths of the other abstractions, while eliminating or substantially mitigating their weaknesses.
 
@@ -157,59 +179,60 @@ This paper has three primary contributions:
 
 \section{Pseudo-Preemptive Threads}
 
-\emph{Pseudo-preemptive threads\slash activities} can be understood as cooperative threads plus automatic yield insertion.
+\emph{Pseudo-preemptive threads\slash activities} can be understood as cooperative threads plus automatic yield insertion and no-yield.
 The automatic yield insertion makes activities behave more like preemptive threads from an application programmer's perspective.
 However, activities are still far more resistant to concurrency bugs than threads.
 
 Before going into any more detail on the definition and implementation of activities, we consider an example stolen from \cite{Krohn2007}.
-This example concurrently fetches DNS information using the standard \texttt{getaddrinfo} procedure.
-It has a parameter (\texttt{max\_concur}) to limit the number of DNS requests that will be sent concurrently to avoid flooding the network with too many requests.
+This example performs (\texttt{n}) DNS lookups concurrently using the standard \texttt{getaddrinfo} procedure.
+It has a parameter (\texttt{max\_conc}) to limit the number of DNS requests that will be sent concurrently to avoid flooding the network with too many requests.
 
 \hspace{-0.5cm}
 \includegraphics{multi_getaddrinfo}
 
-There are things worth noting about this code.
-The central syntactic addition is the \emph{activate} statement (line 10).
-The body of an activate statement executes concurrently (but not in parallel) with whatever comes after the statement (i.e. its continuation).
-The program will only context switch between activities when yield is invoked.
+\subsection{Activate}
+
+The central syntactic addition is the \emph{activate} statement (line 9).
+The activate statement creates a new activity that runs the body of the activate statements concurrently (but not in parallel) with whatever comes after the statement (i.e. its continuation).
+Only one activity can be running at a time, and the system can only context switch between activities on a yield.
+
+The semantics of a program with activities can be seen as traces of actions separated by yield invocations.
+Between two adjacent yield actions, all actions must come from a single particular activity.
+Batches from different activities are interleaved to execute a complete program.
+Actions are not permitted to cross yield boundaries.
+In other words, yields define the minimum granularity of interleaving.
+
+The system has a scheduler that chooses when a yield should lead to a context switch, and which activity to switch to.
+The current \charcoal{} implementation uses a simple FIFO scheduler; clearly this is something that could be looked at for further refinement.
+
+So far in this description, activities are identical to conventional cooperative threads.
+
+
 Any blocking or potentially long-running procedures (like \texttt{getaddrinfo}) will yield while the system is performing its action.
 Also every loop has an implicit (in the source code) yield at the end of every iteration.
+
+The runtime system is responsible for scheduling activities.
+
+
+
+The activate statement takes as a parameter a pointer to application-allocated memory for storing metadata about the new activity.
+In the above example the memory for storing activity information is allocated locally.
+Because of this the example procedure must wait for all the activities to finish.
+(Returning before they finish could cause the program to access deallocated memory).
+It would be possible to change the interface so that the caller passes in the backing memory.
+In that case, the procedure could return while the activities were still fetching DNS information, allowing the application to go on with other work.
+
+\subsubsection{Local Variables}
 
 Notice that multiple activities read and write the local variable \texttt{requested}.
 If these were threads, this would cause a data race, which at best leads to unpredictable results and at worst makes the whole program undefined.
 With activities this is not a problem at all; the system (compiler, processors, etc.) is not permitted to move memory operations across yields, which dramatically simplifies the concurrent memory model problem.
 
-The activate statement takes as a parameter a pointer to application-allocated memory for storing necessary metadata about the new activity.
-In the above example the memory for storing activity information is allocated locally.
-Because of this the example procedure must wait for all the activities to finish.
-(Returning before they finish would cause the runtime system to access deallocated memory).
-It would be possible to change the interface so that the caller passes in the backing memory.
-In that case, the procedure could return while the activities were still fetching DNS information, allowing the application to go on with other work.
-
-Note that as compact as this example is, it incorporates a slightly fancy feature of limiting the number of concurrent network connections to an application-specified number.
-
-The parentheses after the activate keyword are for controlling whether local variables are access by-value or by-reference.
-The default is by-reference, which is how all the variables are used in this example.
-In some cases it is more convenient to capture the value of a local variable at activation time.
-This can be done by simply listing the variable inside the parentheses.
-Making a local variable by-value effectively makes two copies of it that can be updated independently.
-
-\subsection{Don't know}
-
-Additionally, like all properly implemented cooperative threads, activities cannot suffer from data races
-
-\cite{Boehm2011}
-
-\subsection{Activate}
-
-The activate statement creates a new activity, which runs concurrently with the activity that spawned it.
-The runtime system is responsible for scheduling activities.
-Context switching is only possible when an activity executes a yield primitive.
-The semantics of a program with activities can be seen as batches of actions separated by yield invocations.
-Batches from different activities are interleaved to execute a complete program.
-Actions are not permitted to cross yield boundaries.
-In other words, yields define the minimum granularity of interleaving.
-In this way activities are identical to conventional cooperative threads.
+The parentheses after the activate keyword are for controlling whether local variables are accessed by-value or by-reference.
+The default is by-reference, which is how most of the variables are used in this example.
+The exception is \texttt{i} which is used as an identifier of sorts in the \texttt{printf} call.
+Each activity gets its own copy of \texttt{i}, with the initial value of whatever the variable's value was at activity creation time.
+If there were a modification to \texttt{i} inside \texttt{activate}, each activity would be modifyign its own copy.
 
 \subsection{Yield Insertion}
 
@@ -290,7 +313,7 @@ The contrast with events is simplest.
 Like threads, activities completely avoid callback hell.
 Multiple activities can be in progress simultaneously and yield can be invoked anywhere (except in no-yield mode) to context switch between tasks.
 
-From an application programmer's prespective, activities are most similar to threads.
+From an application programmer's perspective, activities are most similar to threads.
 The most obvious difference is that activities cannot easily be run in parallel.
 However, event handlers and coroutines also cannot be run in parallel, and they are widely used for their multitasking features.
 
@@ -316,7 +339,9 @@ Normal procedures in an activity framework are like coroutines and normal proced
 As similar as this argument makes coroutines and activities seem, we believe the differences are still significant.
 For example, in an activities framework, all procedures are part of the same type; normal procedures and no-yield procedures are not distinguished at the type level.
 
-\section{Established Multitasking Abstractions}
+\section{COMPARE Established Multitasking Abstractions}
+
+
 
 The three most widely used multitasking abstractions are events, threads and coroutines.
 Each suffers from serious software engineering problems that we categorize into reliability, composability and/or maintainability.
@@ -359,6 +384,14 @@ The authors view this as closer to a bug than a feature.
 Serial multitasking abstractions like events and coroutines (and activities) can be used in combination with parallelism frameworks like processes and threads.
 The authors consider providing both parallelism and multitasking in a single language features (like threads) mostly a bad idea.
 Nevertheless, in the discussion section at the end of this paper we speculate about the feasibility of running activities in parallel.
+
+
+\subsection{Don't know}
+
+Additionally, like all properly implemented cooperative threads, activities cannot suffer from data races
+
+\cite{Boehm2011}
+
 
 \subsection{Coroutines}
 

@@ -4,10 +4,51 @@ Page 1
 D  Rum & cigars
 D  Subtitle issue
 ?  Multitasking term of art
-TD Describe weaknesses
-TD Stronger problem/motivation/intuition
+D? Describe weaknesses
+D? Stronger problem/motivation/intuition
 TD Activities, then validation
-TD roadmap not useful
+D  roadmap not useful
+
+Column 2
+D  coop thread, yield used before defined
+D? Hot stacking problem or opportunity?
+?  Activities in italics throughout
+?  Table for activities vs alternatives
+D  Browser JS typo
+TD Sentence/paragraph
 
 Page 2
 
+TD Events/threads comparison hard to parse
+TD Spectrum to graph them on?
+D  Cite multithreading bugs
+TD Sentence/paragraph
+TD Parallelism explanation/section organization
+
+Column 2
+TD Again, structure, flow
+TD Coroutine restriction explanation
+TD Activities out of nowhere
+
+Page 3
+
+?  Cite coop threads and strengths/weaknesses
+TD Running example
+?  Cite coroutine definition?
+TD set up motivation/goals?
+
+Column 2
+?  What are hints? - getaddrinfo example
+?  Networking just for Ethan
+TD Make data race explicit
+
+Page 4
+
+TD Example of by-reference/by-value
+TD Semantics, batches, not clear
+TD Yield insertion subsection wording confusing
+TD Guideline versus rule
+TD Section ends abruptly
+
+Column 2
+TD No-yield override/suppress - clarify
