@@ -554,7 +554,8 @@ crcl(frame_p) crcl(fn_generic_prologue)(
     /* NOTE: malloc and free are a considerable source of overhead in
      * Charcoal.  Some day we should experiment with different
      * allocators. */
-    crcl(frame_p) frm = (crcl(frame_p))malloc( sz + sizeof( frm[0] ) );
+    size_t frm_size = sz + sizeof( caller[0] );
+    crcl(frame_p) frm = (crcl(frame_p))malloc( frm_size );
     if( !frm )
     {
         return NULL;
@@ -562,6 +563,7 @@ crcl(frame_p) crcl(fn_generic_prologue)(
     // zlog_debug( crcl(c), "generic_prologue %p %p", caller, caller->activity );
     caller->callee      = frm;
     caller->return_addr = return_ptr;
+    frm->size           = frm_size;
     frm->fn             = fn;
     frm->caller         = caller;
     frm->callee         = NULL;
@@ -595,13 +597,19 @@ crcl(frame_p) crcl(fn_generic_epilogue)( crcl(frame_p) frm )
     return caller;
 }
 
-/* Or maybe realloc the frame. That feels more in the spirit with
- * alloca, but need to think hard about all of the possible pointers to
- * the frame. */
-void *crcl(alloca)( crcl(frame_p) frm, size_t s )
+crcl(frame_p) crcl(alloca)( crcl(frame_p) frm, size_t s, void **p )
 {
-    void *ptr = malloc( s + sizeof( void * ) );
-    *((void **)ptr) = frm->allocad_ptrs;
-    frm->allocad_ptrs = ptr;
-    return ptr + sizeof( void * );
+    assert( p );
+    size_t pre_size = frm->size;
+    size_t post_size = pre_size + s;
+    crcl(frame_p) new_frame = (crcl(frame_p))realloc( frm, post_size );
+    if( !new_frame )
+    {
+        exit( 1 );
+    }
+    *p = ((void *)new_frame) + pre_size;
+    new_frame->size = post_size;
+    /* XXX Must make sure all pointers to this frame are updated. */
+    new_frame->activity->newest_frame = new_frame;
+    return new_frame;
 }

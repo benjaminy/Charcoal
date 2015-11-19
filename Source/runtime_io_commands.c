@@ -71,12 +71,6 @@ static void timer_expired( uv_timer_t* handle )
     uv_mutex_unlock( &thd->thd_management_mtx );
 }
 
-static void crcl(async_call_close)( uv_handle_t *h )
-{
-    /* uv_async_t *a = (uv_async_t *)h; */
-    /* zlog_debug( crcl(c), "CLOSE %p\n", a ); fflush(stdout); */
-}
-
 static int wake_up_waiters( activity_p *waiters )
 {
     /* XXX multithreading :( */
@@ -108,16 +102,6 @@ void crcl(async_fn_start)( void *data )
     }
     rc = uv_timer_start( &thd->timer_req, timer_expired, 10, 0);
     assert( !rc );
-}
-
-void crcl(async_fn_finish)()
-{
-    if( crcl(join_thread)( cmd->_.thread ) )
-    {
-        /* zlog_debug( stderr, "Close, please\n" ); */
-        /* XXX What about when there are more events???. */
-        uv_close( (uv_handle_t *)handle, crcl(async_cmd_close) );
-    }
 }
 
 static void io_cmd_cb( uv_async_t *handle )
