@@ -26,14 +26,14 @@
 \preprintfooter{Preprint.  Please do not redistribute}   % 'preprint' option specified.
 
 \title{Pseudo-Preemptive Threads: A New Multitasking Primitive for Reliable, Composable and Maintainable Software}
-\subtitle{Why Events, Threads and Coroutines are All Bad Ideas\footnotemark}
+\subtitle{Why Events, Preemptive Threads and Coroutines are All Bad Ideas\footnotemark}
 
 \authorinfo{Benjamin Ylvisaker}
-           {Affiliation1}
-           {Email1}
-\authorinfo{Name2\and Name3}
-           {Affiliation2/3}
-           {Email2/3}
+           {Colorado College}
+           {ben.ylvisaker@coloradocollege.edu}
+%\authorinfo{Name2\and Name3}
+%           {Affiliation2/3}
+%           {Email2/3}
 
 \maketitle
 
@@ -41,148 +41,119 @@
 This is the text of the abstract.
 \end{abstract}
 
-\category{CR-number}{subcategory}{third-level}
+% \category{CR-number}{subcategory}{third-level}
 
 % general terms are not compulsory anymore,
 % you may leave them out
-\terms
-term1, term2
+% \terms
+% term1, term2
 
-\keywords
-keyword1, keyword2
+% \keywords
+% keyword1, keyword2
 
 \footnotetext{This tongue-in-cheek subtitle is a reference to Ousterhout \cite{Ousterhout1996} and von Behren, et al. \cite{Behren2003a}}
 
 \section{Introduction}
 
-It is hard to write multitasking software that is reliable, composable and maintainable.
-The most popular abstractions for building such software (events, threads, coroutines) all have significant weaknesses.
+Modern mainstream software is substantially more concurrent than its forebears, in the sense that frequent network communications, rich physical world interactivity, and factoring applications into communicating processes (microservices) have become common.
+Note that in this paper we are mostly not concerned with concurrency in the sense of running software on multiple processors simultaneously (i.e. parallelism).
+We use \emph{multitasking} to refer to the subset of concurrency that is not parallelism.
 
-This paper describes a new abstraction called \emph{pseudo-preemptive threads} that promises to make writing multitasking software easier.
-To save ink and breath, we also call this new abstraction \emph{activities}.
-To validate the ideas proposed in this paper we implemented activities in a dialect of C called \charcoal{} and wrote several microbenchmarks to investigate the performance of activities.
+Multitasking has some intrinsic software engineering challenges: applications must somehow be capable of handling real world events happening in an order that cannot be known when the application is written.
+Existing abstractions for multitasking compound this intrinsic challenge with problems of their own.
+The most popular abstractions are events, (preemptive) threads and coroutines.
+This paper introduces a new multitasking abstraction called \emph{pseudo-preemptive threads} (or \emph{activities}) that we claim has software engineering benefits compared to existing alternatives.
+
+We begin with a brief summary of the problems with existing multitasking abstractions.
+
+\textbf{Events}.
+The most serious problem with events is that only one event handler can be running at a time.
+This means that long-running tasks (including tasks that must wait indefinitely for something outside the program itself) must be \emph{manually} broken up into multiple event handlers.
+This makes the logical flow of the program hard to reason about, both for programmers and analysis tools.
+It can also make allocation and deallocation of resources whose lifetime spans multiple handlers much trickier.
+This leads to a style of programming referred to as \emph{stack ripping} \cite{Adya2002}, or more colloquially \emph{callback hell}.
+These and more subtle problems are well analyzed and criticized by von Behren et al. in \cite{Behren2003a}.
+
+\textbf{Threads}.
+Threads allow programmers to write multitasking software in a more natural style than events, because the system automatically interleaves the execution of multiple tasks.
+Threads also open the door to a variety of nasty concurrency defects, which in the context of \emph{events} either do not exist at all or much easier to avoid.
+Fear of these defects (data races, deadlocks, atomicity violations, livelocks, starvation, order violations) has limited the use of threads in many applications and ecosystems.
+One good entry into the vast literature on diagnosing and fixing multithreading defects is \cite{Lu2008}.
+These challenges have been understood for a long time; two decades ago Ousterhout wrote a good analysis and critique of the problems with threads \cite{Ousterhout1996}.
+
+\textbf{Coroutines}.
+The increasingly sophisticated multitasking in mainstream software and the well-known problems with events and threads have forced language designers to explore alternatives in recent years.
+The most widely used alternative is \emph{coroutines}\footnote{In many cases language designers chose to use terms other than \emph{coroutine} for reasons that we can only speculate about.}.
+Examples include async/await, which was added to the C\#/.Net ecosystem in 2012; function generators, which were added to the JavaScript ecosystem with ECMAScript 6 (standard published in 2015); even the C++ community is considering adding support for coroutines (D4134, proposed for C++17).
+
+Since widespread use of coroutines is much more recent than events and threads, there is far less published on their pitfalls.
+The central awkwardness with coroutines is that programmers must \emph{manually} partition procedures (methods, functions, subroutines, whatever) into \emph{regular procedures} and coroutines.
+``Calling'' a coroutine actually spawns a task that runs concurrently with the executing code.
+
+Like threads, multiple coroutines can be in progress simultaneously.
+Unlike threads, context switching between coroutines is only permitted when a \emph{yield} primitive is \emph{explicitly} invoked.
+Regular procedures \emph{cannot} yield; in other words, regular procedure calls are atomic.
+A somewhat non-obvious consequence of this atomicity is that coroutines spawned by regular procedures cannot start running until the procedure returns back to a coroutine (possibly through some stack of procedure calls) that can yield.
+
+A more detailed analysis of coroutines, including comparisons with the new abstraction introduced in this paper appears in section \ref{}.
+The primary problem to remember about coroutines is that choosing which procedures should be coroutines is not always easy.
+This problem is compounded during maintenance, when changing a regular procedure to a coroutine (or vice versa) can introduce bugs.
+
+\textbf{Cooperative Threads}.
+Cooperative threads are syntactically similar to preemptive (i.e. normal) threads, except the system is not permitted to context switch at any point of execution, which has profound semantic consequences.
+Like coroutines, cooperative threads must \emph{explicitly} yield to permit switching.
+Unlike coroutines, cooperative threads may yield anywhere, which eliminates the need for a separate category of procedures.
+
+The biggest software engineering problem with cooperative threads is that it is hard to know which procedures might yield and which will not.
+In other words, which procedure calls are atomic?
+The answer to this question is very important for avoiding concurrency bugs like atomicity violations, but cooperative threads make it tricky.
+This atomicity issue is especially problematic during maintenance, when adding yield to a procedure can break any procedure that calls it (and procedures that call those procedures, and so on, transitively).
+
+Cooperative threads are not as widely used as events, threads and coroutines.
+We are not aware of any thorough analyses of why this is the case, but we suspect the central issue is with the problem of determining which procedure calls are atomic.
+
+\textbf{Hybrids}.
+Researchers have understood the weaknesses of existing multitasking abstractions for a while.
+Many proposals have been made for event/thread hybrids; for example: \cite{Boudol2007, Boussinot2006, Cunningham2005, Dabrowski2006, Fischer2007, Kerneis2014, Krohn2007, Li2007, Behren2003}.
+A detailed comparison with all of these proposals is beyond the scope of this paper.
+In the related work section we highlight the differences with the ones that are most similar to ours.
+
+\textbf{Other Multitasking Abstractions}.
+This introduction does not cover multitasking abstractions exhaustively.
+We described the abstractions that are most closely related to activities.
+The related work section at the end of the paper briefly describes connections with more distantly related abstractions.
+
+\subsection{Activities}
+
+This paper introduces a new multitasking abstraction called \emph{pseudo-preemptive threads} or \emph{activities}.
+Activities are a hybrid between cooperative and preemptive threads (as the name suggests).
+Among the hybrids mentioned above, activities are most similar to \cite{Boudol2007}.
+
+The main idea is to start with cooperative threads, then add \emph{automatically inserted} yields to make activities a bit more like preemptive threads, and a scoped \emph{no-yield} primitive for overriding yields and enforcing atomicity.
+
+The authors of \cite{Boudol2007} were primarily concerned with \emph{proving} that yields can be inserted in a way that makes unfairness (i.e. a single thread executing indefinitely) impossible.
+Our proposal compromises on provable fairness, but rather focuses on simple programmer control over yielding and implementation efficiency.
+After defining activities more precisely in the next section, we provide more detailed comparisons with established multitasking abstractions.
+In particular, we argue that activities combine most of the software engineering strengths of the other abstractions, while eliminating or substantially mitigating their weaknesses.
+
+To validate the ideas presented in this paper, we implemented activities in a dialect of C that we call \charcoal{}.
+In particular, we focus on two efficiency issues: memory scalability and yield performance.
+All thread-like abstractions have the challenge of determining how call frames should be allocated.
+We introduce a new allocation strategy called \emph{hot stacking} that has extremely low memory overhead and leads to call/return performance that is almost as good as plain C.
+We describe our novel yield implementation, which minimizes the performance impact of frequent yielding.
+The \charcoal{} implementation and all the benchmarking code reported in this paper are available publicly on GitHub [XXX].
+
 % We also tweaked two real-world multithreaded C programs to use activities instead of threads to explore the software engineering implications.
-
-This paper starts with brief a description and critique of the dominant multitasking abstractions.
-
-Next we describe activities and provide abstract arguments for why activities do not suffer from the reliability, composability and maintainability weakness of other abstractions.
-
-Next the paper describes the high points of the \charcoal{} implementation.
-All the code for the implementation and tests described in this paper is available in a public repository on GitHub.
-
-Finally, we report on the results of our microbenchmarks that support our performance claims.
-% Finally, we report on the results of our microbenchmarks and real-world application implementations.
 
 \subsection{Contributions}
 
-This paper has two primary contributions:
+This paper has three primary contributions:
 
 \begin{itemize}
-\item The definition of \emph{pseudo-preemptive threads/activities}.
-The most concise version is that they are similar to cooperative threads, with the addition of automatic yield insertion and a scoped no-yield primitive.
-\item A new call frame allocation strategy for multithreaded programs called \emph{hot stacking}.
-Language implementations that use this strategy allocate long-lived call frames individually in the heap and most short-lived frames contiguously in a single, shared memory area.
+\item Introduction of \emph{pseudo-preemptive threads/activities}.
+\item Introduction of \emph{hot stacking}.
+\item A novel high-performance implementation of yield.
 \end{itemize}
-
-\section{Established Multitasking Abstractions}
-
-The three most widely used multitasking abstractions are events, threads and coroutines.
-Each suffers from serious software engineering problems that we categorize into reliability, composability and/or maintainability.
-In this section we describe these problems; in later sections we argue that activities completely avoid or substantially mitigate all of them.
-
-\subsection{Events}
-
-Events are an extremely widely used abstraction for relatively simple multitasking patterns for tasks like reacting to mouse clicks and network message arrivals.
-Events were the only multitasking abstraction in some popular ecosystems, like browser JavaScript (until recently).
-
-When an event dispatcher calls a handler/listener procedure, that call must return before another event can be handled.
-This pattern makes avoiding many kinds of concurrency bugs easy, because calls to handlers do not overlap in time.
-However, it comes at a high cost in maintainability and reliability for complex applications.
-
-Potentially long-running (or blocking) tasks must be manually broken up into smaller handler procedures by application programmers.
-This leads to a style of programming referred to as \emph{stack ripping}\cite{Adya2002}, or more colloquially \emph{callback hell}.
-Callback hell can make it hard to decipher the logical flow of a task, because it is split among  multiple callback procedures.
-This is bad for reliability, because it is easy to make a mistake in the lifetime of some piece of data (compared with, for example, threads) \cite{Behren2003a}.
-Callback hell is even worse for maintainability, because like any pattern that forces logical units of functionality to be split among multiple pieces of code, it is far too easy to make change in one piece of code without noticing that an associated change is needed in a related piece of code.
-
-\subsection{Threads (Preemptive)}
-
-Events are at the safest and least flexible end of the multitasking abstraction spectrum and threads occupy the opposite extreme.
-(In this paper \emph{thread} means \emph{preemptive thread}.)
-
-The primary strength of threads is that they can wait/block indefinitely or run for an arbitrarily long time without preventing other threads from making progress.
-This makes it possible to write multitasking software in a natural single-task style (i.e. threads completely avoid callback hell).
-
-The primary weakness of threads is that it is extremely hard to avoid and debug concurrency defects like data races, deadlocks, atomicity violations and livelocks.
-In the last decade a significant amount of research effort has been devoted to making it easier to write reliable multithreaded applications, because of the emergence of mainstream multiprocessor computers.
-While this body of work is quite impressive, most mainstream application programmers still view threads as too dangerous for multitasking programming (correctly in the current authors' opinion).
-
-Applications that use threads and conventional concurrency control mechanisms also suffer from serious composability issues \cite{Harris2005, Grossman2007}.
-The very brief summary of the arguments in the cited papers is that when using mutexes, semaphores and their cousins, application programmers must design and (somehow) enforce subtle global concurrency control properties.
-Using transactions instead of conventional concurrency control mechanisms promises to make threads safer and more composable.
-Unfortunately, questions about how transactions should interact with input/output and performance/scalability concerns have severely limited the adoption of general purpose transactional concurrency control.
-
-Threads are the only multitasking abstractions discussed in this paper that naturally allow the parallel execution of tasks.
-The authors view this as closer to a bug than a feature.
-Serial multitasking abstractions like events and coroutines (and activities) can be used in combination with parallelism frameworks like processes and threads.
-The authors consider providing both parallelism and multitasking in a single language features (like threads) mostly a bad idea.
-Nevertheless, in the discussion section at the end of this paper we speculate about the feasibility of running activities in parallel.
-
-\subsection{Coroutines}
-
-Coroutines have an interesting history.
-According to Knuth, the term was coined by Melvin Conway in 1958, but coroutines remained on the margins of mainstream software practice until quite recently, a gap of more than 5 decades.
-A few examples of recent implementations: the async/await framework (coroutines by a different name) was added to C\# in version 5, which was released in 2012; \texttt{function*} (coroutines by a different name) was added to the 2015 revision of ECMAScript; D4134 is a proposal to add coroutines to C++17.
-
-Our interpretation of this history is that (1) coroutines are far from perfect as a multitasking primitive (otherwise they would have been widely adopted much sooner), and (2) mainstream applications have gotten more sophisticated in their use of multitasking, making life in callback hell ever more painful.
-Coroutines are being adopted as the least bad alternative to events.
-
-Using the coroutine abstraction requires application programmers to partition procedures into normal procedures (functions, methods, subroutines, whatever) and coroutines.
-In most implementations the procedure calling syntax is overloaded; what appears to be a call to a coroutine is actually a concurrent task spawn.
-Within the body of a coroutine definition, a \emph{yield} (or \emph{await}) primitive can be used to permit context switching to a different task (i.e. coroutine).
-Invoking yield in a normal procedure is not permitted.
-
-Relative to events, coroutines provide more flexibility, because multiple tasks can be in progress at the same time.
-Coroutines are much more resistant to concurrency bugs than threads, because only one coroutine can be active at a time, and context switching is only permitted at explicitly identified points.
-
-The primary weakness of coroutines is a subtle but nasty tension with conventional procedural abstraction.
-It is common for application programmers to want to yield in a \emph{procedure} called by a coroutine, but this is not possible.
-This can be quite inconvenient on its own, and it makes refactoring strategies like procedure extraction trickier to apply.
-Another consequence of this issue is that coroutines tend to be viral; if a programmer decides to convert a procedure to a coroutine (for example because it needs to wait for the arrival of a network message), it tends to be the case that any callers of that procedure need to be converted to coroutines as well.
-
-% Similarly, higher-order function patterns get more complicated as well.
-% There are now two distinct types of procedure-like-things [clarify/expand].
-
-% In languages with coroutines
-
-These software engineering problems have not prevented the adoption of coroutines, but they do make it harder than it needs to be to develop multitasking software.
-Activities solve these problems!
-
-\subsection{Cooperative Threads}
-
-Cooperative threads are not as widely used as events, threads and coroutines, but we briefly describe them because they are closely related to activities.
-Cooperative threads can be seen as a compromise between coroutines and threads.
-Like coroutines, cooperative threads must explicitly invoke a yield primitive to context switch.
-Like threads, cooperative threads do not have a separate kind of procedure (i.e. coroutine/async) and yield can be invoked anywhere (i.e. it is not restricted to coroutine bodies).
-
-Cooperative threads have a tension with procedural abstraction that is complementary to the tension in coroutine abstractions.
-Whether a particular procedure executes atomically depends on whether or not any of the procedures it calls will invoke yield.
-This can be annoying when initially writing code, and it is especially problematic during maintenance.
-If yield is added to a procedure that did not previously have it, there is the possibility that any caller of that procedure will have its atomicity properties violated.
-This is extra nasty when indirect calls are considered, because it is not possible in general to identify all call sites to a particular procedure.
-
-A quick note on jargon: It is fairly common to see the term \emph{coroutine} used where we use \emph{cooperative thread}, and \emph{stackless coroutine} where we use \emph{coroutine}.
-Naturally, we prefer the terms as defined in this paper.
-
-\subsection{Others}
-
-There are other approaches to multitasking that we briefly mention here only to argue that they are not directly relevant to the main points of this paper.
-
-Isolated processes can be used for multitasking.
-However, for things like handling GUI events, database transactions and network communication, shared memory is an extremely useful feature.
-
-Functional reactive programming (FRP) is an entirely different approach to multitasking.
-It is interesting, but it is not clear whether it can be integrated with mainstream programming practice.
 
 \section{Pseudo-Preemptive Threads}
 
@@ -331,6 +302,111 @@ It is very similar to \emph{atomic} in transactional languages, but the implemen
 
 From an implementation perspective, 
 
+
+From an implementation perspective, activities are most similar to coroutines.
+Procedures calls in no-yield mode are like regular procedure calls in a coroutine framework, and procedure calls in yielding mode are like coroutine calls.
+The most important different between coroutines and activities is that with activities the concepts of spawning a concurrent task and making a potentially yielding call are distinct; with coroutines these two ideas are merged into one language feature.
+The second difference is one of defaults: with coroutines by default procedures are unyielding; with activities by default procedures are yielding.
+
+These differences make it possible for activities to largely mitigate the software engineering problems of coroutines.
+Since all procedures are yielding by default, 
+
+With the addition of no-yield, activities can be seen as quite similar to coroutines with a complementary default.
+Normal procedures in an activity framework are like coroutines and normal procedures in a coroutine framework are like no-yield procedures in an activity framework.
+As similar as this argument makes coroutines and activities seem, we believe the differences are still significant.
+For example, in an activities framework, all procedures are part of the same type; normal procedures and no-yield procedures are not distinguished at the type level.
+
+\section{Established Multitasking Abstractions}
+
+The three most widely used multitasking abstractions are events, threads and coroutines.
+Each suffers from serious software engineering problems that we categorize into reliability, composability and/or maintainability.
+In this section we describe these problems; in later sections we argue that activities completely avoid or substantially mitigate all of them.
+
+\subsection{Events}
+
+Events are an extremely widely used abstraction for relatively simple multitasking patterns for tasks like reacting to mouse clicks and network message arrivals.
+Events were the only multitasking abstraction in some popular ecosystems like browser JavaScript (until recently).
+
+When an event dispatcher calls a handler/listener procedure, that call must return before another event can be handled.
+This pattern makes avoiding many kinds of concurrency bugs easy, because calls to handlers do not overlap in time.
+However, it comes at a high cost in maintainability and reliability for complex applications.
+
+Potentially long-running (or blocking) tasks must be manually broken up into smaller handler procedures by application programmers.
+[ripping/hell]
+Callback hell can make it hard to decipher the logical flow of a task, because it is split among  multiple callback procedures.
+This is bad for reliability, because it is easy to make a mistake in the lifetime of some piece of data (compared with, for example, threads) \cite{Behren2003a}.
+Callback hell is even worse for maintainability, because like any pattern that forces logical units of functionality to be split among multiple pieces of code, it is far too easy to make change in one piece of code without noticing that an associated change is needed in a related piece of code.
+
+\subsection{Threads (Preemptive)}
+
+Events are at the safest and least flexible end of the multitasking abstraction spectrum and threads occupy the opposite extreme.
+(In this paper \emph{thread} means \emph{preemptive thread}.)
+
+The primary strength of threads is that they can wait/block indefinitely or run for an arbitrarily long time without preventing other threads from making progress.
+This makes it possible to write multitasking software in a natural single-task style (i.e. threads completely avoid callback hell).
+
+The primary weakness of threads is that it is extremely hard to avoid and debug concurrency defects like data races, deadlocks, atomicity violations and livelocks.
+In the last decade a significant amount of research effort has been devoted to making it easier to write reliable multithreaded applications, because of the emergence of mainstream multiprocessor computers.
+While this body of work is quite impressive, most mainstream application programmers still view threads as too dangerous for multitasking programming (correctly in the current authors' opinion).
+
+Applications that use threads and conventional concurrency control mechanisms also suffer from serious composability issues \cite{Harris2005, Grossman2007}.
+The very brief summary of the arguments in the cited papers is that when using mutexes, semaphores and their cousins, application programmers must design and (somehow) enforce subtle global concurrency control properties.
+Using transactions instead of conventional concurrency control mechanisms promises to make threads safer and more composable.
+Unfortunately, questions about how transactions should interact with input/output and performance/scalability concerns have severely limited the adoption of general purpose transactional concurrency control.
+
+Threads are the only multitasking abstractions discussed in this paper that naturally allow the parallel execution of tasks.
+The authors view this as closer to a bug than a feature.
+Serial multitasking abstractions like events and coroutines (and activities) can be used in combination with parallelism frameworks like processes and threads.
+The authors consider providing both parallelism and multitasking in a single language features (like threads) mostly a bad idea.
+Nevertheless, in the discussion section at the end of this paper we speculate about the feasibility of running activities in parallel.
+
+\subsection{Coroutines}
+
+Coroutines have an interesting history.
+According to Knuth, the term was coined by Melvin Conway in 1958, but coroutines remained on the margins of mainstream software practice until quite recently, a gap of more than 5 decades.
+A few examples of recent implementations: the async/await framework (coroutines by a different name) was added to C\# in version 5, which was released in 2012; \texttt{function*} (coroutines by a different name) was added to the 2015 revision of ECMAScript; D4134 is a proposal to add coroutines to C++17.
+
+Our interpretation of this history is that (1) coroutines are far from perfect as a multitasking primitive (otherwise they would have been widely adopted much sooner), and (2) mainstream applications have gotten more sophisticated in their use of multitasking, making life in callback hell ever more painful.
+Coroutines are being adopted as the least bad alternative to events.
+
+Using the coroutine abstraction requires application programmers to partition procedures into normal procedures (functions, methods, subroutines, whatever) and coroutines.
+In most implementations the procedure calling syntax is overloaded; what appears to be a call to a coroutine is actually a concurrent task spawn.
+Within the body of a coroutine definition, a \emph{yield} (or \emph{await}) primitive can be used to permit context switching to a different task (i.e. coroutine).
+Invoking yield in a normal procedure is not permitted.
+
+Relative to events, coroutines provide more flexibility, because multiple tasks can be in progress at the same time.
+Coroutines are much more resistant to concurrency bugs than threads, because only one coroutine can be active at a time, and context switching is only permitted at explicitly identified points.
+
+The primary weakness of coroutines is a subtle but nasty tension with conventional procedural abstraction.
+It is common for application programmers to want to yield in a \emph{procedure} called by a coroutine, but this is not possible.
+This can be quite inconvenient on its own, and it makes refactoring strategies like procedure extraction trickier to apply.
+Another consequence of this issue is that coroutines tend to be viral; if a programmer decides to convert a procedure to a coroutine (for example because it needs to wait for the arrival of a network message), it tends to be the case that any callers of that procedure need to be converted to coroutines as well.
+
+% Similarly, higher-order function patterns get more complicated as well.
+% There are now two distinct types of procedure-like-things [clarify/expand].
+
+% In languages with coroutines
+
+These software engineering problems have not prevented the adoption of coroutines, but they do make it harder than it needs to be to develop multitasking software.
+Activities solve these problems!
+
+\subsection{Cooperative Threads}
+
+Cooperative threads are not as widely used as events, threads and coroutines, but we briefly describe them because they are closely related to activities.
+Cooperative threads can be seen as a compromise between coroutines and threads.
+Like coroutines, cooperative threads must explicitly invoke a yield primitive to context switch.
+Like threads, cooperative threads do not have a separate kind of procedure (i.e. coroutine/async) and yield can be invoked anywhere (i.e. it is not restricted to coroutine bodies).
+
+Cooperative threads have a tension with procedural abstraction that is complementary to the tension in coroutine abstractions.
+Whether a particular procedure executes atomically depends on whether or not any of the procedures it calls will invoke yield.
+This can be annoying when initially writing code, and it is especially problematic during maintenance.
+If yield is added to a procedure that did not previously have it, there is the possibility that any caller of that procedure will have its atomicity properties violated.
+This is extra nasty when indirect calls are considered, because it is not possible in general to identify all call sites to a particular procedure.
+
+A quick note on jargon: It is fairly common to see the term \emph{coroutine} used where we use \emph{cooperative thread}, and \emph{stackless coroutine} where we use \emph{coroutine}.
+Naturally, we prefer the terms as defined in this paper.
+
+
 \section{Implementation}
 
 There are a few interesting features of our implementation of activities.
@@ -383,6 +459,8 @@ When a thread reaches the end of its segment it allocates a new one and links th
 This idea is appealing: the implementers of Rust and Go both used it.
 Unfortunately it has really unpleasant \emph{uncommon} case behavior: the implementers of Rust \cite{Anderson2013} and Go (search ``contiguous stacks in go'') both abandoned it in later versions.
 
+Also \cite{Middha2008}
+
 \subsubsection{Hot Stacking}
 
 The call frame allocation strategy introduced in this paper is a hybrid of contiguous and individual heap allocation.
@@ -407,7 +485,7 @@ The word \emph{hot} is also a reference to the fact that this top of stack area 
 \subsection{Fast and Slow}
 
 There are important differences at the implementation level between how code executes in yielding versus no-yield mode, not least among them the call frame allocation strategy.
-To implement this dual mode concept in a reasonably simple and efficient way, the current \charcoal implementation generates two versions of each procedure: one for each mode.
+To implement this dual mode concept in a reasonably simple and efficient way, the current \charcoal{} implementation generates two versions of each procedure: one for each mode.
 The yielding mode implementation includes inserted yields and assumes its own frame was individually allocated.
 The no-yield mode implementation does not include yields; for most intents and purposes it is a simple translation to plain C.
 
@@ -448,7 +526,7 @@ Therefore, the performance of the yield primitive does matter to some degree.
 
 The simplest implementation of yield would check a counter or clock of some sort.
 Reasonably efficient implementations of this strategy would certainly be non-portable (e.g. using processor-specific counter registers) and probably still be somewhat expensive.
-Instead the current \charcoal implementation uses periodic system timers/alarms that deliver a signal to the program.
+Instead the current \charcoal{} implementation uses periodic system timers/alarms that deliver a signal to the program.
 The handler for these signals atomically modifies a global variable.
 The yield primitive atomically reads this global variable; as long as it has not changed the program continues execution immediately.
 Therefore, in the common case the cost of a yield is only an atomic read and a (highly predictable) branch, plus a fast call and return to get to the yield code itself.
@@ -605,6 +683,18 @@ Continuation Passing C.
 
 Threads without the Pain
 
+\subsection{Others}
+
+There are other approaches to multitasking that we briefly mention here only to argue that they are not directly relevant to the main points of this paper.
+
+Isolated processes can be used for multitasking.
+However, for things like handling GUI events, database transactions and network communication, shared memory is an extremely useful feature.
+
+Functional reactive programming (FRP) is an entirely different approach to multitasking.
+It is interesting, but it is not clear whether it can be integrated with mainstream programming practice.
+
+
+
 \section{Summary and Discussion}
 
 In this paper we introduced pseudo-preemptive threads, a new concurrency primitive, called activities for short.
@@ -621,6 +711,10 @@ Yielding would cause one transaction to end and the next to begin.
 The authors are not optimistic that such a transaction based system would work well, but similar things have been tried. (Stone OCM)
 
 \cite{ONeill2015}
+
+\cite{Boussinot2006} % parallel
+\cite{Dabrowski2006} % parallel
+
 
 \acks
 
