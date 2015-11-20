@@ -183,18 +183,24 @@ This paper has three primary contributions:
 The automatic yield insertion makes activities behave more like preemptive threads from an application programmer's perspective.
 However, activities are still far more resistant to concurrency bugs than threads.
 
-Before going into any more detail on the definition and implementation of activities, we consider an example stolen from \cite{Krohn2007}.
-This example performs (\texttt{n}) DNS lookups concurrently using the standard \texttt{getaddrinfo} procedure.
+Before going into any more detail on the definition and implementation of activities, we consider an example stolen from \cite{Krohn2007}; a \charcoal{} version is in Figure \ref{fig:charcoal_multidns}.
+This example performs \texttt{n} DNS lookups concurrently using the standard \texttt{getaddrinfo} procedure.
 It has a parameter (\texttt{max\_conc}) to limit the number of DNS requests that will be sent concurrently to avoid flooding the network with too many requests.
 
-\hspace{-0.5cm}
+\begin{figure}
 \includegraphics{multi_getaddrinfo}
+\caption{A running example.
+  This code concurrently performs DNS lookups.
+  The maximum number of outstanding requests is \texttt{max\_conc}.}
+\label{fig:charcoal_multidns}
+\end{figure}
 
 \subsection{Activate}
 
 The central syntactic addition is the \emph{activate} statement (line 9).
-The activate statement creates a new activity that runs the body of the activate statements concurrently (but not in parallel) with whatever comes after the statement (i.e. its continuation).
+The activate statement creates a new activity that runs the body of the activate statement concurrently (but not in parallel) with whatever comes after the statement (i.e. its continuation).
 Only one activity can be running at a time, and the system can only context switch between activities on a yield.
+By default when a program hits an activate, the body will start running before the continuation.
 
 The semantics of a program with activities can be seen as traces of actions separated by yield invocations.
 Between two adjacent yield actions, all actions must come from a single particular activity.
@@ -205,45 +211,58 @@ In other words, yields define the minimum granularity of interleaving.
 The system has a scheduler that chooses when a yield should lead to a context switch, and which activity to switch to.
 The current \charcoal{} implementation uses a simple FIFO scheduler; clearly this is something that could be looked at for further refinement.
 
-So far in this description, activities are identical to conventional cooperative threads.
-
-
-Any blocking or potentially long-running procedures (like \texttt{getaddrinfo}) will yield while the system is performing its action.
-Also every loop has an implicit (in the source code) yield at the end of every iteration.
-
-The runtime system is responsible for scheduling activities.
-
-
-
 The activate statement takes as a parameter a pointer to application-allocated memory for storing metadata about the new activity.
 In the above example the memory for storing activity information is allocated locally.
-Because of this the example procedure must wait for all the activities to finish.
+Because of this the example procedure must wait for all the activities it spawns to finish.
 (Returning before they finish could cause the program to access deallocated memory).
 It would be possible to change the interface so that the caller passes in the backing memory.
 In that case, the procedure could return while the activities were still fetching DNS information, allowing the application to go on with other work.
+If activities were implemented in a language with automatic memory management, we would not have to be concerned about these memory allocation issues.
+
+So far in this description, activities are identical to conventional cooperative threads.
+\charcoal{} has an explicit yield statement, though it is not often needed.
 
 \subsubsection{Local Variables}
 
-Notice that multiple activities read and write the local variable \texttt{requested}.
+Notice that multiple activities read and write the local variable \texttt{requested} without any additional synchronization.
 If these were threads, this would cause a data race, which at best leads to unpredictable results and at worst makes the whole program undefined.
 With activities this is not a problem at all; the system (compiler, processors, etc.) is not permitted to move memory operations across yields, which dramatically simplifies the concurrent memory model problem.
 
-The parentheses after the activate keyword are for controlling whether local variables are accessed by-value or by-reference.
+The parentheses after the \texttt{activate} keyword are for controlling whether local variables are accessed by-value or by-reference.
 The default is by-reference, which is how most of the variables are used in this example.
-The exception is \texttt{i} which is used as an identifier of sorts in the \texttt{printf} call.
+The exception is \texttt{i} which is used as a name of sorts in the \texttt{printf} call.
 Each activity gets its own copy of \texttt{i}, with the initial value of whatever the variable's value was at activity creation time.
 If there were a modification to \texttt{i} inside \texttt{activate}, each activity would be modifyign its own copy.
 
 \subsection{Yield Insertion}
 
+The first feature that distinguishes activities from cooperative threads is automatic yield insertion.
+The goal of yield insertion is to prevent an activity from running indefinitely or waiting on an external event, and blocking other activities from making progress.
+As mentioned above, the authors of \cite{Boudol2007} take this idea (fairness/starvation avoidance) to an extreme, designing a system that is provably fair.
+We are less concerned with provability, and state the following as goals/guidelines rather than strict rules for activities:
+
+\begin{enumerate}
+\item It should \emph{not} be possible for an activity to run indefinitely or block without yielding.
+\item Yields should happen infrequently.
+\end{enumerate}
+
+These goals are clearly in tension with each other: the first could be satisfied by yielding after every statement; the second could be satisfied by never yielding.
+We do not consider it necessary to interpret these rules strictly, because we believe yield frequency bugs to be relatively easy to find an eliminate.
+Profilers can easily monitor the time since the last yield and issue a warning when it has been too long.
+
+In the example code there will be two yields inserted automatically: one at the end of the while loop that starts on line 10 and one in the implementation of \texttt{getaddrinfo} on line 14.
+
+In general, the \charcoal{} compiler inserts a yield at the \emph{end} of every loop iteration.
+Implementing this completely is somewhat tricky, because the compiler must be careful about things like continue and goto statements.
+The implementation also ensures that system calls are performed in such a way that the calling activity will yield if the call might take a long time.
+There are more details in the implementation section.
+
+
+
 These automatically-inserted yields make activities behave more like threads than events or coroutines from an application programmer's perspective.
 However, there is a big difference between activities and threads.
 
 %
-
-What distinguishes activities from cooperative threads is yield insertion.
-Informally, to support activities properly a language definition must ensure that a program cannot block or run indefinitely without executing a yield action.
-This is achieved by automatically inserting yields in certain places before a program is compiled or interpreted.
 
 
 
@@ -253,10 +272,6 @@ The answer depends on the details of the rest of the programming language defini
 However we can state two design rules that apply to any language.
 These rules are in strong tension with each other:
 
-\begin{enumerate}
-\item It should \textbf{not} be possible for an activity to run indefinitely without executing a yield.
-\item Yields should happen as infrequently as possible.
-\end{enumerate}
 
 One clear consequence of these rules is that anything that could cause an activity to pause indefinitely (e.g. a syscall) by default must be modified to allow other activities to run while the paused activity waits.
 More challenging, loops must be interrupted.
@@ -305,6 +320,10 @@ It would be bad if programmers could not control activity yielding in some way.
 In Charcoal there are two primary tools for controlling yielding: no-yield and explicit yielding.
 Any procedure or statement can be marked ``\texttt{no\_yield}'' which means that the activity will not yield during the execution of the statement or call to the procedure.
 
+\section{COMPARE Established Multitasking Abstractions}
+
+
+
 \subsection{Comparison to Threads, Events and Coroutines}
 
 Activities avoid or mitigate all the software engineering problems identified in section \ref{}.
@@ -339,7 +358,6 @@ Normal procedures in an activity framework are like coroutines and normal proced
 As similar as this argument makes coroutines and activities seem, we believe the differences are still significant.
 For example, in an activities framework, all procedures are part of the same type; normal procedures and no-yield procedures are not distinguished at the type level.
 
-\section{COMPARE Established Multitasking Abstractions}
 
 
 
