@@ -19,6 +19,6 @@ int f( int n, int x )
 
 int main( int argc, char **argv )
 {
-    int m = ( argc > 1 ) ? (int)atol( argv[1] ) : N;
-    return f( 1 << ( m - 1 ), 1 );
+    long long m = ( argc > 1 ) ? (int)atol( argv[1] ) : N;
+    return f( ((long long)1) << ( m - 1 ), 1 );
 }

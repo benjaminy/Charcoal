@@ -47,7 +47,7 @@ void dumb_sem_dec( dumb_sem *s )
     assert( !pthread_mutex_unlock( &s->m ) );
 }
 
-#define N 10
+#define N 100
 int m = N;
 dumb_sem s[N];
 
