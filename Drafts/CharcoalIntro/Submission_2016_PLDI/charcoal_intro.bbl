@@ -1,0 +1,224 @@
+\begin{thebibliography}{24}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Adya et~al.(2002)Adya, Howell, Theimer, Bolosky, and
+  Douceur]{Adya2002}
+A.~Adya, J.~Howell, M.~Theimer, W.~J. Bolosky, and J.~R. Douceur.
+\newblock Cooperative task management without manual stack management.
+\newblock In \emph{Proceedings of the General Track of the annual conference on
+  USENIX Annual Technical Conference}, ATEC '02, pages 289--302, Berkeley, CA,
+  USA, 2002. USENIX Association.
+\newblock ISBN 1-880446-00-6.
+\newblock URL \url{http://dl.acm.org/citation.cfm?id=647057.713851}.
+
+\bibitem[Anderson(2013)]{Anderson2013}
+B.~Anderson.
+\newblock Abandoning segmented stacks in rust.
+\newblock rust-dev mailing list, November 2013.
+
+\bibitem[Boehm(2011)]{Boehm2011}
+H.-J. Boehm.
+\newblock How to miscompile programs with "benign" data races.
+\newblock In \emph{Proceedings of the 3rd USENIX Conference on Hot Topic in
+  Parallelism}, HotPar'11, pages 3--3, Berkeley, CA, USA, 2011. USENIX
+  Association.
+\newblock URL \url{http://dl.acm.org/citation.cfm?id=2001252.2001255}.
+
+\bibitem[Boudol(2007)]{Boudol2007}
+G.~Boudol.
+\newblock Fair cooperative multithreading: Typing termination in a higher-order
+  concurrent imperative language.
+\newblock In \emph{Proceedings of the 18th International Conference on
+  Concurrency Theory}, CONCUR'07, pages 272--286, Berlin, Heidelberg, 2007.
+  Springer-Verlag.
+\newblock ISBN 3-540-74406-1, 978-3-540-74406-1.
+\newblock URL \url{http://dl.acm.org/citation.cfm?id=2392200.2392221}.
+
+\bibitem[Boussinot(2006)]{Boussinot2006}
+F.~Boussinot.
+\newblock Fairthreads: Mixing cooperative and preemptive threads in c: Research
+  articles.
+\newblock \emph{Concurr. Comput. : Pract. Exper.}, 18\penalty0 (5):\penalty0
+  445--469, Apr. 2006.
+\newblock ISSN 1532-0626.
+\newblock \doi{10.1002/cpe.v18:5}.
+\newblock URL \url{http://dx.doi.org/10.1002/cpe.v18:5}.
+
+\bibitem[Cunningham and Kohler(2005)]{Cunningham2005}
+R.~Cunningham and E.~Kohler.
+\newblock Making events less slippery with eel.
+\newblock In \emph{Proceedings of the 10th conference on Hot Topics in
+  Operating Systems - Volume 10}, HOTOS'05, pages 3--3, Berkeley, CA, USA,
+  2005. USENIX Association.
+\newblock URL \url{http://dl.acm.org/citation.cfm?id=1251123.1251126}.
+
+\bibitem[Dabrowski and Boussinot(2006)]{Dabrowski2006}
+F.~Dabrowski and F.~Boussinot.
+\newblock Cooperative threads and preemptive computations.
+\newblock In \emph{in \&quot;Proceedings of TV’06, Multithreading in Hardware
+  and Software: Formal Approaches to Design and Verification}, 2006.
+
+\bibitem[Dean et~al.(1995)Dean, Grove, and Chambers]{Dean1995}
+J.~Dean, D.~Grove, and C.~Chambers.
+\newblock Optimization of object-oriented programs using static class hierarchy
+  analysis.
+\newblock In \emph{Proceedings of the 9th European Conference on
+  Object-Oriented Programming}, ECOOP '95, pages 77--101, London, UK, UK, 1995.
+  Springer-Verlag.
+\newblock ISBN 3-540-60160-0.
+\newblock URL \url{http://dl.acm.org/citation.cfm?id=646153.679523}.
+
+\bibitem[Fischer et~al.(2007)Fischer, Majumdar, and Millstein]{Fischer2007}
+J.~Fischer, R.~Majumdar, and T.~Millstein.
+\newblock Tasks: language support for event-driven programming.
+\newblock In \emph{Proceedings of the 2007 ACM SIGPLAN symposium on Partial
+  evaluation and semantics-based program manipulation}, PEPM '07, pages
+  134--143, New York, NY, USA, 2007. ACM.
+\newblock ISBN 978-1-59593-620-2.
+\newblock \doi{10.1145/1244381.1244403}.
+\newblock URL \url{http://doi.acm.org/10.1145/1244381.1244403}.
+
+\bibitem[Frigo et~al.(1998)Frigo, Leiserson, and Randall]{Frigo1998}
+M.~Frigo, C.~E. Leiserson, and K.~H. Randall.
+\newblock The implementation of the cilk-5 multithreaded language.
+\newblock In \emph{Proceedings of the ACM SIGPLAN 1998 Conference on
+  Programming Language Design and Implementation}, PLDI '98, pages 212--223,
+  New York, NY, USA, 1998. ACM.
+\newblock ISBN 0-89791-987-4.
+\newblock \doi{10.1145/277650.277725}.
+\newblock URL \url{http://doi.acm.org/10.1145/277650.277725}.
+
+\bibitem[Grossman(2007)]{Grossman2007}
+D.~Grossman.
+\newblock The transactional memory / garbage collection analogy.
+\newblock In \emph{Proceedings of the 22Nd Annual ACM SIGPLAN Conference on
+  Object-oriented Programming Systems and Applications}, OOPSLA '07, pages
+  695--706, New York, NY, USA, 2007. ACM.
+\newblock ISBN 978-1-59593-786-5.
+\newblock \doi{10.1145/1297027.1297080}.
+\newblock URL \url{http://doi.acm.org/10.1145/1297027.1297080}.
+
+\bibitem[Harris et~al.(2005)Harris, Marlow, Peyton-Jones, and
+  Herlihy]{Harris2005}
+T.~Harris, S.~Marlow, S.~Peyton-Jones, and M.~Herlihy.
+\newblock Composable memory transactions.
+\newblock In \emph{Proceedings of the Tenth ACM SIGPLAN Symposium on Principles
+  and Practice of Parallel Programming}, PPoPP '05, pages 48--60, New York, NY,
+  USA, 2005. ACM.
+\newblock ISBN 1-59593-080-9.
+\newblock \doi{10.1145/1065944.1065952}.
+\newblock URL \url{http://doi.acm.org/10.1145/1065944.1065952}.
+
+\bibitem[Kerneis(2013)]{Kerneis2013}
+G.~Kerneis.
+\newblock \emph{Continuation-Passing C: Program Transformations for Compiling
+  Concurrency in an Imperative Language}.
+\newblock PhD thesis, Université Paris Diderot – Paris 7, 2013.
+
+\bibitem[Kerneis et~al.(2014)Kerneis, Shepherd, and Hajnoczi]{Kerneis2014}
+G.~Kerneis, C.~Shepherd, and S.~Hajnoczi.
+\newblock Qemu/cpc: Static analysis and cps conversion for safe, portable, and
+  efficient coroutines.
+\newblock In \emph{Proceedings of the ACM SIGPLAN 2014 Workshop on Partial
+  Evaluation and Program Manipulation}, PEPM '14, pages 83--94, New York, NY,
+  USA, 2014. ACM.
+\newblock ISBN 978-1-4503-2619-3.
+\newblock \doi{10.1145/2543728.2543733}.
+\newblock URL \url{http://doi.acm.org/10.1145/2543728.2543733}.
+
+\bibitem[Krohn et~al.(2007)Krohn, Kohler, and Kaashoek]{Krohn2007}
+M.~Krohn, E.~Kohler, and M.~F. Kaashoek.
+\newblock Events can make sense.
+\newblock In \emph{2007 USENIX Annual Technical Conference on Proceedings of
+  the USENIX Annual Technical Conference}, ATC'07, pages 7:1--7:14, Berkeley,
+  CA, USA, 2007. USENIX Association.
+\newblock ISBN 999-8888-77-6.
+\newblock URL \url{http://dl.acm.org/citation.cfm?id=1364385.1364392}.
+
+\bibitem[Li and Zdancewic(2007)]{Li2007}
+P.~Li and S.~Zdancewic.
+\newblock Combining events and threads for scalable network services
+  implementation and evaluation of monadic, application-level concurrency
+  primitives.
+\newblock In \emph{Proceedings of the 2007 ACM SIGPLAN conference on
+  Programming language design and implementation}, PLDI '07, pages 189--199,
+  New York, NY, USA, 2007. ACM.
+\newblock ISBN 978-1-59593-633-2.
+\newblock \doi{10.1145/1250734.1250756}.
+\newblock URL \url{http://doi.acm.org/10.1145/1250734.1250756}.
+
+\bibitem[Lu et~al.(2008)Lu, Park, Seo, and Zhou]{Lu2008}
+S.~Lu, S.~Park, E.~Seo, and Y.~Zhou.
+\newblock Learning from mistakes: a comprehensive study on real world
+  concurrency bug characteristics.
+\newblock In \emph{Proceedings of the 13th international conference on
+  Architectural support for programming languages and operating systems},
+  ASPLOS XIII, pages 329--339, New York, NY, USA, 2008. ACM.
+\newblock ISBN 978-1-59593-958-6.
+\newblock \doi{10.1145/1346281.1346323}.
+\newblock URL \url{http://doi.acm.org/10.1145/1346281.1346323}.
+
+\bibitem[Middha et~al.(2008)Middha, Simpson, and Barua]{Middha2008}
+B.~Middha, M.~Simpson, and R.~Barua.
+\newblock Mtss: Multitask stack sharing for embedded systems.
+\newblock \emph{ACM Trans. Embed. Comput. Syst.}, 7\penalty0 (4):\penalty0
+  46:1--46:37, Aug. 2008.
+\newblock ISSN 1539-9087.
+\newblock \doi{10.1145/1376804.1376814}.
+\newblock URL \url{http://doi.acm.org/10.1145/1376804.1376814}.
+
+\bibitem[Necula et~al.(2002)Necula, McPeak, Rahul, and Weimer]{Necula2002}
+G.~C. Necula, S.~McPeak, S.~P. Rahul, and W.~Weimer.
+\newblock Cil: Intermediate language and tools for analysis and transformation
+  of c programs.
+\newblock In \emph{Proceedings of the 11th International Conference on Compiler
+  Construction}, CC '02, pages 213--228, London, UK, UK, 2002. Springer-Verlag.
+\newblock ISBN 3-540-43369-4.
+\newblock URL \url{http://dl.acm.org/citation.cfm?id=647478.727796}.
+
+\bibitem[Ousterhout(1996)]{Ousterhout1996}
+J.~Ousterhout.
+\newblock Why threads are a bad idea (for most purposes).
+\newblock In \emph{USENIX Technical Conference}, 1996.
+
+\bibitem[O’Neill and Stone(2015)]{ONeill2015}
+M.~E. O’Neill and C.~A. Stone.
+\newblock Making impractical implementations practical: Observationally
+  cooperative multithreading using hle.
+\newblock In \emph{Proceedings of the 10th ACM SIGPLAN Workshop on
+  Transactional Computing}, June 2015.
+
+\bibitem[Shao and Appel(2000)]{Shao2000}
+Z.~Shao and A.~W. Appel.
+\newblock Efficient and safe-for-space closure conversion.
+\newblock \emph{ACM Trans. Program. Lang. Syst.}, 22\penalty0 (1):\penalty0
+  129--161, Jan. 2000.
+\newblock ISSN 0164-0925.
+\newblock \doi{10.1145/345099.345125}.
+\newblock URL \url{http://doi.acm.org/10.1145/345099.345125}.
+
+\bibitem[von Behren et~al.(2003{\natexlab{a}})von Behren, Condit, and
+  Brewer]{Behren2003a}
+R.~von Behren, J.~Condit, and E.~Brewer.
+\newblock Why events are a bad idea (for high-concurrency servers).
+\newblock In \emph{Proceedings of the 9th Conference on Hot Topics in Operating
+  Systems - Volume 9}, HOTOS'03, pages 4--4, Berkeley, CA, USA,
+  2003{\natexlab{a}}. USENIX Association.
+\newblock URL \url{http://dl.acm.org/citation.cfm?id=1251054.1251058}.
+
+\bibitem[von Behren et~al.(2003{\natexlab{b}})von Behren, Condit, Zhou, Necula,
+  and Brewer]{Behren2003}
+R.~von Behren, J.~Condit, F.~Zhou, G.~C. Necula, and E.~Brewer.
+\newblock Capriccio: scalable threads for internet services.
+\newblock In \emph{Proceedings of the nineteenth ACM symposium on Operating
+  systems principles}, SOSP '03, pages 268--281, New York, NY, USA,
+  2003{\natexlab{b}}. ACM.
+\newblock ISBN 1-58113-757-5.
+\newblock \doi{10.1145/945445.945471}.
+\newblock URL \url{http://doi.acm.org/10.1145/945445.945471}.
+
+\end{thebibliography}
