@@ -582,11 +582,17 @@ crcl(frame_p) crcl(fn_generic_epilogue)( crcl(frame_p) frm )
 {
     crcl(frame_p) caller = frm->caller;
     /* NOTE: We might be able to get away with updating newest only on
-     * context switches. */
+     * context switches.  NOPE: setjmp/longjmp! */
     frm->activity->newest_frame = caller;
     /* XXX make malloc/free configurable? */
+    while( frm->allocad_bufs )
+    {
+        crcl(allocad_bufs_p) next = frm->allocad_bufs->next;
+        free( frm->allocad_bufs );
+        frm->allocad_bufs = next;
+    }
     free( frm );
-#if 0
+#if 1
     /* NOTE: Zeroing the callee field is not strictly necessary, and
      * therefore might be wasteful.  However, one should not be
      * nickel-and-diming the performance of yielding calls anyway (use
@@ -597,19 +603,30 @@ crcl(frame_p) crcl(fn_generic_epilogue)( crcl(frame_p) frm )
     return caller;
 }
 
-crcl(frame_p) crcl(alloca)( crcl(frame_p) frm, size_t s, void **p )
+/*
+ * NOTE: It would be really lovely to have a "try-realloc" function for
+ * implementing alloca for heap allocated frames.  If try-realloc
+ * succeeded, we're done.  If not, allocate a new chunk and link it up.
+ * Unfortunately, realloc might deallocate its parameter, which is not
+ * acceptable in this situation, because application code may have taken
+ * the address of local variables (i.e. pointers into the frame).
+ * Something to consider if/when we get around to implementing our own
+ * allocator.
+ */
+crcl(frame_p) crcl(alloca)( crcl(frame_p) frm, size_t s, void **lhs )
 {
-    assert( p );
-    size_t pre_size = frm->size;
-    size_t post_size = pre_size + s;
-    crcl(frame_p) new_frame = (crcl(frame_p))realloc( frm, post_size );
-    if( !new_frame )
+    /* NOTE: The compiler should note generate a call to this procedure
+     * if there is no lhs. */
+    assert( lhs );
+    // ??? assert( s > 0 );
+    crcl(alloca_buf_p) ab = (crcl(alloca_buf_p))malloc( sizeof( ab[0] ) + s );
+    if( !ab )
     {
+        /* TODO: Crash the activity */
         exit( 1 );
     }
-    *p = ((void *)new_frame) + pre_size;
-    new_frame->size = post_size;
-    /* XXX Must make sure all pointers to this frame are updated. */
-    new_frame->activity->newest_frame = new_frame;
-    return new_frame;
+    ab->next = frm->allocad_bufs;
+    frm->allocad_bufs = ab;
+    *lhs = &ab->data;
+    return frm;
 }

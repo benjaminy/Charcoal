@@ -53,10 +53,22 @@ typedef struct { volatile int v; } atomic_int;
 #define __CHARCOAL_ACTF_DONE      (1 << 3)
 #define __CHARCOAL_ACTF_OOM       (1 << 4)
 
+// XXX auto extract crcl(c_jmp_buf)
+struct crcl(c_jmp_buf_tag)
+{
+    long int __jmpbuf[8];
+    int __mask_was_saved;
+    struct {
+        unsigned long int __val[ ( 1024 / ( 8 * sizeof ( unsigned long int ) ) ) ];
+    } __saved_mask;
+};
+typedef struct crcl(c_jmp_buf_tag) crcl(c_jmp_buf)[1];
+
 /* XXX super annoying name collision on thread_t with Mach header.
  * Look into it more some day. */
 typedef struct         cthread_t          cthread_t,          *cthread_p;
 typedef struct        activity_t         activity_t,         *activity_p;
+typedef struct crcl(alloca_buf_t) crcl(alloca_buf_t), *crcl(alloca_buf_p);
 typedef struct      crcl(frame_t)      crcl(frame_t),      *crcl(frame_p);
 typedef struct   crcl(act_list_t)   crcl(act_list_t),   *crcl(act_list_p);
 typedef struct crcl(async_call_t) crcl(async_call_t), *crcl(async_call_p);
@@ -69,13 +81,20 @@ struct crcl(async_call_t)
     crcl(async_call_p) next;
 };
 
+struct crcl(alloca_buf_t)
+{
+    crcl(alloca_buf_p) next;
+    char data[0];
+};
+
 /* The size of a frame is currently 5 pointers (20/40 bytes) plus the
  * procedure-specific data. */
 struct crcl(frame_t)
 {
-    /* The (all-inclusive) size of this frame.  This is necessary for
-     * implementing alloca.  It's also generally handy for debugging. */
-    size_t size;
+    /* The (all-inclusive) size of this frame.
+     * This might be handy for debugging.
+     * Consider including it under a preproc flag later. */
+    // size_t size;
 
     /* The activity this frame belongs to */
     activity_p activity;
@@ -91,6 +110,9 @@ struct crcl(frame_t)
      * optimized away, but it's not trivial and seems nice for debugging
      * anyway. */
     crcl(frame_p) caller, callee;
+
+    /* Head of the list of alloca'd buffers */
+    crcl(alloca_buf_p) allocad_bufs;
 
     /* Using the variable-sized last field trick.
      * The last field is for procedure-specific storage (parameters,
@@ -150,6 +172,23 @@ struct activity_t
     int yield_calls;
 };
 
+struct crcl(jmp_buf_tag)
+{
+    int yielding_tag;
+    union
+    {
+        crcl(c_jmp_buf) no_yield_env;
+        struct
+        {
+            crcl(frame_p) frm;
+            void *return_addr;
+            int *lhs;
+        } yielding;
+    } _;
+}
+
+typedef struct crcl(jmp_buf_tag) jmp_buf[1];
+
 struct cthread_t
 {
     /* Used??? Should be atomic??? */
@@ -171,6 +210,11 @@ struct cthread_t
     /* waiting and ready are references to lists of activities; running
      * is the single activity that is running. Any can be NULL. */
     activity_p    waiting, ready, running;
+
+    /* We need this jmp_buf for the situation where application code
+     * calls longjmp in no-yield mode on a jmp_buf that was set in
+     * yielding mode. */
+    crcl(c_jmp_buf) thread_main_jmp_buf;
 
     /* Thread management mutex and condition variable */
     uv_mutex_t    thd_management_mtx;
@@ -207,5 +251,12 @@ int crcl(yield)( void );
 crcl(frame_p) crcl(yield_impl)( crcl(frame_p) frame, void *ret_addr );
 crcl(frame_p) crcl(activity_waiting_or_done)( crcl(frame_p) frm, void *ret_addr );
 void crcl(add_to_waiters)( activity_p waiter, activity_p *q );
+
+int  setjmp ( crcl(c_jmp_buf) );
+void longjmp( crcl(c_jmp_buf), int );
+
+void crcl(setjmp_yielding)( crcl(frame_p), void *return_addr, jmp_buf, int *lhs );
+crcl(frame_p) crcl(longjmp_yielding)( crcl(frame_p), jmp_buf, int );
+void crcl(longjmp_no_yield)( jmp_buf, int );
 
 #endif /* __CHARCOAL_CORE */
