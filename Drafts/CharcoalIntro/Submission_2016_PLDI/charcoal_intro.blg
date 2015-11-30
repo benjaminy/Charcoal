@@ -1,0 +1,49 @@
+This is BibTeX, Version 0.99d (TeX Live 2015)
+Capacity: max_strings=35307, hash_size=35307, hash_prime=30011
+The top-level auxiliary file: charcoal_intro.aux
+The style file: abbrvnat.bst
+Database file #1: ../../../../Documents/PapersForReferencing/biy_all_research.bib.bib
+Warning--entry type for "Anderson2013" isn't style-file defined
+--line 110 of file ../../../../Documents/PapersForReferencing/biy_all_research.bib.bib
+You've used 24 entries,
+            2773 wiz_defined-function locations,
+            820 strings with 11317 characters,
+and the built_in function-call counts, 13545 in all, are:
+= -- 1402
+> -- 598
+< -- 28
++ -- 205
+- -- 180
+* -- 1033
+:= -- 1989
+add.period$ -- 134
+call.type$ -- 24
+change.case$ -- 131
+chr.to.int$ -- 23
+cite$ -- 48
+duplicate$ -- 666
+empty$ -- 1101
+format.name$ -- 214
+if$ -- 3020
+int.to.chr$ -- 2
+int.to.str$ -- 1
+missing$ -- 22
+newline$ -- 174
+num.names$ -- 96
+pop$ -- 231
+preamble$ -- 1
+purify$ -- 108
+quote$ -- 0
+skip$ -- 515
+stack$ -- 0
+substring$ -- 578
+swap$ -- 160
+text.length$ -- 16
+text.prefix$ -- 0
+top$ -- 0
+type$ -- 264
+warning$ -- 0
+while$ -- 126
+width$ -- 0
+write$ -- 455
+(There was 1 warning)

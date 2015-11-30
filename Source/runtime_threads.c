@@ -81,12 +81,15 @@ static void thread_main_loop( void *p )
     assert( p );
     thread_entry_params *params = (thread_entry_params *)p;
     assert( params->thd );
-    cthread_p thd = params->thd;
+    volatile cthread_p thd = params->thd;
     crcl(frame_p) frm = thread_init( params );
+    if( setjmp( thd->thread_main_jmp_buf ) )
+    {
+        frm = thd->running->newest_frame;
+    }
     if( !frm )
         exit( -EINVAL );
-    do
-    {
+    do {
         frm = frm->fn( frm );
     } while( frm );
 
