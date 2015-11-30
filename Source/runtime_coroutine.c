@@ -563,7 +563,8 @@ crcl(frame_p) crcl(fn_generic_prologue)(
     // zlog_debug( crcl(c), "generic_prologue %p %p", caller, caller->activity );
     caller->callee      = frm;
     caller->return_addr = return_ptr;
-    frm->size           = frm_size;
+    /* TODO: size under preproc flag */
+    // frm->size           = frm_size;
     frm->fn             = fn;
     frm->caller         = caller;
     frm->callee         = NULL;
@@ -587,7 +588,7 @@ crcl(frame_p) crcl(fn_generic_epilogue)( crcl(frame_p) frm )
     /* XXX make malloc/free configurable? */
     while( frm->allocad_bufs )
     {
-        crcl(allocad_bufs_p) next = frm->allocad_bufs->next;
+        crcl(alloca_buf_p) next = frm->allocad_bufs->next;
         free( frm->allocad_bufs );
         frm->allocad_bufs = next;
     }

@@ -185,7 +185,7 @@ struct crcl(jmp_buf_tag)
             int *lhs;
         } yielding;
     } _;
-}
+};
 
 typedef struct crcl(jmp_buf_tag) jmp_buf[1];
 
