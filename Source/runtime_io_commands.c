@@ -91,16 +91,16 @@ static int wake_up_waiters( activity_p *waiters )
     return 0;
 }
 
-void crcl(async_fn_start)( void *data )
+void crcl(async_fn_start)( uv_loop_t *loop, uv_handle_t *handle, crcl(async_call_p) async )
 {
-    cthread_p thd = cmd->_.thread;
+    cthread_p thd = (cthread_p)async->specific;
     // zlog_debug( crcl(c) , "Timer req recved cmd: %p thd: %p\n", cmd, thd );
     if( CRCL(CHECK_FLAG)( *thd, CRCL(THDF_TIMER_ON) ) )
     {
         /* Very weird timing, but probably possible */
         uv_timer_stop( &thd->timer_req );
     }
-    rc = uv_timer_start( &thd->timer_req, timer_expired, 10, 0);
+    int rc = uv_timer_start( &thd->timer_req, timer_expired, 10, 0);
     assert( !rc );
 }
 
@@ -114,7 +114,7 @@ static void io_cmd_cb( uv_async_t *handle )
      * signnificantly.) */
     while( ( call = dequeue() ) )
     {
-        call->f( call->activity, call->waiters, call->data );
+        call->f( crcl(io_loop), (uv_handle_t *)handle, call );
     }
 }
 

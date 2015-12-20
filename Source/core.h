@@ -17,10 +17,14 @@
 #pragma cilnoremove( "__charcoal_add_to_waiters" )
 #endif
 
-#include <uv.h>
-
 #define crcl(n) __charcoal_ ## n
 #define CRCL(n) __CHARCOAL_ ## n
+
+#define jmp_buf crcl(c_jmp_buf)
+#include <setjmp.h>
+#undef jmp_buf
+
+#include <uv.h>
 
 #define RET_IF_ERROR(cmd) \
     do { int rc = cmd; if( 0 > rc ) return rc; if( 0 < rc ) return -rc; } while( 0 )
@@ -53,17 +57,6 @@ typedef struct { volatile int v; } atomic_int;
 #define __CHARCOAL_ACTF_DONE      (1 << 3)
 #define __CHARCOAL_ACTF_OOM       (1 << 4)
 
-// XXX auto extract crcl(c_jmp_buf)
-struct crcl(c_jmp_buf_tag)
-{
-    long int __jmpbuf[8];
-    int __mask_was_saved;
-    struct {
-        unsigned long int __val[ ( 1024 / ( 8 * sizeof ( unsigned long int ) ) ) ];
-    } __saved_mask;
-};
-typedef struct crcl(c_jmp_buf_tag) crcl(c_jmp_buf)[1];
-
 /* XXX super annoying name collision on thread_t with Mach header.
  * Look into it more some day. */
 typedef struct         cthread_t          cthread_t,          *cthread_p;
@@ -75,10 +68,12 @@ typedef struct crcl(async_call_t) crcl(async_call_t), *crcl(async_call_p);
 
 struct crcl(async_call_t)
 {
-    void (*f)( void * );
-    void *data;
+    void (*f)( uv_loop_t *, uv_handle_t *, crcl(async_call_p) );
     activity_p activity, waiters;
     crcl(async_call_p) next;
+    /* Might use the variable-sized last field trick here.
+     * Default size is one pointer. */
+    void *specific;
 };
 
 struct crcl(alloca_buf_t)
@@ -150,6 +145,9 @@ struct activity_t
     /* Various status bits */
     unsigned flags;
 
+    /* Debug and profiling stuff */
+    int yield_calls;
+
     /* Two doubly linked lists.
      *  0 - Either the ready queue or the queue of waiters for a particular event
      *  1 - The list of waiting activities that belong to a particular thread */
@@ -167,9 +165,6 @@ struct activity_t
      * NOTE: While an activity is running this might be stale.  It gets
      * updated when an activity switches for sure. */
     crcl(frame_p) oldest_frame, newest_frame;
-
-    /* Debug and profiling stuff */
-    int yield_calls;
 };
 
 struct crcl(jmp_buf_tag)

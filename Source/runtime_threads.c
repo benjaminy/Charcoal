@@ -157,9 +157,9 @@ static void async_call_close( uv_handle_t *h )
 }
 
 static void thread_finish_impl(
-    uv_async_t *handle, activity_p caller, activity_p *waiters, void *p )
+    uv_loop_t *loop, uv_handle_t *handle, crcl(async_call_p) async )
 {
-    cthread_p thd = (cthread_p)p;
+    cthread_p thd = (cthread_p)async->specific;
     if( crcl(join_thread)( thd ) )
     {
         /* zlog_debug( stderr, "Close, please\n" ); */
@@ -176,7 +176,7 @@ static void thread_finish( cthread_p thread )
     crcl(async_call_p) async = &thread->finished_call;
     async->f = thread_finish_impl;
     /* XXX Whoa! use after free? */
-    async->data = (void *)thread;
+    async->specific = (void *)thread;
     enqueue( async );
     assert( !uv_async_send( &crcl(io_cmd) ) );
     /* zlog_debug( crcl(c), "After!!!\n" ); */

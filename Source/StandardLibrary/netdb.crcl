@@ -12,23 +12,23 @@ static void getaddrinfo_callback(
     wake_up_waiters( &cmd->waiters );
 }
 
-static void getaddrinfo_impl()
+static void getaddrinfo_impl( uv_loop_t *loop, uv_handle_t *handle, crcl(async_call_p) call )
 {
-            int rc;
-            if( ( rc = uv_getaddrinfo(crcl(io_loop),
-                                      cmd->_.addrinfo.resolver,
-                                      getaddrinfo_callback,
-                                      cmd->_.addrinfo.node,
-                                      cmd->_.addrinfo.service,
-                                      cmd->_.addrinfo.hints ) ) )
-            {
-                cmd->_.addrinfo.rc = rc;
-                wake_up_waiters( &cmd->waiters );
-            }
-            else
-            {
-                /* it worked! */
-            }
+    int rc;
+    if( ( rc = uv_getaddrinfo(crcl(io_loop),
+                              cmd->_.addrinfo.resolver,
+                              getaddrinfo_callback,
+                              cmd->_.addrinfo.node,
+                              cmd->_.addrinfo.service,
+                              cmd->_.addrinfo.hints ) ) )
+    {
+        cmd->_.addrinfo.rc = rc;
+        wake_up_waiters( &cmd->waiters );
+    }
+    else
+    {
+        /* it worked! */
+    }
 }
 
 }

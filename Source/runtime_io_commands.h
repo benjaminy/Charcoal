@@ -6,10 +6,10 @@
 extern uv_loop_t *crcl(io_loop);
 extern uv_async_t crcl(io_cmd);
 
-void crcl(async_fn_start)( void * );
-void crcl(async_fn_join_thread)( void * );
-void crcl(async_fn_getaddrinfo)( void * );
-void crcl(async_fn_sleep)( void * );
+void       crcl(async_fn_start)( uv_loop_t *, uv_handle_t *, crcl(async_call_p) );
+void crcl(async_fn_join_thread)( uv_loop_t *, uv_handle_t *, crcl(async_call_p) );
+void crcl(async_fn_getaddrinfo)( uv_loop_t *, uv_handle_t *, crcl(async_call_p) );
+void       crcl(async_fn_sleep)( uv_loop_t *, uv_handle_t *, crcl(async_call_p) );
 
 /* typedef struct crcl(io_cmd_t) crcl(io_cmd_t), *crcl(io_cmd_p); */
 

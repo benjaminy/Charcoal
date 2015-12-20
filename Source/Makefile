@@ -9,6 +9,7 @@ SANITIZE = "-fsanitize=address"
 CC = clang-3.6
 BUILD_DIR = ../Build
 INSTALL_DIR = ../Install
+STDLIB_DIR = ./StandardLibrary
 LIB_DIR = $(INSTALL_DIR)/lib
 ETC_DIR = $(INSTALL_DIR)/etc
 INCLUDE_DIR = $(INSTALL_DIR)/include
@@ -31,10 +32,11 @@ RUNTIME_OBJS = $(RUNTIME_CRCL_OBJS) $(RUNTIME_C_OBJS)
 MAIN_RUNTIME_HEADERS = common coroutine io_commands semaphore
 RUNTIME_HEADERS = $(addsuffix( .h, $(addprefix runtime_, $(MAIN_RUNTIME_HEADERS)) core )
 APP_HEADERS = core.h charcoal_source_pre_header.h charcoal_main_pre_header.h core.h core_application.crclh standard_library.crclh atomics_wrappers.h
+STDLIB_HEADERS = $(addsuffix .crclh, stdio )
 
 .PRECIOUS: %$(CRCL_DOT_H_EXT) %$(CRCL_CPP_EXT) %$(CIL_C_EXT)
 
-all: copy_app_headers $(RUNTIME_OBJS) log_conf | $(LIB_DIR)
+all: copy_stdlib_headers copy_app_headers $(RUNTIME_OBJS) log_conf | $(LIB_DIR)
 	ar rcs $(LIB_DIR)/libcharcoal_sys.a $(RUNTIME_OBJS)
 
 # Prepend the Charcoal runtime headers
@@ -72,7 +74,12 @@ $(ETC_DIR)/%.conf : %.conf | $(ETC_DIR)
 
 copy_app_headers: $(addprefix $(INCLUDE_DIR)/, $(APP_HEADERS)) | $(INCLUDE_DIR)
 
+copy_stdlib_headers: $(addprefix $(INCLUDE_DIR)/, $(STDLIB_HEADERS)) | $(INCLUDE_DIR)
+
 $(INCLUDE_DIR)/%h : %h
+	cp $< $@
+
+$(INCLUDE_DIR)/%crclh : $(STDLIB_DIR)/%crclh
 	cp $< $@
 
 $(BUILD_DIR)/%.o : %.c $(HEADERS)

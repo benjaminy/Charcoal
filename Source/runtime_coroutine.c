@@ -57,7 +57,7 @@ crcl(frame_p) crcl(activity_start_resume)( activity_p act )
         /* XXX pre-alloc somewhere else? in the activity struct? */
         crcl(async_call_p) async = &thd->timer_call;
         async->f = crcl(async_fn_start);
-        async->data = (void *)thd;
+        async->specific = (void *)thd;
         // zlog_debug( crcl(c) , "Send timer req cmd: %p\n", cmd );
         enqueue( async );
         ABORT_ON_FAIL( uv_async_send( &crcl(io_cmd) ) );
@@ -570,6 +570,7 @@ crcl(frame_p) crcl(fn_generic_prologue)(
     frm->callee         = NULL;
     frm->return_addr    = NULL;
     frm->activity       = caller->activity;
+    frm->allocad_bufs   = NULL;
     /* WARNING: The following line is correct when used for procedure
      * calls, but not activates.  To keep calls as fast as possible we
      * allow this wrongness here and compensate for it in activate. */
