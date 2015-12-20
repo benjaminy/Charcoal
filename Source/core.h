@@ -64,17 +64,20 @@ typedef struct        activity_t         activity_t,         *activity_p;
 typedef struct crcl(alloca_buf_t) crcl(alloca_buf_t), *crcl(alloca_buf_p);
 typedef struct      crcl(frame_t)      crcl(frame_t),      *crcl(frame_p);
 typedef struct   crcl(act_list_t)   crcl(act_list_t),   *crcl(act_list_p);
-typedef struct crcl(async_call_t) crcl(async_call_t), *crcl(async_call_p);
 
-struct crcl(async_call_t)
-{
-    void (*f)( uv_loop_t *, uv_handle_t *, crcl(async_call_p) );
-    activity_p activity, waiters;
-    crcl(async_call_p) next;
-    /* Might use the variable-sized last field trick here.
-     * Default size is one pointer. */
-    void *specific;
-};
+#define __CHARCOAL_ASYNC_CALL_STRUCT( name, types ) \
+typedef struct crcl(async_call_##name##t) crcl(async_call_##name##t), *crcl(async_call_##name##p); \
+struct crcl(async_call_##name##t) \
+{ \
+    void (*f)( uv_loop_t *, uv_handle_t *, crcl(async_call_p) ); \
+    activity_p activity, waiters; \
+    crcl(async_call_p) next; \
+    types \
+}; \
+
+/* Might use the variable-sized last field trick here.
+ * Default size is one pointer. */
+CRCL(ASYNC_CALL_STRUCT)( , void *specific; )
 
 struct crcl(alloca_buf_t)
 {
@@ -253,5 +256,11 @@ void longjmp( crcl(c_jmp_buf), int );
 void crcl(setjmp_yielding)( crcl(frame_p), void *return_addr, jmp_buf, int *lhs );
 crcl(frame_p) crcl(longjmp_yielding)( crcl(frame_p), jmp_buf, int );
 void crcl(longjmp_no_yield)( jmp_buf, int );
+
+extern uv_loop_t *crcl(evt_loop);
+extern uv_async_t crcl(async_call);
+
+/* XXX find a home for me */
+int wake_up_waiters( activity_p *waiters );
 
 #endif /* __CHARCOAL_CORE */

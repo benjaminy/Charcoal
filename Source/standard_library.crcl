@@ -7,50 +7,6 @@ extern "C" {
 #include <runtime_io_commands.h>
 }
 
-int wait_activity_done( activity_p waitee )
-{
-    if( !waitee )
-        return -EINVAL;
-    /* TODO: More validation? */
-    if( CRCL(CHECK_FLAG)( *waitee, CRCL(ACTF_DONE) ) )
-    {
-        return 0;
-    }
-    if( !crcl(yielding_mode)() )
-    {
-        /* XXX. Deadlock ... unless it's a different thread.  Arg:
-         * terrible thread safety issues */
-        exit( -EDEADLK );
-    }
-    activity_p self = self_activity();
-    assert( self );
-    crcl(push_waiting_queue)( self, &waitee->waiters );
-    crcl(activity_wait)();
-    return 1;
-}
-
-extern "C" {
-void crcl(activity_cancel_impl)( activity_p act );
-}
-
-void activity_cancel( activity_p act )
-{
-    assert( act );
-    activity_p self = self_activity();
-    if( act->thread != self->thread )
-    {
-        /* XXX UNIMP */
-        exit( -1 );
-    }
-    if( act == self )
-    {
-        /* XXX weird */
-        exit( -1 );
-    }
-    /* "else" */
-    crcl(activity_cancel_impl)( act );
-}
-
 /* XXX the semaphore implementation is not thread-safe yet.  Fix
  * eventually. */
 
@@ -150,22 +106,6 @@ int semaphore_try_decr( semaphore_p s )
         --s->value;
         return 0;
     }
-}
-
-static int crcl(send_async_call)( crcl(async_call_p) call )
-{
-    activity_p self = self_activity();
-    call->activity = self;
-    call->waiters = NULL;
-    enqueue( call );
-    crcl(push_waiting_queue)( self, &call->waiters );
-    int rc;
-    if( ( rc = uv_async_send( &crcl(io_cmd) ) ) )
-    {
-        return rc;
-    }
-    crcl(activity_wait)();
-    return 0;
 }
 
 #if 0

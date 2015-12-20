@@ -3,13 +3,12 @@
 
 #include <core_runtime.h>
 
-extern uv_loop_t *crcl(io_loop);
 extern uv_async_t crcl(io_cmd);
 
 void       crcl(async_fn_start)( uv_loop_t *, uv_handle_t *, crcl(async_call_p) );
 void crcl(async_fn_join_thread)( uv_loop_t *, uv_handle_t *, crcl(async_call_p) );
-void crcl(async_fn_getaddrinfo)( uv_loop_t *, uv_handle_t *, crcl(async_call_p) );
-void       crcl(async_fn_sleep)( uv_loop_t *, uv_handle_t *, crcl(async_call_p) );
+// void crcl(async_fn_getaddrinfo)( uv_loop_t *, uv_handle_t *, crcl(async_call_p) );
+// void       crcl(async_fn_sleep)( uv_loop_t *, uv_handle_t *, crcl(async_call_p) );
 
 /* typedef struct crcl(io_cmd_t) crcl(io_cmd_t), *crcl(io_cmd_p); */
 
@@ -39,10 +38,6 @@ void       crcl(async_fn_sleep)( uv_loop_t *, uv_handle_t *, crcl(async_call_p) 
 /*     } _; */
 /*     crcl(io_cmd_p) next; */
 /* }; */
-
-void enqueue( crcl(async_call_p) cmd );
-
-crcl(async_call_p) dequeue( void );
 
 int crcl(init_io_loop)( int (*)( void ) );
 

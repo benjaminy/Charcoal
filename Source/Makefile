@@ -24,30 +24,32 @@ CIL_O_EXT=.crcl.cil.o
 
 # charcoal_log.conf
 
+STDLIB_SOURCES = unistd lib_utils
+STDLIB_OBJS = $(addsuffix $(CIL_O_EXT), $(addprefix $(BUILD_DIR)/, $(STDLIB_SOURCES) ) )
 RUNTIME_SOURCES = coroutine main threads io_commands semaphore
 RUNTIME_C_OBJS = $(addsuffix .o, $(addprefix $(BUILD_DIR)/runtime_, $(RUNTIME_SOURCES)))
-RUNTIME_CRCL_OBJS = $(addsuffix $(CIL_O_EXT), $(addprefix $(BUILD_DIR)/, standard_library ) )
-RUNTIME_OBJS = $(RUNTIME_CRCL_OBJS) $(RUNTIME_C_OBJS)
+# RUNTIME_CRCL_OBJS = $(addsuffix $(CIL_O_EXT), $(addprefix $(BUILD_DIR)/, standard_library ) )
+RUNTIME_OBJS = $(STDLIB_OBJS) $(RUNTIME_C_OBJS)
 
 MAIN_RUNTIME_HEADERS = common coroutine io_commands semaphore
 RUNTIME_HEADERS = $(addsuffix( .h, $(addprefix runtime_, $(MAIN_RUNTIME_HEADERS)) core )
 APP_HEADERS = core.h charcoal_source_pre_header.h charcoal_main_pre_header.h core.h core_application.crclh standard_library.crclh atomics_wrappers.h
-STDLIB_HEADERS = $(addsuffix .crclh, stdio )
+STDLIB_HEADERS = $(addsuffix .crclh, stdio lib_utils )
 
 .PRECIOUS: %$(CRCL_DOT_H_EXT) %$(CRCL_CPP_EXT) %$(CIL_C_EXT)
 
-all: copy_stdlib_headers copy_app_headers $(RUNTIME_OBJS) log_conf | $(LIB_DIR)
+all: copy_stdlib_headers copy_app_headers $(RUNTIME_OBJS) $(STDLIB_OBJS) log_conf | $(LIB_DIR)
 	ar rcs $(LIB_DIR)/libcharcoal_sys.a $(RUNTIME_OBJS)
 
 # Prepend the Charcoal runtime headers
-$(BUILD_DIR)/%$(CRCL_DOT_H_EXT): %.crcl
+$(BUILD_DIR)/%$(CRCL_DOT_H_EXT): $(STDLIB_DIR)/%.crcl
 	echo "#define __CHARCOAL_INSTALL_DIR \"$(INSTALL_DIR)\"" > $@
 	cat charcoal_source_pre_header.h >> $@
 	echo "#line 1 " \"$<\" >> $@
 	cat $< >> $@
 
 # Do C preprocesing.  Cil doesn't do this itself.
-%$(CRCL_CPP_EXT): %$(CRCL_DOT_H_EXT)
+%$(CRCL_CPP_EXT): %$(CRCL_DOT_H_EXT) copy_stdlib_headers
 	$(CC) -E $(INCLUDE_DIRS) -D__CHARCOAL_CIL -o $@ -x c $<
 
 # Invoke Cil to translate Charcoal to plain C.

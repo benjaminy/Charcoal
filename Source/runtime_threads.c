@@ -107,7 +107,7 @@ static crcl(frame_p) thread_init( thread_entry_params *params )
     atomic_store_int( &thd->interrupt_activity, 0 );
     thd->timer_req.data = thd;
     /* XXX Does timer_init have to be called from the I/O thread? */
-    if( uv_timer_init( crcl(io_loop), &thd->timer_req ) )
+    if( uv_timer_init( crcl(evt_loop), &thd->timer_req ) )
         exit( -1 );
     // XXX thd->start_time = 0.0;
     // XXX thd->max_time = 0.0;
@@ -177,8 +177,8 @@ static void thread_finish( cthread_p thread )
     async->f = thread_finish_impl;
     /* XXX Whoa! use after free? */
     async->specific = (void *)thread;
-    enqueue( async );
-    assert( !uv_async_send( &crcl(io_cmd) ) );
+    crcl(enqueue_async)( async );
+    assert( !uv_async_send( &crcl(async_call) ) );
     /* zlog_debug( crcl(c), "After!!!\n" ); */
     /* XXX a ha! we're getting here too soon! */
 }

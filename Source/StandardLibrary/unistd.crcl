@@ -2,23 +2,33 @@
  *
  */
 
+#include <lib_utils.crclh>
+
 extern "C" {
 
-static void sleep_callback( uv_timer_t *timer )
+/* XXX */
+void exit( int );
+
+CRCL(ASYNC_CALL_STRUCT( sleep_, int seconds; int remaining; uv_timer_t timer; ) )
+
+static void sleep_async_finish( uv_timer_t *timer )
 {
-    crcl(io_cmd_p) cmd = (crcl(io_cmd_p))timer->data;
+    crcl(async_call_sleep_p) async = (crcl(async_call_sleep_p))timer->data;
     // zlog_debug( crcl(c), "SLEEP CALLBACK %d", cmd->_.sleep.seconds );
-    cmd->_.sleep.remaining = 0; /* XXX for sure??? */
-    wake_up_waiters( &cmd->waiters );
+    async->remaining = 0; /* XXX for sure??? */
+    wake_up_waiters( &async->waiters );
 }
 
-static void sleep_impl()
+static void sleep_async_start(
+    uv_loop_t *loop, uv_handle_t *handle, crcl(async_call_p) generic_async )
 {
+    crcl(async_call_sleep_p) async = (crcl(async_call_sleep_p))generic_async;
     int rc = uv_timer_start(
-        cmd->_.sleep.timer,
-        sleep_callback,
-        1000 * cmd->_.sleep.seconds,
+        &async->timer,
+        sleep_async_finish,
+        1000 * async->seconds,
         0 );
+    /* TODO: better error handling */
     if( rc )
         exit( -1 );
 }
@@ -27,16 +37,16 @@ static void sleep_impl()
 
 unsigned int sleep( unsigned int seconds )
 {
-    uv_timer_t timer;
-    crcl(async_call_t) call;
+    crcl(async_call_sleep_t) async;
 
-    if( uv_timer_init( crcl(io_loop), &timer ) )
+    int rc = uv_timer_init( crcl(evt_loop), &async.timer );
+    /* TODO: better error handling */
+    if( rc )
         exit( -1 );
-    call.f = sleep_impl;
-    timer.data = &cmd;
-    cmd._.sleep.timer = &timer;
-    cmd._.sleep.seconds = seconds;
-    RET_IF_ERROR( crcl(send_io_cmd)( &cmd ) );
-    return cmd._.sleep.remaining;
+    async.f          = sleep_async_start;
+    async.seconds    = seconds;
+    async.timer.data = &async;
+    RET_IF_ERROR( crcl(send_async_call)( (crcl(async_call_p))&async ) );
+    return async.remaining;
 }
 

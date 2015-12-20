@@ -68,7 +68,7 @@ int main( int argc, char **argv, char **env )
         return rc;
     }
 
-    if( ( rc = uv_run( crcl(io_loop), UV_RUN_DEFAULT ) ) )
+    if( ( rc = uv_run( crcl(evt_loop), UV_RUN_DEFAULT ) ) )
     {
         zlog_error( crcl(c), "Failure: Running the I/O loop: %d", rc );
         return rc;

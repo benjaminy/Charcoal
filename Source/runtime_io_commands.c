@@ -7,8 +7,8 @@
 #include <runtime_coroutine.h>
 #include <atomics_wrappers.h>
 
-uv_loop_t *crcl(io_loop);
-uv_async_t crcl(io_cmd);
+uv_loop_t *crcl(evt_loop);
+uv_async_t crcl(async_call);
 static uv_idle_t start_the_world;
 
 /* NOTE: Using the classic two-stack queue implementation */
@@ -20,7 +20,7 @@ typedef struct
 
 static crcl(cmd_queue_t) crcl(cmd_queue);
 
-void enqueue( crcl(async_call_p) cmd )
+void crcl(enqueue_async)( crcl(async_call_p) cmd )
 {
     /* The queue takes ownership of *cmd */
     uv_mutex_lock( &crcl(cmd_queue).mtx );
@@ -71,26 +71,6 @@ static void timer_expired( uv_timer_t* handle )
     uv_mutex_unlock( &thd->thd_management_mtx );
 }
 
-static int wake_up_waiters( activity_p *waiters )
-{
-    /* XXX multithreading :( */
-    activity_p waiter, next_waiter = crcl(pop_waiting_queue)( waiters );
-    while( next_waiter )
-    {
-        /* NOTE: Tricky timing here with the deallocation of the
-         * original invoker's stack frame. */
-        waiter = next_waiter;
-        next_waiter = crcl(pop_waiting_queue)( waiters );
-        cthread_p thd = waiter->thread;
-        uv_mutex_lock( &thd->thd_management_mtx );
-        crcl(push_ready_queue)( waiter );
-        uv_mutex_unlock( &thd->thd_management_mtx );
-        /* If idle */
-        uv_cond_signal( &thd->thd_management_cond );
-    }
-    return 0;
-}
-
 void crcl(async_fn_start)( uv_loop_t *loop, uv_handle_t *handle, crcl(async_call_p) async )
 {
     cthread_p thd = (cthread_p)async->specific;
@@ -114,7 +94,7 @@ static void io_cmd_cb( uv_async_t *handle )
      * signnificantly.) */
     while( ( call = dequeue() ) )
     {
-        call->f( crcl(io_loop), (uv_handle_t *)handle, call );
+        call->f( crcl(evt_loop), (uv_handle_t *)handle, call );
     }
 }
 
@@ -124,7 +104,7 @@ static void start_cb( uv_idle_t* handle ) {
     if( rc )
     {
         zlog_error( crcl(c), "Failure: Launch of application main: %d\n", rc );
-        uv_stop( crcl(io_loop) );
+        uv_stop( crcl(evt_loop) );
     }
     uv_idle_stop( handle );
 }
@@ -137,16 +117,16 @@ static void start_cb( uv_idle_t* handle ) {
 int crcl(init_io_loop)( int (*f)( void ) )
 {
     RET_IF_ERROR( uv_key_create( &crcl(self_key) ) );
-    crcl(io_loop) = uv_default_loop();
+    crcl(evt_loop) = uv_default_loop();
     RET_IF_ERROR(
-        uv_async_init( crcl(io_loop), &crcl(io_cmd), io_cmd_cb ) );
+        uv_async_init( crcl(evt_loop), &crcl(async_call), io_cmd_cb ) );
 
     crcl(cmd_queue).front = NULL;
     crcl(cmd_queue).back = NULL;
     RET_IF_ERROR( uv_mutex_init( &crcl(cmd_queue).mtx ) );
 
     /* app_main doesn't run until the event loop is actually started */
-    RET_IF_ERROR( uv_idle_init( crcl(io_loop), &start_the_world ) );
+    RET_IF_ERROR( uv_idle_init( crcl(evt_loop), &start_the_world ) );
     start_the_world.data = f;
     RET_IF_ERROR( uv_idle_start( &start_the_world, start_cb ) );
 

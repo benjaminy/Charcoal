@@ -59,8 +59,8 @@ crcl(frame_p) crcl(activity_start_resume)( activity_p act )
         async->f = crcl(async_fn_start);
         async->specific = (void *)thd;
         // zlog_debug( crcl(c) , "Send timer req cmd: %p\n", cmd );
-        enqueue( async );
-        ABORT_ON_FAIL( uv_async_send( &crcl(io_cmd) ) );
+        crcl(enqueue_async)( async );
+        ABORT_ON_FAIL( uv_async_send( &crcl(async_call) ) );
     }
 
     return act->newest_frame;
@@ -631,4 +631,26 @@ crcl(frame_p) crcl(alloca)( crcl(frame_p) frm, size_t s, void **lhs )
     frm->allocad_bufs = ab;
     *lhs = &ab->data;
     return frm;
+}
+
+
+/* XXX Find a home for me */
+int wake_up_waiters( activity_p *waiters )
+{
+    /* XXX multithreading :( */
+    activity_p waiter, next_waiter = crcl(pop_waiting_queue)( waiters );
+    while( next_waiter )
+    {
+        /* NOTE: Tricky timing here with the deallocation of the
+         * original invoker's stack frame. */
+        waiter = next_waiter;
+        next_waiter = crcl(pop_waiting_queue)( waiters );
+        cthread_p thd = waiter->thread;
+        uv_mutex_lock( &thd->thd_management_mtx );
+        crcl(push_ready_queue)( waiter );
+        uv_mutex_unlock( &thd->thd_management_mtx );
+        /* If idle */
+        uv_cond_signal( &thd->thd_management_cond );
+    }
+    return 0;
 }

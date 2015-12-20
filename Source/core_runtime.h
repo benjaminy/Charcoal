@@ -12,6 +12,9 @@ activity_p crcl(pop_ready_queue)( cthread_p t );
 void crcl(push_waiting_queue)( activity_p a, activity_p *q );
 activity_p crcl(pop_waiting_queue)( activity_p *q );
 
+void crcl(enqueue_async)( crcl(async_call_p) cmd );
+crcl(async_call_p) crcl(dequeue_async)( void );
+
 /* join thread t.  Return True if t was the last application
  * thread. */
 int crcl(join_thread)( cthread_p t );

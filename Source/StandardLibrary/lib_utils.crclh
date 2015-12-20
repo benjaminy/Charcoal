@@ -1,0 +1,7 @@
+/*
+ *
+ */
+
+int crcl(send_async_call)( crcl(async_call_p) );
+int wait_activity_done( activity_p waitee );
+void activity_cancel( activity_p act );
