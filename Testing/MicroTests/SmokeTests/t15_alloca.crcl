@@ -1,0 +1,28 @@
+
+#include <alloca.crclh>
+#include <stdio.crclh>
+
+#define N 10
+
+void f( float *x, float *y, int M )
+{
+    for( int i = 0; i < M; ++i )
+    {
+        y[i] = 15 / x[i];
+    }
+}
+
+int main( int argc, char **argv )
+{
+    float *a = alloca( sizeof( a[0] ) * N );
+    for( int i = 0; i < N; ++i )
+    {
+        a[i] = 3.3 / ( 1.0 + i );
+    }
+    float *b = alloca( sizeof( a[0] ) * N );
+    f( a, b, N );
+    for( int i = 0; i < N; ++i )
+    {
+        printf( "%g  %g\n", a[i], b[i] );
+    }
+}

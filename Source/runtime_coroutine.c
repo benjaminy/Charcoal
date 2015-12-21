@@ -14,6 +14,9 @@
 #include <runtime_io_commands.h>
 #include <atomics_wrappers.h>
 
+/* XXX Why can't this header stuff be simple?!?!? */
+crcl(frame_p) crcl(fn_generic_epilogue)( crcl(frame_p) frame );
+
 /* Scheduler stuff */
 
 #define ABORT_ON_FAIL( e ) \
@@ -432,7 +435,7 @@ crcl(frame_p) crcl(activity_epilogue)( crcl(frame_p) frame )
     CRCL(SET_FLAG)( *act, CRCL(ACTF_DONE) );
     clean_up_activity( act );
     crcl(frame_p) rv = crcl(activity_waiting_or_done)( frame, NULL );
-    free( frame );
+    crcl(fn_generic_epilogue)( frame );
     return rv;
 }
 
@@ -513,11 +516,10 @@ void crcl(activity_cancel_impl)( activity_p act )
     assert( ready || waiting );
     assert( !( ready && waiting ) );
     crcl(frame_p) frm = act->newest_frame;
+    /* TODO: Make generic unwind stack? */
     while( frm )
     {
-        crcl(frame_p) caller = frm->caller;
-        free( frm );
-        frm = caller;
+        frm = crcl(fn_generic_epilogue)( frm );
     }
     unsigned flag = ready ? CRCL(ACTF_READY) : CRCL(ACTF_WAITING);
     remove_activity_from_queue( act, flag );
@@ -582,6 +584,8 @@ crcl(frame_p) crcl(fn_generic_prologue)(
 
 crcl(frame_p) crcl(fn_generic_epilogue)( crcl(frame_p) frm )
 {
+    assert( frm );
+    /* zlog_info( crcl(c), "epilogue( %p ) a:%p\n", frm, frm->allocad_bufs ); */
     crcl(frame_p) caller = frm->caller;
     /* NOTE: We might be able to get away with updating newest only on
      * context switches.  NOPE: setjmp/longjmp! */
@@ -615,13 +619,12 @@ crcl(frame_p) crcl(fn_generic_epilogue)( crcl(frame_p) frm )
  * Something to consider if/when we get around to implementing our own
  * allocator.
  */
-crcl(frame_p) crcl(alloca)( crcl(frame_p) frm, size_t s, void **lhs )
+crcl(frame_p) crcl(alloca)( void **lhs, size_t sz, void *return_ptr, crcl(frame_p) frm )
 {
-    /* NOTE: The compiler should note generate a call to this procedure
-     * if there is no lhs. */
     assert( lhs );
-    // ??? assert( s > 0 );
-    crcl(alloca_buf_p) ab = (crcl(alloca_buf_p))malloc( sizeof( ab[0] ) + s );
+    // ??? assert( sz > 0 );
+    /* zlog_info( crcl(c), "alloca( %p, %zu, %p, %p )\n", lhs, sz, return_ptr, frm ); */
+    crcl(alloca_buf_p) ab = (crcl(alloca_buf_p))malloc( sizeof( ab[0] ) + sz );
     if( !ab )
     {
         /* TODO: Crash the activity */
@@ -629,6 +632,7 @@ crcl(frame_p) crcl(alloca)( crcl(frame_p) frm, size_t s, void **lhs )
     }
     ab->next = frm->allocad_bufs;
     frm->allocad_bufs = ab;
+    frm->return_addr = return_ptr;
     *lhs = &ab->data;
     return frm;
 }

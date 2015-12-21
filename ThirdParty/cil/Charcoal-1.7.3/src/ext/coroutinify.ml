@@ -77,6 +77,8 @@ let act_wait_done_uid = internal_uid_gen ()
 let yield_uid         = internal_uid_gen ()
 let yield_impl_uid    = internal_uid_gen ()
 let activate_uid      = internal_uid_gen ()
+let alloca_uid        = internal_uid_gen ()
+let alloca_impl_uid   = internal_uid_gen ()
 
 let builtin_uids : ( string, int ) H.t = H.create 20
 let () = L.iter ( fun ( x, y ) -> H.add builtin_uids x y )
@@ -92,6 +94,8 @@ let () = L.iter ( fun ( x, y ) -> H.add builtin_uids x y )
     ( crcl "yield",                    yield_uid );
     ( crcl "yield_impl",               yield_impl_uid );
     ( crcl "activate",                 activate_uid );
+    ( "alloca",                        alloca_uid );
+    ( crcl "alloca",                   alloca_impl_uid );
 ]
 
 let builtins = IH.create 20
@@ -108,6 +112,8 @@ let act_wait_done() = find_builtin act_wait_done_uid
 let yield        () = find_builtin yield_uid
 let yield_impl   () = find_builtin yield_impl_uid
 let activate     () = find_builtin activate_uid
+let alloca       () = find_builtin alloca_uid
+let alloca_impl  () = find_builtin alloca_impl_uid
 
 let gen_prologue_e  = var2exp -| gen_prologue
 let gen_epilogue_e  = var2exp -| gen_epilogue
@@ -120,6 +126,8 @@ let act_wait_done_e = var2exp -| act_wait_done
 let yield_e         = var2exp -| yield
 let yield_impl_e    = var2exp -| yield_impl
 let activate_e      = var2exp -| activate
+let alloca_e        = var2exp -| alloca
+let alloca_impl_e   = var2exp -| alloca_impl
 
 type frame_info =
   {
@@ -390,6 +398,31 @@ let make_prologue prologue frame =
 
 (*
  * Translate:
+ *     lhs = alloca( sz );
+ * to:
+ *     return __alloca( &lhs, sz, &__return_N, frame );
+ *   __return_N:
+ *)
+let coroutinify_alloca lhs_opt params fdec loc frame =
+  match lhs_opt, params with
+    None, _ -> []
+  | Some lhs, [ sz ] ->
+     let after_alloca =
+       let r = C.mkStmt( C.Block( C.mkBlock [] ) ) in
+       let () = r.C.labels <- [ fresh_return_label loc ] in
+       r
+     in
+     let next_frame = C.var( C.makeTempVar fdec ~name:"next_frame" frame.typ_ptr ) in
+     let alloca_call =
+       let ps = [ C.AddrOf lhs; sz; C.AddrOfLabel( ref after_alloca ); frame.exp ] in
+       C.Call( Some next_frame, alloca_impl_e(), ps, loc )
+     in
+     let return_next_frame = C.mkStmt( C.Return( Some( C.Lval next_frame ), loc ) )  in
+     [ C.mkStmt( C.Instr( [ alloca_call ] ) ); return_next_frame; after_alloca ]
+  | _ -> E.s( E.error "call to alloca with bad params?!?" )
+
+(*
+ * Translate:
  *     __activate_intermediate( act, lhs_ptr, fn, p1, p2, p3 );
  * to:
  *     act_frame = __prologue_fn( frame, 0, p1, p2, p3 );
@@ -534,16 +567,19 @@ let coroutinify_call visitor fdec frame instr =
     let params = L.map (C.visitCilExpr visitor) params_pre_vis in
     let call_stuff = match fn_exp with
         C.Lval( C.Var v, C.NoOffset ) ->
-        if v.C.vid = (act_intermed()).C.vid ||
-           v.C.vid = (yield()).C.vid ||
-           v.C.vid = (self_activity()).C.vid ||
-           v.C.vid = (activity_wait()).C.vid ||
-           v.C.vid = (mode_test()).C.vid
-        then CBuiltIn v
-        else
-          ( match lookup_fun_decl v with
-              Some ( u, p, _ ) -> CDirect( u, p )
-            | None -> CIndirect fn_exp )
+        ( try
+          if v.C.vid = (act_intermed()).C.vid ||
+             v.C.vid = (yield()).C.vid ||
+             v.C.vid = (alloca()).C.vid ||
+             v.C.vid = (self_activity()).C.vid ||
+             v.C.vid = (activity_wait()).C.vid ||
+             v.C.vid = (mode_test()).C.vid
+          then CBuiltIn v
+          else
+            ( match lookup_fun_decl v with
+                Some ( u, p, _ ) -> CDirect( u, p )
+              | None -> CIndirect fn_exp )
+        with Not_found -> E.s( E.bug "5235092750" ) )
       | _ -> CIndirect fn_exp
     in
     ( match call_stuff with
@@ -552,6 +588,8 @@ let coroutinify_call visitor fdec frame instr =
           match lhs_opt with
             Some _ -> (* XXX lhs? *) coroutinify_activate params fdec loc frame
           | None -> coroutinify_activate params fdec loc frame
+        else if v.C.vid = (alloca()).C.vid then
+          coroutinify_alloca lhs_opt params fdec loc frame
         else if v.C.vid = (yield()).C.vid then
           coroutinify_yield lhs_opt params fdec loc frame
         else if v.C.vid = (self_activity()).C.vid then
@@ -862,8 +900,8 @@ let make_yielding yielding frame_no_this is_activity_entry =
         C.mkStmt( C.If( ret_addr_field, C.mkBlock( [ goto ] ), empty_block, fdef_loc ) )
       in
       specifics_init :: goto_stmt :: y.C.sbody.C.bstmts
-  else
-    specifics_init :: y.C.sbody.C.bstmts
+    else
+      specifics_init :: y.C.sbody.C.bstmts
   in
   let () = y.C.sbody.C.bstmts <- stmts in
   y

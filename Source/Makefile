@@ -34,7 +34,7 @@ RUNTIME_OBJS = $(STDLIB_OBJS) $(RUNTIME_C_OBJS)
 MAIN_RUNTIME_HEADERS = common coroutine io_commands semaphore
 RUNTIME_HEADERS = $(addsuffix( .h, $(addprefix runtime_, $(MAIN_RUNTIME_HEADERS)) core )
 APP_HEADERS = core.h charcoal_source_pre_header.h charcoal_main_pre_header.h core.h core_application.crclh standard_library.crclh atomics_wrappers.h
-STDLIB_HEADERS = $(addsuffix .crclh, stdio lib_utils )
+STDLIB_HEADERS = $(addsuffix .crclh, lib_utils stdlib stdio )
 
 .PRECIOUS: %$(CRCL_DOT_H_EXT) %$(CRCL_CPP_EXT) %$(CIL_C_EXT)
 

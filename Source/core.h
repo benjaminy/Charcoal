@@ -15,6 +15,8 @@
 #pragma cilnoremove( "__charcoal_yield_impl" )
 #pragma cilnoremove( "__charcoal_activity_waiting_or_done" )
 #pragma cilnoremove( "__charcoal_add_to_waiters" )
+#pragma cilnoremove( "alloca" )
+#pragma cilnoremove( "__charcoal_alloca" )
 #endif
 
 #define crcl(n) __charcoal_ ## n
@@ -259,6 +261,9 @@ void crcl(longjmp_no_yield)( jmp_buf, int );
 
 extern uv_loop_t *crcl(evt_loop);
 extern uv_async_t crcl(async_call);
+
+crcl(frame_p) crcl(alloca)( void **lhs, size_t sz, void *return_ptr, crcl(frame_p) frm );
+void *alloca( size_t );
 
 /* XXX find a home for me */
 int wake_up_waiters( activity_p *waiters );

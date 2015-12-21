@@ -2,6 +2,13 @@
  * Charcoal Standard Library
  */
 
+struct FILE;
+
+extern struct FILE *stdout;
+
+#define stdout stdout
+
 extern "C" {
 int printf( const char * restrict format, ... );
+int fflush( FILE *stream );
 }
