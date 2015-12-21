@@ -1,6 +1,7 @@
 #include <crcl_setjmp.h>
 
-void crcl(setjmp_yielding)( crcl(framp_p) frm, void *return_addr, jmp_buf env, int *lhs )
+void crcl(setjmp_yielding)(
+    int *lhs, jmp_buf env, void *return_addr, crcl(framp_p) frm )
 {
     assert( frm );
     assert( return_addr );
@@ -37,7 +38,7 @@ static crcl(frame_p) longjmp_helper( activity_p act, jump_buf env, int val )
     return dest_frm;
 }
 
-crcl(frame_p) crcl(longjmp_yielding)( crcl(frame_p) frm, jump_buf env, int val )
+crcl(frame_p) crcl(longjmp_yielding)( jump_buf env, int val, crcl(frame_p) frm )
 {
     assert( frm );
     assert( env->yielding_tag ); /* jmp'ing from yielding to no-yield doesn't make sense */

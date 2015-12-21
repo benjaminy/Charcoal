@@ -79,6 +79,11 @@ let yield_impl_uid    = internal_uid_gen ()
 let activate_uid      = internal_uid_gen ()
 let alloca_uid        = internal_uid_gen ()
 let alloca_impl_uid   = internal_uid_gen ()
+let setjmp_uid        = internal_uid_gen ()
+let setjmp_yield_uid  = internal_uid_gen ()
+let longjmp_uid       = internal_uid_gen ()
+let longjmp_yield_uid = internal_uid_gen ()
+let longjmp_no_uid    = internal_uid_gen ()
 
 let builtin_uids : ( string, int ) H.t = H.create 20
 let () = L.iter ( fun ( x, y ) -> H.add builtin_uids x y )
@@ -96,6 +101,11 @@ let () = L.iter ( fun ( x, y ) -> H.add builtin_uids x y )
     ( crcl "activate",                 activate_uid );
     ( "alloca",                        alloca_uid );
     ( crcl "alloca",                   alloca_impl_uid );
+    ( "setjmp",                        setjmp_uid );
+    ( crcl "setjmp_yielding",          setjmp_yield_uid );
+    ( "longjmp",                       longjmp_uid );
+    ( crcl "longjmp_yielding",         longjmp_yield_uid );
+    ( crcl "longjmp_no_yield",         longjmp_no_uid );
 ]
 
 let builtins = IH.create 20
@@ -114,6 +124,11 @@ let yield_impl   () = find_builtin yield_impl_uid
 let activate     () = find_builtin activate_uid
 let alloca       () = find_builtin alloca_uid
 let alloca_impl  () = find_builtin alloca_impl_uid
+let setjmp       () = find_builtin setjmp_uid
+let setjmp_yield () = find_builtin setjmp_yield_uid
+let longjmp      () = find_builtin longjmp_uid
+let longjmp_yield() = find_builtin longjmp_yield_uid
+let longjmp_no   () = find_builtin longjmp_no_uid
 
 let gen_prologue_e  = var2exp -| gen_prologue
 let gen_epilogue_e  = var2exp -| gen_epilogue
@@ -128,6 +143,11 @@ let yield_impl_e    = var2exp -| yield_impl
 let activate_e      = var2exp -| activate
 let alloca_e        = var2exp -| alloca
 let alloca_impl_e   = var2exp -| alloca_impl
+let setjmp_e        = var2exp -| setjmp
+let setjmp_yield_e  = var2exp -| setjmp_yield
+let longjmp_e       = var2exp -| longjmp
+let longjmp_yield_e = var2exp -| longjmp_yield
+let longjmp_no_e    = var2exp -| longjmp_no
 
 type frame_info =
   {
@@ -328,8 +348,9 @@ let make_specific fdec fname frame_info =
  *           ret_addr,
  *           caller,
  *           __yielding_f );
+ *        XXX: OOM not implemented
  *        if( !frame )
- *            return frame;
+ *            return __oom( caller );
  *        ( __specifics_f ) *specifics = __specifics_select( frame );
  *        specifics->p1 = p1;
  *        specifics->p2 = p2;
@@ -398,15 +419,65 @@ let make_prologue prologue frame =
 
 (*
  * Translate:
+ *     lhs = setjmp( env );
+ * to:
+ *     __setjmp_yield( &lhs, env, &__return_N, frame );
+ *   __return_N:
+ *)
+let coroutinify_setjmp lhs_opt params loc frame =
+  let lhs = match lhs_opt with
+      Some lhs -> C.AddrOf lhs
+    | None -> C.zero
+  in
+  let env = match params with
+      [e] -> e
+    | _ -> E.s( E.error "call to setjmp with bad params?!?" )
+  in
+  let after_setjmp =
+    let r = C.mkStmt( C.Block( C.mkBlock [] ) ) in
+    let () = r.C.labels <- [ fresh_return_label loc ] in
+    r
+  in
+  let setjmp_call =
+    let ps = [ lhs; env; C.AddrOfLabel( ref after_setjmp ); frame.exp ] in
+    C.Call( None, setjmp_yield_e(), ps, loc )
+  in
+  [ C.mkStmt( C.Instr( [ setjmp_call ] ) ); after_setjmp ]
+
+(*
+ * Translate:
+ *     longjmp( env, val );
+ * to:
+ *     return __longjmp_yield( env, val, frame );
+ *)
+let coroutinify_longjmp params fdec loc frame =
+  let env, value = match params with
+      [e;v] -> e, v
+    | _ -> E.s( E.error "call to longjmp with bad params?!?" )
+  in
+  let next_frame = C.var( C.makeTempVar fdec ~name:"next_frame" frame.typ_ptr ) in
+  let longjmp_call =
+    let ps = [ env; value; frame.exp ] in
+    C.Call( Some next_frame, longjmp_yield_e(), ps, loc )
+  in
+  let return_next_frame = C.mkStmt( C.Return( Some( C.Lval next_frame ), loc ) )  in
+  [ C.mkStmt( C.Instr( [ longjmp_call ] ) ); return_next_frame ]
+
+(*
+ * Translate:
  *     lhs = alloca( sz );
  * to:
  *     return __alloca( &lhs, sz, &__return_N, frame );
  *   __return_N:
  *)
 let coroutinify_alloca lhs_opt params fdec loc frame =
-  match lhs_opt, params with
-    None, _ -> []
-  | Some lhs, [ sz ] ->
+  let sz = match params with
+      [s] -> s
+    | _ -> E.s( E.error "call to alloca with bad params?!?" )
+  in
+  match lhs_opt with
+    None -> []
+  | Some lhs ->
      let after_alloca =
        let r = C.mkStmt( C.Block( C.mkBlock [] ) ) in
        let () = r.C.labels <- [ fresh_return_label loc ] in
@@ -419,7 +490,6 @@ let coroutinify_alloca lhs_opt params fdec loc frame =
      in
      let return_next_frame = C.mkStmt( C.Return( Some( C.Lval next_frame ), loc ) )  in
      [ C.mkStmt( C.Instr( [ alloca_call ] ) ); return_next_frame; after_alloca ]
-  | _ -> E.s( E.error "call to alloca with bad params?!?" )
 
 (*
  * Translate:
@@ -487,7 +557,6 @@ let coroutinify_wait fdec frame loc =
 (* Translate direct calls from:
  *     lhs = f( p1, p2, p3 );
  * to:
- *     XXX OOM to worry about
  *     return __prologue_f( frame, &__return_N, &lhs, p1, p2, p3 );
  *   __return_N:
  *
@@ -571,6 +640,8 @@ let coroutinify_call visitor fdec frame instr =
           if v.C.vid = (act_intermed()).C.vid ||
              v.C.vid = (yield()).C.vid ||
              v.C.vid = (alloca()).C.vid ||
+             v.C.vid = (setjmp()).C.vid ||
+             v.C.vid = (longjmp()).C.vid ||
              v.C.vid = (self_activity()).C.vid ||
              v.C.vid = (activity_wait()).C.vid ||
              v.C.vid = (mode_test()).C.vid
@@ -590,6 +661,10 @@ let coroutinify_call visitor fdec frame instr =
           | None -> coroutinify_activate params fdec loc frame
         else if v.C.vid = (alloca()).C.vid then
           coroutinify_alloca lhs_opt params fdec loc frame
+        else if v.C.vid = (setjmp()).C.vid then
+          coroutinify_setjmp lhs_opt params loc frame
+        else if v.C.vid = (alloca()).C.vid then
+          coroutinify_longjmp params fdec loc frame
         else if v.C.vid = (yield()).C.vid then
           coroutinify_yield lhs_opt params fdec loc frame
         else if v.C.vid = (self_activity()).C.vid then
@@ -658,6 +733,25 @@ let coroutinify_local_var locals lhost offset =
       | None -> C.DoChildren )
   (* We can ignore the Mem case because we'll get it later in the visit *)
   | _ -> C.DoChildren
+
+(*
+ * Translate:
+ *     lhs = setjmp( env );
+ * to:
+ *     env->yielding_tag = 0;
+ *     lhs = setjmp( env->_.no_yield_env );
+ *)
+let no_yield_setjmp params frame =
+  []
+
+(*
+ * Translate:
+ *     longjmp( env, val );
+ * to:
+ *     __longjmp_no( env, val );
+ *)
+let no_yield_longjmp params frame =
+  []
 
 (*
  * Translate:
