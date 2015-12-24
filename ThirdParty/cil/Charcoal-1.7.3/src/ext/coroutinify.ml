@@ -80,8 +80,10 @@ let activate_uid      = internal_uid_gen ()
 let alloca_uid        = internal_uid_gen ()
 let alloca_impl_uid   = internal_uid_gen ()
 let setjmp_uid        = internal_uid_gen ()
+let setjmp_c_uid      = internal_uid_gen ()
 let setjmp_yield_uid  = internal_uid_gen ()
 let longjmp_uid       = internal_uid_gen ()
+let longjmp_c_uid     = internal_uid_gen ()
 let longjmp_yield_uid = internal_uid_gen ()
 let longjmp_no_uid    = internal_uid_gen ()
 
@@ -102,8 +104,10 @@ let () = L.iter ( fun ( x, y ) -> H.add builtin_uids x y )
     ( "alloca",                        alloca_uid );
     ( crcl "alloca",                   alloca_impl_uid );
     ( "setjmp",                        setjmp_uid );
+    ( crcl "setjmp_c",                 setjmp_c_uid );
     ( crcl "setjmp_yielding",          setjmp_yield_uid );
     ( "longjmp",                       longjmp_uid );
+    ( crcl "longjmp_c",                longjmp_c_uid );
     ( crcl "longjmp_yielding",         longjmp_yield_uid );
     ( crcl "longjmp_no_yield",         longjmp_no_uid );
 ]
@@ -126,7 +130,9 @@ let alloca       () = find_builtin alloca_uid
 let alloca_impl  () = find_builtin alloca_impl_uid
 let setjmp       () = find_builtin setjmp_uid
 let setjmp_yield () = find_builtin setjmp_yield_uid
+let setjmp_c     () = find_builtin setjmp_c_uid
 let longjmp      () = find_builtin longjmp_uid
+let longjmp_c    () = find_builtin longjmp_c_uid
 let longjmp_yield() = find_builtin longjmp_yield_uid
 let longjmp_no   () = find_builtin longjmp_no_uid
 
@@ -144,8 +150,10 @@ let activate_e      = var2exp -| activate
 let alloca_e        = var2exp -| alloca
 let alloca_impl_e   = var2exp -| alloca_impl
 let setjmp_e        = var2exp -| setjmp
+let setjmp_c_e      = var2exp -| setjmp_c
 let setjmp_yield_e  = var2exp -| setjmp_yield
 let longjmp_e       = var2exp -| longjmp
+let longjmp_c_e     = var2exp -| longjmp_c
 let longjmp_yield_e = var2exp -| longjmp_yield
 let longjmp_no_e    = var2exp -| longjmp_no
 
@@ -739,9 +747,14 @@ let coroutinify_local_var locals lhost offset =
  *     lhs = setjmp( env );
  * to:
  *     env->yielding_tag = 0;
- *     lhs = setjmp( env->_.no_yield_env );
+ *     lhs = __setjmp_c( env->_.no_yield_env );
  *)
-let no_yield_setjmp params frame =
+let no_yield_setjmp lhs params frame =
+  let env = match params with
+      [e] -> e
+    | _ -> E.s( E.error "Bad params for setjmp?!?" )
+  in
+  let () = trc( P.dprintf "setjmp %a\n" C.d_type( C.typeOf env ) ) in
   []
 
 (*
@@ -750,8 +763,8 @@ let no_yield_setjmp params frame =
  * to:
  *     __longjmp_no( env, val );
  *)
-let no_yield_longjmp params frame =
-  []
+let no_yield_longjmp params loc =
+  [ C.Call( None, longjmp_no_e(), params, loc ) ]
 
 (*
  * Translate:
@@ -1193,15 +1206,19 @@ class phase2 = object(self)
 
   (* If we have encountered the def of crcl(frame_t), extract its fields. *)
   method fill_in_frame v =
+    let () =
+      match ( frame_opt, frame_struct, activity_struct ) with
+        ( None, Some fci, Some aci ) ->
+        let frame_info = examine_frame_t_struct fci v in
+        let () = frame_opt <- Some( frame_info ) in
+        let () = frame_struct <- None in
+        let () = activity_struct <- None in
+        ()
+      | _ -> ()
+    in
     match ( frame_opt, frame_struct, activity_struct ) with
-      ( None, Some fci, Some aci ) ->
-      let frame_info = examine_frame_t_struct fci v in
-      let () = frame_opt <- Some( frame_info ) in
-      let () = frame_struct <- None in
-      let () = activity_struct <- None in
-      ()
-    | ( None, _, _ ) -> ()
-    | ( Some frame_info, None, None ) ->
+        ( None, _, _ ) -> ()
+      | ( Some frame_info, None, None ) ->
        let name = v.C.vname in
        let () = try let uid = H.find builtin_uids name in
                     IH.replace builtins uid v
