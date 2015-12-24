@@ -1,0 +1,18 @@
+#include <stdio.crclh>
+
+#define N 10
+
+int main( int argc, char **argv )
+{
+    jmpbuf env;
+    int x = setjmp( env );
+    if( x )
+    {
+        printf( "jmp'd" );
+    }
+    else
+    {
+        printf( "jmping" );
+        longjmp( env, 1 );
+    }
+}

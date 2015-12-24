@@ -17,7 +17,7 @@ void crcl(setjmp_yielding)(
  * (returning from the wrapper would ruin the stack).  Here is
  * pseudocode for the compiler-generated code:
  *   env->yielding_tag = 0;
- *   lhs = setjmp( env->_.no_yield_env );
+ *   lhs = __setjmp_c( env->_.no_yield_env );
  */
 
 /*
@@ -51,10 +51,10 @@ void crcl(longjmp_no_yield)( jump_buf env, int val )
     {
         activity_p act = crcl(get_self_activity)();
         longjmp_helper( act, env, val );
-        longjmp( act->thread->thread_main_jmp_buf, 1 );
+        crcl(longjmp_c)( act->thread->thread_main_jmp_buf, 1 );
     }
     else
     {
-        longjmp( env->_.no_yield_env, val );
+        crcl(longjmp_c)( env->_.no_yield_env, val );
     }
 }

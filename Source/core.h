@@ -17,14 +17,25 @@
 #pragma cilnoremove( "__charcoal_add_to_waiters" )
 #pragma cilnoremove( "alloca" )
 #pragma cilnoremove( "__charcoal_alloca" )
+#pragma cilnoremove( "setjmp" )
+#pragma cilnoremove( "longjmp" )
+#pragma cilnoremove( "__charcoal_longjmp_c" )
+#pragma cilnoremove( "__charcoal_setjmp_c" )
+#pragma cilnoremove( "__charcoal_setjmp_yielding" )
+#pragma cilnoremove( "__charcoal_longjmp_yielding" )
+#pragma cilnoremove( "__charcoal_longjmp_no_yield" )
 #endif
 
 #define crcl(n) __charcoal_ ## n
 #define CRCL(n) __CHARCOAL_ ## n
 
-#define jmp_buf crcl(c_jmp_buf)
+#define jmp_buf crcl(jmp_buf_c)
+#define setjmp crcl(setjmp_c)
+#define longjmp crcl(longjmp_c)
 #include <setjmp.h>
 #undef jmp_buf
+#undef setjmp
+#undef longjmp
 
 #include <uv.h>
 
@@ -177,7 +188,7 @@ struct crcl(jmp_buf_tag)
     int yielding_tag;
     union
     {
-        crcl(c_jmp_buf) no_yield_env;
+        crcl(jmp_buf_c) no_yield_env;
         struct
         {
             crcl(frame_p) frm;
@@ -214,7 +225,7 @@ struct cthread_t
     /* We need this jmp_buf for the situation where application code
      * calls longjmp in no-yield mode on a jmp_buf that was set in
      * yielding mode. */
-    crcl(c_jmp_buf) thread_main_jmp_buf;
+    crcl(jmp_buf_c) thread_main_jmp_buf;
 
     /* Thread management mutex and condition variable */
     uv_mutex_t    thd_management_mtx;
@@ -252,8 +263,8 @@ crcl(frame_p) crcl(yield_impl)( crcl(frame_p) frame, void *ret_addr );
 crcl(frame_p) crcl(activity_waiting_or_done)( crcl(frame_p) frm, void *ret_addr );
 void crcl(add_to_waiters)( activity_p waiter, activity_p *q );
 
-int  setjmp ( crcl(c_jmp_buf) );
-void longjmp( crcl(c_jmp_buf), int );
+int  setjmp ( jmp_buf );
+void longjmp( jmp_buf, int );
 
 void crcl(setjmp_yielding)( crcl(frame_p), void *return_addr, jmp_buf, int *lhs );
 crcl(frame_p) crcl(longjmp_yielding)( crcl(frame_p), jmp_buf, int );
