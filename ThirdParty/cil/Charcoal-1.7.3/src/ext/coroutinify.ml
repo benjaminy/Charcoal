@@ -671,7 +671,7 @@ let coroutinify_call visitor fdec frame instr =
           coroutinify_alloca lhs_opt params fdec loc frame
         else if v.C.vid = (setjmp()).C.vid then
           coroutinify_setjmp lhs_opt params loc frame
-        else if v.C.vid = (alloca()).C.vid then
+        else if v.C.vid = (longjmp()).C.vid then
           coroutinify_longjmp params fdec loc frame
         else if v.C.vid = (yield()).C.vid then
           coroutinify_yield lhs_opt params fdec loc frame
@@ -1309,7 +1309,9 @@ end
  * XXX indirect frame_p f( frame_p, void *, rt *, ... );
  *)
 let coroutinifyVariableDeclaration var loc frame =
-  if type_is_charcoal_fn var.C.vtype then
+  if var.C.vid = (setjmp()).C.vid || var.C.vid = (longjmp()).C.vid then
+    C.DoChildren (* C.ChangeTo [] *)
+  else if type_is_charcoal_fn var.C.vtype then
     let ( n, p, i ) =
       match IH.tryfind crcl_fun_decls var.C.vid with
         Some( n, p, i ) -> ( n, p, i )
@@ -1429,6 +1431,16 @@ class phase3 generic_frame = object( self )
          (* let eA = make_epilogueA epilogueA frame_info in *)
          (* let eB = make_epilogueB epilogueB frame_info in *)
          (* let i  = make_indirect  original  frame_info in *)
+
+  method vvrbl v =
+    (* let () = trc( P.dprintf "Phase 3 %s %d %d %d\n" v.C.vname v.C.vid *)
+    (*                         (setjmp_c()).C.vid (longjmp_c()).C.vid ) in *)
+    if v.C.vid = (setjmp_c()).C.vid then
+      C.ChangeTo( setjmp() )
+    else if v.C.vid = (longjmp_c()).C.vid then
+      C.ChangeTo( longjmp() )
+    else
+      C.SkipChildren
 
 end
 

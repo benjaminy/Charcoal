@@ -266,8 +266,8 @@ void crcl(add_to_waiters)( activity_p waiter, activity_p *q );
 int  setjmp ( jmp_buf );
 void longjmp( jmp_buf, int );
 
-void crcl(setjmp_yielding)( crcl(frame_p), void *return_addr, jmp_buf, int *lhs );
-crcl(frame_p) crcl(longjmp_yielding)( crcl(frame_p), jmp_buf, int );
+void crcl(setjmp_yielding)( int *, jmp_buf, void *, crcl(frame_p) );
+crcl(frame_p) crcl(longjmp_yielding)( jmp_buf, int, crcl(frame_p) );
 void crcl(longjmp_no_yield)( jmp_buf, int );
 
 extern uv_loop_t *crcl(evt_loop);

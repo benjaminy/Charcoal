@@ -28,10 +28,11 @@ ifeq ($(OS),Darwin)
     CCFLAGS += -D OSX
 endif
 
-CRCL_DOT_H_EXT=.crcl.with.h.c
-CRCL_CPP_EXT=.crcl.cpp.c
-CIL_C_EXT=.crcl.cil.c
-CRCL_O_EXT=.crcl.cil.o
+CRCL_DOT_H_EXT=.crcl.with.h_c
+CRCL_CPP_EXT=.crcl.cpp_c
+CIL_C_EXT=.crcl.cil_c
+CRCL_CJ_EXT=.crcl.cilj_c
+CRCL_O_EXT=.crcl.cil_o
 CC=gcc
 
 CRCL_RUNTIME = $(INSTALL_DIR)/lib/libcharcoal_sys.a

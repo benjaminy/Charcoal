@@ -4,7 +4,7 @@ OPTIMIZATION_LEVEL = "-O1"
 DEBUG_SYMBOLS = "-g"
 PROFILING = ""
 # SANITIZE = "-fsanitize=address"
-SANITIZE = "-fsanitize=address"
+SANITIZE = -fsanitize=address
 
 CC = clang-3.6
 BUILD_DIR = ../Build
@@ -27,7 +27,7 @@ CIL_O_EXT=.crcl.cil.o
 STDLIB_SOURCES = unistd lib_utils
 STDLIB_OBJS = $(addsuffix $(CIL_O_EXT), $(addprefix $(BUILD_DIR)/, $(STDLIB_SOURCES) ) )
 RUNTIME_SOURCES = coroutine main threads io_commands semaphore
-RUNTIME_C_OBJS = $(addsuffix .o, $(addprefix $(BUILD_DIR)/runtime_, $(RUNTIME_SOURCES)))
+RUNTIME_C_OBJS = $(addsuffix .o, $(addprefix $(BUILD_DIR)/runtime_, $(RUNTIME_SOURCES)) $(BUILD_DIR)/setjmp)
 # RUNTIME_CRCL_OBJS = $(addsuffix $(CIL_O_EXT), $(addprefix $(BUILD_DIR)/, standard_library ) )
 RUNTIME_OBJS = $(STDLIB_OBJS) $(RUNTIME_C_OBJS)
 
