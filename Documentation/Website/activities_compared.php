@@ -15,7 +15,7 @@
 
 <h1>Activities Compared to Threads, Event Handlers, etc.</h1>
 
-<p>Charcoal introduces a new interactive programming primitive called
+<p>Charcoal introduces a new multitasking programming primitive called
 activities.  As cooperative threads are a kind of compromise between
 events and threads, activities are a kind of compromise between
 preemptive and cooperative threads.  From an implementation perspective,

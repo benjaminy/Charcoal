@@ -3,8 +3,8 @@
 #
 
 CRCL_ROOT=../../..
-
-include $(CRCL_ROOT)/Testing/generic.mk
+BUILD_DIR=$(CRCL_ROOT)/Testing/Build
+include $(CRCL_ROOT)/Source/charcoal_pre.mk
 
 TARGETS = bucket_brigade_setcontext bucket_brigade_setcontext_jmp bucket_brigade_libuv bucket_brigade_pthread bucket_brigade_silly_loop bucket_brigade_crcl bucket_brigade
 
@@ -18,7 +18,7 @@ all: $(TARGETS)
 clean:
 	rm -rf $(addprefix $(BUILD_DIR)/, $(addsuffix *, $(TARGETS)))
 
-include $(CRCL_ROOT)/Testing/cil_rules.mk
+include $(CRCL_ROOT)/Source/charcoal_post.mk
 
 bucket_brigade_setcontext: bucket_brigade_setcontext.c
 	gcc -g -O1 $(INCLUDE_DIRS) -o bucket_brigade_setcontext bucket_brigade_setcontext.c
@@ -42,3 +42,5 @@ bucket_brigade_crcl: bucket_brigade_crcl.c
 
 bucket_brigade.class: bucket_brigade.java
 	javac bucket_brigade.java
+
+include $(CRCL_ROOT)/Testing/charcoal_testing_post.mk

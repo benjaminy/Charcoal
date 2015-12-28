@@ -3,8 +3,8 @@
 #
 
 CRCL_ROOT=../../..
-
-include $(CRCL_ROOT)/Testing/generic.mk
+BUILD_DIR=$(CRCL_ROOT)/Testing/Build
+include $(CRCL_ROOT)/Source/charcoal_pre.mk
 
 TARGETS = hello_world one_activity activate_loop
 
@@ -56,4 +56,5 @@ $(BUILD_DIR)/non_rec.class: non_rec.java
 $(BUILD_DIR)/non_rec_hs: non_rec.hs
 	ghc -outputdir $(BUILD_DIR) -o $(BUILD_DIR)/non_rec_hs --make non_rec.hs
 
-include $(CRCL_ROOT)/Testing/cil_rules.mk
+include $(CRCL_ROOT)/Source/charcoal_post.mk
+include $(CRCL_ROOT)/Testing/charcoal_testing_post.mk

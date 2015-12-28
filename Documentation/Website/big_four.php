@@ -15,7 +15,12 @@
 
 <h1>Conventional Concurrency Primitives/Frameworks</h1>
 
-<p>The classical interaction model between software and its environment
+<p>The classical model of software is "single-tasking": a program is
+given a particular input, it runs and produces an output. In slightly
+more formal language, programs are functions, in the mathematical sense.
+This statement is exactly the famous Church-Turing thesis.
+
+  The classical interaction model between software and its environment
 is that of mathematical functions: the environment provides an input,
 the software spends some time computing, then makes an output available
 to the environment.  Functions (and their programming cousins,

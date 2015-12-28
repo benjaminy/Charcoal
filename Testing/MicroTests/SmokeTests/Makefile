@@ -3,8 +3,8 @@
 #
 
 CRCL_ROOT=../../..
-
-include $(CRCL_ROOT)/Testing/generic.mk
+BUILD_DIR=$(CRCL_ROOT)/Testing/Build
+include $(CRCL_ROOT)/Source/charcoal_pre.mk
 
 CFLAGS+= -g
 
@@ -38,4 +38,5 @@ $(BUILD_DIR)/fake_crcl_hello_world: hello_world.c
 activate_loop: activate_loop.c
 	gcc -g -o activate_loop $(FLAGS) -DYIELDING activate_loop.c $(LIBUV_FLAGS)
 
-include $(CRCL_ROOT)/Testing/cil_rules.mk
+include $(CRCL_ROOT)/Source/charcoal_post.mk
+include $(CRCL_ROOT)/Testing/charcoal_testing_post.mk

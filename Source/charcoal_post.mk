@@ -23,11 +23,3 @@ $(BUILD_DIR)/%$(CRCL_DOT_H_EXT): %.crcl
 # Build object code from a translated Charcoal file
 %$(CRCL_O_EXT): %$(CRCL_CJ_EXT)
 	$(CC) -c $(CFLAGS) -o $@ -x c $<
-
-# Generic rule for building a single file program
-$(BUILD_DIR)/% : $(BUILD_DIR)/%$(CRCL_O_EXT)
-	$(CC) $(CFLAGS) -o $@ $< $(CRCL_RUNTIME) $(ZLOG_LIB) $(LIBUV_FLAGS)
-
-# Generic rule for building in the build directory
-%: $(BUILD_DIR)/%
-	echo "Built \"$@\" by building \"$<\""

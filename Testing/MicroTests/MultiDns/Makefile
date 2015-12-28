@@ -3,10 +3,8 @@
 #
 
 CRCL_ROOT=../../..
-
-include $(CRCL_ROOT)/Testing/generic.mk
-
-include $(CRCL_ROOT)/Testing/cil_rules.mk
+BUILD_DIR=$(CRCL_ROOT)/Testing/Build
+include $(CRCL_ROOT)/Source/charcoal_pre.mk
 
 # CC=clang
 
@@ -40,3 +38,6 @@ activities: $(BUILD_DIR)/activities
 
 $(BUILD_DIR)/activities: multi_dns_utils.c $(BUILD_DIR)/activities$(CRCL_O_EXT)
 	$(CC) -I. -o $@ $^  $(CRCL_RUNTIME) $(ZLOG_LIB) $(LIBUV_FLAGS)
+
+include $(CRCL_ROOT)/Source/charcoal_post.mk
+include $(CRCL_ROOT)/Testing/charcoal_testing_post.mk

@@ -1,34 +1,29 @@
 # _very_ incomplete
 
-OPTIMIZATION_LEVEL = "-O1"
-DEBUG_SYMBOLS = "-g"
-PROFILING = ""
+OPTIMIZATION_LEVEL = -O1
+DEBUG_SYMBOLS = -g
+# PROFILING = ""
 # SANITIZE = "-fsanitize=address"
 SANITIZE = -fsanitize=address
 
 CC = clang-3.6
 BUILD_DIR = ../Build
-INSTALL_DIR = ../Install
-STDLIB_DIR = ./StandardLibrary
+include charcoal_pre.mk
+
+STDLIB_DIR = StandardLibrary
 LIB_DIR = $(INSTALL_DIR)/lib
 ETC_DIR = $(INSTALL_DIR)/etc
 INCLUDE_DIR = $(INSTALL_DIR)/include
 INCLUDE_DIRS = -I. -I $(INCLUDE_DIR)
 CFLAGS += -Wall $(OPTIMIZATION_LEVEL) $(DEBUG_SYMBOLS) $(PROFILING) $(SANITIZE)
-CIL_DIR = ../ThirdParty/cil/Charcoal-1.7.3
-
-CRCL_DOT_H_EXT=.crcl.with.h.c
-CRCL_CPP_EXT=.crcl.cpp.c
-CIL_C_EXT=.crcl.cil.c
-CIL_O_EXT=.crcl.cil.o
 
 # charcoal_log.conf
 
 STDLIB_SOURCES = unistd lib_utils
-STDLIB_OBJS = $(addsuffix $(CIL_O_EXT), $(addprefix $(BUILD_DIR)/, $(STDLIB_SOURCES) ) )
+STDLIB_OBJS = $(addsuffix $(CRCL_O_EXT), $(addprefix $(BUILD_DIR)/$(STDLIB_DIR)/, $(STDLIB_SOURCES) ) )
 RUNTIME_SOURCES = coroutine main threads io_commands semaphore
 RUNTIME_C_OBJS = $(addsuffix .o, $(addprefix $(BUILD_DIR)/runtime_, $(RUNTIME_SOURCES)) $(BUILD_DIR)/setjmp)
-# RUNTIME_CRCL_OBJS = $(addsuffix $(CIL_O_EXT), $(addprefix $(BUILD_DIR)/, standard_library ) )
+# RUNTIME_CRCL_OBJS = $(addsuffix $(CRCL_O_EXT), $(addprefix $(BUILD_DIR)/, standard_library ) )
 RUNTIME_OBJS = $(STDLIB_OBJS) $(RUNTIME_C_OBJS)
 
 MAIN_RUNTIME_HEADERS = common coroutine io_commands semaphore
@@ -36,38 +31,15 @@ RUNTIME_HEADERS = $(addsuffix( .h, $(addprefix runtime_, $(MAIN_RUNTIME_HEADERS)
 APP_HEADERS = core.h charcoal_source_pre_header.h charcoal_main_pre_header.h core.h core_application.crclh standard_library.crclh atomics_wrappers.h
 STDLIB_HEADERS = $(addsuffix .crclh, lib_utils stdlib stdio )
 
-.PRECIOUS: %$(CRCL_DOT_H_EXT) %$(CRCL_CPP_EXT) %$(CIL_C_EXT)
-
 all: copy_stdlib_headers copy_app_headers $(RUNTIME_OBJS) $(STDLIB_OBJS) log_conf | $(LIB_DIR)
 	ar rcs $(LIB_DIR)/libcharcoal_sys.a $(RUNTIME_OBJS)
-
-# Prepend the Charcoal runtime headers
-$(BUILD_DIR)/%$(CRCL_DOT_H_EXT): $(STDLIB_DIR)/%.crcl
-	echo "#define __CHARCOAL_INSTALL_DIR \"$(INSTALL_DIR)\"" > $@
-	cat charcoal_source_pre_header.h >> $@
-	echo "#line 1 " \"$<\" >> $@
-	cat $< >> $@
-
-# Do C preprocesing.  Cil doesn't do this itself.
-%$(CRCL_CPP_EXT): %$(CRCL_DOT_H_EXT) copy_stdlib_headers
-	$(CC) -E $(INCLUDE_DIRS) -D__CHARCOAL_CIL -o $@ -x c $<
-
-# Invoke Cil to translate Charcoal to plain C.
-%$(CIL_C_EXT): %$(CRCL_CPP_EXT)
-	$(CIL_DIR)/bin/cilly.native --decil --tr coroutinify --out $@ $<
-
-%$(CIL_O_EXT): %$(CIL_C_EXT)
-	$(CC) $(CFLAGS) $(INCLUDE_DIRS) -c -o $@ $<
-
-# Generic rule for building in the build directory
-%: $(BUILD_DIR)/%
-	echo "Built \"$@\" by building \"$<\""
 
 clean:
 	rm -rf $(BUILD_DIR)/*
 	rm -f $(addprefix $(INCLUDE_DIR)/, $(APP_HEADERS))
 	rm -f $(LIB_DIR)/libcharcoal_sys.a
 	rm -f $(ETC_DIR)/*
+	mkdir $(BUILD_DIR)/$(STDLIB_DIR)
 
 log_conf: $(ETC_DIR)/charcoal_log.conf
 
@@ -99,3 +71,10 @@ $(LIB_DIR):
 
 $(ETC_DIR):
 	mkdir -p $(ETC_DIR)
+
+include charcoal_post.mk
+
+# Generic rule for building in the build directory
+%: $(BUILD_DIR)/%
+	echo "Built \"$@\" by building \"$<\""
+

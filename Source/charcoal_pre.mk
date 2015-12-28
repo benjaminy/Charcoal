@@ -1,5 +1,11 @@
+#
+#
+#
 
-BUILD_DIR=$(CRCL_ROOT)/Testing/Build
+ifndef CRCL_ROOT
+$(error CRCL_ROOT is not set)
+endif
+
 # XXX replace cil dir with install
 CIL_DIR=$(CRCL_ROOT)/ThirdParty/cil/Charcoal-1.7.3
 INSTALL_DIR=$(CRCL_ROOT)/Install

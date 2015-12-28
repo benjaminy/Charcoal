@@ -41,7 +41,7 @@ sort (processors, network interfaces, machines, ...) and we want our
 software to use them simultaneously to improve some performance metric
 (total run time, throughput, latency, whatever).
 <li><em>Expressiveness</em> - Some program patterns are intrisically
-concurrent (interactive programming <em>is</em> concurrenct
+concurrent (multitask programming <em>is</em> concurrenct
 programming), and some programs can be more elegantly expressed by using
 the right concurrency framework.
 </ul>

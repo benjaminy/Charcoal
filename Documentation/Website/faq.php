@@ -57,18 +57,18 @@ developers to steal the ideas and implementation techniques.
 <h4 class="question">Q03: Isn't it dumb to make a concurrent language that can't be run
 in parallel?</h4>
 
-<p>As discussed elsewhere on this site, interactivity and parallelism
-are <em>very</em> different topics.  Part of the inspiration behind this
-project is that insisting on parallel execution is one of the
-ingredients that makes multithreaded programming so error-prone.  There
-is really no reason to want interactivity and parallelism to be mushed
-together into a single language feature.  One is for making software
-responsive to the real world, one is for speeding up CPU-bound
-algorithms.  There is no reason to put the two in the same bucket.</p>
+<p>As discussed elsewhere on this site, multitasking and parallelism are
+distinct concepts.  Part of the inspiration behind this project is that
+insisting on parallel execution is one of the ingredients that makes
+multithreaded programming so error-prone.  There is no reason to want
+multitasking and parallelism mushed together into a single language
+feature.  One is for making software responsive to the real world, one
+is for speeding up CPU-bound algorithms.  There is no reason to put the
+two in the same bucket.</p>
 </div>
 
 <div class="qanda">
-<h4 class="question">Q04: Fine.  Be a pedantic jerk.  Parallelism and interactivity are
+<h4 class="question">Q04: Fine.  Be a pedantic jerk.  Parallelism and multitasking are
 different.  I care about parallelism; what are you going to do for
 me?</h4>
 
@@ -86,13 +86,14 @@ concurrency primitive?</h4>
 
 <p>I'm not sure.  My sense is that with so much of the application
 development action going on in the web, mobile and embedded parts of the
-universe, there is genuinely more reactivity and interactivity compared
-to a decade or two ago.  As circumstantial evidence, I point to all the
-experimentation with funky event handling and cooperative threading
-models going on in the "scripting" language space.  In particular, my
-sense is that "regular Jane and Joe" developers are coming face-to-face with
-concurrency issues much more than in the past.  I would love to know if
-anyone has actually studied these trends.</p>
+universe, mainstream applications are forced to deal with more
+multitasking compared to a decade or two ago.  As circumstantial
+evidence, I point to all the experimentation with funky event handling
+and cooperative threading models going on in the "scripting" language
+space.  In particular, my sense is that "regular Jane and Joe"
+developers are coming face-to-face with concurrency issues much more
+than in the past.  I would love to know if anyone has actually studied
+these trends.</p>
 </div>
 
 <a id="endgame">

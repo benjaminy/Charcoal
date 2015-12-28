@@ -3,12 +3,10 @@
 # 
 
 CRCL_ROOT=../..
-
-include $(CRCL_ROOT)/Testing/generic.mk
+BUILD_DIR=$(CRCL_ROOT)/Testing/Build
+include $(CRCL_ROOT)/Source/charcoal_pre.mk
 
 TARGETS = simple_test simple_test_noyield simple_yield_exe  unyielding_test_exe activity_create timeout_test_exe simple_unyield_test simple_unyield_test_noyield
-
-include $(CRCL_ROOT)/Testing/cil_rules.mk
 
 timer_create_test: timer_create_test.c
 	gcc -O1 -o timer_create_test timer_create_test.c -lrt
@@ -50,3 +48,6 @@ timeout:
 
 clean:
 	rm -rf $(TARGETS)
+
+include $(CRCL_ROOT)/Source/charcoal_post.mk
+include $(CRCL_ROOT)/Testing/charcoal_testing_post.mk
