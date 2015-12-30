@@ -1384,7 +1384,7 @@ class phase3 generic_frame = object( self )
     if setjmp_erase then
       let () =
         match g with
-        | GType( ti, _ ) ->
+        | C.GType( ti, _ ) ->
            if starts_with ti.C.tname "__charcoal_setjmp_tricky_hack_post" then
              setjmp_erase <- false
         | _ -> ()
@@ -1400,12 +1400,12 @@ class phase3 generic_frame = object( self )
          (* let () = trc( P.dprintf "P3 DECL %b %s %a\n" *)
          (*     (type_is_charcoal_fn var.C.vtype) var.C.vname C.d_type var.C.vtype ) in *)
          coroutinifyVariableDeclaration var loc generic_frame
-      | GPragma( Attr( a, _ ), _ ) ->
+      | C.GPragma( C.Attr( a, _ ), _ ) ->
          if a = "cilnoremove" then
            C.ChangeTo []
          else
            C.DoChildren
-      | GType( ti, _ ) ->
+      | C.GType( ti, _ ) ->
          if starts_with ti.C.tname "__charcoal_setjmp_tricky_hack_pre" then
            let () = setjmp_erase <- true in
            C.ChangeTo []
