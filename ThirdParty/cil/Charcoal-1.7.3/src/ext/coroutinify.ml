@@ -1310,7 +1310,7 @@ end
  *)
 let coroutinifyVariableDeclaration var loc frame =
   if var.C.vid = (setjmp()).C.vid || var.C.vid = (longjmp()).C.vid then
-    C.DoChildren (* C.ChangeTo [] *)
+    C.ChangeTo []
   else if type_is_charcoal_fn var.C.vtype then
     let ( n, p, i ) =
       match IH.tryfind crcl_fun_decls var.C.vid with
@@ -1385,7 +1385,7 @@ class phase3 generic_frame = object( self )
       let () =
         match g with
         | GType( ti, _ ) ->
-           if ti.C.tname = "__charcoal_setjmp_tricky_hack_post" then
+           if starts_with ti.C.tname "__charcoal_setjmp_tricky_hack_post" then
              setjmp_erase <- false
         | _ -> ()
       in
@@ -1406,7 +1406,7 @@ class phase3 generic_frame = object( self )
          else
            C.DoChildren
       | GType( ti, _ ) ->
-         if ti.C.tname = "__charcoal_setjmp_tricky_hack_pre" then
+         if starts_with ti.C.tname "__charcoal_setjmp_tricky_hack_pre" then
            let () = setjmp_erase <- true in
            C.ChangeTo []
          else

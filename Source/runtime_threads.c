@@ -83,8 +83,7 @@ static void thread_main_loop( void *p )
     assert( params->thd );
     volatile cthread_p thd = params->thd;
     crcl(frame_p) frm = thread_init( params );
-    /* NOTE: The cast below is weird and wrong, but makes warnings go away. */
-    if( setjmp( *((jmp_buf *)&thd->thread_main_jmp_buf )) )
+    if( setjmp( thd->thread_main_jmp_buf ) )
     {
         frm = thd->running->newest_frame;
     }

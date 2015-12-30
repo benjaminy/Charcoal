@@ -39,7 +39,7 @@ CRCL_CPP_EXT=.crcl.cpp_c
 CIL_C_EXT=.crcl.cil_c
 CRCL_CJ_EXT=.crcl.cilj_c
 CRCL_O_EXT=.crcl.cil_o
-CC=gcc
+CC=clang-3.6
 
 CRCL_RUNTIME = $(INSTALL_DIR)/lib/libcharcoal_sys.a
 ZLOG_LIB = $(INSTALL_DIR)/lib/libzlog.a

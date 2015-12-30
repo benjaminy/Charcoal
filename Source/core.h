@@ -45,7 +45,6 @@
 typedef int crcl(setjmp_tricky_hack_pre);
 #include <setjmp.h>
 typedef int crcl(setjmp_tricky_hack_post);
-#undef jmp_buf
 #undef setjmp
 #undef longjmp
 
@@ -53,6 +52,8 @@ typedef int crcl(setjmp_tricky_hack_post);
 #include <setjmp.h>
 
 #endif /* __CHARCOAL_CIL */
+
+#undef jmp_buf
 
 #include <uv.h>
 
