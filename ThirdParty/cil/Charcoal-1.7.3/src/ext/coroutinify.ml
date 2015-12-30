@@ -1378,18 +1378,40 @@ let completeFunctionTranslation fdef loc =
 
 class phase3 generic_frame = object( self )
   inherit C.nopCilVisitor
+  val mutable setjmp_erase = false
 
   method vglob g =
-    match g with
-    | C.GFun( fdef, loc ) ->
-       (* let () = trc( P.dprintf "P3 DEFN %b %s\n" *)
-       (*     (type_is_charcoal_fn fdef.C.svar.C.vtype) fdef.C.svar.C.vname ) in *)
-       completeFunctionTranslation fdef loc
-    | C.GVarDecl( var, loc ) ->
-       (* let () = trc( P.dprintf "P3 DECL %b %s %a\n" *)
-       (*     (type_is_charcoal_fn var.C.vtype) var.C.vname C.d_type var.C.vtype ) in *)
-       coroutinifyVariableDeclaration var loc generic_frame
-    | _ -> C.DoChildren
+    if setjmp_erase then
+      let () =
+        match g with
+        | GType( ti, _ ) ->
+           if ti.C.tname = "__charcoal_setjmp_tricky_hack_post" then
+             setjmp_erase <- false
+        | _ -> ()
+      in
+      C.ChangeTo []
+    else
+      match g with
+      | C.GFun( fdef, loc ) ->
+         (* let () = trc( P.dprintf "P3 DEFN %b %s\n" *)
+         (*     (type_is_charcoal_fn fdef.C.svar.C.vtype) fdef.C.svar.C.vname ) in *)
+         completeFunctionTranslation fdef loc
+      | C.GVarDecl( var, loc ) ->
+         (* let () = trc( P.dprintf "P3 DECL %b %s %a\n" *)
+         (*     (type_is_charcoal_fn var.C.vtype) var.C.vname C.d_type var.C.vtype ) in *)
+         coroutinifyVariableDeclaration var loc generic_frame
+      | GPragma( Attr( a, _ ), _ ) ->
+         if a = "cilnoremove" then
+           C.ChangeTo []
+         else
+           C.DoChildren
+      | GType( ti, _ ) ->
+         if ti.C.tname = "__charcoal_setjmp_tricky_hack_pre" then
+           let () = setjmp_erase <- true in
+           C.ChangeTo []
+         else
+           C.DoChildren
+      | _ -> C.DoChildren
 
   method vtype t =
     let () = () (* trc( P.dprintf "P3 type %a\n" C.d_type t ) *) in

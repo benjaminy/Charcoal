@@ -1,9 +1,11 @@
 #ifndef __CHARCOAL_CORE
 #define __CHARCOAL_CORE
 
-/* Should be included before absolutely anything else in Charcoal
- * runtime source files.  Charcoal application compilation flows should
- * implicitly include this file. */
+/* This file should be included before absolutely anything else in
+ * Charcoal runtime source files.
+ *
+ * Charcoal source compilation flows should implicitly include this
+ * file. */
 
 #ifdef __CHARCOAL_CIL
 /* Example: #pragma cilnoremove("func1", "var2", "type foo", "struct bar") */
@@ -24,18 +26,33 @@
 #pragma cilnoremove( "__charcoal_setjmp_yielding" )
 #pragma cilnoremove( "__charcoal_longjmp_yielding" )
 #pragma cilnoremove( "__charcoal_longjmp_no_yield" )
+#pragma cilnoremove( "type __charcoal_setjmp_tricky_hack_pre" )
+#pragma cilnoremove( "type __charcoal_setjmp_tricky_hack_post" )
 #endif
 
-#define crcl(n) __charcoal_ ## n
-#define CRCL(n) __CHARCOAL_ ## n
+#define crcl(name) __charcoal_ ## name
+#define CRCL(name) __CHARCOAL_ ## name
 
+/* The contortions we go through for setjmp and longjmp are kinda crazy.
+ * The core problems are that the actual implementations of setjmp and
+ * longjmp are at least partially compiler-internal things and that some
+ * compilers insist on there being a literal #include for setjmp.h. */
 #define jmp_buf crcl(jmp_buf_c)
+
+#ifdef __CHARCOAL_CIL
 #define setjmp crcl(setjmp_c)
 #define longjmp crcl(longjmp_c)
+typedef int crcl(setjmp_tricky_hack_pre);
 #include <setjmp.h>
+typedef int crcl(setjmp_tricky_hack_post);
 #undef jmp_buf
 #undef setjmp
 #undef longjmp
+
+#else /* __CHARCOAL_CIL */
+#include <setjmp.h>
+
+#endif /* __CHARCOAL_CIL */
 
 #include <uv.h>
 
@@ -263,8 +280,10 @@ crcl(frame_p) crcl(yield_impl)( crcl(frame_p) frame, void *ret_addr );
 crcl(frame_p) crcl(activity_waiting_or_done)( crcl(frame_p) frm, void *ret_addr );
 void crcl(add_to_waiters)( activity_p waiter, activity_p *q );
 
+#ifdef __CHARCOAL_CIL
 int  setjmp ( jmp_buf );
 void longjmp( jmp_buf, int );
+#endif
 
 void crcl(setjmp_yielding)( int *, jmp_buf, void *, crcl(frame_p) );
 crcl(frame_p) crcl(longjmp_yielding)( jmp_buf, int, crcl(frame_p) );
