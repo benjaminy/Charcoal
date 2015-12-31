@@ -8,11 +8,11 @@ int main( int argc, char **argv )
     int x = setjmp( env );
     if( x )
     {
-        printf( "jmp'd" );
+        printf( "jmp'd\n" );
     }
     else
     {
-        printf( "jmping" );
+        printf( "jmping\n" );
         longjmp( env, 1 );
     }
 }

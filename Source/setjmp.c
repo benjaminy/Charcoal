@@ -15,6 +15,8 @@ void crcl(setjmp_yielding)(
     env->_.yielding.frm         = frm;
     env->_.yielding.return_addr = return_addr;
     env->_.yielding.lhs         = lhs;
+    if( lhs )
+        *lhs = 0;
 }
 
 /*

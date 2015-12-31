@@ -19,6 +19,7 @@ $(BUILD_DIR)/%$(CRCL_DOT_H_EXT): %.crcl
 %$(CRCL_CJ_EXT): %$(CIL_C_EXT)
 	echo "#define jmp_buf __charcoal_jmp_buf_c" > $@
 	echo "#include <setjmp.h>" >> $@
+	echo "#undef jmp_buf" >> $@
 	cat $< >> $@
 
 # Build object code from a translated Charcoal file

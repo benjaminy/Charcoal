@@ -811,6 +811,10 @@ let no_yield_call i fdec frame =
     C.Call( lval_opt, ( C.Lval( C.Var fname, C.NoOffset ) as f), params, loc ) ->
     if fname.C.vid = (act_intermed()).C.vid then
       change_do_children( no_yield_activate params fdec loc frame )
+    else if fname.C.vid = (setjmp()).C.vid then
+      change_do_children( no_yield_setjmp lval_opt params frame )
+    else if fname.C.vid = (longjmp()).C.vid then
+      change_do_children( no_yield_longjmp params loc )
     else if fname.C.vid = (yield()).C.vid || fname.C.vid = (mode_test()).C.vid then
       change_do_children(
           match lval_opt with
