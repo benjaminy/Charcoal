@@ -1,0 +1,116 @@
+/*
+ *
+ */
+
+extern "C" {
+#include <assert.h>
+}
+#include <semaphore.crclh>
+
+/* XXX the semaphore implementation is not thread-safe yet.  Fix
+ * eventually. */
+
+/* XXX I hate header dependencies */
+extern "C" {
+activity_p crcl(pop_waiting_queue)( activity_p *q );
+void crcl(push_waiting_queue)( activity_p a, activity_p *q );
+void crcl(push_ready_queue)( activity_p a );
+}
+
+int semaphore_open( csemaphore_p s, unsigned i )
+{
+    if( !s )
+    {
+        return -EINVAL;
+    }
+    s->value = i;
+    s->waiters = NULL;
+    return 0;
+}
+
+int semaphore_close( csemaphore_p s )
+{
+    if( !s )
+    {
+        return -EINVAL;
+    }
+    if( s->waiters )
+    {
+        /* XXX error? */
+    }
+    return 0;
+}
+
+int semaphore_incr( csemaphore_p s )
+{
+    if( !s )
+    {
+        return -EINVAL;
+    }
+    ++s->value;
+    activity_p waiter = crcl(pop_waiting_queue)( &s->waiters );
+    if( waiter )
+    {
+        cthread_p thd = waiter->thread;
+        uv_mutex_lock( &thd->thd_management_mtx );
+        crcl(push_ready_queue)( waiter );
+        uv_mutex_unlock( &thd->thd_management_mtx );
+    }
+    return 0;
+}
+
+int semaphore_decr( csemaphore_p s )
+{
+    if( !s )
+    {
+        return -EINVAL;
+    }
+    activity_p self = self_activity();
+    assert( self );
+    while( s->value < 1 )
+    {
+        // XXX int rc;
+        crcl(push_waiting_queue)( self, &s->waiters );
+        crcl(activity_wait)();
+#if 0
+        XXX
+        if( ( rc = crcl(activity_waiting)( /* XXX bad cast */(crcl(frame_p))self ) ) )
+        {
+            return rc;
+        }
+#endif
+    }
+    --s->value;
+#if 1
+    /* XXX maybe this isn't necessary?  */
+    if( s->value > 0 )
+    {
+        activity_p waiter = crcl(pop_waiting_queue)( &s->waiters );
+        if( waiter )
+        {
+            cthread_p thd = waiter->thread;
+            uv_mutex_lock( &thd->thd_management_mtx );
+            crcl(push_ready_queue)( waiter );
+            uv_mutex_unlock( &thd->thd_management_mtx );
+        }
+    }
+#endif
+    return 0;
+}
+
+int semaphore_try_decr( csemaphore_p s )
+{
+    if( !s )
+    {
+        return EINVAL;
+    }
+    if( s->value < 1 )
+    {
+        return EAGAIN;
+    }
+    else
+    {
+        --s->value;
+        return 0;
+    }
+}

@@ -1,0 +1,14 @@
+/* XXX name colision with semaphore_t in Mach */
+typedef struct csemaphore_t csemaphore_t, *csemaphore_p;
+
+struct csemaphore_t
+{
+    unsigned value;
+    activity_p waiters;
+};
+
+int semaphore_open  ( csemaphore_p s, unsigned i );
+int semaphore_close ( csemaphore_p s );
+int semaphore_incr  ( csemaphore_p s );
+int semaphore_decr  ( csemaphore_p s );
+int semaphorery_decr( csemaphore_p s );

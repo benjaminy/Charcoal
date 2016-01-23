@@ -9,27 +9,8 @@
 /* Here's a weird idea. The thread creation API makes an "empty"
  * thread.  To use it, you have to move activities into it. */
 
-/* XXX name colision with semaphore_t in Mach */
-typedef struct csemaphore_t csemaphore_t, *semaphore_p;
-
-struct csemaphore_t
-{
-    unsigned value;
-    activity_p waiters;
-};
-
-int semaphore_open  ( semaphore_p s, unsigned i );
-int semaphore_close ( semaphore_p s );
-int semaphore_incr  ( semaphore_p s );
-int semaphore_decr  ( semaphore_p s );
-int semaphorery_decr( semaphore_p s );
 
 #if 0
-/* Thread and activity types */
-typedef struct *thread_t;
-typedef struct *activity_t;
-
-typedef int (*thrd_start_t)(void*)
 
 int     thrd_create( thrd_t *thr, thrd_start_t func, void *arg );
 int     thrd_equal(     thrd_t lhs,     thrd_t rhs );

@@ -38,6 +38,8 @@ static crcl(frame_p) longjmp_helper( activity_p act, jmp_buf env, int val )
 {
     if( env->_.yielding.lhs )
     {
+        if( val == 0 )
+            val = 1;
         *env->_.yielding.lhs = val;
     }
     crcl(frame_p) dest_frm = env->_.yielding.frm;

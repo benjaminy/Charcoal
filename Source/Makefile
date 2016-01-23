@@ -19,7 +19,7 @@ CFLAGS += -Wall $(OPTIMIZATION_LEVEL) $(DEBUG_SYMBOLS) $(PROFILING) $(SANITIZE)
 
 # charcoal_log.conf
 
-STDLIB_SOURCES = unistd lib_utils
+STDLIB_SOURCES = unistd lib_utils semaphore
 STDLIB_OBJS = $(addsuffix $(CRCL_O_EXT), $(addprefix $(BUILD_DIR)/$(STDLIB_DIR)/, $(STDLIB_SOURCES) ) )
 RUNTIME_SOURCES = coroutine main threads io_commands semaphore
 RUNTIME_C_OBJS = $(addsuffix .o, $(addprefix $(BUILD_DIR)/runtime_, $(RUNTIME_SOURCES)) $(BUILD_DIR)/setjmp)
@@ -29,7 +29,7 @@ RUNTIME_OBJS = $(STDLIB_OBJS) $(RUNTIME_C_OBJS)
 MAIN_RUNTIME_HEADERS = common coroutine io_commands semaphore
 RUNTIME_HEADERS = $(addsuffix( .h, $(addprefix runtime_, $(MAIN_RUNTIME_HEADERS)) core )
 APP_HEADERS = core.h charcoal_source_pre_header.h charcoal_main_pre_header.h core.h core_application.crclh standard_library.crclh atomics_wrappers.h
-STDLIB_HEADERS = $(addsuffix .crclh, lib_utils stdlib stdio )
+STDLIB_HEADERS = $(addsuffix .crclh, lib_utils stdlib stdio semaphore )
 
 all: copy_stdlib_headers copy_app_headers $(RUNTIME_OBJS) $(STDLIB_OBJS) log_conf | $(LIB_DIR)
 	ar rcs $(LIB_DIR)/libcharcoal_sys.a $(RUNTIME_OBJS)
