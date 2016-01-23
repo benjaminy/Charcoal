@@ -1,0 +1,44 @@
+#include <stdio.crclh>
+#include <semaphore.crclh>
+
+int main( int argc, char **argv, char **env )
+{
+    activity_t a1, a2, a3;
+    csemaphore_t s1, s2, s3;
+    semaphore_open( &s1, 0 );
+    semaphore_open( &s2, 0 );
+    semaphore_open( &s3, 0 );
+    activate[ &a1 ] ()
+    {
+        printf( "A1 M1\n" );
+        semaphore_decr( &s1 );
+        printf( "A1 M2\n" );
+        semaphore_incr( &s3 );
+        printf( "A1 M3\n" );
+        semaphore_decr( &s1 );
+        printf( "A1 M4\n" );
+        semaphore_incr( &s2 );
+        printf( "A1 M5\n" );
+    }
+    activate[ &a2 ] ()
+    {
+        printf( "A2 M1\n" );
+        semaphore_incr( &s1 );
+        printf( "A2 M2\n" );
+        semaphore_decr( &s2 );
+        printf( "A2 M3\n" );
+    }
+    activate[ &a3 ] ()
+    {
+        printf( "A3 M1\n" );
+        semaphore_decr( &s3 );
+        printf( "A3 M2\n" );
+        semaphore_incr( &s1 );
+        printf( "A3 M3\n" );
+    }
+    printf( "All activated!\n" );
+    wait_activity_done( &a1 );
+    wait_activity_done( &a2 );
+    wait_activity_done( &a3 );
+    return 0;
+}

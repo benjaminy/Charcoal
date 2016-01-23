@@ -32,3 +32,5 @@ $(BUILD_DIR)/memory_limit_pthread_simple: memory_limit_pthread_simple.c
 
 include $(CRCL_ROOT)/Testing/cil_rules.mk
 
+$(BUILD_DIR)/spawn_stackful_boost:
+	clang++-3.6 -o $@ spawn_coroutines.cc

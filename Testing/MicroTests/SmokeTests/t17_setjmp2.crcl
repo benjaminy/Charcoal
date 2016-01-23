@@ -1,0 +1,23 @@
+#include <stdio.crclh>
+
+#define N 10
+
+void f( jmp_buf e, int x )
+{
+    longjmp( e, x + 1 );
+}
+
+int main( int argc, char **argv )
+{
+    jmp_buf env;
+    int x = setjmp( env );
+    if( x > 10 )
+    {
+        printf( "jmp'd\n" );
+    }
+    else
+    {
+        printf( "jmping %d\n", x );
+        f( env, x );
+    }
+}
