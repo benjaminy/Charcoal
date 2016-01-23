@@ -1,11 +1,10 @@
 extern "C" {
 #include <assert.h>
-#include <stdlib.h>
-#include <stdio.h>
 #include <multi_dns_utils.h>
 }
-
-#include <standard_library.crclh>
+#include <stdlib.crclh>
+#include <stdio.crclh>
+// #include <standard_library.crclh>
 
 void get_one( int idx );
 
@@ -41,6 +40,7 @@ int main( int argc, char **argv, char **env )
     }
 
     FINISH_DNS( 0 );
+    return 0;
 }
 
 void get_one( int idx )
