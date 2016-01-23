@@ -5,7 +5,7 @@ int A[ 9 ] = { 4, 8, 3, 5, 6, 7, 2, 1, 0 };
 
 #define N 1
 
-int f( long lont n, int x )
+int f( long long n, int x )
 {
     if( n < 2 )
         return A[ x ];
