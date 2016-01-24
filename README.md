@@ -26,3 +26,28 @@ make && make test && make install
 cd Source
 make all
 
+## Install Go
+
+bash < <(curl -s -S -L https://raw.githubusercontent.com/moovweb/gvm/master/binscripts/gvm-installer)
+
+[[ -s "$HOME/.gvm/scripts/gvm" ]] && source "$HOME/.gvm/scripts/gvm"
+
+Logout
+
+sudo apt-get install bison
+
+gvm version
+
+gvm install go1.4
+
+gvm listall
+
+gvm use go1.4
+
+gvm install go1.5.3
+
+### Running Go Programs
+
+export GOPATH=$( pwd )
+
+go 
