@@ -1,0 +1,157 @@
+
+Review A
+
+Paper summary
+
+This paper presents another iteration of the long-running events vs. threads debate now recast as co-routines vs. cooperative threads.
+In particular, the authors argue that automatic and predictable insertion of yield points is the way to go, with a no-yield primitive to counteract the automatic analysis.
+After developing the programming model in some detail, the authors then describe some nifty implementation techniques and present some micro-benchmarks.
+
+Comments for author
+
+Overall, the paper focuses on a highly relevant and interesting issue: how to deal with multitasking when the established paradigms still cause no end of software engineering issues.
+Furthermore, the paper's basic idea: make yield-point insertion automatic yet predictable rings true to this particular reviewer.
+
+However, the paper never quite gets to its goal, a fully automatic and predictable semantics, as the described technique fails for recursive procedures.
+I expect my languages to have well-defined semantics that are complete, which clearly is not the case here.
+
+Furthermore, the paper never closes the loop since micro-benchmarks are nice but make no statement about the claimed software engineering impact of BlindReview, the language.
+(That, btw, is an awesome code name for blind reviewing though I suspect you missed one instance in 5.0.)
+
+Finally, I am doubtful that some implementation techniques (notably, the doubling of the code size) would survive any real-world, major application building efforts.
+While I am willing to suspend disbelief on the last point, the first two are sufficiently strong to make me argue for rejection.
+
+
+
+Review B
+
+The paper presents a new concurrency abstraction called an activity, which tries to get the best of several existing concurrency mechanisms without their drawbacks.
+An activity is cooperatively scheduled, except that the system inserts yields implicitly in order to avoid having long-running or blocking activities.
+The ideas are described informally through a small example, the implementation strategy for activities is discussed in detail, and experiments evaluate their performance versus threads on various microbenchmark tasks.
+
+Comments for author
+
+The general area of finding better abstractions for reliable concurrent programming is a good one, and worthy of study.
+Unfortunately I don't find the current proposal to be well motivated.
+I don't see why this approach is better than current approaches with threads or events, and in fact it seems harder to program with in a few ways.
+The paper only describes the current approach and discusses comparisons with other approaches only through high-level discussion, with no concrete examples to clearly illustrate problems and how they are solved here.
+
+The proposed model is confusing to me.
+By default activities are cooperatively scheduled.
+But then the system implicitly inserts yields.
+Since the programmer can't be sure about where such yields might be placed, it seems like we're back in the world of having to worry about arbitrary interleavings, just like threads!
+In other words, the main advantage of cooperative scheduling -- the ability for the programmer to easily know which blocks of code are atomic -- is lost.
+As a result, now the programmer has to insert no-yield statements carefully to ensure the desired program invariants, just as they have to use synchronization when employing threads.
+
+Given the large amount of existing work on this topic, the paper has a fairly high burden to demonstrate clearly the advantages of this new approach.
+The small example in Fig 1 is inadequate for that purpose, or at least it wasn't made explicit what advantages are obtained over a cooperative multithreading approach, for example.
+Is it just that the programmer does not have to remember to yield due to the getaddrinfo call?
+Later small examples also didn't help much, and in fact they seem to argue against the approach.
+For example, in strcmp (Fig 4b) the programmer has to use a special while loop to prevent the implicit yield insertion from happening.
+
+Finally, there were a few pieces of related work that are missing and seem close in some ways to the ideas here: the notion of "automatic mutual exclusion (Isard & Birrell, HotOS 2007) and that of "cooperative concurrency" (Yi et al., PPoPP 2011).
+
+Specific comments:
+
+1.2: The second paragraph describes what activities are at a high level, but this isn't enough for me to really understand what you are doing and what motivates it.
+
+Fig 1: This is a somewhat odd example since there aren't even any explicit yields, though you have a cooperative model of concurrency.
+It would help if you are explicit about what is being demonstrated -- what the problem is and how your approach solves it.
+
+2.2: You say that yields are inserted at the end of the loop and in the implementation of getaddrinfo.
+It would be useful to understand exactly what the rules are in this regard.
+For example, where in getaddrinfo, and why?
+Also, in this example isn't the yield at the end of the while loop essentially a no-op since it also ends the activity?
+
+2.2: "There is one slightly tricky concurrency bug..." This seems to be an instance of a more general issue, which is that atomicity requirements are application-specific.
+So the implicit yield insertion can easily violate an application-specific requirement, and the programmer has the burden to guard against that appropriately with no-yield.
+
+2.3: "If there was no way to limit yielding, activities would suffer from many of the same concurrency bug defects as threads."
+To me this is exactly the problem -- you started with cooperative concurrency but the implicit yields takes you right back to the problems of preemptive threads.
+
+
+
+
+Review C
+
+The paper describes "activities": an approach to (non-concurrent) interleaved execution of threads, with execution semantics similar to coroutines, except that that automatically-inserted conditional yield checks occur at loop back-edges (backward branches) and calls.
+When a yield-check is triggered control is transferred to another thread.
+Programmers are able to disable yield-check injection in bracketed blocks of code (including the calls they make) so as to make sure that the blocks execute atomically.
+Thus, every function must be compiled with both a yield-enabled and yield-disabled version to satisfy calls from both contexts.
+This flips the notion of (non-preemptive) cooperative threads where it is difficult to know where yields might occur in called subroutines, and which can cause concurrency bugs because code sections are no longer atomic.
+
+The semantics of activities allow them to tailor stack management to take advantage of noyield blocks as markers for where to allocate stack frames in the standard contiguous fashion while allocating the frames of yielding functions non-contiguously on the heap.
+The contiguous region can be reused upon any yield by another thread because there can be no noyield frames active at that point.
+Thus, hot regions of execution (noyield blocks) have efficient contiguous allocation while the remaining frames for colder yielding functions are on the heap.
+
+To evaluate activities, the paper reports comparison with preemptive Linux pthreads for memory overhead, task spawn speed, and context switching.
+It also compares the hot stacking implementation with C calls for a synthetic benchmark designed to exercise calls, with and without noyield at varying relative frequency, and for the loop code of strcmp (where yielding is necessary for large strings, while efficiency demands use of noyield).
+
+Comments for author
+
+There are a number of problems with this paper that mean it should not be accepted to PLDI.
+
+Activities, as described here, are not significantly different from user-level preemptive threading schemes that multiplex a single hardware thread, but also do not admit true concurrency.
+User-level preemptive threading has very cheap disabling of thread switching (incrementing a counter that when non-zero prevents preemption), and moreover does not suffer the overhead of injected software yield-checks.
+The hot-stacking idea, which admittedly is cute, could similarly be used with user-level preemptive threading, but this idea is too small to make a paper on its own.
+
+Moreover, the performance evaluation is an inappropriate comparison of activities with the full-blown concurrent system threads of Linux.
+A better comparison would be with a simple user-level preemptive threads implementation.
+At which point the programming model is essentially the same, with costs that are also much the same (for task spawn, context switch, and memory overhead assuming hot-stacking is used for both).
+Also, hot-stacking should be compared against a best in class implementation of heap allocation for frames (as per reference [22]) which also have the advantage of being compatible with truly concurrent threading.
+It is not clear that hot-stacking would perform any better.
+
+Finally, the outcomes of the performance comparisons using these microbenchmarks are entirely predictable.
+Yes, full-blown system threads with contiguous stacks are inherently heavier than user-level activities.
+Context switches for system threads require transitioning to the scheduler inside the OS and saving/restoring significant thread-specific machine state.
+
+Page 3:
+
+Caption to Figure 1 mentions "max_conc", while code shows "max_concur".
+
+"i.e. its continuation" -> "i.e., ..."
+
+Page 4:
+
+"its important" -> "it is important"
+
+What is "callback hell". Please explain.
+
+"simple an effective" -> "simple and effective"
+
+Page 5:
+
+"Procedures calls" -> "Procedure calls"
+
+"yields happen all over the place": Please be precise, saying "at calls and backward branches".
+
+"The the" -> "The"
+
+"the implementation the yield primitive" -> "...of the yield primitive"
+
+Page 6:
+
+"(e.g. [22])" -> "[22]"
+
+"really unpleasant" -> "unpleasant"
+
+Page 7:
+
+"e.g. using" -> "e.g., using"
+
+Page 8:
+
+"that the leaves" -> "at the leaves"
+
+Page 10:
+
+"There multitasking" -> "There are multitasking"
+
+Page 11-12:
+
+Please check all of your citations for typos, completeness and uniformity (e.g., "rust", "c", "eel", "&quot", "cilk", "Universit", "cps", "hle").
+
+
+
+
+Given the trio of rejects, it seems like responses to specific points are not worth anyone's time. Thanks to the reviewers for the feedback; I hope I can use it to improve the project.
