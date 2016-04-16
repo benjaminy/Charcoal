@@ -1,0 +1,76 @@
+extern "C" {
+#include <stdint.h>
+#include <openssl/conf.h>
+#include <openssl/evp.h>
+#include <openssl/err.h>
+#include <openssl/rand.h>
+#include <crypto_common.h>
+}
+
+#include <semaphore.crclh>
+
+EVP_MD_CTX *mdctx;
+
+#define RATIO 4
+
+int main( int argc, char *argv[] )
+{
+    if( argc < 3 )
+    {
+        printf( "ARGS suggested: 8 19 10\n" );
+        exit( 1 );
+    }
+    long M = atol( argv[1] );
+    M = 1 << M;
+    long N = atol( argv[2] );
+    N = 1 << N;
+    long L = atol( argv[3] );
+    L = 1 << L;
+
+    crypto_open();
+
+    csemaphore_t in_sem, out_sem;
+    semaphore_open( &in_sem, L );
+    semaphore_open( &out_sem, 0 );
+
+    unsigned char big_buff[ M * L ];
+    activity_t rng_act, hash_act;
+    activate[ &rng_act ]()
+    {
+        int i;
+        for( i = 0; i < N; ++i )
+        {
+            semaphore_decr( &in_sem );
+            int rc = RAND_pseudo_bytes( &big_buffer[ ( i % L ) * M ], M );
+            if( rc != 0 && rc != 1 )
+            {
+                handleErrors();
+            }
+            semaphore_incr( &out_sem );
+        }
+    }
+    activate[ &hash_act ]()
+    {
+        int i;
+        unsigned char buffer[ M * RATIO ];
+        for( i = 0; i < N; ++i )
+        {
+            int j;
+            semaphore_decr( &out_sem );
+            unsigned char *digest;
+            unsigned int len;
+            for( j = 0; j < M; j++ )
+            {
+                buffer[ j + ( ( i % RATIO ) * M ) ] = big_buffer[ j + ( i % L ) * M ];
+            }
+            digest_message( buffer, RATIO * M, &digest, &len );
+            // printf( "%i %i %i\n", i, buffer[0], digest[0] );
+            OPENSSL_free( digest );
+            semaphore_incr( &in_sem );
+        }
+    }
+    activity_wait( &rng_act );
+    activity_wait( &hash_act );
+    crypto_close();
+    return 0;
+}
