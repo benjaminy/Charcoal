@@ -1,4 +1,4 @@
-\documentclass[9pt,preprint]{sigplanconf-2}
+\documentclass[9pt,preprint]{sigplanconf}
 % \documentclass[pldi,10pt,preprint]{sigplanconf-pldi16}
 
 % The following \documentclass options may be useful:
@@ -14,8 +14,8 @@
 
 \begin{document}
 
-% \newcommand{\charcoal}{Charcoal}
-\newcommand{\charcoal}{BlindReview}
+\newcommand{\charcoal}{Charcoal}
+% \newcommand{\charcoal}{BlindReview}
 \newcommand{\noyield}{\texttt{no\_yield}}
 
 \special{papersize=8.5in,11in}
@@ -33,29 +33,24 @@
 \title{Pseudo-Preemptive Threads: A New Multitasking Primitive for Reliable, Composable and Maintainable Software}
 \subtitle{Why Events, Preemptive Threads and Coroutines are All Bad Ideas\footnotemark}
 
-\authorinfo{Blind Review}
-           {Blind Review University}
-           {BlindReview@BlindReview.edu}
-%% \authorinfo{Benjamin Ylvisaker}
-%%            {Colorado College}
-%%            {ben.ylvisaker@coloradocollege.edu}
+%% \authorinfo{Blind Review}
+%%            {Blind Review University}
+%%            {BlindReview@BlindReview.edu}
+\authorinfo{Benjamin Ylvisaker}
+           {Colorado College}
+           {ben.ylvisaker@coloradocollege.edu}
 
 \maketitle
 
 \begin{abstract}
 
-Multitasking in software is a fact of life.
-Communicating over networks, reading sensors, controlling actuators, and coordinating among multiple processes are all increasingly common in mainstream software.
-Embedded software has always featured this kind of multitasking prominently, but embedded software is undergoing a transition of its own.
-Embedded software is generally moving in the direction of increasing complexity and general purpose computing components (like general purpose operating systems).
-  
-The need for frequent network communication and rich physical world interaction is making multitasking a larger and larger part of modern mainstream software.
-Existing abstractions for multitasking (events, coroutines, threads) all have serious software engineering problems.
-In this paper we introduce a new multitasking abstraction called pseudo-preemptive threads that combines the best of coroutines and threads.
-This new abstraction will make it easier for regular programmers to write sophisticated multitasking applications.
+The sophistication of multitasking patterns in mainstream software has increased in recent years, thanks to the increasing richness of network communication, physical world interaction and multi-process software architectures.
+These trends have pushed language designers to reevaluate the trade-offs in multitasking abstractions.
+For example, though coroutines have been known for decades, many widely used programming languages have only recently added native support for them.
 
+This paper introduces a new multitasking abstraction called pseudo-preemptive threads that combines the software engineering benefits of several existing options.
 This paper has a detailed comparison of pseudo-preemptive threads with established multitasking abstractions.
-It also describes novel implementation techniques, like a new call frame allocation strategy and a super fast yield implementation.
+It also describes novel implementation techniques: a new call frame allocation strategy and a fast task yield implementation.
 Finally we report performance results for several microbenchmarks using the prototype implementation of pseudo-preemptive threads that we developed.
 
 \end{abstract}
@@ -107,7 +102,7 @@ As result of these two trends there is a greater need than ever for multitasking
 
 This paper introduces a new multitasking abstraction called \emph{pseudo-preemptive threads} (or \emph{activities}) that has software engineering benefits compared to existing alternatives.
 From a programmer's perspective, activities are most similar to user-level preemptive threads.
-The primary difference is that user-level threads can be preempted at any time, but activities have a coarser granularity of scheduling.
+The primary difference is that user-level threads can be preempted at any time, but activities have a coarser granularity of scheduling that is defined in terms of the source language, not the implementation.
 This paper also introduces a new call frame allocation strategy called hot stacking that has close to zero per-thread memory overhead, yet still performs well for the most frequent calls/returns.
 
 The brief version of how activities are implemented is that they are cooperative threads, but the compiler/interpreter automatically inserts yields, to make them appear closer to preemptive.
@@ -120,7 +115,7 @@ In the next section we briefly describe several established multitasking abstrac
 To validate the ideas presented in this paper, we implemented activities in a dialect of C called \charcoal{}.
 In particular, we focus on two efficiency issues: memory scalability and yield performance.
 We describe the important parts of our implementation and present results from a collection of microbenchmarks to show that activities pay very little performance overhead for their software engineering benefits.
-The \charcoal{} implementation and all the benchmarking code reported in this paper are available publicly on GitHub [address removed for blind review].
+The \charcoal{} implementation and all the benchmarking code reported in this paper are available publicly on GitHub [\texttt{github.com/benjaminy/Charcoal}].
 
 % We also tweaked two real-world multithreaded C programs to use activities instead of threads to explore the software engineering implications.
 
@@ -148,7 +143,7 @@ The main dimension that we focus on is scheduling flexibility.
 The more constrained scheduling is, the \emph{easier} it is to avoid defects like atomicity violations and incorrect ordering.
 However, highly constrained scheduling also makes it \emph{harder} to avoid defects like starvation and unintended blocking of tasks.
 Abstraction with more flexible scheduling have exactly the complementary strengths and weaknesses with regard to concurrency defects.
-As far as the authors know, there is no way to completely guarantee the absence of these defects; the best we can do is minimize risk.
+There is no way to completely guarantee the absence of these defects; the best we can do is minimize risk.
 
 As a side note, software architectures that emphasize independence of tasks, like functional style programming and isolated processes tend to be more resistant to many kinds of concurrency bugs.
 However, \emph{inter}dependence of tasks (e.g., frequent shared memory access and synchronization) is common in modern practice, and we do not expect that to change radically in the near future.
@@ -197,6 +192,8 @@ Starvation is a serious concern, because a callback that runs for a long time or
 The increasingly sophisticated multitasking in mainstream software and the well-known problems with events and threads have forced language designers to explore alternatives in recent years.
 The most widely used alternative is \emph{coroutines}\footnotemark{}.
 Examples include async/await, which was added to C\#/.Net in 2012; function generators (\texttt{function*}), which were added to JavaScript with ECMAScript 6 (standard published in 2015); even the C++ community is considering adding support for coroutines (N4286, proposed for C++17).
+Coroutine implementations are not \emph{new}; for example, Modula-2 had coroutines in the 1980s.
+However, relatively few of the most widely used languages natively supported coroutines until recently.
 
 \footnotetext{In many cases language designers chose terms other than \emph{coroutine} for reasons that we can only speculate about.}
 
@@ -262,7 +259,7 @@ In particular we identify what we consider to be the most important software eng
 In this paper we do \emph{not} present a complete formal semantics for activities.
 Rather, we refer to existing work on cooperative threads \cite{Abadi2009} and describe the transation process from activities to conventional cooperative threading models.
 
-We use an example stolen from \cite{Krohn2007}; a \charcoal{} version is in Figure \ref{fig:charcoal_multidns}.
+We use an example stolen from \cite{Krohn2007}; a \charcoal{} version is in Figure \ref{fig:charcoal_multidns_seq}.
 This example performs \texttt{n} DNS lookups concurrently using the standard \texttt{getaddrinfo} procedure.
 It has a parameter (\texttt{max\_conc}) to limit the number of DNS requests that will be sent concurrently to avoid flooding the network with too many requests.
 
@@ -314,20 +311,41 @@ These rules guarantee that an activity cannot run indefinitely without invoking 
 Implementing this correctly takes some care, because the compiler must be careful about things like \texttt{continue} and \texttt{goto} statements.
 
 \begin{figure}
-\includegraphics{multi_getaddrinfo}
+\includegraphics{multi_getaddrinfo_seq}
 \caption{A running example.
-  This code concurrently performs DNS lookups.
-  The maximum number of outstanding requests is \texttt{max\_conc}.}
-\label{fig:charcoal_multidns}
+  This is a plain C version that \emph{sequentially} fetches $N$ DNS records.}
+\label{fig:charcoal_multidns_seq}
 \end{figure}
 
 \begin{figure}
-  $e_f(e_1, \ldots, e_N) >$ \\
-  \ \hspace{1em} $( x_f=e_f; x_1=e_1; \ldots; x_N=e_N; \mathtt{yield};$ \\
-  \ \hspace{2em} $x_R=x_f(x_1, \ldots, x_N); \mathtt{yield}; x_R )$ \\
-  $\mathtt{while}( e ) \{ s \} > \mathtt{while}( e ) \{ s; \mathtt{yield} \}$
-\caption{Examples of the translation rules used for yield insertion.}
-\label{fig:translation}
+\includegraphics{multi_getaddrinfo_conc}
+\caption{This is a \charcoal{} version of the DNS fetcher that sends all $N$ requests concurrently.}
+\label{fig:charcoal_multidns_conc}
+\end{figure}
+
+\begin{figure}
+\includegraphics{multi_getaddrinfo_sem}
+\caption{This version of the DNS fetcher limits the number of concurrent requests to \texttt{max\_conc}.}
+\label{fig:charcoal_multidns_sem}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \begin{subfigure}[b]{0.5\textwidth}
+  $e_f(e_1, \ldots, e_N) \Rightarrow$ \\
+  \hspace*{1em} $( x_f=e_f; x_1=e_1; \ldots; x_N=e_N; \mathtt{yield};$ \\
+  \hspace*{2em} $x_R=x_f(x_1, \ldots, x_N); \mathtt{yield}; x_R )$
+        \caption{}
+    \end{subfigure}
+    ~ %add desired spacing between images, e. g. ~, \quad, \qquad, \hfill etc. 
+      %(or a blank line to force the subfigure onto a new line)
+    \begin{subfigure}[b]{0.5\textwidth}
+  $\mathtt{while}( e ) \{ s \} \Rightarrow \mathtt{while}( e ) \{ s; \mathtt{yield} \}$
+        \caption{}
+    \end{subfigure}
+    \caption{Examples of the translation rules used for yield insertion.
+      (a) is the rule for function calls, and (b) is a part of the translation of while loops.}
+    \label{fig:translation}
 \end{figure}
 
 In the example code above, the system will automatically insert five yields: one before the while loop jumps back to the beginning, and one each before and after the two calls.
@@ -426,9 +444,9 @@ It can also make management of resources whose lifetime spans multiple callbacks
 This leads to a style of programming referred to as \emph{stack ripping} \cite{Adya2002}, or more colloquially \emph{callback hell}.
 These and more subtle problems are well analyzed and criticized by von Behren et al. in \cite{Behren2003a}.
 
-%% One prominent ecosystem that uses callbacks heavily is Node.js.
-%% In idiomatic Node.js code there are multiple nested higher-order function definitions that are passed around as callbacks.
-%% This leads to code that is quite hard to read, but many in the Node.js community prefer this challenge to the problems associated with multithreading.
+One prominent ecosystem that uses callbacks heavily is Node.js.
+In idiomatic Node.js code there are multiple nested higher-order function definitions that are passed around as callbacks.
+This leads to code that is quite hard to read, but many in the Node.js community prefer this challenge to the problems associated with multithreading.
 
 Like all variants of threads, activities allow tasks to be written in a more natural direct style, thus completely avoiding the problems associated with callbacks.
 Events do maintain an advantage over activities in resistance to some concurrency defects, like atomicity violations.
@@ -598,13 +616,13 @@ If the allocated areas are too small, the application will experience stack over
 If the allocated areas are too large, a significant amount of (virtual) memory is wasted.
 In practice most existing multithreaded software takes a conservative approach, allocating much larger areas for stacks than is strictly necessary.
 
-%% Especially in 64-bit address spaces, the wasted virtual memory space is not an acute problem.
-%% However, because memory is typically allocated in page-sized chunks this allocation strategy wastes the physical memory between the top of the stack and the end of the page that it happens to be in.
-%% This can easily mean a couple of wasted kilobytes per thread.
+Especially in 64-bit address spaces, the wasted virtual memory space is not an acute problem.
+However, because memory is typically allocated in page-sized chunks this allocation strategy wastes the physical memory between the top of the stack and the end of the page that it happens to be in.
+This can easily mean a couple of wasted kilobytes per thread.
 
-%% These memory efficiency issues are one reason that most mainstream applications use only a few threads, and very few applications use more than a few dozen.
-%% For software architectures that might require more than this limit, thread pooling is a common solution.
-%% However, thread pooling brings its own inefficiencies and software engineering challenges.
+These memory efficiency issues are one reason that most mainstream applications use only a few threads, and very few applications use more than a few dozen.
+For software architectures that might require more than this limit, thread pooling is a common solution.
+However, thread pooling brings its own inefficiencies and software engineering challenges.
 
 \subsubsection{Individual Heap Allocation}
 
@@ -1097,7 +1115,8 @@ Activities can be thought of as actually working the way inexperienced programme
 
 % We recommend abbrvnat bibliography style.
 
-\bibliographystyle{abbrvnat}
+% \bibliographystyle{abbrvnat}
+\bibliographystyle{abbrv}
 
 % The bibliography should be embedded for final submission.
 

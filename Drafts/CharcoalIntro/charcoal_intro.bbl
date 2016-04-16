@@ -1,187 +1,173 @@
-\begin{thebibliography}{25}
-\providecommand{\natexlab}[1]{#1}
-\providecommand{\url}[1]{\texttt{#1}}
-\expandafter\ifx\csname urlstyle\endcsname\relax
-  \providecommand{\doi}[1]{doi: #1}\else
-  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+\begin{thebibliography}{10}
 
-\bibitem[Abadi and Plotkin(2009)]{Abadi2009}
+\bibitem{Abadi2009}
 M.~Abadi and G.~Plotkin.
 \newblock A model of cooperative threads.
-\newblock In \emph{Proceedings of the 36th Annual ACM SIGPLAN-SIGACT Symposium
+\newblock In {\em Proceedings of the 36th Annual ACM SIGPLAN-SIGACT Symposium
   on Principles of Programming Languages}, POPL '09, pages 29--40, New York,
   NY, USA, 2009. ACM.
 
-\bibitem[Adya et~al.(2002)Adya, Howell, Theimer, Bolosky, and
-  Douceur]{Adya2002}
+\bibitem{Adya2002}
 A.~Adya, J.~Howell, M.~Theimer, W.~J. Bolosky, and J.~R. Douceur.
 \newblock Cooperative task management without manual stack management.
-\newblock In \emph{Proceedings of the General Track of the annual conference on
+\newblock In {\em Proceedings of the General Track of the annual conference on
   USENIX Annual Technical Conference}, ATEC '02, pages 289--302, Berkeley, CA,
   USA, 2002. USENIX Association.
 
-\bibitem[Anderson(2013)]{Anderson2013}
+\bibitem{Anderson2013}
 B.~Anderson.
 \newblock Abandoning segmented stacks in rust.
 \newblock rust-dev mailing list, November 2013.
 
-\bibitem[Boehm(2011)]{Boehm2011}
+\bibitem{Boehm2011}
 H.-J. Boehm.
 \newblock How to miscompile programs with "benign" data races.
-\newblock In \emph{Proceedings of the 3rd USENIX Conference on Hot Topic in
+\newblock In {\em Proceedings of the 3rd USENIX Conference on Hot Topic in
   Parallelism}, HotPar'11, pages 3--3, Berkeley, CA, USA, 2011. USENIX
   Association.
 
-\bibitem[Boudol(2007)]{Boudol2007}
+\bibitem{Boudol2007}
 G.~Boudol.
 \newblock Fair cooperative multithreading: Typing termination in a higher-order
   concurrent imperative language.
-\newblock In \emph{Proceedings of the 18th International Conference on
+\newblock In {\em Proceedings of the 18th International Conference on
   Concurrency Theory}, CONCUR'07, pages 272--286, Berlin, Heidelberg, 2007.
   Springer-Verlag.
 
-\bibitem[Boussinot(2006)]{Boussinot2006}
+\bibitem{Boussinot2006}
 F.~Boussinot.
 \newblock Fairthreads: Mixing cooperative and preemptive threads in c: Research
   articles.
-\newblock \emph{Concurr. Comput. : Pract. Exper.}, 18\penalty0 (5):\penalty0
-  445--469, Apr. 2006.
+\newblock {\em Concurr. Comput. : Pract. Exper.}, 18(5):445--469, Apr. 2006.
 
-\bibitem[Cunningham and Kohler(2005)]{Cunningham2005}
+\bibitem{Cunningham2005}
 R.~Cunningham and E.~Kohler.
 \newblock Making events less slippery with eel.
-\newblock In \emph{Proceedings of the 10th conference on Hot Topics in
-  Operating Systems - Volume 10}, HOTOS'05, pages 3--3, Berkeley, CA, USA,
-  2005. USENIX Association.
+\newblock In {\em Proceedings of the 10th conference on Hot Topics in Operating
+  Systems - Volume 10}, HOTOS'05, pages 3--3, Berkeley, CA, USA, 2005. USENIX
+  Association.
 
-\bibitem[Dabrowski and Boussinot(2006)]{Dabrowski2006}
+\bibitem{Dabrowski2006}
 F.~Dabrowski and F.~Boussinot.
 \newblock Cooperative threads and preemptive computations.
-\newblock In \emph{in \&quot;Proceedings of TV’06, Multithreading in Hardware
+\newblock In {\em in \&quot;Proceedings of TV’06, Multithreading in Hardware
   and Software: Formal Approaches to Design and Verification}, 2006.
 
-\bibitem[Dean et~al.(1995)Dean, Grove, and Chambers]{Dean1995}
+\bibitem{Dean1995}
 J.~Dean, D.~Grove, and C.~Chambers.
 \newblock Optimization of object-oriented programs using static class hierarchy
   analysis.
-\newblock In \emph{Proceedings of the 9th European Conference on
-  Object-Oriented Programming}, ECOOP '95, pages 77--101, London, UK, UK, 1995.
+\newblock In {\em Proceedings of the 9th European Conference on Object-Oriented
+  Programming}, ECOOP '95, pages 77--101, London, UK, UK, 1995.
   Springer-Verlag.
 
-\bibitem[Fischer et~al.(2007)Fischer, Majumdar, and Millstein]{Fischer2007}
+\bibitem{Fischer2007}
 J.~Fischer, R.~Majumdar, and T.~Millstein.
 \newblock Tasks: language support for event-driven programming.
-\newblock In \emph{Proceedings of the 2007 ACM SIGPLAN symposium on Partial
+\newblock In {\em Proceedings of the 2007 ACM SIGPLAN symposium on Partial
   evaluation and semantics-based program manipulation}, PEPM '07, pages
   134--143, New York, NY, USA, 2007. ACM.
 
-\bibitem[Grossman(2007)]{Grossman2007}
+\bibitem{Grossman2007}
 D.~Grossman.
 \newblock The transactional memory / garbage collection analogy.
-\newblock In \emph{Proceedings of the 22Nd Annual ACM SIGPLAN Conference on
+\newblock In {\em Proceedings of the 22Nd Annual ACM SIGPLAN Conference on
   Object-oriented Programming Systems and Applications}, OOPSLA '07, pages
   695--706, New York, NY, USA, 2007. ACM.
 
-\bibitem[Harris et~al.(2005)Harris, Marlow, Peyton-Jones, and
-  Herlihy]{Harris2005}
+\bibitem{Harris2005}
 T.~Harris, S.~Marlow, S.~Peyton-Jones, and M.~Herlihy.
 \newblock Composable memory transactions.
-\newblock In \emph{Proceedings of the Tenth ACM SIGPLAN Symposium on Principles
+\newblock In {\em Proceedings of the Tenth ACM SIGPLAN Symposium on Principles
   and Practice of Parallel Programming}, PPoPP '05, pages 48--60, New York, NY,
   USA, 2005. ACM.
 
-\bibitem[Kerneis(2013)]{Kerneis2013}
+\bibitem{Kerneis2013}
 G.~Kerneis.
-\newblock \emph{Continuation-Passing C: Program Transformations for Compiling
+\newblock {\em Continuation-Passing C: Program Transformations for Compiling
   Concurrency in an Imperative Language}.
 \newblock PhD thesis, Université Paris Diderot – Paris 7, 2013.
 
-\bibitem[Kerneis et~al.(2014)Kerneis, Shepherd, and Hajnoczi]{Kerneis2014}
+\bibitem{Kerneis2014}
 G.~Kerneis, C.~Shepherd, and S.~Hajnoczi.
 \newblock Qemu/cpc: Static analysis and cps conversion for safe, portable, and
   efficient coroutines.
-\newblock In \emph{Proceedings of the ACM SIGPLAN 2014 Workshop on Partial
+\newblock In {\em Proceedings of the ACM SIGPLAN 2014 Workshop on Partial
   Evaluation and Program Manipulation}, PEPM '14, pages 83--94, New York, NY,
   USA, 2014. ACM.
 
-\bibitem[Krohn et~al.(2007)Krohn, Kohler, and Kaashoek]{Krohn2007}
+\bibitem{Krohn2007}
 M.~Krohn, E.~Kohler, and M.~F. Kaashoek.
 \newblock Events can make sense.
-\newblock In \emph{2007 USENIX Annual Technical Conference on Proceedings of
-  the USENIX Annual Technical Conference}, ATC'07, pages 7:1--7:14, Berkeley,
-  CA, USA, 2007. USENIX Association.
+\newblock In {\em 2007 USENIX Annual Technical Conference on Proceedings of the
+  USENIX Annual Technical Conference}, ATC'07, pages 7:1--7:14, Berkeley, CA,
+  USA, 2007. USENIX Association.
 
-\bibitem[Li and Zdancewic(2007)]{Li2007}
+\bibitem{Li2007}
 P.~Li and S.~Zdancewic.
 \newblock Combining events and threads for scalable network services
   implementation and evaluation of monadic, application-level concurrency
   primitives.
-\newblock In \emph{Proceedings of the 2007 ACM SIGPLAN conference on
-  Programming language design and implementation}, PLDI '07, pages 189--199,
-  New York, NY, USA, 2007. ACM.
+\newblock In {\em Proceedings of the 2007 ACM SIGPLAN conference on Programming
+  language design and implementation}, PLDI '07, pages 189--199, New York, NY,
+  USA, 2007. ACM.
 
-\bibitem[Lu et~al.(2008)Lu, Park, Seo, and Zhou]{Lu2008}
+\bibitem{Lu2008}
 S.~Lu, S.~Park, E.~Seo, and Y.~Zhou.
 \newblock Learning from mistakes: a comprehensive study on real world
   concurrency bug characteristics.
-\newblock In \emph{Proceedings of the 13th international conference on
+\newblock In {\em Proceedings of the 13th international conference on
   Architectural support for programming languages and operating systems},
   ASPLOS XIII, pages 329--339, New York, NY, USA, 2008. ACM.
 
-\bibitem[Necula et~al.(2002)Necula, McPeak, Rahul, and Weimer]{Necula2002}
+\bibitem{Necula2002}
 G.~C. Necula, S.~McPeak, S.~P. Rahul, and W.~Weimer.
 \newblock Cil: Intermediate language and tools for analysis and transformation
   of c programs.
-\newblock In \emph{Proceedings of the 11th International Conference on Compiler
+\newblock In {\em Proceedings of the 11th International Conference on Compiler
   Construction}, CC '02, pages 213--228, London, UK, UK, 2002. Springer-Verlag.
 
-\bibitem[Ousterhout(1996)]{Ousterhout1996}
+\bibitem{Ousterhout1996}
 J.~Ousterhout.
 \newblock Why threads are a bad idea (for most purposes).
-\newblock In \emph{USENIX Technical Conference}, 1996.
+\newblock In {\em USENIX Technical Conference}, 1996.
 
-\bibitem[O’Neill and Stone(2015)]{ONeill2015}
+\bibitem{ONeill2015}
 M.~E. O’Neill and C.~A. Stone.
 \newblock Making impractical implementations practical: Observationally
   cooperative multithreading using hle.
-\newblock In \emph{Proceedings of the 10th ACM SIGPLAN Workshop on
-  Transactional Computing}, June 2015.
+\newblock In {\em Proceedings of the 10th ACM SIGPLAN Workshop on Transactional
+  Computing}, June 2015.
 
-\bibitem[Pankratius and Adl-Tabatabai(2014)]{Pankratius2014}
+\bibitem{Pankratius2014}
 V.~Pankratius and A.-R. Adl-Tabatabai.
 \newblock Software engineering with transactional memory versus locks in
   practice.
-\newblock \emph{Theor. Comp. Sys.}, 55\penalty0 (3):\penalty0 555--590, Oct.
-  2014.
+\newblock {\em Theor. Comp. Sys.}, 55(3):555--590, Oct. 2014.
 
-\bibitem[Shao and Appel(2000)]{Shao2000}
+\bibitem{Shao2000}
 Z.~Shao and A.~W. Appel.
 \newblock Efficient and safe-for-space closure conversion.
-\newblock \emph{ACM Trans. Program. Lang. Syst.}, 22\penalty0 (1):\penalty0
-  129--161, Jan. 2000.
+\newblock {\em ACM Trans. Program. Lang. Syst.}, 22(1):129--161, Jan. 2000.
 
-\bibitem[Singh et~al.(2012)Singh, Narayanasamy, Marino, Millstein, and
-  Musuvathi]{Singh2012}
+\bibitem{Singh2012}
 A.~Singh, S.~Narayanasamy, D.~Marino, T.~Millstein, and M.~Musuvathi.
 \newblock End-to-end sequential consistency.
-\newblock In \emph{Proceedings of the 39th Annual International Symposium on
+\newblock In {\em Proceedings of the 39th Annual International Symposium on
   Computer Architecture}, ISCA '12, pages 524--535, Washington, DC, USA, 2012.
   IEEE Computer Society.
 
-\bibitem[von Behren et~al.(2003{\natexlab{a}})von Behren, Condit, and
-  Brewer]{Behren2003a}
+\bibitem{Behren2003a}
 R.~von Behren, J.~Condit, and E.~Brewer.
 \newblock Why events are a bad idea (for high-concurrency servers).
-\newblock In \emph{Proceedings of the 9th Conference on Hot Topics in Operating
-  Systems - Volume 9}, HOTOS'03, pages 4--4, Berkeley, CA, USA,
-  2003{\natexlab{a}}. USENIX Association.
+\newblock In {\em Proceedings of the 9th Conference on Hot Topics in Operating
+  Systems - Volume 9}, HOTOS'03, pages 4--4, Berkeley, CA, USA, 2003. USENIX
+  Association.
 
-\bibitem[von Behren et~al.(2003{\natexlab{b}})von Behren, Condit, Zhou, Necula,
-  and Brewer]{Behren2003}
+\bibitem{Behren2003}
 R.~von Behren, J.~Condit, F.~Zhou, G.~C. Necula, and E.~Brewer.
 \newblock Capriccio: scalable threads for internet services.
-\newblock In \emph{Proceedings of the nineteenth ACM symposium on Operating
-  systems principles}, SOSP '03, pages 268--281, New York, NY, USA,
-  2003{\natexlab{b}}. ACM.
+\newblock In {\em Proceedings of the nineteenth ACM symposium on Operating
+  systems principles}, SOSP '03, pages 268--281, New York, NY, USA, 2003. ACM.
 
 \end{thebibliography}
