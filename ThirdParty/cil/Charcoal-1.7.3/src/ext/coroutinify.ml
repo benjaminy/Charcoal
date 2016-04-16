@@ -243,7 +243,7 @@ let clear_formals_locals f return_type =
  * Generate this type:
  *     struct
  *     {
- *     #if return type is non-void
+ *     #if return type is not void
  *         rt *lhs;
  *     #endif
  *         p1;
@@ -367,6 +367,24 @@ let make_specific fdec fname frame_info =
  *        /* TODO: Verify that Cil doesn't use inits on local variables (i.e. an
  *         * init in source will turn into expressions) */
  *        return frame;
+ *     }
+ * Notes:
+ * - The call to "generic" (as opposed to generating the code in-line)
+     helps keep overall code size down.  Do measurement later.
+ * - If the return type is void, the return value business is absent.
+ *)
+(* NEW IDEA! For this function definition:
+ *     rt f( p1, p2, p3 ) { ... }
+ * Generate this prologue-init:
+ *     void __prologue_f( char *g, va_list )
+ *     {
+ *        ( __specifics_f ) *specifics = __specifics_cast( g );
+ *        specifics->p1 = __builtin_va_next( ... );
+ *        specifics->p2 = __builtin_va_next( ... );
+ *        specifics->p3 = __builtin_va_next( ... );
+ *        specifics->__ret_val_ptr = ;
+ *        /* TODO: Verify that Cil doesn't use inits on local variables (i.e. an
+ *         * init in source will turn into expressions) */
  *     }
  * Notes:
  * - The call to "generic" (as opposed to generating the code in-line)

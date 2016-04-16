@@ -582,6 +582,56 @@ crcl(frame_p) crcl(fn_generic_prologue)(
     return frm;
 }
 
+static crcl(frame_p) oom( crcl(frame_p) caller )
+{
+    /* XXX unwind stack */
+    return caller;
+}
+
+crcl(frame_p) crcl(fn_generic_prologue_fancy)(
+    size_t sz,
+    void *return_ptr,
+    crcl(frame_p) caller,
+    crcl(frame_p) (*fn)( crcl(frame_p) ),
+    void (*s)( char *, va_list ),
+    ... )
+{
+    assert( caller );
+    assert( caller->activity );
+    assert( fn );
+    /* NOTE: malloc and free are a considerable source of overhead in
+     * Charcoal.  Some day we should experiment with different
+     * allocators. */
+    size_t frm_size = sz + sizeof( caller[0] );
+    crcl(frame_p) frm = (crcl(frame_p))malloc( frm_size );
+    if( !frm )
+    {
+        return oom( caller );
+    }
+    // zlog_debug( crcl(c), "generic_prologue %p %p", caller, caller->activity );
+    caller->callee      = frm;
+    caller->return_addr = return_ptr;
+    /* TODO: size under preproc flag */
+    // frm->size           = frm_size;
+    frm->fn             = fn;
+    frm->caller         = caller;
+    frm->callee         = NULL;
+    frm->return_addr    = NULL;
+    frm->activity       = caller->activity;
+    frm->allocad_bufs   = NULL;
+    /* WARNING: The following line is correct when used for procedure
+     * calls, but not activates.  To keep calls as fast as possible we
+     * allow this wrongness here and compensate for it in activate. */
+    /* NOTE: We might be able to get away with updating newest only on
+     * context switches. */
+    caller->activity->newest_frame = frm;
+    va_list args;
+    va_start( args, s );
+    s( &frm->specific, args );
+    va_end( args );
+    return crcl(yield_impl)( frm, return_ptr );
+}
+
 crcl(frame_p) crcl(fn_generic_epilogue)( crcl(frame_p) frm )
 {
     assert( frm );
