@@ -38,8 +38,11 @@ activity_p crcl(get_self_activity)( void )
  *
  * Precondition: The thread mgmt lock is held.
  */
+long crcl(switch_cnt) = 0;
+
 crcl(frame_p) crcl(activity_start_resume)( activity_p act )
 {
+    ++crcl(switch_cnt);
     cthread_p thd = act->thread;
     /* XXX: enqueue command */
     /* XXX: start heartbeat if runnable > 1 */

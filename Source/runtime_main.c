@@ -20,6 +20,8 @@ cthread_t crcl(main_thread);
 activity_t crcl(main_activity);
 int crcl(process_exit_code);
 
+char *zlog_config_full_filename;
+
 crcl(frame_p) app_main_prologue(
     crcl(frame_p) caller, void *ret_addr, int *lhs, int argc, char **argv, char **env );
 
@@ -28,6 +30,8 @@ static char **__argv;
 static char **__env;
 
 static int start_application_main( void );
+
+extern long crcl(switch_cnt);
 
 /* Architecture note: For the time being (as of early 2014, at least),
  * we're using libuv to handle asynchronous I/O stuff.  It would be
@@ -74,6 +78,7 @@ int main( int argc, char **argv, char **env )
         return rc;
     }
 
+    zlog_info( crcl(c), "switch cnt: %ld", crcl(switch_cnt) );
     zlog_info( crcl(c), "Charcoal application finished.  Exit code: %d",
                crcl(process_exit_code) );
     zlog_fini();
