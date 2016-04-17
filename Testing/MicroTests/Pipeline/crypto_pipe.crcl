@@ -25,7 +25,8 @@ int main( int argc, char *argv[] )
     long N = atol( argv[2] );
     N = 1 << N;
     long L = atol( argv[3] );
-    L = 1 << L;
+
+    printf( "ARGS suggested: 8 19 10\n" );
 
     crypto_open();
 
@@ -33,9 +34,9 @@ int main( int argc, char *argv[] )
     semaphore_open( &in_sem, L );
     semaphore_open( &out_sem, 0 );
 
-    unsigned char big_buff[ M * L ];
+    unsigned char *big_buffer = malloc( M * L * sizeof(big_buffer[0]) );
     activity_t rng_act, hash_act;
-    activate[ &rng_act ]()
+    activate[ &rng_act ](L, M, N)
     {
         int i;
         for( i = 0; i < N; ++i )
@@ -49,10 +50,10 @@ int main( int argc, char *argv[] )
             semaphore_incr( &out_sem );
         }
     }
-    activate[ &hash_act ]()
+    activate[ &hash_act ](L, M, N)
     {
         int i;
-        unsigned char buffer[ M * RATIO ];
+        unsigned char *buffer = malloc( M * RATIO * sizeof(buffer[0]) );
         for( i = 0; i < N; ++i )
         {
             int j;
@@ -69,8 +70,8 @@ int main( int argc, char *argv[] )
             semaphore_incr( &in_sem );
         }
     }
-    activity_wait( &rng_act );
-    activity_wait( &hash_act );
+    wait_activity_done( &rng_act );
+    wait_activity_done( &hash_act );
     crypto_close();
     return 0;
 }
