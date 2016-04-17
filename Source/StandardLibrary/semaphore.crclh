@@ -11,4 +11,4 @@ int semaphore_open  ( csemaphore_p s, unsigned i );
 int semaphore_close ( csemaphore_p s );
 int semaphore_incr  ( csemaphore_p s );
 int semaphore_decr  ( csemaphore_p s );
-int semaphorery_decr( csemaphore_p s );
+int semaphore_try_decr( csemaphore_p s, event_p evt );

@@ -98,7 +98,13 @@ int semaphore_decr( csemaphore_p s )
     return 0;
 }
 
-int semaphore_try_decr( csemaphore_p s )
+extern "C" {
+static int semaphore_sync( event_p evt, void *res )
+{
+}
+}
+
+int semaphore_try_decr( csemaphore_p s, event_p evt )
 {
     if( !s )
     {
@@ -106,6 +112,11 @@ int semaphore_try_decr( csemaphore_p s )
     }
     if( s->value < 1 )
     {
+        if( evt )
+        {
+            evt->ctx = s;
+            evt->f = semaphore_sync;
+        }
         return EAGAIN;
     }
     else
