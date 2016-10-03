@@ -91,6 +91,7 @@ typedef struct { volatile int v; } atomic_int;
 /* XXX super annoying name collision on thread_t with Mach header.
  * Look into it more some day. */
 typedef struct         cthread_t          cthread_t,          *cthread_p;
+typedef struct           event_t            event_t,            *event_p;
 typedef struct        activity_t         activity_t,         *activity_p;
 typedef struct crcl(alloca_buf_t) crcl(alloca_buf_t), *crcl(alloca_buf_p);
 typedef struct      crcl(frame_t)      crcl(frame_t),      *crcl(frame_p);
@@ -263,6 +264,12 @@ struct cthread_t
 
     /* Linked list of all threads */
     cthread_p     next, prev;
+};
+
+struct event_t
+{
+    void *ctx;
+    int (*f)( event_p, void * );
 };
 
 #define assert_impl(a,b) assert( ( !( a ) ) || ( b ) )
