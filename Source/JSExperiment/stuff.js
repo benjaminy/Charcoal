@@ -3,19 +3,26 @@ var scheduler;
 
 function actProc( generator_function )
 {
-    function handleYield( generator, result )
+    function handleYield( generator, yielded_value )
     {
-        if( result.done )
+        /* yielded_value : ( bool * alpha ) */
+        if( yielded_value.done )
         {
             /* yield to scheduler */
-            return Promise.resolve( result.value );
+            return Promise.resolve( yielded_value.value );
         }
         /* "else" */
-        return Promise.resolve( result.value ).then(
+        return Promise.resolve( yielded_value.value ).then(
             function( res )
             {
-                return handleYield( generator, generator.next( res ) );
-            }
+                try {
+                    var next_yielded_value = generator.next( res );
+                }
+                catch( err ) {
+                    return Promise.reject( err );
+                }
+                return handleYield( generator, next_yielded_value );
+            },
             function( err )
             {
                 return handleYield( generator, generator.throw( err ) );
@@ -26,16 +33,23 @@ function actProc( generator_function )
     return function( actx, ...params )
     {
         var actx = actx.concat( generator_function.name );
-        var generator = generator_function( actx, ...params );
+        try {
+            var generator = generator_function( actx, ...params );
+        }
+        catch( err ) {
+            return Promise.reject( err );
+        }
         try
         {
             /* yield to scheduler */
-            return handleYield( generator, generator.next() );
+            /* The value passed to the first call to next is discarded */
+            var first_yielded_value = generator.next()
         }
         catch( err )
         {
             return Promise.reject( err );
         }
+        return handleYield( generator, first_yielded_value );
     }
 }
 
@@ -56,10 +70,10 @@ actjs.makeCtx( function*( actx ) {
     
 } )
 
-handle = actx.spawn( 1, '2', [ 3 ], function*( actx, a, b, c ) {
+handle = actx.activate( 1, '2', [ 3 ], function*( actx, a, b, c ) {
 } )
 
-handle = actx.spawn( function*( actx ) {
+handle = actx.activate( function*( actx ) {
     log( 'blah' );
 } )
 
