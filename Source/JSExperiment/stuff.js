@@ -1,31 +1,36 @@
 
 var scheduler;
 
+var P = Promise;
+
 function actProc( generator_function )
 {
-    function handleYield( generator, yielded_value )
+    function onYield( generator, yielded_promise )
     {
-        /* yielded_value : ( bool * alpha ) */
-        if( yielded_value.done )
+        /* generator : { next: ..., throw: ... } */
+        /* yielded_promise : { done: bool, value: Promise( alpha ) } */
+        if( yielded_promise.done )
         {
-            /* yield to scheduler */
-            return Promise.resolve( yielded_value.value );
+            /* TODO: yield to scheduler */
+            return P.resolve( yielded_promise.value );
         }
         /* "else" */
-        return Promise.resolve( yielded_value.value ).then(
+        return P.resolve( yielded_promise.value ).then(
             function( res )
             {
+                /* TODO: Maybe yield to scheduler here */
                 try {
-                    var next_yielded_value = generator.next( res );
+                    var next_yielded_promise = generator.next( res );
                 }
                 catch( err ) {
-                    return Promise.reject( err );
+                    return P.reject( err );
                 }
-                return handleYield( generator, next_yielded_value );
+                return onYield( generator, next_promise_value );
             },
             function( err )
             {
-                return handleYield( generator, generator.throw( err ) );
+                /* TODO: Maybe yield to scheduler here */
+                return onYield( generator, generator.throw( err ) );
             }
         );
     }
@@ -37,19 +42,17 @@ function actProc( generator_function )
             var generator = generator_function( actx, ...params );
         }
         catch( err ) {
-            return Promise.reject( err );
+            return P.reject( err );
         }
-        try
-        {
-            /* yield to scheduler */
+        try {
+            /* TODO: yield to scheduler */
             /* The value passed to the first call to next is discarded */
-            var first_yielded_value = generator.next()
+            var first_yielded_promise = generator.next()
         }
-        catch( err )
-        {
-            return Promise.reject( err );
+        catch( err ) {
+            return P.reject( err );
         }
-        return handleYield( generator, first_yielded_value );
+        return onYield( generator, first_yielded_promise );
     }
 }
 
