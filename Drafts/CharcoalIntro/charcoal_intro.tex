@@ -30,8 +30,9 @@
 \titlebanner{Preprint.  Please do not redistribute}        % These are ignored unless
 \preprintfooter{Preprint.  Please do not redistribute}   % 'preprint' option specified.
 
-\title{Pseudo-Preemptive Threads: A New Multitasking Primitive for Reliable, Composable and Maintainable Software}
-\subtitle{Why Events, Preemptive Threads and Coroutines are All Bad Ideas\footnotemark}
+\title{Atomic or Interruptible?
+Let the Caller Decide!}
+\subtitle{or, the Abstraction Problem in Cooperative Concurrency}
 
 %% \authorinfo{Blind Review}
 %%            {Blind Review University}
@@ -65,25 +66,73 @@ Finally we report performance results for several microbenchmarks using the prot
 % \keywords
 % keyword1, keyword2
 
-\footnotetext{This tongue-in-cheek subtitle is a reference to Ousterhout \cite{Ousterhout1996} and von Behren, et al. \cite{Behren2003a}}
+%% Why Events, Preemptive Threads and Coroutines are All Bad Ideas\footnotemark
+%% \footnotetext{This tongue-in-cheek subtitle is a reference to Ousterhout \cite{Ousterhout1996} and von Behren, et al. \cite{Behren2003a}}
 
 \section{Introduction}
 
-It is hard to write complex multitasking software that is reliable, composable, and efficient.
-It is even harder to maintain such software.
-The programming world has not yet come to consensus on the best abstraction for multitasking, because there are strong competing constraints and no obvious way to satisfy them all simultaneously.
+Multitasking (or asynchrony) has been a facet of application software forever.
+Common use cases include reacting to user input (keyboard, mouse, touch, etc.), communicating with other machines over a network, managing ``slow'' physical-world devices, and interacting with external processes.
+In recent years the richness of multitasking in mainstream applications has increased along with a few trends: increasing use of network services (e.g. Web APIs), increasingly rich physical world interaction (especially with mobile devices), and the increasing use of microservices as a software architecture.
+This has put renewed pressure on programming languages to provide good ways to write efficient and reliable multitasking software.
+This paper introduces a new multitasking primitive that has software engineering advantages over existing alternatives.
 
-The time is ripe to reevaluate the tradeoffs in multitasking abstractions, because of two trends.
-Mainstream application software is getting more complex in terms of multitasking.
-This is because network communications, physical world interactions and multi-process software architectures (e.g. microservices) have all become more common in recent years.
+The software industry has not come to consensus yet on best practices for implementing multitasking software.
+One well-known option is threads.
+Unfortunately, programming with threads is notoriously hard; it is easy to introduce subtle and non-deterministic bugs that can be very hard to diagnose and fix [cite].
+Though threads are useful for some applications, in this paper we focus on application domains in which getting multithreaded programming right is too expensive.
 
-The other trend is relevant to the embedded systems world.
-Embedded software has long had a stronger focus on multitasking than mainstream applications.
-However, embedded software is becoming more and more complex; people are expecting much more general-purpose computing functionality from their ``smart devices''.
-Historically, highly constrained multitasking abstractions, like main loop scheduling, were popular in embedded software.
-But these abstractions get harder to work with, the more complex the software is.
+As a safer alternative to threads, much of the software industry has opted for cooperative concurrency.
+The most commonly used primitives are event dispatchers, coroutines, async procedures/methods, and cooperative threads.
 
-As result of these two trends there is a greater need than ever for multitasking abstractions that make it as easy as possible to make complex software.
+In modern application development practice, it is common to reuse collections of modules/libraries, often with deep chains of dependencies among libraries.
+In the context of a cooperative concurrency framework, there is an extremely important question a programmer should ask when invoking an abstraction provided by a library:
+Is it possible for control to switch to a different task during the execution of this abstraction?
+In other words, is the abstraction atomic or interruptible?
+
+In the context of libraries that build on other libraries, we need to take this question further:
+Can I write an abstraction that can be invoked in an atomic/interruptible way by client code, \emph{and} invokes abstractions provided by libraries that I do not have control over?
+In other words, can I build an atomic abstraction on top of an interruptible one, and/or vice versa?
+
+We claim that existing cooperative concurrency primitives all have problems with regard to these atomic/interruptible abstraction questions.
+We propose a new primitive called \emph{activities} that we show aleviates these abstraction problems.
+In implementation terms, activities are cooperative threads plus implicitly inserted yields and an atomic block primitive.
+
+We implemented activities in two contexts.
+First, we implemented activities as a library in JavaScript.
+This is possible because JavaScript already has a coroutine-like primitive (as of ECMAScript 6) and a global event dispatcher.
+This implementation's syntax is not ideal, because it is not ``native'' to the language.
+However, it is possible to integrate this implementation fairly cleanly with existing JavaScript code, which makes it easier to investigate software engineering questions.
+
+The second implementation is a dialect of C.
+We built this implementation to investigate the performance overhead of activities in terms of both memory and time.
+We introduce a new call frame allocation strategy called \emph{hot stacking}, which provides low memory and time overhead.
+This allocation strategy is enabled by activities in the sense that we believe implementing it in the context of other thread-like primitives would be substantially more complex and potentially have bad uncommon case performance characteristics.
+
+%% It is hard to write complex multitasking software that is reliable, composable, and efficient.
+%% It is even harder to maintain such software.
+%% The programming world has not yet come to consensus on the best abstraction for multitasking, because there are strong competing constraints and no obvious way to satisfy them all simultaneously.
+
+%% This paper focuses on the interraction between cooperative concurrency mechanisms and procedural abstractions (i.e. functions, methods, subroutines, etc.).
+%% Procedural abstraction is foundational in software engineering.
+%% When we consider procedures in the context of multitasking software, a very important question presents itself: When a caller invokes a procedure, will that invocation be atomic or interruptible?
+
+%% Clearly not all invocations can be atomic.
+%% If that was the case, then the running task would never allow control to transfer to another task, and the softare would not be multitasking.
+%% In many cases programmers prefer that invocations be atomic.
+%% If they are interruptible, then reasoning is much harder.
+
+%% The time is ripe to reevaluate the tradeoffs in multitasking abstractions, because of two trends.
+%% Mainstream application software is getting more complex in terms of multitasking.
+%% This is because network communications, physical world interactions and multi-process software architectures (e.g. microservices) have all become more common in recent years.
+
+%% The other trend is relevant to the embedded systems world.
+%% Embedded software has long had a stronger focus on multitasking than mainstream applications.
+%% However, embedded software is becoming more and more complex; people are expecting much more general-purpose computing functionality from their ``smart devices''.
+%% Historically, highly constrained multitasking abstractions, like main loop scheduling, were popular in embedded software.
+%% But these abstractions get harder to work with, the more complex the software is.
+
+%% As result of these two trends there is a greater need than ever for multitasking abstractions that make it as easy as possible to make complex software.
 
 %% Writing efficient, reliable and maintainable multitasking software is important and hard.
 %% Many abstractions have been popular over the years for multitasking, but none has ever been universally accepted XXX.
@@ -131,6 +180,55 @@ This paper has three primary contributions:
 
 %% There are many existing multitasking abstractions, and some of the distinctions between them and activities are subtle.
 %% So we start with a description and critique of existing multitasking abstractions
+
+
+
+\section{Atomic or Interruptible?}
+
+In this section we describe the problems that established multitasking primitives have with respect to the atomic or interruptible question.
+
+\begin{figure}
+\caption{}
+\label{fig:trivial_call}
+\end{figure}
+
+\subsection{The Importance of Atoms and Interrupts}
+
+Consider the following simple code snippet:
+
+\includegraphics[scale=0.7]{trivial_call}
+
+Reasoning (both human and automated) about the call to \texttt{otherProcedure} is much easier if that call is atomic.
+In that case, the only way the program's global state can change is as a result of actions performed by \texttt{otherProcedure} (and procedures it calls).
+If \texttt{otherProcedure} is interruptable, the program's global state can change as a result of actions taken by some concurrent task.
+
+
+Atomicity and interruptibility are important in different ways and in direct conflict with each other.
+Atomicity is good because it allows programmers (and analysis tools) to reason about chunks of program behavior without the possiblity of interference from concurrent tasks.
+Programmers are notoriously bad at reasoning about potential interference during the execution of some abstraction, so the more a framework can guarantee that cannot happen, the better.
+
+On the other hand, all cooperative concurrency frameworks need interruption of some kind.
+Unless all tasks can be guaranteed to run in a short amount of time (which is not possible in the context of a general purpose language), there will eventually be a need to choose between interrupting one task and being unresponsive to another task.
+
+As a general guideline, we would like interruptions to happen as infrequently as is practical, without causing unresponsiveness.
+
+\subsection{Coopertive Threads}
+
+Cooperative threading frameworks provide a spawn primitive that creates a new task.
+Only one cooperative thread can be running at a time and the active thread cannot be involuntarily interrupted by the system.
+Cooperative threads must explicitly invoke a \emph{yield} primitive that can choose to transfer control to a global scheduler (and from there to any runnable thread).
+
+The problem with cooperative threads is that any procedure might invoke yield, which would make it interruptible.
+A procedure is also interruptible if any procedure it invokes is itself interruptible.
+
+Not knowing whether a given library call is interruptable or not makes it hard to write reliable client code.
+Even if libraries provide some (reliable) annotation about whether an abstraction is atomic or iterruptible, cooperative threading frameworks make it \emph{too easy} to change this in the process of maintanence and evolution of a library.
+Changing an abstraction from atomic to interruptible (or vice versa) has the potential to break client code.
+
+\subsection{Events}
+
+In contrast to cooperative threads, event dispatching frameworks make it painfully clear what is atomic and what is interruptible.
+All procedures/methods/functions are atomic; there is no mechanism, voluntary or otherwise, for interrupting a running procedure.
 
 \section{Established Multitasking Abstractions}
 
@@ -268,6 +366,19 @@ In \charcoal{} we add some syntactic convenience to the plain spawn to get the \
 The body of the activate statement runs concurrently (but not in parallel) with the statement's continuation.
 Only one activity can be running at a time and the system can only context switch between activities on a yield.
 
+\begin{figure}
+\includegraphics{multi_getaddrinfo_seq}
+\caption{This is a plain C version of the DNS fetcher running example.
+  This version is entirely \emph{sequential}.}
+\label{fig:charcoal_multidns_seq}
+\end{figure}
+
+\begin{figure}
+\includegraphics{multi_getaddrinfo_conc}
+\caption{This is a \charcoal{} version of the DNS fetcher that sends all $N$ requests concurrently.}
+\label{fig:charcoal_multidns_conc}
+\end{figure}
+
 To very briefly summarize \cite{Abadi2009}, the semantics of a program with activities can be seen as traces of actions separated by yield invocations.
 Between two adjacent yield actions, all actions must come from a single particular activity.
 Batches from different activities are interleaved by a scheduler to execute a complete program.
@@ -311,22 +422,29 @@ These rules guarantee that an activity cannot run indefinitely without invoking 
 Implementing this correctly takes some care, because the compiler must be careful about things like \texttt{continue} and \texttt{goto} statements.
 
 \begin{figure}
-\includegraphics{multi_getaddrinfo_seq}
-\caption{A running example.
-  This is a plain C version that \emph{sequentially} fetches $N$ DNS records.}
-\label{fig:charcoal_multidns_seq}
-\end{figure}
-
-\begin{figure}
-\includegraphics{multi_getaddrinfo_conc}
-\caption{This is a \charcoal{} version of the DNS fetcher that sends all $N$ requests concurrently.}
-\label{fig:charcoal_multidns_conc}
-\end{figure}
-
-\begin{figure}
 \includegraphics{multi_getaddrinfo_sem}
 \caption{This version of the DNS fetcher limits the number of concurrent requests to \texttt{max\_conc}.}
 \label{fig:charcoal_multidns_sem}
+\end{figure}
+
+In the example code above, the system will automatically insert five yields: one before the while loop jumps back to the beginning, and one each before and after the two calls.
+The called functions themselves could have yields in their implementations.
+
+Automatic yield insertion moves activities from cooperative threads towards preemptive threads from an application programmer's perspective.
+However, activities are still more resistant to concurrency bugs than threads.
+One reason for this is that the granularity of scheduling is coarser for activities.
+Any block of code with acyclic control flow and no calls is guaranteed to execute atomically.
+
+Though this minimum granularity may still seem quite fine, it does provide some nice properties.
+Consider the classic data race example of two threads concurrently applying some arithmetic operation to a shared memory location.
+Even if multithreading system were able to provide sequential consistency, it is possible for both threads to read the old value and end up with a result that would be impossible with coarser atomicity.
+For this simple example there is no extra synchronization necessary with activities, which means that programmers can focus their attention on larger-scale issues.
+
+\begin{figure}
+\includegraphics{multi_getaddrinfo_async_call}
+\caption{This is a sketch of how an application can call a procedure asynchronously.
+\texttt{waiter} and \texttt{num\_failed} would have to be heap-allocated if the application wanted to leave the current scope before the asynchronous call completes.}
+\label{fig:charcoal_multidns_async_call}
 \end{figure}
 
 \begin{figure}
@@ -347,19 +465,6 @@ Implementing this correctly takes some care, because the compiler must be carefu
       (a) is the rule for function calls, and (b) is a part of the translation of while loops.}
     \label{fig:translation}
 \end{figure}
-
-In the example code above, the system will automatically insert five yields: one before the while loop jumps back to the beginning, and one each before and after the two calls.
-The called functions themselves could have yields in their implementations.
-
-Automatic yield insertion moves activities from cooperative threads towards preemptive threads from an application programmer's perspective.
-However, activities are still more resistant to concurrency bugs than threads.
-One reason for this is that the granularity of scheduling is coarser for activities.
-Any block of code with acyclic control flow and no calls is guaranteed to execute atomically.
-
-Though this minimum granularity may still seem quite fine, it does provide some nice properties.
-Consider the classic data race example of two threads concurrently applying some arithmetic operation to a shared memory location.
-Even if multithreading system were able to provide sequential consistency, it is possible for both threads to read the old value and end up with a result that would be impossible with coarser atomicity.
-For this simple example there is no extra synchronization necessary with activities, which means that programmers can focus their attention on larger-scale issues.
 
 There is one potential concurrency bug that this example avoids in a slightly subtle way.
 The increment on line 11 must come before the call to \texttt{getaddrinfo}.
@@ -453,9 +558,7 @@ Events do maintain an advantage over activities in resistance to some concurrenc
 However, the emergence of coroutines as an alternative to events is evidence that for many applications the costs described above have begun to outweigh the benefits.
 
 \textbf{Coroutines}.
-
 % Since widespread use of coroutines is much more recent than events and threads, there is far less published on their pitfalls.
-
 From an implementation perspective, activities are actually quite similar to coroutines.
 Procedure calls in \emph{no-yield mode} are like regular procedure calls in a coroutine framework.
 In both cases, interruption is not allowed.
