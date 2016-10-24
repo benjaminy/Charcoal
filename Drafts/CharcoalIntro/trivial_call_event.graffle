@@ -52,7 +52,7 @@
 	<array>
 		<dict>
 			<key>Bounds</key>
-			<string>{{55.5625, 228}, {241, 81}}</string>
+			<string>{{55.5625, 228}, {281, 137}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>FitText</key>
@@ -99,13 +99,17 @@
 \pard\pardeftab720\partightenfactor0
 
 \f0\b\fs24 \cf0 def
-\f1\b0  someProcedure( . . . ):\
+\f1\b0  someProcedure( . . ., cb ):\
    # before 'other'\
-   result = otherProcedure( . . . )\
-   # after 'other'\
-   
-\f0\b return
-\f1\b0  exp}</string>
+   otherProcedure( . . . ,\
+      
+\f0\b lambda
+\f1\b0  result:\
+         # after 'other'\
+         cb( exp )\
+   )\
+   # some part of otherProcedure may have\
+   # run, but the 'after' code has not}</string>
 			</dict>
 			<key>Wrap</key>
 			<string>NO</string>
@@ -167,7 +171,7 @@
 	<key>MasterSheets</key>
 	<array/>
 	<key>ModificationDate</key>
-	<string>2016-10-24 21:51:50 +0000</string>
+	<string>2016-10-24 21:51:56 +0000</string>
 	<key>Modifier</key>
 	<string>Benjamin Ylvisaker</string>
 	<key>NotesVisible</key>
@@ -243,7 +247,7 @@
 		<key>Expanded_Canvases</key>
 		<array/>
 		<key>Frame</key>
-		<string>{{396, 558}, {1139, 859}}</string>
+		<string>{{1195, 408}, {1139, 859}}</string>
 		<key>ShowInfo</key>
 		<true/>
 		<key>ShowRuler</key>

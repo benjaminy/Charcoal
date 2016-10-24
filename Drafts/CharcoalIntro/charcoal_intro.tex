@@ -72,9 +72,9 @@ Finally we report performance results for several microbenchmarks using the prot
 \section{Introduction}
 
 Multitasking (or asynchrony) has been a facet of application software forever.
-Common use cases include reacting to user input (keyboard, mouse, touch, etc.), communicating with other machines over a network, managing ``slow'' physical-world devices, and interacting with external processes.
+Common examples include reacting to user input (keyboard, mouse, touch, etc.), communicating with other machines over a network, managing slow physical-world devices, and interacting with external processes.
 In recent years the richness of multitasking in mainstream applications has increased along with a few trends: increasing use of network services (e.g. Web APIs), increasingly rich physical world interaction (especially with mobile devices), and the increasing use of microservices as a software architecture.
-This has put renewed pressure on programming languages to provide good ways to write efficient and reliable multitasking software.
+This has put renewed pressure on programming languages to provide good ways to write efficient and reliable multitasking applications.
 This paper introduces a new multitasking primitive that has software engineering advantages over existing alternatives.
 
 The software industry has not come to consensus yet on best practices for implementing multitasking software.
@@ -98,11 +98,11 @@ We claim that existing cooperative concurrency primitives all have problems with
 We propose a new primitive called \emph{activities} that we show aleviates these abstraction problems.
 In implementation terms, activities are cooperative threads plus implicitly inserted yields and an atomic block primitive.
 
-We implemented activities in two contexts.
+We wrote two prototype implementations of activities.
 First, we implemented activities as a library in JavaScript.
-This is possible because JavaScript already has a coroutine-like primitive (as of ECMAScript 6) and a global event dispatcher.
-This implementation's syntax is not ideal, because it is not ``native'' to the language.
-However, it is possible to integrate this implementation fairly cleanly with existing JavaScript code, which makes it easier to investigate software engineering questions.
+This is possible because JavaScript already has a coroutine-like primitive (function generators) and a global event dispatcher.
+This implementation's syntax is not ideal, because it is not native to the language.
+However, it is possible to integrate this implementation fairly cleanly with existing JavaScript code, which makes it relatively easy to investigate software engineering questions.
 
 The second implementation is a dialect of C.
 We built this implementation to investigate the performance overhead of activities in terms of both memory and time.
@@ -195,7 +195,7 @@ Consider the following simple code snippet:
 
 Reasoning (both human and automated) about the call to \texttt{otherProcedure} is much easier if that call is atomic.
 In that case, the only way the program's global state can change is as a result of actions performed by \texttt{otherProcedure} (and procedures it calls).
-If \texttt{otherProcedure} is interruptible, the program's global state can change as a result of actions taken by some concurrent task.
+If \texttt{otherProcedure} is interruptible, the program may switch task contexts during its execution, potentially resulting in much harder to predict changes in the program's global state.
 
 On the other hand, if the execution of \texttt{otherProcedure} might take a long time\footnotemark{}, then making the call atomic runs the risk of making the program unresponsive to events that happen while \texttt{otherProcedure} is executed.
 In this case, we probably want \texttt{otherProcedure} to be interruptible.
@@ -204,7 +204,7 @@ In this case, we probably want \texttt{otherProcedure} to be interruptible.
 
 The tension between atomicity and interruptibility is problematic for library procedures that should be atomic in some calling contexts and interruptible in others.
 For example, consider a data structure \emph{map} procedure that applies a function to each item in an aggregate structure.
-In a context where the caller knows that the aggregate has few items the function to be applied is fast, the caller probably strongly prefers that the whole map operation be atomic; this simplifies reasoning with little risk of unresponsiveness.
+In a context where the caller knows that the aggregate has few items and the function to be applied is fast, the caller probably strongly prefers that the whole map operation be atomic; this simplifies reasoning with little risk of unresponsiveness.
 On the other hand, in a context where the caller knows that the aggregate has many items or the function to be applied is slow, the caller probably strongly prefers that the whole map operation be interruptible.
 
 If the framework forces library authors to choose between making a procedure atomic or interruptible, they are faced with a serious dilemma.
@@ -213,7 +213,7 @@ One obvious and deeply flawed solution is for library authors to provide two ver
 Source code duplication.
 This idea is especially painful in modern highly modular ecosystems, because the duplication would be everywhere.
 
-Library ecosystems built around a cooperative concurrency framework tend to lean strongly towards interruptibility, because it is impossible to interrupt an atomic procedure, whereas it is merely hard to enforce some kind of atomicity on an interruptible one.
+In practice, many library ecosystems built around a cooperative concurrency framework (for example, node.js) tend to lean strongly towards interruptibility, because it is impossible to interrupt an atomic procedure, whereas it is merely hard to enforce some kind of atomicity on an interruptible one.
 
 Atomicity and interruptibility are important in different ways and in direct conflict with each other.
 Atomicity is good because it allows programmers (and analysis tools) to reason about chunks of program behavior without the possiblity of interference from concurrent tasks.
@@ -223,6 +223,25 @@ On the other hand, all cooperative concurrency frameworks need interruption of s
 Unless all tasks can be guaranteed to run in a short amount of time (which is not possible in the context of a general purpose language), there will eventually be a need to choose between interrupting one task and being unresponsive to another task.
 
 As a general guideline, we would like interruptions to happen as infrequently as is practical, without causing unresponsiveness.
+
+\subsection{Events}
+
+In event frameworks, all procedure calls are atomic.
+Interruptibility is introduced via callbacks.
+For example, if \texttt{otherProcedure} from the trivial example above was provided as an interruptible abstraction, the call would look like:
+
+\includegraphics[scale=0.7]{trivial_call_event}
+
+The order of the execution of the callback (i.e. the \texttt{lambda} expression) with  respect to any other callback from any other task is controlled by the event dispatcher.
+In other words, \texttt{someProcedure} is interruptible.
+It cannot be made atomic in any simple way.
+
+The syntax can be improved somewhat with clever use of promises, but that does not change the funcamental fact that it is interruptible.
+
+To state it starkly: in an event-based framework, an abstraction that is provided in an interruptible style (i.e. with a callback for the continuation) cannot be invoked or extended by other abstractions in an atomic way.
+
+We speculate that this fact has resulted in many subtle atomicity bugs in event-heavy ecosystems (e.g. node.js).
+
 
 \subsection{Coopertive Threads}
 
