@@ -197,20 +197,23 @@ Reasoning (both human and automated) about the call to \texttt{otherProcedure} i
 In that case, the only way the program's global state can change is as a result of actions performed by \texttt{otherProcedure} (and procedures it calls).
 If \texttt{otherProcedure} is interruptible, the program's global state can change as a result of actions taken by some concurrent task.
 
-On the other hand, if the execution of \texttt{otherProcedure} might take a long time\footnotemark{}, then making the call atomic runs the risk of making the program unresponsive to events that happen while \texttt{otherProcedure} is running.
+On the other hand, if the execution of \texttt{otherProcedure} might take a long time\footnotemark{}, then making the call atomic runs the risk of making the program unresponsive to events that happen while \texttt{otherProcedure} is executed.
 In this case, we probably want \texttt{otherProcedure} to be interruptible.
 
-\footnotetext{It does not matter whether this is because \texttt{otherProcedure} is computationally intensive or because it waits for something from outside the program itself.}
+\footnotetext{It does not matter whether this is because \texttt{otherProcedure} is computationally intensive or because it waits for some event outside the program itself.}
 
 The tension between atomicity and interruptibility is problematic for library procedures that should be atomic in some calling contexts and interruptible in others.
 For example, consider a data structure \emph{map} procedure that applies a function to each item in an aggregate structure.
-In a context where the caller knows that the data structure is small and the function to be applied is fast, the caller probably strongly prefers that the whole map operation be atomic; this simplifies reasoning with little risk of unresponsiveness.
-On the other hand, in a context where the caller knows that the data structure is large or the function to be applied is slow, the caller probably strongly prefers that the whole map operation be interruptible.
+In a context where the caller knows that the aggregate has few items the function to be applied is fast, the caller probably strongly prefers that the whole map operation be atomic; this simplifies reasoning with little risk of unresponsiveness.
+On the other hand, in a context where the caller knows that the aggregate has many items or the function to be applied is slow, the caller probably strongly prefers that the whole map operation be interruptible.
 
-Library authors are faced with a serious dilemma here.
+If the framework forces library authors to choose between making a procedure atomic or interruptible, they are faced with a serious dilemma.
+Many cooperative concurrency frameworks do force this choice.
 One obvious and deeply flawed solution is for library authors to provide two versions of each operation that callers might reasonably want to be either atomic or interruptible.
 Source code duplication.
 This idea is especially painful in modern highly modular ecosystems, because the duplication would be everywhere.
+
+Library ecosystems built around a cooperative concurrency framework tend to lean strongly towards interruptibility, because it is impossible to interrupt an atomic procedure, whereas it is merely hard to enforce some kind of atomicity on an interruptible one.
 
 Atomicity and interruptibility are important in different ways and in direct conflict with each other.
 Atomicity is good because it allows programmers (and analysis tools) to reason about chunks of program behavior without the possiblity of interference from concurrent tasks.
