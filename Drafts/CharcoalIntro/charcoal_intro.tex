@@ -78,9 +78,6 @@ This has put renewed pressure on programming languages to provide good ways to w
 This paper introduces a new multitasking primitive that has software engineering advantages over existing alternatives.
 
 The software industry has not come to consensus yet on best practices for implementing multitasking software.
-One well-known option is threads.
-Unfortunately, programming with threads is notoriously hard; it is easy to introduce subtle and non-deterministic bugs that can be very hard to diagnose and fix [cite].
-Though threads are useful for some applications, in this paper we focus on application domains in which getting multithreaded programming right is too expensive.
 
 As a safer alternative to threads, much of the software industry has opted for some flavor of cooperative concurrency.
 The most commonly used primitives are event dispatchers, coroutines, async procedures/methods, and cooperative threads.
@@ -183,6 +180,17 @@ This paper has four primary contributions:
 %% There are many existing multitasking abstractions, and some of the distinctions between them and activities are subtle.
 %% So we start with a description and critique of existing multitasking abstractions
 
+\subsection{Threads are Unacceptable for Many Applications}
+
+Threads are a well-known technology that can be used for writing multitasking software\footnotemark{}.
+Unfortunately, programming with threads is notoriously hard; it is easy to introduce subtle and non-deterministic bugs that can be very hard to diagnose and fix [cite].
+The trouble with threads starts with the data race, the possibility of which necessitates the use of synchronization techniques like mutexes or semaphores.
+There is a vast body of work on tools and strategies aimed at making it easier to get this kind of programming right.
+It is still to hard in the opinion of many software architects.
+For example, the browser JavaScript ecosystem still does not offer multithreading.
+Though threads are useful for some applications, in this paper we focus on application domains in which getting multithreaded programming right is too expensive.
+
+\footnotetext{In this paper ``thread'' implies preemptive.}
 
 \section{Atomic or Interruptible?}
 
