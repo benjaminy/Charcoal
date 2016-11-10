@@ -170,4 +170,9 @@ R.~von Behren, J.~Condit, F.~Zhou, G.~C. Necula, and E.~Brewer.
 \newblock In {\em Proceedings of the nineteenth ACM symposium on Operating
   systems principles}, SOSP '03, pages 268--281, New York, NY, USA, 2003. ACM.
 
+\bibitem{Windows8Team2012}
+{Windows 8 Team}.
+\newblock Keeping apps fast and fluid with asynchrony in the windows runtime,
+  2012.
+
 \end{thebibliography}

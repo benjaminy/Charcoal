@@ -30,7 +30,7 @@
 \titlebanner{Preprint.  Please do not redistribute}        % These are ignored unless
 \preprintfooter{Preprint.  Please do not redistribute}   % 'preprint' option specified.
 
-\title{the Abstraction Problem in Cooperative Concurrency}
+\title{The Abstraction Problem in Cooperative Concurrency}
 \subtitle{or, Atomic or Interruptible?
 Let the Caller Decide!}
 
@@ -72,13 +72,14 @@ Finally we report performance results for several microbenchmarks using the prot
 \section{Introduction}
 
 In many application domains, cooperative concurrency abstractions like events, coroutines and cooperative threads are used to provide intra-application multitasking.
-This family is defined in contrast to preemptive abstractions and abstractions that emphasize isolation and/or immutability.
-The primary strength of cooperative abstractions relative to their preemptive cousins (e.g. threads) is less susceptibility to concurrency defects.
-The primary strength of cooperative abstractions relative to their isolated/immutable cousins (e.g. processes or functional reactive programming) is better alignment with mainstream programming practices.
-
 Uses of multitasking include reacting to user input (keyboard, mouse, touch, etc.), communicating with other machines over a network, managing slow physical-world devices, and interacting with external processes.
 In recent years the richness of multitasking in mainstream applications has increased along with a few trends: increasing use of network services (e.g. Web APIs), increasingly rich physical world interaction (especially with mobile devices), and the increasing use of microservices as a software architecture.
 This has put renewed pressure on programming languages to provide good ways to write maintainable and efficient multitasking applications.
+We briefly note that pressure to make programs that run in parallel (i.e. those that run on multiple processors) has also increased, \emph{but that is not the subject of this paper or the project it describes}.
+
+This family of concurrency abstractions is defined in contrast to preemptive abstractions and abstractions that emphasize isolation and/or immutability.
+The primary strength of cooperative abstractions relative to their preemptive cousins (e.g. threads) is less susceptibility to concurrency defects.
+The primary strength of cooperative abstractions relative to their isolated/immutable cousins (e.g. processes or functional reactive programming) is better alignment with mainstream programming practices.
 
 Though cooperative abstractions have been used successfully in a large number of applications, they do still have some exposure to concurrency bugs.
 In this paper we analyze an under-appreciated tension in cooperative concurrency frameworks between procedure-like abstractions (functions, coroutines, async methods, etc.) and atomicity defects; we call this the \emph{abstraction problem in cooperative concurrency}.
@@ -106,8 +107,8 @@ However, it is possible to integrate cleanly with existing event- and promise-ba
 
 The other implementation is a dialect of C called \charcoal{}.
 We built \charcoal{} to investigate the performance overhead (both memory and time) of activities.
-We found that call frame allocation is critical, and we introduce a new call frame allocation strategy called \emph{hot stacking}, which provides low memory and time overhead.
-Hot stacking is enabled by activities in the sense that we believe implementing it in the context of other thread-like primitives would be substantially more complex and potentially have bad uncommon case performance characteristics.
+We found that call frame allocation is critical, and we introduce a new call frame allocation strategy called \emph{hot stacking}, which provides low and \emph{predictable} memory and time overhead.
+Hot stacking has a special connection with activities in the sense that we believe implementing it in the context of other thread-like primitives would be substantially more complex and potentially have bad uncommon case performance characteristics.
 
 Both implementations and all the code used in the experiments in this paper are available publicly on GitHub [URL removed for blind review].
 % [\texttt{github.com/benjaminy/Charcoal}].
@@ -238,11 +239,11 @@ In the execution flow of the program, consider the time from just before control
 If it is possible for control to switch to another task during this execution window, then we say the call is interruptible.
 Otherwise, it is atomic.
 
-Reasoning (both human and automated) about calls is much easier if they are atomic.
-In that case, the only way the program's global state can change is as a result of actions performed by \texttt{otherProcedure} (and procedures it calls).
+It is much easier for both humans and automated tools to reason about the effects of atomic calls, as opposed to interruptible ones.
+In the atomic case, the only way the program's global state can change is as a result of actions performed by \texttt{otherProcedure} (and procedures it calls).
 If \texttt{otherProcedure} is interruptible, the program may switch to a different task during its execution, resulting in changes to the program's global state that are much harder to predict.
 
-If a programmer assumes that a call is atomic (for example by assuming that the value stored in a global variable is constant before and after a call) but the call is in fact interruptible, the result can be an atomicity violation.
+If a programmer assumes that a call is atomic (for example by assuming that the value stored in a global variable is the same before and after a call) but the call is in fact interruptible, the result can be an atomicity violation.
 Like all concurrency bugs, atomicity violations are non-deterministic, which makes them hard to identify and fix.
 Atomicity violations are nastier that some concurrency defects, because:
 1) They are inherently application-level defects, so implementation-level atomicity violation detection tools must guess to some extent, which means that such tools will necessarily produce false positives and/or false negatives.
@@ -254,7 +255,7 @@ If the execution of \texttt{otherProcedure} might take a long time\footnotemark{
 In this case, we probably want \texttt{otherProcedure} to be interruptible.
 We will refer to this kind of defect as starvation.
 
-\footnotetext{It does not matter whether this is because \texttt{otherProcedure} is computationally intensive or because it waits for some event outside the program itself.}
+\footnotetext{It does not matter whether this is because \texttt{otherProcedure} is computationally intensive or because it waits (blocks) for some event outside the program itself.}
 
 The tension between avoiding atomicity violations on one side and starvation on the other is especially problematic for library procedures that should be atomic in some calling contexts and interruptible in others.
 For example, consider a data structure \emph{map} procedure that applies a function to each item in an aggregate structure.
@@ -263,22 +264,33 @@ On the other hand, in a context where the caller knows that the aggregate has ma
 
 Established cooperative concurrency frameworks force library authors to choose between making their abstractions atomic or interruptible.
 If library authors wants to give library users freedom of choice, they are forced to provide two different versions of each abstraction.
-This is very bad for maintenance...
-
-If the framework forces library authors to choose between making a procedure atomic or interruptible, they are faced with a serious dilemma.
-Many cooperative concurrency frameworks do force this choice.
-One obvious and deeply flawed solution is for library authors to provide two versions of each operation that callers might reasonably want to be either atomic or interruptible.
-Source code duplication.
-This idea is especially painful in modern highly modular ecosystems, because the duplication would be everywhere.
+Ensuring that these two versions are functionally equivalent and maintaining both is a large software engineering burden.
 
 In practice, many library ecosystems built around a cooperative concurrency framework (for example, node.js) tend to lean strongly towards interruptibility, because it is impossible to interrupt an atomic procedure, whereas it is merely hard to enforce some kind of atomicity on an interruptible one.
+A similar line of reasoning led the developer's of Microsoft Windows' core Windows Runtime (WinRT) library to replace many atomic procedures with interruptible ones in Windows 8.
+In a post on the Micorsoft Developer Blog \cite{Windows8Team2012}, the team explains that they did this for procedures that ``could likely take longer than 50 milliseconds to execute''.
+In some recently defined JavaScript APIs, even some procedures that are very likely to execute quite quickly are defined in an interruptible style.
+For example, there are some procedures in the cryptography API referred to in the example application below that fall in this category.
+
+The problem with leaning too far in the direction of interruptibility is that it creates too many opportunities for task switching.
+This in turn can lead to atomicity violations if programmers are not extremely diligent about not assuming that global state is constant across interruptible calls.
+One good tool for avoiding atomicity violations is a dynamically-scoped atomic block.
+Unfortunately, few cooperative concurrency frameworks offer such a feature, and it is either hard or impossible for applications to layer such a thing on top of the primitives provided.
 
 \subsection{Events}
 
+%% \textbf{Events}.
+%% In event-based multitasking, a central \emph{dispatcher} or \emph{event loop} calls handler procedures (\emph{callbacks}) in response to events like I/O operations and timers expiring.
+%% A defining characteristic of events is that at most one callback can be running at a time.
+%% If an event happens while a callback is running, the next callback must wait until the current one returns.
+%% Many kinds of atomicity violations are impossible with events, because there is no concept of interruption or even voluntary context switching during the execution of a callback.
+%% Starvation is a serious concern, because a callback that runs for a long time or blocks will prevent other tasks from running.
+
 In event frameworks, all procedure calls are atomic.
-Interruptibility is introduced via callbacks.
+Interruptibility is introduced via \emph{callbacks} and an \emph{event dispatcher} (or \emph{event loop}).
 For example, if \texttt{otherProcedure} from the trivial example above was provided as an interruptible abstraction, the call would look like:
 
+\noindent
 \includegraphics[scale=0.7]{trivial_call_event}
 
 The order of the execution of the callback (i.e. the \texttt{lambda} expression) with  respect to any other callback from any other task is controlled by the event dispatcher.
@@ -291,87 +303,38 @@ To state it starkly: in an event-based framework, an abstraction that is provide
 
 We speculate that this fact has resulted in many subtle atomicity bugs in event-heavy ecosystems (e.g. node.js).
 
-\subsection{Events}
-
-In contrast to cooperative threads, event dispatching frameworks make it painfully clear what is atomic and what is interruptible.
-All procedures/methods/functions are atomic; there is no mechanism, voluntary or otherwise, for interrupting a running procedure.
-
-
-
 \subsection{Coopertive Threads}
+
+%% \textbf{Cooperative Threads}.
+%% Cooperative threads can be seen as a relaxation of coroutines.
+%% Task switching can still only occur at explicit yield invocations.
+%% However, there is no coroutine/procedure distinction and yield can be invoked in arbitrarily deeply nested procedure calls.
+
+%% Cooperative threads are not as widely used as events, threads and coroutines.
+%% We are not aware of any thorough analyses of why this is the case, but we suspect the central issue is with the problem of determining which procedure calls are atomic.
+
+%% A quick note on jargon: \emph{(stackful) coroutine} is sometimes used for what we call \emph{cooperative thread}, and \emph{stackless coroutine} where we use \emph{coroutine}.
+%% For example, the Boost community uses these terms.
+%% % Naturally, we prefer the terms as defined in this paper.
 
 Cooperative threading frameworks provide a spawn primitive that creates a new task.
 Only one cooperative thread can be running at a time and the active thread cannot be involuntarily interrupted by the system.
 Cooperative threads must explicitly invoke a \emph{yield} primitive that can choose to transfer control to a global scheduler (and from there to any runnable thread).
+Any procedure that might invoke yield is considered interruptible.
+And any procedure that might call an interruptible procedure is itself interruptible.
 
-The problem with cooperative threads is that any procedure might invoke yield, which would make it interruptible.
-A procedure is also interruptible if any procedure it invokes is itself interruptible.
+In a sense, cooperative threads are even worse from a atomicity/starvation perspective than their cooperative cousins.
+Not only do callers not have a choice about whether a library procedure is atomic or interruptible, in many cases, they do not even know.
+In contrast to events, coroutines and async methods, with cooperative threads calls to atomic procedures look just like calls to interruptible procedures.
 
 Not knowing whether a given library call is interruptable or not makes it hard to write reliable client code.
 Even if libraries provide some (reliable) annotation about whether an abstraction is atomic or iterruptible, cooperative threading frameworks make it \emph{too easy} to change this in the process of maintanence and evolution of a library.
-Changing an abstraction from atomic to interruptible (or vice versa) has the potential to break client code.
+Changing an abstraction from atomic to interruptible (or vice versa) has the potential to introduce atomicity violations (or starvation) in client code.
 
+We speculate that this problem of callers not being sure which procedures are atomic has limited the adoption of cooperative threads in large library ecosystems.
 
+\subsection{Coroutines and Async Procedures}.
 
-
-
-\section{Established Multitasking Abstractions}
-
-In this section we give brief definitions of established multitasking abstractions.
-Jargon is used somewhat inconsistently in this domain, so we establish how we use terms in this paper.
-This section is intended to be free of judgments about the strengths and weaknesses of these options.
-Its main purpose is to serve as a foundation for the arguments in the next section that pseudo-preemptive threads are a distinct, new multitasking abstraction.
-
-The main dimension that we focus on is scheduling flexibility.
-The more constrained scheduling is, the \emph{easier} it is to avoid defects like atomicity violations and incorrect ordering.
-However, highly constrained scheduling also makes it \emph{harder} to avoid defects like starvation and unintended blocking of tasks.
-Abstraction with more flexible scheduling have exactly the complementary strengths and weaknesses with regard to concurrency defects.
-There is no way to completely guarantee the absence of these defects; the best we can do is minimize risk.
-
-As a side note, software architectures that emphasize independence of tasks, like functional style programming and isolated processes tend to be more resistant to many kinds of concurrency bugs.
-However, \emph{inter}dependence of tasks (e.g., frequent shared memory access and synchronization) is common in modern practice, and we do not expect that to change radically in the near future.
-
-Experts can safely skip the remainder of this section.
-
-\begin{table}
-  \centering
-  \begin{tabular}{|l|}
-    \hline
-    Main loop scheduling \\
-    \hline
-    Events \\
-    \hline
-    Coroutines (stackless) \\
-    \hline
-    Cooperative threads \\
-    \hline
-    Pseudo-preemptive threads/activities \\
-    \hline
-    User-level threads (preemptive) \\
-    \hline
-    System threads \\
-    \hline
-    System threads + transactions \\
-    \hline
-  \end{tabular}
-  \caption{The multitasking abstractions that we compare pseudo-preemptive threads to in this paper.
-  They are ordered by the task switching/scheduling flexibility of the abstraction, with the least flexible at the top.}
-  \label{table:abstractions}
-\end{table}
-
-\textbf{Main loop scheduling}.
-Main loop scheduling is used heavily in embedded systems.
-In this architecture, an application's main procedure is an infinite loop that calls a statically-fixed sequence of procedures.
-There is very little scheduling flexibility in main loop scheduling.
-
-\textbf{Events}.
-In event-based multitasking, a central \emph{dispatcher} or \emph{event loop} calls handler procedures (\emph{callbacks}) in response to events like I/O operations and timers expiring.
-A defining characteristic of events is that at most one callback can be running at a time.
-If an event happens while a callback is running, the next callback must wait until the current one returns.
-Many kinds of atomicity violations are impossible with events, because there is no concept of interruption or even voluntary context switching during the execution of a callback.
-Starvation is a serious concern, because a callback that runs for a long time or blocks will prevent other tasks from running.
-
-\textbf{Coroutines}.
 The increasingly sophisticated multitasking in mainstream software and the well-known problems with events and threads have forced language designers to explore alternatives in recent years.
 The most widely used alternative is \emph{coroutines}\footnotemark{}.
 Examples include async/await, which was added to C\#/.Net in 2012; function generators (\texttt{function*}), which were added to JavaScript with ECMAScript 6 (standard published in 2015); even the C++ community is considering adding support for coroutines (N4286, proposed for C++17).
@@ -388,17 +351,6 @@ Context switching between coroutines is only permitted when a \emph{yield} primi
 Regular procedures \emph{cannot} yield; in other words, regular procedure calls are atomic.
 A somewhat non-obvious consequence of this atomicity is that coroutines spawned by regular procedures cannot start running until the procedure returns back to a coroutine (possibly through some stack of procedure calls).
 
-\textbf{Cooperative Threads}.
-Cooperative threads can be seen as a relaxation of coroutines.
-Task switching can still only occur at explicit yield invocations.
-However, there is no coroutine/procedure distinction and yield can be invoked in arbitrarily deeply nested procedure calls.
-
-Cooperative threads are not as widely used as events, threads and coroutines.
-We are not aware of any thorough analyses of why this is the case, but we suspect the central issue is with the problem of determining which procedure calls are atomic.
-
-A quick note on jargon: \emph{(stackful) coroutine} is sometimes used for what we call \emph{cooperative thread}, and \emph{stackless coroutine} where we use \emph{coroutine}.
-For example, the Boost community uses these terms.
-% Naturally, we prefer the terms as defined in this paper.
 
 \textbf{User-level Threads (Preemptive)}.
 User-level threads do away with the yield primitive of coroutines and cooperative threads, and instead rely on a preemption mechanism of some kind to interrupt running tasks to allow others to run.
@@ -409,6 +361,8 @@ Preemption opens the door to a variety of nasty concurrency defects, which eithe
 Fear of these defects (data races, atomicity violations, livelocks, order violations, deadlocks) has limited the use of threads in many applications and ecosystems.
 One good entry into the vast literature on diagnosing and fixing multithreading defects is \cite{Lu2008}.
 These challenges have been understood for a long time; two decades ago Ousterhout wrote an analysis and critique of the problems with threads \cite{Ousterhout1996}.
+
+\section{Threads}
 
 \textbf{Threads (System)}.
 System threads leave preemption and scheduling up to the operating system.
@@ -428,19 +382,69 @@ Many proposals have been made for event/thread hybrids; for example: \cite{Boudo
 A detailed comparison with all of these proposals is beyond the scope of this paper.
 In the related work section we highlight the differences with the ones that are most similar to ours.
 
-\textbf{Other Multitasking Abstractions}.
-This introduction does not cover multitasking abstractions exhaustively.
-We described the abstractions that are most widely used and/or closely related to activities.
-The related work section briefly describes connections with more distantly related abstractions.
+%% \textbf{Other Multitasking Abstractions}.
+%% This introduction does not cover multitasking abstractions exhaustively.
+%% We described the abstractions that are most widely used and/or closely related to activities.
+%% The related work section briefly describes connections with more distantly related abstractions.
 
-\section{Pseudo-Preemptive Threads}
+%% \section{Established Multitasking Abstractions}
+
+%% In this section we give brief definitions of established multitasking abstractions.
+%% Jargon is used somewhat inconsistently in this domain, so we establish how we use terms in this paper.
+%% This section is intended to be free of judgments about the strengths and weaknesses of these options.
+%% Its main purpose is to serve as a foundation for the arguments in the next section that pseudo-preemptive threads are a distinct, new multitasking abstraction.
+
+%% The main dimension that we focus on is scheduling flexibility.
+%% The more constrained scheduling is, the \emph{easier} it is to avoid defects like atomicity violations and incorrect ordering.
+%% However, highly constrained scheduling also makes it \emph{harder} to avoid defects like starvation and unintended blocking of tasks.
+%% Abstraction with more flexible scheduling have exactly the complementary strengths and weaknesses with regard to concurrency defects.
+%% There is no way to completely guarantee the absence of these defects; the best we can do is minimize risk.
+
+%% As a side note, software architectures that emphasize independence of tasks, like functional style programming and isolated processes tend to be more resistant to many kinds of concurrency bugs.
+%% However, \emph{inter}dependence of tasks (e.g., frequent shared memory access and synchronization) is common in modern practice, and we do not expect that to change radically in the near future.
+
+%% Experts can safely skip the remainder of this section.
+
+%% \begin{table}
+%%   \centering
+%%   \begin{tabular}{|l|}
+%%     \hline
+%%     Main loop scheduling \\
+%%     \hline
+%%     Events \\
+%%     \hline
+%%     Coroutines (stackless) \\
+%%     \hline
+%%     Cooperative threads \\
+%%     \hline
+%%     Pseudo-preemptive threads/activities \\
+%%     \hline
+%%     User-level threads (preemptive) \\
+%%     \hline
+%%     System threads \\
+%%     \hline
+%%     System threads + transactions \\
+%%     \hline
+%%   \end{tabular}
+%%   \caption{The multitasking abstractions that we compare pseudo-preemptive threads to in this paper.
+%%   They are ordered by the task switching/scheduling flexibility of the abstraction, with the least flexible at the top.}
+%%   \label{table:abstractions}
+%% \end{table}
+
+%% \textbf{Main loop scheduling}.
+%% Main loop scheduling is used heavily in embedded systems.
+%% In this architecture, an application's main procedure is an infinite loop that calls a statically-fixed sequence of procedures.
+%% There is very little scheduling flexibility in main loop scheduling.
+
+
+\section{Activities}
 
 In this section we define activities and compare them with the multitasking abstractions described above.
-In particular we identify what we consider to be the most important software engineering weakness with each abstraction, and argue that activities mitigate these weaknesses.
+% In particular we identify what we consider to be the most important software engineering weakness with each abstraction, and argue that activities mitigate these weaknesses.
 
-\emph{Pseudo-preemptive threads\slash{}activities} are cooperative threads plus automatic yield insertion and no-yield.
-In this paper we do \emph{not} present a complete formal semantics for activities.
-Rather, we refer to existing work on cooperative threads \cite{Abadi2009} and describe the transation process from activities to conventional cooperative threading models.
+\emph{activities} are cooperative threads plus automatic yield insertion and atomic blocks.
+In this paper we do present a complete formal semantics for activities.
+Rather, we refer to existing work on cooperative threads \cite{Abadi2009} and describe the translation process from activities to conventional cooperative threading models.
 
 We use an example stolen from \cite{Krohn2007}; a \charcoal{} version is in Figure \ref{fig:charcoal_multidns_seq}.
 This example performs \texttt{n} DNS lookups concurrently using the standard \texttt{getaddrinfo} procedure.
@@ -448,7 +452,7 @@ It has a parameter (\texttt{max\_conc}) to limit the number of DNS requests that
 
 Like cooperative threads, activities have a spawn primitive that creates a new activity.
 In \charcoal{} we add some syntactic convenience to the plain spawn to get the \emph{activate} statement, an example of which is on line 9 of the example.
-The body of the activate statement runs concurrently (but not in parallel) with the statement's continuation.
+The body of the activate statement runs concurrently (but \emph{not} in parallel) with the statement's continuation.
 Only one activity can be running at a time and the system can only context switch between activities on a yield.
 
 \begin{figure}
@@ -466,11 +470,11 @@ Only one activity can be running at a time and the system can only context switc
 
 To very briefly summarize \cite{Abadi2009}, the semantics of a program with activities can be seen as traces of actions separated by yield invocations.
 Between two adjacent yield actions, all actions must come from a single particular activity.
-Batches from different activities are interleaved by a scheduler to execute a complete program.
+Batches from different activities are interleaved by a global scheduler to execute a complete program.
 Actions are not permitted to cross yield boundaries.
 In other words, yields define the minimum granularity of interleaving.
 
-The system has a scheduler that chooses when a yield should lead to a context switch, and which activity to switch to.
+Each \charcoal{} program has a scheduler that chooses when a yield should lead to a context switch, and which activity to switch to.
 The current \charcoal{} implementation uses a simple FIFO scheduler; clearly this is something that could be looked at for further refinement in terms of general performance, fairness guarantees and/or greater application control.
 
 The activate statement takes as a parameter a pointer to application-allocated memory for storing metadata about the new activity.
@@ -499,12 +503,11 @@ If there were a modification to \texttt{i} inside \texttt{activate}, each activi
 
 \subsection{Yield Insertion}
 
-The primary feature that distinguishes activities from conventional cooperative threads is that there is a translation step that automatically inserts yield statements into the program before compilation or interpretation proper.
-Figure \ref{fig:translation} shows some examples of the rules used to define where yields are inserted.
-In general, yields are inserted on every back-edge in the control flow and before and after every call.
-These rules guarantee that an activity cannot run indefinitely without invoking yield.
-
-Implementing this correctly takes some care, because the compiler must be careful about things like \texttt{continue} and \texttt{goto} statements.
+One of the two primary features that distinguish activities from conventional cooperative threads is that there is a translation step that automatically inserts yield statements into the program before compilation or interpretation proper.
+Yields are inserted before and after every procedure call.
+This rule goes part of the way to ensuring that a program cannot run for a long time without yielding.
+The exception, of course, is any looping control flow that does not involve any calls.
+This is okay ...
 
 \begin{figure}
 \includegraphics{multi_getaddrinfo_sem}
