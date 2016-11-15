@@ -16,7 +16,7 @@
 
 \newcommand{\charcoal}{Charcoal}
 % \newcommand{\charcoal}{BlindReview}
-\newcommand{\noyield}{\texttt{no\_yield}}
+\newcommand{\atomic}{\texttt{atomic}}
 
 \special{papersize=8.5in,11in}
 \setlength{\pdfpageheight}{\paperheight}
@@ -170,8 +170,8 @@ Both implementations and all the code used in the experiments in this paper are 
 %% This paper also introduces a new call frame allocation strategy called hot stacking that has close to zero per-thread memory overhead, yet still performs well for the most frequent calls/returns.
 
 %% The brief version of how activities are implemented is that they are cooperative threads, but the compiler/interpreter automatically inserts yields, to make them appear closer to preemptive.
-%% There is a dynamically scoped \emph{no-yield} primitive that allows programmers to enforce atomicity for arbitrary blocks by overriding/suppressing yields.
-%% From a programmer's perspective the no-yield primitive is similar to \emph{atomic} in transactional memory abstractions.
+%% There is a dynamically scoped \emph{atomic} primitive that allows programmers to enforce atomicity for arbitrary blocks by overriding/suppressing yields.
+%% From a programmer's perspective the atomic primitive is similar to \emph{atomic} in transactional memory abstractions.
 
 %% Differences between multitasking abstractions can be quite subtle, even if the software engineering implications of those differences are profound.
 %% In the next section we briefly describe several established multitasking abstractions in preparation for a detailed discussion later of what distinguishes activities from its cousins.
@@ -359,35 +359,18 @@ A somewhat non-obvious consequence of this atomicity is that coroutines spawned 
 
 Just like with events, once a library abstraction is defined as a coroutine or async method, there is no way for user code to invoke it atomically.
 
-%% \textbf{User-level Threads (Preemptive)}.
-%% User-level threads do away with the yield primitive of coroutines and cooperative threads, and instead rely on a preemption mechanism of some kind to interrupt running tasks to allow others to run.
-%% % User-level threads are used somewhat widely.
-%% % However, system threads are better than user-level threads in most ways, so they tend to be used when available.
+\subsection{What's Wrong with Threads?}
 
-%% Preemption opens the door to a variety of nasty concurrency defects, which either cannot happen or are much easier to avoid in cooperative abstractions.
-%% Fear of these defects (data races, atomicity violations, livelocks, order violations, deadlocks) has limited the use of threads in many applications and ecosystems.
-%% One good entry into the vast literature on diagnosing and fixing multithreading defects is \cite{Lu2008}.
-%% These challenges have been understood for a long time; two decades ago Ousterhout wrote an analysis and critique of the problems with threads \cite{Ousterhout1996}.
+Preemptive threads are unacceptably conncurrency bug prone for many applications.
+One good entry into the vast literature on diagnosing and fixing multithreading defects is \cite{Lu2008}.
+These challenges have been understood for a long time; two decades ago Ousterhout wrote an analysis and critique of the problems with threads \cite{Ousterhout1996}.
 
-%% \section{Threads}
+One promising technology for making threads less bug-prone is atomic blocks.
+There is some evidence (for example, \cite{Pankratius2014}) that atomic blocks make multithreading substantially less prone to concurrency defects.
+Unfortunately, implementing atomic blocks for preemptive threads efficiently is extremely hard.
+Perhaps more importantly, there are semantic questions that are unclear how to resolve satisfactorily for mainstream programming languages (for example how do actions performed within an atomic block relate to actions performed outside?).
 
-%% \textbf{Threads (System)}.
-%% System threads leave preemption and scheduling up to the operating system.
-%% Unlike all of the abstractions above, system threads allow multiple tasks to execute in parallel on multiple processors.
-%% Parallelism is, of course, valuable in many applications.
-%% However, it is mostly distinct from multitasking, so we mostly ignore that feature of threads in this paper.
 
-%% \textbf{Threads Plus Transactions}.
-%% In an effort to make multithreading more reliable, programming language researchers introduced the concept of scoped transactions.
-%% The system provides the abstraction that transactional blocks execute atomically and in isolation, even if multiple transactional blocks are running (physically) simultaneously.
-%% There is some evidence (for example, \cite{Pankratius2014}) that transactions make multithreading substantially less prone to concurrency defects.
-%% Unfortunately, there are some serious challenges with implementing transactions that have kept them on the margins of software engineering practice.
-
-%% \textbf{Hybrids}.
-%% Researchers have long understood the weaknesses of existing multitasking abstractions.
-%% Many proposals have been made for event/thread hybrids; for example: \cite{Boudol2007, Boussinot2006, Cunningham2005, Dabrowski2006, Fischer2007, Kerneis2014, Krohn2007, Li2007, Behren2003}.
-%% A detailed comparison with all of these proposals is beyond the scope of this paper.
-%% In the related work section we highlight the differences with the ones that are most similar to ours.
 
 %% \textbf{Other Multitasking Abstractions}.
 %% This introduction does not cover multitasking abstractions exhaustively.
@@ -500,6 +483,7 @@ In a language with automatic memory management, we would not have to be concerne
 Notice that multiple activities read and write the local variable \texttt{requested} without any additional synchronization.
 If these were threads, this would cause a data race, which at best leads to unpredictable results and at worst make the whole program undefined.
 With activities this is not a problem at all; the system (compiler, processors, etc.) is not permitted to move memory operations across yields, which dramatically simplifies the concurrent memory model problem.
+With cooperative threads (and activities by extension) the memory model is simply that all memory operations must appear to be flushed at yield boundaries.
 
 The parentheses after the \texttt{activate} keyword are for controlling whether local variables are accessed by-value or by-reference.
 The default is by-reference, which is how most of the variables are used in this example.
@@ -512,9 +496,12 @@ If there were a modification to \texttt{i} inside \texttt{activate}, each activi
 
 One of the two primary features that distinguish activities from conventional cooperative threads is that there is a translation step that automatically inserts yield statements into the program before compilation or interpretation proper.
 Yields are inserted before and after every procedure call.
-This rule goes part of the way to ensuring that a program cannot run for a long time without yielding.
-The exception, of course, is any looping control flow that does not involve any calls.
-This is okay ...
+This rule helps prevent starvation by default.
+
+There are two ways a program can still find itself in a starvation situation.
+The first is by wrapping a long-running part of the program in atomic.
+The second is long-running loops with no calls in their body.
+Both of these should be considered concurrency bugs to be managed with the usual software reliability tools (testing, code review, verification, etc).
 
 \begin{figure}
 \includegraphics{multi_getaddrinfo_sem}
@@ -522,13 +509,13 @@ This is okay ...
 \label{fig:charcoal_multidns_sem}
 \end{figure}
 
-In the example code above, the system will automatically insert five yields: one before the while loop jumps back to the beginning, and one each before and after the two calls.
-The called functions themselves could have yields in their implementations.
+In the example code above, the system will automatically insert four yields: one each before and after the two calls.
+Without further information, it should be assumed that the called functions themselves have more yields in their implementations.
 
 Automatic yield insertion moves activities from cooperative threads towards preemptive threads from an application programmer's perspective.
 However, activities are still more resistant to concurrency bugs than threads.
 One reason for this is that the granularity of scheduling is coarser for activities.
-Any block of code with acyclic control flow and no calls is guaranteed to execute atomically.
+Between calls and explicit yield invocations, code is guaranteed to execute atomically.
 
 Though this minimum granularity may still seem quite fine, it does provide some nice properties.
 Consider the classic data race example of two threads concurrently applying some arithmetic operation to a shared memory location.
@@ -543,21 +530,10 @@ For this simple example there is no extra synchronization necessary with activit
 \end{figure}
 
 \begin{figure}
-    \centering
-    \begin{subfigure}[b]{0.5\textwidth}
   $e_f(e_1, \ldots, e_N) \Rightarrow$ \\
   \hspace*{1em} $( x_f=e_f; x_1=e_1; \ldots; x_N=e_N; \mathtt{yield};$ \\
   \hspace*{2em} $x_R=x_f(x_1, \ldots, x_N); \mathtt{yield}; x_R )$
-        \caption{}
-    \end{subfigure}
-    ~ %add desired spacing between images, e. g. ~, \quad, \qquad, \hfill etc. 
-      %(or a blank line to force the subfigure onto a new line)
-    \begin{subfigure}[b]{0.5\textwidth}
-  $\mathtt{while}( e ) \{ s \} \Rightarrow \mathtt{while}( e ) \{ s; \mathtt{yield} \}$
-        \caption{}
-    \end{subfigure}
-    \caption{Examples of the translation rules used for yield insertion.
-      (a) is the rule for function calls, and (b) is a part of the translation of while loops.}
+  \caption{The translatiopn rule for inserting yields before and after calls.}
     \label{fig:translation}
 \end{figure}
 
@@ -591,27 +567,21 @@ That is, during a system call the system may switch to another activity.
 If a system call completes while some other activity is running, the calling activity must wait for a yield before it can resume execution.
 There are more details on this in the implementation section.
 
-\subsection{No-Yield}
-\label{sec:noyield}
+\subsection{Atomic}
+\label{sec:atomic}
 
 If there was no way to override yielding, activities would be little better than multithreading at resisting many kinds of concurrency defects.
-To combat this \charcoal{} has no-yield.
-Any statement, expression or procedure declaration can be ``wrapped'' with no-yield.
-In the dynamic scope of a no-yield block, the current activity cannot be interrupted.
-In other words, any yields that would have happened are overridden/suppressed by no-yield.
+To combat this \charcoal{} has atomic.
+Any statement, expression or procedure declaration can be ``wrapped'' with atomic.
+In the dynamic scope of a atomic block, the current activity cannot be interrupted.
+In other words, any yields that would have happened are overridden/suppressed by atomic.
 This is a simple and powerful tool for enforcing atomicity.
-Most locking in current multithreading practice can be either removed entirely, thanks to the coarser scheduling granularity, or directly replaced by the simpler and safer no-yield.
+Most locking in current multithreading practice can be either removed entirely, thanks to the coarser scheduling granularity, or directly replaced by the simpler and safer atomic.
 
 In the example, the compiler will insert yields before and after the calls to \texttt{printf} and \texttt{getaddrinfo}.
-If the programmer wanted to suppress some of these yields, they could use \noyield{}.
-For example, it would be reasonable to wrap the \texttt{printf} call in \noyield{}, since it will complete quickly (relative to \texttt{getaddrinfo}), and there is little to be gained by switching to another task at that point.
-Wrapping the \texttt{getaddrinfo} call in no-yield would be a performance bug, because that would force the DNS lookups to be executed sequentially.
-
-\charcoal{} also has a variant of no-yield called no-implicit-yield.
-This is a more subtle tool that is useful for high performance inner loop code.
-The problem with such code is that yielding on every iteration causes non-trivial performance overhead, but yielding never (i.e. wrapping the whole loop in no-yield) could cause starvation.
-Within the static scope of a no-implicit-yield block, yields are not automatically inserted, but explicit yields (those in the program source code) are not overridden.
-There is an example of its use in the benchmarking section below.
+If the programmer wanted to suppress some of these yields, they could use \atomic{}.
+For example, it would be reasonable to wrap the \texttt{printf} call in \atomic{}, since it will complete quickly (relative to \texttt{getaddrinfo}), and there is little to be gained by switching to another task at that point.
+Wrapping the \texttt{getaddrinfo} call in atomic would be a performance bug, because that would force the DNS lookups to be executed sequentially.
 
 %% \subsection{Recursive Procedure Calls}
 
@@ -635,50 +605,45 @@ There is an example of its use in the benchmarking section below.
 
 \subsection{Activities, Compared}
 
-In this section we describe important software engineering problems with existing multitasking abstractions and argue that activities avoid or substantially mitigate these problems.
+In this section we compare activities directly with other concurrency abstractions, with a particular focus on the two key features of activities (atomic blocks and implicit yield insertion).
 
 \textbf{Events}.
-Long-running callbacks (including those that might block indefinitely) must be \emph{manually} broken up into multiple callbacks.
-This makes the logical flow of the program hard to reason about, both for programmers and analysis tools.
+In principle event/callback frameworks could incoporate an atomic block.
+This would require adding an explicit notion of a task.
+With that in place the event dispatcher could keep track of which task the currently-running callback belongs to and disallow calling callbacks from other tasks when in atomic mode.
+
+It is interesting to observe that few, if any, event dispatcher implementations have a feature like this.
+We speculate that the explanation for this is that the atomicity violation problem in the context of events is under-appreciated.
+
+It is not clear to the authors how implicit yield insertion could be implemented without effectively turning events into a different model, like async methods.
+Without such support, modern event-based ecosystems have been forced to move towards a more fine-grained callback style of programming.
+This makes the logical flow of the program harder to reason about, both for programmers and analysis tools.
 It can also make management of resources whose lifetime spans multiple callbacks quite tricky.
 This leads to a style of programming referred to as \emph{stack ripping} \cite{Adya2002}, or more colloquially \emph{callback hell}.
 These and more subtle problems are well analyzed and criticized by von Behren et al. in \cite{Behren2003a}.
 
-One prominent ecosystem that uses callbacks heavily is Node.js.
-In idiomatic Node.js code there are multiple nested higher-order function definitions that are passed around as callbacks.
-This leads to code that is quite hard to read, but many in the Node.js community prefer this challenge to the problems associated with multithreading.
+In some ecosystems (like Node.js) promises have been used to make this style of programming more doable.
+However, promises do not change the underlying semantics of the event dispatcher, only the syntax.
+This has encouraged many programmers to explore alternatives, like coroutines.
 
-Like all variants of threads, activities allow tasks to be written in a more natural direct style, thus completely avoiding the problems associated with callbacks.
-Events do maintain an advantage over activities in resistance to some concurrency defects, like atomicity violations.
-However, the emergence of coroutines as an alternative to events is evidence that for many applications the costs described above have begun to outweigh the benefits.
+\textbf{Coroutines and Async Methods}.
+The simplest implementation of an atomic block in the context of coroutines and async methods would not work well.
+What we mean by this is simply disallowing context switching in atomic mode.
+Unfortunately, invoking a coroutine is sometimes intended by the programmer to be spawning a new task and sometimes it is intended to be making an interruptible procedure call.
+There is no simple way to tell the difference at the implementation level.
+It might be workable to say that in atomic mode context switches are only allowed if the running coroutine explicitly waits for a value from another coroutine (confusingly, this is done with the keyword yield in many coroutine implementations).
 
-\textbf{Coroutines}.
-% Since widespread use of coroutines is much more recent than events and threads, there is far less published on their pitfalls.
-From an implementation perspective, activities are actually quite similar to coroutines.
-Procedure calls in \emph{no-yield mode} are like regular procedure calls in a coroutine framework.
-In both cases, interruption is not allowed.
-Procedure calls in \emph{yielding mode} are like coroutine ``calls''.
+In addition to these complexities, we imagine that designers of coroutine and async method frameworks have generally not seen the problem of atomicity violations as a concern.
 
-The main weakness of coroutines is most obvious during maintenance.
-Assume that some function was originally written as a non-coroutine.
-Later, things changed such that the function needed to perform some long-running actions and a programmer chooses to convert it from a regular procedure to a coroutine.
-It is possible that this change will break atomicity assumptions made by the callers of this now-coroutine.
+With the addition of such an atomic block primitive, if all procedures were defined to be coroutines/async, you would end up with a system that is semantically equivalent to activities.
+Clearly async methods and activities are closely related.
+We believe that it is a better tradeoff to make all procedures interruptible by default, rather than force that decision on the writer of the procedure.
 
-Stated slightly differently, with coroutines the atomicity of a call depends on the definition of the called thing.
-With activities, the calling code can choose to wrap the call in no-yield or not, depending on its atomicity requirements.
 
-A subtler difference has to do with defaults.
-With coroutines, by default procedures are atomic, which means that accidental starvation/blocking is relatively easy.
-With activities, by default any procedure call might be interrupted, which puts atomicity enforcement on the programmer to a greater extent.
-
-Finally, coroutine frameworks have some awkwardness around the partitioning of procedures.
-Regular procedures and coroutines are different things, so it is hard to use higher-order functional or object oriented patterns that abstract over whether something is a regular procedure or a coroutine.
-With activities, all procedures are the same kind of thing and pointers to them can be passed around freely.
-
-%% With the addition of no-yield, activities can be seen as quite similar to coroutines with a complementary default.
-%% Normal procedures in an activity framework are like coroutines and normal procedures in a coroutine framework are like no-yield procedures in an activity framework.
+%% With the addition of atomic, activities can be seen as quite similar to coroutines with a complementary default.
+%% Normal procedures in an activity framework are like coroutines and normal procedures in a coroutine framework are like atomic procedures in an activity framework.
 %% As similar as this argument makes coroutines and activities seem, we believe the differences are still significant.
-%% For example, in an activities framework, all procedures are part of the same type; normal procedures and no-yield procedures are not distinguished at the type level.
+%% For example, in an activities framework, all procedures are part of the same type; normal procedures and atomic procedures are not distinguished at the type level.
 
 %% Coroutines have an interesting history.
 %% According to Knuth, the term was coined by Melvin Conway in 1958, but coroutines remained on the margins of mainstream software practice until quite recently, a gap of more than 5 decades.
@@ -708,10 +673,10 @@ With activities, all procedures are the same kind of thing and pointers to them 
 %% These software engineering problems have not prevented the adoption of coroutines, but they do make it harder than it needs to be to develop multitasking software.
 %% Activities solve these problems!
 
-%% With the addition of no-yield, activities can be seen as quite similar to coroutines with a complementary default.
-%% Normal procedures in an activity framework are like coroutines and normal procedures in a coroutine framework are like no-yield procedures in an activity framework.
+%% With the addition of atomic, activities can be seen as quite similar to coroutines with a complementary default.
+%% Normal procedures in an activity framework are like coroutines and normal procedures in a coroutine framework are like atomic procedures in an activity framework.
 %% As similar as this argument makes coroutines and activities seem, we believe the differences are still significant.
-%% For example, in an activities framework, all procedures are part of the same type; normal procedures and no-yield procedures are not distinguished at the type level.
+%% For example, in an activities framework, all procedures are part of the same type; normal procedures and atomic procedures are not distinguished at the type level.
 
 \textbf{Cooperative Threads}.
 As explained above, activities are quite similar to conventional cooperative threads.
@@ -722,8 +687,8 @@ In large, evolving applications keeping track of these atomicity properties is e
 During maintenance this problem is especially prominent.
 Adding (or removing) a yield can have large effects on the potential for concurrency defects, and the programmer needs to understand all of the contexts in which a particular procedure might be called.
 
-With activities, programmers must assume that any call might yield, unless the called function is explicitly marked no-yield.
-This makes the decision process simple: if interruption during a particular call is unacceptable, the programmer must wrap it in no-yield.
+With activities, programmers must assume that any call might yield, unless the called function is explicitly marked atomic.
+This makes the decision process simple: if interruption during a particular call is unacceptable, the programmer must wrap it in atomic.
 
 %% Cooperative threads are not as widely used as events, threads and coroutines, but we briefly describe them because they are closely related to activities.
 %% Cooperative threads can be seen as a compromise between coroutines and threads.
@@ -737,8 +702,8 @@ This makes the decision process simple: if interruption during a particular call
 %% This is extra nasty when indirect calls are considered, because it is not possible in general to identify all call sites to a particular procedure.
 
 \textbf{User-level Threads (Preemptive)}.
-Activities are similar in many ways to user-level threads.
-Some user-level thread implementations provide a \emph{disable-interrupts} primitive that is quite similar to our no-yield.
+Activities are similar in some ways to user-level threads.
+Some user-level thread implementations provide a \emph{disable-interrupts} primitive that is quite similar to our atomic.
 The critical difference between threads and activities is when interruptions can happen.
 Conventionally, user-level threads can be interrupted at any point during execution.
 Among other problems, this can lead to data races, which can lead to a wide range of surprising problems (see for example \cite{Boehm2011}).
@@ -752,27 +717,18 @@ As described above, the coarser scheduling of activities provides greater resist
 The idea of automatic insertion of yields to make cooperative threads more like preemptive threads has been investigated before.
 For example, Boudol proposes such a language in \cite{Boudol2007}.
 His focus was on using analysis techniques to reduce the frequency of inserted yields, without giving up the guarantee that a thread cannot run indefinitely.
-Rather than relying on a sophisticated compiler to make these choices, we prefer to put the power in the hands of the programmer with \emph{no-yield}.
-It is possible for programmers to create starvation problems with poor uses of no-yield, profilers can easily track the duration of no-yield blocks and warn about those that take too long.
-
-\textbf{Threads (System)}.
-The most obvious difference between activities and threads is that activities cannot easily be run in parallel.
-This is clearly not a fatal flaw for multitasking abstractions, since event handlers and coroutines also cannot be run in parallel.
-See the related work section for further discussion of parallelism and its relationship to multitasking.
-
-System threads are almost identical to preemptive user-level threads from a software engineering perspective, except they are somewhat more diabolical.
-Because system threads can be run in parallel, actions from different threads tend to be interleaved in a much more fine-grained way than they would be with non-parallel threads.
-This does not categorically change what kinds of defects are possible, but it does make things like data races and atomicity violations more likely to occur in a particular execution.
+Rather than relying on a sophisticated compiler to make these choices, we prefer to put the power in the hands of the programmer with \emph{atomic}.
+It is possible for programmers to create starvation problems with poor uses of atomic, profilers can easily track the duration of atomic blocks and warn about those that take too long.
 
 \textbf{Threads Plus Transactions}.
 Comparing activities to any flavor of preemptive multithreading, the impossibility of data races eliminates some of the need for synchronization immediately.
 However, other kinds of defects like atomicity violations are still a potential problem.
-The no-yield primitive provides a much better way of avoiding these defects than conventional locks.
-No-yield is quite similar to atomic blocks in transactional concurrency control languages.
+The atomic primitive provides a much better way of avoiding these defects than conventional locks.
+atomic is quite similar to atomic blocks in transactional concurrency control languages.
 Atomic blocks have been shown to make avoiding concurrency defects easier (see, for example \cite{Harris2005, Grossman2007}.
-\emph{No-yield} has a couple of advantages over \emph{atomic}.
-First, there are no thorny semantic issues with memory that is accessed both inside and outside of no-yield mode.
-Second, no-yield blocks are never executed speculatively, which means that there are no problems with performing I/O operations in no-yield mode.
+\emph{atomic} has a couple of advantages over \emph{atomic}.
+First, there are no thorny semantic issues with memory that is accessed both inside and outside of atomic mode.
+Second, atomic blocks are never executed speculatively, which means that there are no problems with performing I/O operations in atomic mode.
 
 %% Events are at the safest and least flexible end of the multitasking abstraction spectrum and threads occupy the opposite extreme.
 %% (In this paper \emph{thread} means \emph{preemptive thread}.)
@@ -791,8 +747,9 @@ Second, no-yield blocks are never executed speculatively, which means that there
 
 \section{Implementation}
 
-There are a few interesting features of our implementation of activities.
-The the following sections we describe the allocation of call frames, the implementation the yield primitive, and compiling a version of each procedure for yielding and no-yield mode.
+There are a few interesting features of our implementation of activities in the context of \charcoal{}.
+This section describes the allocation of call frames, the implementation the yield primitive, and compiling a version of each procedure for yielding and atomic mode.
+At the end of this section we describe the much simpler implementation of activities in the context of a JavaScript library.
 
 \subsection{Call Frame Allocation}
 
@@ -861,8 +818,8 @@ So the main idea of hot stacking is that long-lived frames are individually allo
 
 For this strategy to work correctly, the frames allocated in the shared area must all be deallocated before context switching to another task.
 For regular threads it is not clear how this deallocation could be enforced easily.
-Activities make it practical to use hot stacking, because the implementation can use no-yield blocks as an indicator of when it should use contiguous allocation.
-Context switches are not permitted in no-yield mode, so there is no problem with needing to context switch when frames in the shared area are still in use.
+Activities make it practical to use hot stacking, because the implementation can use atomic blocks as an indicator of when it should use contiguous allocation.
+Context switches are not permitted in atomic mode, so there is no problem with needing to context switch when frames in the shared area are still in use.
 
 In the microbenchmarking section below we provide evidence that this strategy captures the benefits of heap allocation (per-activity memory overhead is very small) and contiguous allocation (fast calls and returns when it matters most).
 It is certainly possible for short-lived calls to happen in yielding mode, which means that the frames will be individually allocated.
@@ -883,17 +840,17 @@ So we need to ensure that yields are as efficient as possible.
 In particular, we implemented three ideas:
 
 \begin{itemize}
-\item Zero overhead yields in no-yield mode
+\item Zero overhead yields in atomic mode
 \item Infrequent context switching
 \item Very fast non-switching yield
 \end{itemize}
 
-\subsubsection{Yield in No-Yield Mode}
+\subsubsection{Yield in Atomic Mode}
 
-There are important differences at the implementation level between how code executes in yielding versus no-yield mode, not least among them the call frame allocation strategy.
+There are important differences at the implementation level between how code executes in yielding versus atomic mode, not least among them the call frame allocation strategy.
 To implement this dual mode concept in a reasonably simple and efficient way, the current \charcoal{} implementation generates two versions of each procedure: one for each mode.
 The yielding mode implementation includes inserted yields and assumes its own frame was individually allocated.
-The no-yield mode implementation does not include yields; for most intents and purposes it is a simple translation to plain C.
+The atomic mode implementation does not include yields; for most intents and purposes it is a simple translation to plain C.
 
 Of course making a single implementation that could be run in either mode would be possible.
 Such an implementation would need to branch on which mode it was running, potentially quite frequently.
@@ -903,7 +860,7 @@ This implementation strategy could lead to a substantial increase in code size.
 We have two ideas about how this can be avoided, though we have not investigated either yet.
 First, most procedures are only called in either one mode or the other.
 A sufficiently smart linker could identify the version that is never called and eliminate it.
-Second, in language implementations that already do runtime optimization, the (static) compiler could only generate yielding mode versions and leave it up to the runtime code generator to make no-yield versions for procedures that are actually called in no-yield mode.
+Second, in language implementations that already do runtime optimization, the (static) compiler could only generate yielding mode versions and leave it up to the runtime code generator to make atomic versions for procedures that are actually called in atomic mode.
 
 %% This is kinda related to ideas from the Cilk-5 implementation
 %% \cite{Frigo1998}.
@@ -913,7 +870,7 @@ Second, in language implementations that already do runtime optimization, the (s
 One challenge with a dual implementation strategy is how to handle function pointers.
 In general, when the address of a function is taken there is no way to know which mode the function will later be called in.
 Therefore simply taking the address of either implementation would be at best complicated and inefficient, and quite likely lead to subtle bugs.
-The current implementation generates a small piece of code for every function that can be called in either yielding or no-yield mode.
+The current implementation generates a small piece of code for every function that can be called in either yielding or atomic mode.
 A parameter is passed by the caller to indicate which mode it is in.
 The generated code calls the appropriate implementation.
 This makes indirect calls somewhat more expensive than in plain C.
@@ -927,7 +884,7 @@ Context switching has the moderate direct cost of manipulating a handful of data
 Therefore in normal operation yields should lead to context switches at a relatively low frequency, perhaps every few milliseconds.
 
 The speed of the yield primitive itself is somewhat important.
-As described in the previous section, code that is compiled in no-yield mode does not have yields at all, so yield performance is not an issue for the most performance critical loops.
+As described in the previous section, code that is compiled in atomic mode does not have yields at all, so yield performance is not an issue for the most performance critical loops.
 However, we expect that moderately frequent yielding (perhaps as frequently as many per microsecond) would be common in real-world code.
 Therefore, the performance of the yield primitive does matter to some degree.
 
@@ -955,9 +912,31 @@ The libuv maintainers have discussed this as a ``pull'', versus the current ``pu
 
 We use a modified version of Cil \cite{Necula2002} to translate \charcoal{} to plain C with calls to our runtime system.
 
-\section{Benchmarking}
+\subsection{Activities in JavaScript}
 
-To establish the practicality of activities, we implemented 5 microbenchmarks.
+\begin{figure}
+\includegraphics[scale=0.65]{trivial_js}
+\caption{A sketch of how the JavaScript library implementation of activities is used.
+The syntactic clutter is fairly high because we are using JavaScript function generators (\texttt{fucntion*}) to simulate regular functions in an activities framework.}
+\label{fig:trivial_js}
+\end{figure}
+
+Activities can be implemented as a library in JavaScript because the language already has a coroutine-like primitive (function generators) and a global event dispatcher.
+Figure \ref{fig:trivial_js} shows a sketch of the programmer's view of the library.
+To make an ``activity function'', the programmer writes a function generator (\texttt{function*}) and passes that to the library function \texttt{act\_fun}.
+This makes a function that returns a Promise object that eventually resolves to whatever the relevant fucntion generator returns.
+
+The implementation of this library is quite similar to several that have been written in recent years to simulate async procedures with function generators.
+The differences are that the activities library have an explicit notion of tasks, implicitly inserts yields before and after every call, and has an atomic mode.
+
+Unlike the \charcoal{} implementation, we did not investigate questions around call frame or yield implementation.
+We rely on the underlying JavaScript implementation for these.
+
+\section{Evaluation}
+
+To investigate the software engineering properties of activities, we implemented a prototype application with the JavaScript library implementation.
+
+To investigate the performance of activities, we implemented microbenchmarks with the \charcoal{} implementation.
 All tests were run on a machine with the specs listed in Table \ref{table:specs}.
 Depending on the benchmark, we compare the \charcoal{} implementation against plain C, C compiled with gcc's split stack implementation, Go or C plus the default Linux threads implementation.
 All speed-related tests were compiled at optimization level \texttt{-O2}.
@@ -984,102 +963,47 @@ For speed-related tests we ran the benchmark 5 times and report the fastest resu
   \label{table:specs}
 \end{table}
 
+\subsection{Building an App with Activities}
+
+The application we experimented with is a simple single-page web app that lets users share information.
+It makes heavy use of the cryptography API to implement an end-to-end encryption protocol.
+We wrapped the Promise-returning API functions with simple \texttt{act\_fun}s.
+There is a high density of calls to such functions in the code.
+
+We make a couple observations about this experience.
+First, compared to an earlier version of this app that used explicit callbacks, the direct style is dramatically easier to read and reason about.
+Of course, this benefit is shared by async procedures and cooperative threads.
+
+More than half of the calls we expect to be short-lived.
+These we can execute in atomic mode to ensure that there are no atomicity violations around them.
+Using async procedures, it would not be possible to do that.
+
+
 \subsection{Task Memory Overhead}
 
-The first microbenchmark measures memory overhead by spawning tasks until memory is exhausted.
-For activities this overhead is small and more or less fixed.
-For threads this overhead is harder to put a single number on, because most multithreading APIs allow the amount of memory reserved for the call stack to be controlled by the application.
-For this benchmark we used the default stack size.
-
-\vspace{1em}
-\begin{tabular}{|l|r|}
-  \hline
-  Threads & 31,000 \\
-  \hline
-  Goroutines & 9,200,000 \\
-  \hline
-  Activities & 61,000,000 \\
-  \hline
-\end{tabular}
-\vspace{1em}
-
-By this measure, the memory overhead of activities is more than 3 orders of magnitude smaller than threads.
-The results of this test are not surprising, but we believe it is worth emphasizing that in most contexts it is not practical to use more than a few hundred or maybe a few thousand threads.
-
-A closer comparison is between activities and goroutines.
-The Go implementation (as of version 1.3) uses a sophisticated stack growing process to avoid pre-allocating large regions of memory for call frames.
+Unsurprisingly, activities have dramatically lower memory overhead than system threads.
+The per-activity memory overhead is approximately a dozen pointers.
+A more interesting comparison is between activities and goroutines.
+The Go implementation (as of version 1.3) uses a sophisticated stack growing process to avoid pre-allocating a large amount of memory for call frames.
 However, the minimum size is still relatively large (in the neighborhood of a kilobyte), more than a factor of 6 greater than activities in \charcoal{}.
 We would expect to find a similar minimum overhead in implementations that use split/segmented/linked stacks.
 
 %% Some would argue that having so many thread-like things active simultaneously is not good software architecture anyway.
 %% We do not argue that point here, but just point out that lower memory overhead can only be better.
 
-\subsection{Task Spawn Speed}
+\subsection{Task Spawn and Switching Speed}
 
-% wait for previous task
-% spawn new task
+Again unsurprisingly, activities are dramatically faster than system threads when it comes to spawning and switching between tasks.
+The speed difference is over an order of magnitude, as measured by microbenchmarks.
+The primary difference here is that threads must make system calls to do these things, whereas with activities they can be done entirely in user mode.
 
-The second microbenchmark measures how quickly new tasks can be spawned.
-In this test each task waits for the previous task to finish, then spawns the next task.
+In these benchmarks, Go was slightly faster than \charcoal{}.
+We expect this is because the Go team has put a lot of engineering effort into optimizing these concurrency primitives.
+It seems likely that \charcoal{} could be optimized to be at least as fast.
 
-\vspace{1em}
-\begin{tabular}{|l|r|r|r|}
-  \hline
-   & user & sys & wall \\
-  \hline
-  \hline
-  Threads & 3.2 & 45.9 & 35.6 \\
-  \hline
-  Goroutines & 0.39 & 0.003 & 0.40 \\
-  \hline
-  Activities & 0.31 & 0.002 & 0.31 \\
-  \hline
-\end{tabular}
-\vspace{1em}
-
-All numbers are given in microseconds per spawn.
-The difference between threads and activities in this test is over two orders of magnitude.
-Also interesting to note is that the majority of the time for threads is used in the operating system, whereas the system time for activities is negligible.
-The thread implementation gets a small benefit from processor parallelism, whereas the activity implementation does not (of course).
-
-Spawn overhead is important because it determines the minimum granularity of work for which a task can (efficiently) be spawned.
-With a spawn time well under a microsecond, programmers would only have to worry about this overhead in extreme cases where an activity only executed a few instructions before finishing.
-% In other words, there is little reason to manage \emph{activity pools}; it is almost always a better idea to simply spawn a new activity for the task at hand.
-
-\charcoal{} is barely faster than Go in this benchmark.
-We do not consider this difference to be large enough to be interesting.
-% We believe this is primarily due to a more optimized implementation, not differences between the abstractions.
-% We expect that this gap could be closed with more work on the \charcoal{} implementation.
-
-\subsection{Task Switching}
-
-The third microbenchmark measures how quickly the system can switch from one task to another.
-For this test we spawned 100 tasks and organized them in a ring, each waiting for a signal of some kind from its neighbor.
-The test injects a signal at one point and then measures how quickly it can cycle around the ring.
-
-\vspace{1em}
-\begin{tabular}{|l|r|r|r|}
-  \hline
-   & user & sys & wall \\
-  \hline
-  \hline
-  Threads & 0.00 & 7.8 & 12.1 \\
-  \hline
-  Goroutines & 0.19 & 0.00 & 0.20 \\
-  \hline
-  Activities & 0.22 & 0.00 & 0.23 \\
-  \hline
-\end{tabular}
-\vspace{1em}
-
-These numbers are in microseconds per task switch.
-The pattern here is similar to the previous test.
-Activities are well over an order of magnitude faster than threads.
-% We do not know why for threads the wall clock time reported by the time utility is higher than the sum of the user and system times.
-Like the spawning benchmark, the main conclusion is that the overhead for activities is low enough that individual activities can do quite small units of work per context switch without paying a high overall efficiency penalty.
-% This opens the door to software architectures with many activities organized in a dataflow computing style.
-
-Again, Go has a small performance edge on \charcoal{}, which we attribute to maturity of the implementation.
+The speed of these primitives have a big impact on the minimum granularity of task that can be created without incurring substantial overhead.
+In both \charcoal{} and Go that overhead is closer to that of a method call than the equivalent thread operations.
+That means that concurrency can be used in interesting ways in those languages that they cannot with threads.
 
 \subsection{Just Calling}
 
@@ -1113,10 +1037,10 @@ Second, this is a microbenchmark; no application spends all of its time just cal
 \end{figure}
 
 Most importantly, all the calls in the first version of this test were performed in yielding mode.
-In no-yield mode, calls and returns in \charcoal{} are just as efficient as plain C.
-In well-tuned \charcoal{} code, most of the leaf and near-leaf calls should be performed in no-yield mode.
+In atomic mode, calls and returns in \charcoal{} are just as efficient as plain C.
+In well-tuned \charcoal{} code, most of the leaf and near-leaf calls should be performed in atomic mode.
 To simulate this effect, we modified the benchmark to the version in Figure \ref{fig:micro_calling_n}.
-The parameter \texttt{N} controls how deep in the call tree the benchmark uses yielding mode, before switching to no-yield.
+The parameter \texttt{N} controls how deep in the call tree the benchmark uses yielding mode, before switching to atomic.
 
 \vspace{1em}
 \begin{tabular}{|l|r|r|r|}
@@ -1140,7 +1064,7 @@ The parameter \texttt{N} controls how deep in the call tree the benchmark uses y
 \footnotetext{This benchmark does not create stacks deep enough to exceed the default size of a single segment of gcc's split stack.
 So we modified the benchmark for the split stack case to make a linear chain of calls instead of a binary tree.}
 
-This shows that with a modest fraction of the (static) calls performed in no-yield mode, the calling overhead gets down to less than a factor of 2.
+This shows that with a modest fraction of the (static) calls performed in atomic mode, the calling overhead gets down to less than a factor of 2.
 Combined with the observations above about tuning the language implementation and real application performance, we believe this overhead is tolerable for most applications.
 Also it is worth noting that this is the price to be paid for the extremely low memory overhead of activities.
 
@@ -1154,14 +1078,14 @@ Hot stacking does not suffer from this problem.
 
 \begin{figure}
 \includegraphics{just_calling_n_benchmark}
-\caption{The call/return microbenchmark modified to make some calls in no-yield mode.}
+\caption{The call/return microbenchmark modified to make some calls in atomic mode.}
 \label{fig:micro_calling_n}
 \end{figure}
 
 \subsection{Yielding}
 
 As described in section \ref{sec:yield_imp}, yielding is made fast by two tricks:
-First, when the compiler generates no-yield mode code, it simply does not insert yields at all.
+First, when the compiler generates atomic mode code, it simply does not insert yields at all.
 Second, the fast common case for yielding is just performing an atomic read on a global variable and branching.
 Even with this fast implementation, yielding is still not free.
 It is important to avoid yielding in hot inner loops.
@@ -1194,7 +1118,7 @@ The best-performing implementation we have found so far appears in Figure \ref{f
     \label{fig:strcmp}
 \end{figure}
 
-\texttt{no\_implicit\_yield} is a special variant of no-yield, described in section \ref{sec:noyield}.
+\texttt{no\_implicit\_yield} is a special variant of atomic, described in section \ref{sec:atomic}.
 In this case the compiler will not insert yields at the end of the while loop iterations.
 
 In the code \texttt{YIELD\_FREQ} controls how frequently the loop yields.
@@ -1218,8 +1142,8 @@ These numbers are in microseconds per \texttt{strcmp} of two identical strings o
 These data show that yielding is far from free, but with a little careful tuning the yield overhead can be brought quite low.
 Recall that yield frequency can be as low as about once per millisecond without negatively affecting the responsiveness of most applications, so yielding every 4k iterations (as in the \texttt{YIELD\_FREQ = 12} case) is fine.
 
-When the inputs to \texttt{strcmp} are known to be short, the caller can wrap the call in no-yield.
-The no-yield version should perform identically to the plain C implementation.
+When the inputs to \texttt{strcmp} are known to be short, the caller can wrap the call in atomic.
+The atomic version should perform identically to the plain C implementation.
 
 % \subsection{Code Size}
 
@@ -1283,6 +1207,13 @@ This is not a simple software architecture, but it does provide processor parall
 
 
 % Threads without the Pain
+
+%% \textbf{Hybrids}.
+%% Researchers have long understood the weaknesses of existing multitasking abstractions.
+%% Many proposals have been made for event/thread hybrids; for example: \cite{Boudol2007, Boussinot2006, Cunningham2005, Dabrowski2006, Fischer2007, Kerneis2014, Krohn2007, Li2007, Behren2003}.
+%% A detailed comparison with all of these proposals is beyond the scope of this paper.
+%% In the related work section we highlight the differences with the ones that are most similar to ours.
+
 
 \subsection{Other Multitasking Abstractions}
 
