@@ -75,9 +75,9 @@ In many application domains, cooperative concurrency abstractions like events, c
 Uses of multitasking include reacting to user input (keyboard, mouse, touch, etc.), communicating with other machines over a network, managing slow physical-world devices, and interacting with external processes.
 In recent years the richness of multitasking in mainstream applications has increased along with a few trends: increasing use of network services (e.g. Web APIs), increasingly rich physical world interaction (especially with mobile devices), and the increasing use of microservices as a software architecture.
 This has put renewed pressure on programming languages to provide good ways to write maintainable and efficient multitasking applications.
-We briefly note that pressure to make programs that run in parallel (i.e. those that run on multiple processors) has also increased, \emph{but that is not the subject of this paper or the project it describes}.
+We briefly note that pressure to make programs that run in parallel (i.e. those that run on multiple processors) has also increased, but that is \emph{not} the subject of this paper or the project it describes.
 
-This family of concurrency abstractions is defined in contrast to preemptive abstractions and abstractions that emphasize isolation and/or immutability.
+The cooperative family of concurrency abstractions is defined in contrast to preemptive abstractions and abstractions that emphasize isolation and/or immutability.
 The primary strength of cooperative abstractions relative to their preemptive cousins (e.g. threads) is less susceptibility to concurrency defects.
 The primary strength of cooperative abstractions relative to their isolated/immutable cousins (e.g. processes or functional reactive programming) is better alignment with mainstream programming practices.
 
@@ -222,7 +222,7 @@ In every cooperative concurrency framework, there is some notion of a \emph{task
 At any point in the execution of a program, at most one task can be active and it must perform some action to cause a switch to a different task.
 In some frameworks tasks are explicit; for example, in cooperative multithreading a task is a thread.
 In some frameworks tasks are implicit; for example, in most event frameworks there is no explicit task abstraction.
-Even in the implicit case, the concepts of tasks and task switching are still valid.
+Even in the implicit case, the concepts of tasks and task switching are still relevant.
 More details on this mapping are given below in the sections on specific kinds of frameworks.
 
 \subsection{On Atoms and Interrupts}
@@ -235,7 +235,7 @@ Consider the following simple code snippet\footnotemark{}:
 
 \footnotetext{Unless otherwise specified, all the code examples in this paper are written in Python-like pseudocode.}
 
-In the execution flow of the program, consider the time from just before control transfers from \texttt{someProcedure} to \texttt{otherProcedure} until the continuation of the call starts executng.
+In the execution flow of the program, consider the time from just before control transfers from \texttt{someProcedure} to \texttt{otherProcedure} until the continuation of the call starts executing.
 If it is possible for control to switch to another task during this execution window, then we say the call is interruptible.
 Otherwise, it is atomic.
 
@@ -243,14 +243,14 @@ It is much easier for both humans and automated tools to reason about the effect
 In the atomic case, the only way the program's global state can change is as a result of actions performed by \texttt{otherProcedure} (and procedures it calls).
 If \texttt{otherProcedure} is interruptible, the program may switch to a different task during its execution, resulting in changes to the program's global state that are much harder to predict.
 
-If a programmer assumes that a call is atomic (for example by assuming that the value stored in a global variable is the same before and after a call) but the call is in fact interruptible, the result can be an atomicity violation.
+If a programmer implicitly assumes that a call is atomic (for example by assuming that the value of a global variable is the same before and after a call) but the call is in fact interruptible, the result can be an atomicity violation.
 Like all concurrency bugs, atomicity violations are non-deterministic, which makes them hard to identify and fix.
 Atomicity violations are nastier that some concurrency defects, because:
 1) They are inherently application-level defects, so implementation-level atomicity violation detection tools must guess to some extent, which means that such tools will necessarily produce false positives and/or false negatives.
 2) It is common for atomicity violations to cause a corruption of the program state, but not an immediately recognized error.
 Lu et al. \cite{Lu2008} find that atomicity violations are a common and problematic category of concurrency defect in several widely used multithreaded programs.
 
-Unfortunately, it is also possible to go too far in the direction of atomicity enforcement.
+Unfortunately, it is also possible to ``over enforce'' atomicity.
 If the execution of \texttt{otherProcedure} might take a long time\footnotemark{}, then making the call atomic runs the risk of making the program unresponsive to events that happen while \texttt{otherProcedure} executes.
 In this case, we probably want \texttt{otherProcedure} to be interruptible.
 We will refer to this kind of defect as starvation.
@@ -265,12 +265,18 @@ On the other hand, in a context where the caller knows that the aggregate has ma
 Established cooperative concurrency frameworks force library authors to choose between making their abstractions atomic or interruptible.
 If library authors wants to give library users freedom of choice, they are forced to provide two different versions of each abstraction.
 Ensuring that these two versions are functionally equivalent and maintaining both is a large software engineering burden.
+We believe that in practice providing separate atomic and interruptible versions is quite uncommon.
 
-In practice, many library ecosystems built around a cooperative concurrency framework (for example, node.js) tend to lean strongly towards interruptibility, because it is impossible to interrupt an atomic procedure, whereas it is merely hard to enforce some kind of atomicity on an interruptible one.
+Many library ecosystems built around a cooperative concurrency framework (for example, node.js) tend to lean strongly towards interruptibility, because it is impossible to interrupt an atomic procedure, whereas it is merely hard to enforce (some approximation of) atomicity on an interruptible one.
 A similar line of reasoning led the developer's of Microsoft Windows' core Windows Runtime (WinRT) library to replace many atomic procedures with interruptible ones in Windows 8.
 In a post on the Micorsoft Developer Blog \cite{Windows8Team2012}, the team explains that they did this for procedures that ``could likely take longer than 50 milliseconds to execute''.
+
 In some recently defined JavaScript APIs, even some procedures that are very likely to execute quite quickly are defined in an interruptible style.
-For example, there are some procedures in the cryptography API referred to in the example application below that fall in this category.
+As one example of many, the PBKDF2 function in the cryptography API returns a promise, which means that it is interruptible.
+PBKDF2 is a function that takes a number of iterations as a parameter.
+The iterations parameter must be set over a million to cause the PBKDF2 function to take more than a second on a newish computer.
+If the iterations parameter is closer to one thousand (which is appropriate for some applications), the time is in the millisecond range.
+In such contexts, the caller would almost certainly prefer that the call be atomic.
 
 The problem with leaning too far in the direction of interruptibility is that it creates too many opportunities for task switching.
 This in turn can lead to atomicity violations if programmers are not extremely diligent about not assuming that global state is constant across interruptible calls.
@@ -324,11 +330,11 @@ Any procedure that might invoke yield is considered interruptible.
 And any procedure that might call an interruptible procedure is itself interruptible.
 
 In a sense, cooperative threads are even worse from a atomicity/starvation perspective than their cooperative cousins.
-Not only do callers not have a choice about whether a library procedure is atomic or interruptible, in many cases, they do not even know.
+Not only do callers not have a choice about whether a library procedure is atomic or interruptible, they do not even know.
 In contrast to events, coroutines and async methods, with cooperative threads calls to atomic procedures look just like calls to interruptible procedures.
 
 Not knowing whether a given library call is interruptable or not makes it hard to write reliable client code.
-Even if libraries provide some (reliable) annotation about whether an abstraction is atomic or iterruptible, cooperative threading frameworks make it \emph{too easy} to change this in the process of maintanence and evolution of a library.
+Even if libraries provide some annotation about whether an abstraction is atomic or iterruptible, cooperative threading frameworks make it \emph{too easy} to change this in the process of maintanence and evolution of a library.
 Changing an abstraction from atomic to interruptible (or vice versa) has the potential to introduce atomicity violations (or starvation) in client code.
 
 We speculate that this problem of callers not being sure which procedures are atomic has limited the adoption of cooperative threads in large library ecosystems.
@@ -338,7 +344,7 @@ We speculate that this problem of callers not being sure which procedures are at
 The increasingly sophisticated multitasking in mainstream software and the well-known problems with events and threads have forced language designers to explore alternatives in recent years.
 The most widely used alternative is \emph{coroutines}\footnotemark{}.
 Examples include async/await, which was added to C\#/.Net in 2012; function generators (\texttt{function*}), which were added to JavaScript with ECMAScript 6 (standard published in 2015); even the C++ community is considering adding support for coroutines (N4286, proposed for C++17).
-Coroutine implementations are not \emph{new}; for example, Modula-2 had coroutines in the 1980s.
+Coroutine implementations are not \emph{new} in a strict sense; for example, Modula-2 had coroutines in the 1980s.
 However, relatively few of the most widely used languages natively supported coroutines until recently.
 
 \footnotetext{In many cases language designers chose terms other than \emph{coroutine} for reasons that we can only speculate about.}
@@ -351,36 +357,37 @@ Context switching between coroutines is only permitted when a \emph{yield} primi
 Regular procedures \emph{cannot} yield; in other words, regular procedure calls are atomic.
 A somewhat non-obvious consequence of this atomicity is that coroutines spawned by regular procedures cannot start running until the procedure returns back to a coroutine (possibly through some stack of procedure calls).
 
+Just like with events, once a library abstraction is defined as a coroutine or async method, there is no way for user code to invoke it atomically.
 
-\textbf{User-level Threads (Preemptive)}.
-User-level threads do away with the yield primitive of coroutines and cooperative threads, and instead rely on a preemption mechanism of some kind to interrupt running tasks to allow others to run.
-% User-level threads are used somewhat widely.
-% However, system threads are better than user-level threads in most ways, so they tend to be used when available.
+%% \textbf{User-level Threads (Preemptive)}.
+%% User-level threads do away with the yield primitive of coroutines and cooperative threads, and instead rely on a preemption mechanism of some kind to interrupt running tasks to allow others to run.
+%% % User-level threads are used somewhat widely.
+%% % However, system threads are better than user-level threads in most ways, so they tend to be used when available.
 
-Preemption opens the door to a variety of nasty concurrency defects, which either cannot happen or are much easier to avoid in cooperative abstractions.
-Fear of these defects (data races, atomicity violations, livelocks, order violations, deadlocks) has limited the use of threads in many applications and ecosystems.
-One good entry into the vast literature on diagnosing and fixing multithreading defects is \cite{Lu2008}.
-These challenges have been understood for a long time; two decades ago Ousterhout wrote an analysis and critique of the problems with threads \cite{Ousterhout1996}.
+%% Preemption opens the door to a variety of nasty concurrency defects, which either cannot happen or are much easier to avoid in cooperative abstractions.
+%% Fear of these defects (data races, atomicity violations, livelocks, order violations, deadlocks) has limited the use of threads in many applications and ecosystems.
+%% One good entry into the vast literature on diagnosing and fixing multithreading defects is \cite{Lu2008}.
+%% These challenges have been understood for a long time; two decades ago Ousterhout wrote an analysis and critique of the problems with threads \cite{Ousterhout1996}.
 
-\section{Threads}
+%% \section{Threads}
 
-\textbf{Threads (System)}.
-System threads leave preemption and scheduling up to the operating system.
-Unlike all of the abstractions above, system threads allow multiple tasks to execute in parallel on multiple processors.
-Parallelism is, of course, valuable in many applications.
-However, it is mostly distinct from multitasking, so we mostly ignore that feature of threads in this paper.
+%% \textbf{Threads (System)}.
+%% System threads leave preemption and scheduling up to the operating system.
+%% Unlike all of the abstractions above, system threads allow multiple tasks to execute in parallel on multiple processors.
+%% Parallelism is, of course, valuable in many applications.
+%% However, it is mostly distinct from multitasking, so we mostly ignore that feature of threads in this paper.
 
-\textbf{Threads Plus Transactions}.
-In an effort to make multithreading more reliable, programming language researchers introduced the concept of scoped transactions.
-The system provides the abstraction that transactional blocks execute atomically and in isolation, even if multiple transactional blocks are running (physically) simultaneously.
-There is some evidence (for example, \cite{Pankratius2014}) that transactions make multithreading substantially less prone to concurrency defects.
-Unfortunately, there are some serious challenges with implementing transactions that have kept them on the margins of software engineering practice.
+%% \textbf{Threads Plus Transactions}.
+%% In an effort to make multithreading more reliable, programming language researchers introduced the concept of scoped transactions.
+%% The system provides the abstraction that transactional blocks execute atomically and in isolation, even if multiple transactional blocks are running (physically) simultaneously.
+%% There is some evidence (for example, \cite{Pankratius2014}) that transactions make multithreading substantially less prone to concurrency defects.
+%% Unfortunately, there are some serious challenges with implementing transactions that have kept them on the margins of software engineering practice.
 
-\textbf{Hybrids}.
-Researchers have long understood the weaknesses of existing multitasking abstractions.
-Many proposals have been made for event/thread hybrids; for example: \cite{Boudol2007, Boussinot2006, Cunningham2005, Dabrowski2006, Fischer2007, Kerneis2014, Krohn2007, Li2007, Behren2003}.
-A detailed comparison with all of these proposals is beyond the scope of this paper.
-In the related work section we highlight the differences with the ones that are most similar to ours.
+%% \textbf{Hybrids}.
+%% Researchers have long understood the weaknesses of existing multitasking abstractions.
+%% Many proposals have been made for event/thread hybrids; for example: \cite{Boudol2007, Boussinot2006, Cunningham2005, Dabrowski2006, Fischer2007, Kerneis2014, Krohn2007, Li2007, Behren2003}.
+%% A detailed comparison with all of these proposals is beyond the scope of this paper.
+%% In the related work section we highlight the differences with the ones that are most similar to ours.
 
 %% \textbf{Other Multitasking Abstractions}.
 %% This introduction does not cover multitasking abstractions exhaustively.
@@ -443,8 +450,8 @@ In this section we define activities and compare them with the multitasking abst
 % In particular we identify what we consider to be the most important software engineering weakness with each abstraction, and argue that activities mitigate these weaknesses.
 
 \emph{activities} are cooperative threads plus automatic yield insertion and atomic blocks.
-In this paper we do present a complete formal semantics for activities.
-Rather, we refer to existing work on cooperative threads \cite{Abadi2009} and describe the translation process from activities to conventional cooperative threading models.
+In this paper we do not present a complete formal semantics for activities.
+Rather, we refer to existing work on the semantics of cooperative threads \cite{Abadi2009} and describe the translation process from activities to conventional cooperative threading models.
 
 We use an example stolen from \cite{Krohn2007}; a \charcoal{} version is in Figure \ref{fig:charcoal_multidns_seq}.
 This example performs \texttt{n} DNS lookups concurrently using the standard \texttt{getaddrinfo} procedure.
@@ -821,7 +828,7 @@ A completely different approach to frame allocation is individually allocating e
 This avoids the memory concerns associated with contiguous allocation.
 However, heap allocation of frames comes at a significant performance cost for call and return operations.
 
-Simple implementations of heap allocation are generally more than an order of magnitude slower than contiguous allocation (see more details in the microbenchmarking section below).
+Simple implementations of heap allocation can be more than an order of magnitude slower than contiguous allocation (see more details in the microbenchmarking section below).
 More sophisticated implementations can be substantially more efficient (e.g. \cite{Shao2000}).
 However, even the most efficient implementations that we are aware of are still substantially slower than contiguous allocation for call-heavy code.
 
@@ -831,8 +838,8 @@ Some languages have experimented with a hybrid strategy called \emph{split}, \em
 The idea is that stack space is allocated in small segments.
 The common case call/return execution looks like traditional contiguous allocation.
 When a thread reaches the end of its segment it allocates a new one and links them together.
-This idea is appealing: the implementers of Rust and Go both used it.
-Unfortunately it has really unpleasant \emph{uncommon} case behavior called \emph{stack thrashing} or \emph{the hot split problem}.
+This idea is appealing: early implementations of Rust and Go both used it.
+Unfortunately it has unpleasant \emph{uncommon} case behavior called \emph{stack thrashing} or \emph{the hot split problem}.
 When there are frequent calls/returns right at the boundary of a segment, the overhead can be quite high.
 The implementers of Rust \cite{Anderson2013} and Go (search ``contiguous stacks in go'') both abandoned split stacks in later versions.
 
@@ -843,12 +850,12 @@ The implementers of Rust \cite{Anderson2013} and Go (search ``contiguous stacks 
 Since version 1.3, the Go language has used a novel stack allocation strategy, where each thread's stack memory is initially small and is resized on-demand.
 This is only possible because the Go language implementation knows about all pointers to stack memory and can update them if necessary (i.e., if it is necessary to relocate the whole stack).
 Clearly this would not work for C/C++ and close cousins.
-Even this strategy has non-zero overhead for call/return, as we show in the benchmark section below.
+Even this strategy has non-trivial overhead for call/return, as we show in the benchmark section below.
 
 \subsubsection{Hot Stacking}
 
 The call frame allocation strategy introduced in this paper is a hybrid of contiguous and individual heap allocation.
-The primary observation is that the slowness of individual allocation is only important for short-lived calls.
+The key observation is that the slowness of individual allocation is only important for short-lived calls.
 For long-lived calls (generally calls nearer the base of the call stack), the overhead of the call and return operations can be amortized over the long running time of the call and its callees.
 So the main idea of hot stacking is that long-lived frames are individually allocated and (most) short-lived frames are contiguously allocated in memory that is shared by multiple activities.
 
@@ -861,15 +868,18 @@ In the microbenchmarking section below we provide evidence that this strategy ca
 It is certainly possible for short-lived calls to happen in yielding mode, which means that the frames will be individually allocated.
 This should be considered a performance bug, but its worst-case overhead is not terrible and it should be a relatively easy pattern to identify with a profiler.
 
+We are not aware of any uncommon case performance problems like the hot split problem with segmented stacks.
+
 The name \emph{hot stacking} is a reference to a practice used in some military and business organizations called \emph{hot racking} or \emph{hot desking}.
 Some limited resource (e.g. a bunk or desk) is used in shifts by multiple people.
 In our case, the resource is the memory area for contiguous frame allocation, and it is shared in shifts by multiple activities.
-The word \emph{hot} is also a reference to the fact that this top of stack area should remain hot in the memory hierarchy/cache sense as long as any code is running.
+The word \emph{hot} is also a reference to the fact that this top of stack area should remain hot in the memory hierarchy/cache sense as long as any code is running, because all activities use the same block of memory for the frames for their short-lived calls.
 
 \subsection{Yield Implementation}
 \label{sec:yield_imp}
 
-Since automatic yield insertion makes it so that by default yields happen quite frequently, we need to ensure that yields are as efficient as possible.
+Automatic yield insertion makes frequent yielding common.
+So we need to ensure that yields are as efficient as possible.
 In particular, we implemented three ideas:
 
 \begin{itemize}
@@ -887,7 +897,7 @@ The no-yield mode implementation does not include yields; for most intents and p
 
 Of course making a single implementation that could be run in either mode would be possible.
 Such an implementation would need to branch on which mode it was running, potentially quite frequently.
-This seemed like a performance killer for inner loop code, though we have not investigated this assumption yet.
+We assume this would add an unacceptable amount of overhead for many applications, though we have not investigated this assumption yet.
 
 This implementation strategy could lead to a substantial increase in code size.
 We have two ideas about how this can be avoided, though we have not investigated either yet.

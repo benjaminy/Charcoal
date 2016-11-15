@@ -52,7 +52,7 @@
 	<array>
 		<dict>
 			<key>Bounds</key>
-			<string>{{55.5625, 228}, {281, 137}}</string>
+			<string>{{55.5625, 228}, {294, 137}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>FitText</key>
@@ -99,17 +99,17 @@
 \pard\pardeftab720\partightenfactor0
 
 \f0\b\fs24 \cf0 def
-\f1\b0  someProcedure( . . ., cb ):\
+\f1\b0  someProcedure( . . ., callback ):\
    # before 'other'\
    otherProcedure( . . . ,\
       
 \f0\b lambda(
 \f1\b0  result ):\
-         # after 'other'\
-         cb( exp )\
+         # continuation of 'other'\
+         callback( exp )\
    )\
    # some part of otherProcedure may have\
-   # run, but the 'after' code has not}</string>
+   # run, but the continuation code has not}</string>
 			</dict>
 			<key>Wrap</key>
 			<string>NO</string>
@@ -171,7 +171,7 @@
 	<key>MasterSheets</key>
 	<array/>
 	<key>ModificationDate</key>
-	<string>2016-11-10 21:47:42 +0000</string>
+	<string>2016-11-15 15:56:18 +0000</string>
 	<key>Modifier</key>
 	<string>Benjamin Ylvisaker</string>
 	<key>NotesVisible</key>
@@ -208,6 +208,16 @@
 		<array>
 			<string>coded</string>
 			<string>BAtzdHJlYW10eXBlZIHoA4QBQISEhAhOU051bWJlcgCEhAdOU1ZhbHVlAISECE5TT2JqZWN0AIWEASqEhAFxlwCG</string>
+		</array>
+		<key>NSPrinter</key>
+		<array>
+			<string>coded</string>
+			<string>BAtzdHJlYW10eXBlZIHoA4QBQISEhAlOU1ByaW50ZXIAhIQITlNPYmplY3QAhZKEhIQITlNTdHJpbmcBlIQBKwlUVVQyTi1CVzGGhg==</string>
+		</array>
+		<key>NSPrinterName</key>
+		<array>
+			<string>string</string>
+			<string>TUT2N-BW1</string>
 		</array>
 		<key>NSRightMargin</key>
 		<array>
@@ -247,7 +257,7 @@
 		<key>Expanded_Canvases</key>
 		<array/>
 		<key>Frame</key>
-		<string>{{1195, 408}, {1139, 859}}</string>
+		<string>{{133, 18}, {1139, 859}}</string>
 		<key>ShowInfo</key>
 		<true/>
 		<key>ShowRuler</key>
