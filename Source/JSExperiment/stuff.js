@@ -35,7 +35,7 @@ function actProc( generator_function )
         );
     }
 
-    return function( actx, ...params )
+    var f = function( actx, ...params )
     {
         var actx = actx.concat( generator_function.name );
         try {
@@ -46,7 +46,7 @@ function actProc( generator_function )
         }
         try {
             /* TODO: yield to scheduler */
-            /* The value passed to the first call to next is discarded */
+            /* The first call to next() takes no values */
             var first_yielded_promise = generator.next()
         }
         catch( err ) {
@@ -54,6 +54,7 @@ function actProc( generator_function )
         }
         return onYield( generator, first_yielded_promise );
     }
+    f.blahblah = {};
 }
 
 actx.call( function*( actx))
@@ -83,5 +84,36 @@ handle = actx.activate( function*( actx ) {
 function activities_js_makeRootContext()
 {
     actx = {};
-    return
+
+    actx.atomic_enter = function()
+    {
+        this //
+    }
+
+    actx.atomic_exit = function()
+    {
+        this //
+    }
+
+    actx.activate = function( ...params_plus_f )
+    {
+        var params = params_plus_f.slice( 0, params_plus_f.length - 1 );
+        var fn = params_plus_f[ params_plus_f.length - 1 ];
+        actx_child = this.clone();
+        actx_child.activity = {};
+        this.activities.push( actx_child.activity );
+        if( !( '' in fn ) )
+        {
+            fn = actProc( fn );
+        }
+        if( this.child_first )
+        {
+        }
+        else
+        {
+        }
+        return // some promise;
+    }
+
+    return actx;
 }
