@@ -31,40 +31,21 @@ var activity_state = Object.freeze( {
     /* assert( actx.activities.length > 0 ) */
     if( scheduler.runnable.length > 1 )
     {
-        if( scheduler.runnable[ scheduler.runnable.length - 1 ] == scheduler.last_run )
+        if( scheduler.runnable[ scheduler.runnable.length - 1 ] === scheduler.last_run )
         {
             var now = Date.now();
             var diff = now - scheduler.timestamp;
             if( diff > SCHED_QUANTUM )
             {
-                var actx = scheduler.runnable.pop();
+                scheduler.runnable.unshift( scheduler.runnable.pop() );
             }
         }
     }
-    var act = actx.activities[ 0 ];
-    var frames = act.frames;
-    var frame = frames[ frames.length - 1 ];
-    if( frame.yielded.done )
-    {
-        frames.pop();
-        if( frames.length < 1 )
-        {
-        }
-        else
-        {
-            frames[ frames.length - 1 ].yielded.value = ;
-        }
-        return P.resolve( last_yield.value );
-    }
-    
-    return P.resolve( act.next_promise.value ).then(
-        function( val )
-        {
-        },
-        function( err )
-        {
-        } );
+    var actx = scheduler.runnable[ scheduler.runnable.length - 1 ];
+    scheduler.last_run = actx;
+    return actx.continuation();
 }
+
 
 /* private */ function onJSYield( generator, yielded_promise )
 {
@@ -110,7 +91,52 @@ function actProc( generator_function )
             return P.reject( err );
         }
 
-        actx.cont = { g: generator, v: {} };
+        actx.continuation = function()
+        {
+            try {
+                var yielded_val = generator.next();
+            }
+            catch( err ) {
+                return P.reject( err );
+            }
+            if( yielded_val.done )
+                return P.resolve( yielded_val.value );
+            /* "else": */
+
+
+
+            
+                scheduler.last_run
+    var act = actx.activities[ 0 ];
+    var frames = act.frames;
+    var frame = frames[ frames.length - 1 ];
+    if( frame.yielded.done )
+    {
+        frames.pop();
+        if( frames.length < 1 )
+        {
+        }
+        else
+        {
+            frames[ frames.length - 1 ].yielded.value = ;
+        }
+        return P.resolve( last_yield.value );
+    }
+    
+    return P.resolve( act.next_promise.value ).then(
+        function( val )
+        {
+        },
+        function( err )
+        {
+        } );
+
+
+
+
+
+            
+        }
         return schedulerLoop();
 
     }
