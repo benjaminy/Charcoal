@@ -95,13 +95,13 @@ function scheduleNextStep( actx, generator, yielded_value )
     /* "else": */
     return P.resolve( yielded.value ).then(
         function( next_yielded_value ) {
-            return new Promise( function( resolve, reject ) {
+            var p = new Promise( function( resolve, reject ) {
                 actx.continuation = resolve;
-                schedlue??
             } ).then( function() {
                 return scheduleNextStep( actx, generator, next_yielded_value );
-            );
-
+            } );
+            schedulerLoop();
+            return p;
 
 
 
