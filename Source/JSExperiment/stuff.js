@@ -43,7 +43,9 @@ var activity_state = Object.freeze( {
     }
     var actx = scheduler.runnable[ scheduler.runnable.length - 1 ];
     scheduler.last_run = actx;
-    return actx.continuation();
+    var continuation = actx.continuation;
+    actx.continuation = null;
+    return continuation();
 }
 
 
@@ -76,6 +78,68 @@ var activity_state = Object.freeze( {
     );
 }
 
+function scheduleNextStep( actx, generator, yielded_value )
+{
+    /* actx       : activity context type */
+    /* generator  : generator type */
+    /* yielded<a> : { done : boolean, value : a } */
+    /* assert( actx.continuation === null ) */
+    var scheduler = actx.scheduler;
+    /* assert( scheduler.last_run === actx ) */
+    var actx_top = scheduler.runnable.pop();
+    /* assert( actx === actx_top ) */
+    if( yielded.done )
+    {
+        return P.resolve( yielded.value );
+    }
+    /* "else": */
+    return P.resolve( yielded.value ).then(
+        function( next_yielded_value ) {
+            return new Promise( function( resolve, reject ) {
+                actx.continuation = resolve;
+                schedlue??
+            } ).then( function() {
+                return scheduleNextStep( actx, generator, next_yielded_value );
+            );
+
+
+
+
+
+
+            
+            try {
+                var next_yielded = generator.next( yielded_value );
+            }
+            catch( err ) {
+                return P.reject( err );
+            }
+            return new Promise( function( resolve, reject ) {
+                
+            } ).then(
+                function(){},
+                function(){
+                } );
+        },
+        function( err ) {
+            generator.throw( err );
+        } );
+
+
+        
+    return new Promise( function( resolve, reject )
+    {
+        actx.continuation = resolve;
+    } ).then(
+    );
+        actx.continuation = function()
+        {
+            if( yielded_val.done )
+                return P.resolve( yielded_val.value );
+            /* "else": */
+
+
+}
 
 function actProc( generator_function )
 {
@@ -90,19 +154,6 @@ function actProc( generator_function )
         catch( err ) {
             return P.reject( err );
         }
-
-        actx.continuation = function()
-        {
-            try {
-                var yielded_val = generator.next();
-            }
-            catch( err ) {
-                return P.reject( err );
-            }
-            if( yielded_val.done )
-                return P.resolve( yielded_val.value );
-            /* "else": */
-
 
 
             
