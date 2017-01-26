@@ -48,36 +48,7 @@ var activity_state = Object.freeze( {
     return continuation();
 }
 
-
-/* private */ function onJSYield( generator, yielded_promise )
-{
-    /* yielded_promise<a> : { done: bool, value: Promise<a> } */
-    if( yielded_promise.done )
-    {
-        /* TODO: pop frame. If last, close activity. */
-        return P.resolve( yielded_promise.value );
-    }
-    /* "else" */
-    return P.resolve( yielded_promise.value ).then(
-        function( res )
-        {
-            /* TODO: Maybe yield to scheduler here */
-            try {
-                var next_yielded_promise = generator.next( res );
-            }
-            catch( err ) {
-                return P.reject( err );
-            }
-            return onJSYield( next_promise_value );
-        },
-        function( err )
-        {
-            /* TODO: Maybe yield to scheduler here */
-            return onJSYield( generator.throw( err ) );
-        }
-    );
-}
-
+/* private */
 function runToNextYield( actx, generator, is_err, yielded_value )
 {
     /* Parameter Types: */
@@ -107,22 +78,23 @@ function runToNextYield( actx, generator, is_err, yielded_value )
 
     function valueOrError( is_err, next_yielded_value )
     {
-        if( actx.scheduler.runnable.length < 1 )
-            return runToNextYield(
-                actx, generator, is_err, next_yielded_value );
-        /* "else": */
-
-        return new Promise( function( resolve, reject ) {
-            actx.continuation = resolve;
-            scheduleForExec( actx );
-        } ).then(
-            function() {
-                return runToNextYield(
-                    actx, generator, is_err, next_yielded_value );
-            },
-            function( async_err ) {
-                /*  */
-            } );
+        /* TODO: Maybe a special case for only one activity? (for performance)
+         * pitfall: if we add special case, starvation might be a problem. */
+        if( scheduler.atomic_actx === null )
+        {
+            return runToNextYield( actx, generator, is_err, next yielded_value );
+        }
+        else
+        {
+            return new Promise( function( resolve, reject ) {
+                actx.continuation = resolve;
+                scheduler.waiting_activities.push( actx );
+            } ).then(
+                function() {
+                    return runToNextYield(
+                        actx, generator, is_err, next_yielded_value );
+                } );
+        }
     }
 
     return P.resolve( next_yielded.value ).then(
@@ -147,46 +119,92 @@ function actProc( generator_function )
         catch( err ) {
             return P.reject( err );
         }
-
-
-            
-                scheduler.last_run
-    var act = actx.activities[ 0 ];
-    var frames = act.frames;
-    var frame = frames[ frames.length - 1 ];
-    if( frame.yielded.done )
-    {
-        frames.pop();
-        if( frames.length < 1 )
-        {
-        }
-        else
-        {
-            frames[ frames.length - 1 ].yielded.value = ;
-        }
-        return P.resolve( last_yield.value );
-    }
-    
-    return P.resolve( act.next_promise.value ).then(
-        function( val )
-        {
-        },
-        function( err )
-        {
-        } );
-
-
-
-
-
-            
-        }
-        return schedulerLoop();
-
+        /* NOTE: leaving the value parameter out of the following call,
+         * because the first call to next on a generator doesn't expect
+         * a real value. */
+        return runToNextYield( actx, generator, false );
     }
     f.good_name_js = {};
     return f;
 }
+
+
+function activities_js_makeContext()
+{
+    actx = {};
+    actx.activities = [];
+
+    actx.atomic = function( ...params_plus_f )
+    {
+        var this_actx = this;
+        var params = params_plus_f.slice( 0, params_plus_f.length - 1 );
+        var fn = params_plus_f[ params_plus_f.length - 1 ];
+        // fn should either be a generator or an act fun
+        if( !x.hasOwnProperty( 'GOOD_NAME_JS' ) )
+        {
+            fn = actProc( fn );
+        }
+        var scheduler = this_actx.scheduler;
+        if( !( scheduler.atomic_actx === null ) )
+        {
+            /* assert( this_actx === scheduler.atomic_actx ) */
+            /* NOTE: nested atomics are effectively ignored */
+            return fn( params );
+        }
+
+        function leave_atomic()
+        {
+            /* assert( scheduler.atomic_actx == this_actx ) */
+            scheduler.atomic_actx = null;
+            while( scheduler.waiting_activities.length > 0 )
+            {
+                wactx = scheduler.waiting_activities.pop();
+                var cont = wactx.continuation;
+                wactx.continuation = null;
+                cont();
+            }
+        }
+
+        return fn( params ).then(
+            function( val ) {
+                leave_atomic();
+                return P.resolve( val );
+            },
+            function( err ) {
+                leave_atomic();
+                return P.reject( err );
+            } );
+    }
+
+    actx.activate = function( ...params_plus_f )
+    {
+        var scheduler = this.scheduler;
+        var params = params_plus_f.slice( 0, params_plus_f.length - 1 );
+        var fn = params_plus_f[ params_plus_f.length - 1 ];
+        // fn should either be a generator or an act fun
+        // fn must expect actx as its first parameter
+        if( !fn.hasOwnProperty( 'GOOD_NAME_JS' ) )
+        {
+            fn = actProc( fn );
+        }
+        var actx_child = this.clone();
+        /* TODO: Add new activity to the scheduler */
+        actx_child.state = activity_state.RUNNABLE;
+        actx_child.finished_promise =
+            fn.apply( null, [ actx_child ].concat( params ) ).then(
+                function( rv ) {
+                    actx_child.state = activity_state.FINISHED;
+                    /* TODO. Remove actx from the scheduler's collection */
+                    return P.resolve( rv );
+                } );
+        return actx_child;
+    }
+
+    return actx;
+}
+
+
+/* scribbling */
 
 actx.call( function*( actx))
 
@@ -211,57 +229,3 @@ handle = actx.activate( 1, '2', [ 3 ], function*( actx, a, b, c ) {
 handle = actx.activate( function*( actx ) {
     log( 'blah' );
 } )
-
-/* private */ var entryFn = actProc( function* ( actx, f, ...params ) {
-    actx.result = yield f.apply( [ actx ].concat( params ) );
-    actx.state  = activity_state.FINISHED;
-    /* TODO. Remove actx from the scheduler's collection */
-} );
-
-function activities_js_makeContext()
-{
-    actx = {};
-    actx.activities = [];
-
-    actx.atomic_enter = function()
-    {
-        this //
-    }
-
-    actx.atomic_exit = function()
-    {
-        this //
-    }
-
-    actx.yield = function()
-    {
-    }
-
-    actx.activate = function( ...params_plus_f )
-    {
-        var params = params_plus_f.slice( 0, params_plus_f.length - 1 );
-        var fn = params_plus_f[ params_plus_f.length - 1 ];
-        // fn should either be a generator or an act fun
-        if( !x.hasOwnProperty( 'GOOD_NAME_JS' ) )
-        {
-            fn = actProc( fn );
-        }
-        actx_child = this.clone();
-        actx_child.activity = {};
-        var something = entryFn()
-        var cont = function() {
-            
-        }
-        if( this.child_first )
-        {
-            this.activities.push( actx_child.activity );
-        }
-        else
-        {
-            this.activities.unshift( actx_child.activity );
-        }
-        return schedulerLoop( this );
-    }
-
-    return actx;
-}
