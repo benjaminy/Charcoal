@@ -129,18 +129,20 @@ function actProc( generator_function )
 }
 
 
-function activities_js_makeContext()
+class ActivitiesContext
 {
-    actx = {};
-    actx.activities = [];
+    constructor() {
+        this.activities   = [];
+        this.actomic_actx = null;
+    }
 
-    actx.atomic = function( ...params_plus_f )
+    atomic( ...params_plus_fn )
     {
         var this_actx = this;
-        var params = params_plus_f.slice( 0, params_plus_f.length - 1 );
-        var fn = params_plus_f[ params_plus_f.length - 1 ];
-        // fn should either be a generator or an act fun
-        if( !x.hasOwnProperty( 'GOOD_NAME_JS' ) )
+        var params = params_plus_fn.slice( 0, params_plus_fn.length - 1 );
+        var fn = params_plus_fn[ params_plus_fn.length - 1 ];
+        /* fn : ActFn | generator function */
+        if( !fn.hasOwnProperty( 'ACTIVITIES_JS_TOKEN' ) )
         {
             fn = actProc( fn );
         }
@@ -175,6 +177,14 @@ function activities_js_makeContext()
                 return P.reject( err );
             } );
     }
+}
+
+function activities_js_makeContext()
+{
+    actx = {};
+    actx.activities = [];
+
+    actx.atomic = function( ...params_plus_f )
 
     actx.activate = function( ...params_plus_f )
     {
@@ -216,7 +226,9 @@ var ex1 = actProc( function*( actx, a, b, c )
 
 var blah = actProc( function* blah( actx )
 {
-    var handle = yield activate( actx, 1, 2, 3 );
+    var handle = actx.activate( function*( child ) {
+        do_stuff();
+    } );
 } );
 
 actjs.makeCtx( function*( actx ) {
