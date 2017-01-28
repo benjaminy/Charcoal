@@ -147,16 +147,20 @@ class ActivitiesContext
             fn = actProc( fn );
         }
         var scheduler = this_actx.scheduler;
-        if( !( scheduler.atomic_actx === null ) )
+        var first_entry = scheduler.atomic_actx === null;
+        if( !first_entry )
         {
             /* assert( this_actx === scheduler.atomic_actx ) */
-            /* NOTE: nested atomics are effectively ignored */
-            return fn( params );
         }
 
         function leave_atomic()
         {
             /* assert( scheduler.atomic_actx == this_actx ) */
+            if( !first_entry )
+            {
+                /* NOTE: nested atomics are effectively ignored */
+                return;
+            }
             scheduler.atomic_actx = null;
             while( scheduler.waiting_activities.length > 0 )
             {
@@ -228,6 +232,10 @@ var blah = actProc( function* blah( actx )
 {
     var handle = actx.activate( function*( child ) {
         do_stuff();
+        yield child.atomic( function*() {
+            yield do_something();
+            return yield do_other();
+        } );
     } );
 } );
 
