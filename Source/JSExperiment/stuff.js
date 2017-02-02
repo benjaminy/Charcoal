@@ -1,120 +1,134 @@
+"use strict";
 
 var scheduler;
 
 var P = Promise;
 
-var SCHED_QUANTUM = 50;
 
-var activity_state = Object.freeze( {
-    RUNNABLE = 1,
-    WAITING  = 2,
-    FINISHED = 3,
-} );
-
-/* A TBN.js context is a collection of activity handles.
- * An activity is generator plus its next value */
-
-/* private */ function scheduleForExec( actx )
+function makeUniqueId( ids, min, max )
 {
-    /* actx : activity context */
-    var scheduler = actx.scheduler;
-    if( scheduler.activities.length < 1 )
+    var id;
+    var found = false;
+    if( !max )
     {
-        return P.resolve( 42 /* XXX not sure what a whole context should resolve to */ );
+        max = 1000000;
     }
-    /* assert( actx.activities.length > 0 ) */
-    /* HMMMM: Maybe this should never happen */
-    if( scheduler.runnable.length < 1 )
+    if( !min )
     {
-        return Promise; /* XXX How to sleep? */
+        min = 0;
     }
-    /* assert( actx.activities.length > 0 ) */
-    if( scheduler.runnable.length > 1 )
+    while( !found )
     {
-        if( scheduler.runnable[ scheduler.runnable.length - 1 ] === scheduler.last_run )
-        {
-            var now = Date.now();
-            var diff = now - scheduler.timestamp;
-            if( diff > SCHED_QUANTUM )
-            {
-                scheduler.runnable.unshift( scheduler.runnable.pop() );
-            }
-        }
+        id = Math.floor( Math.random() * ( max - min ) ) + min;
+        if( !( id in ids ) )
+            found = true;
     }
-    var actx = scheduler.runnable[ scheduler.runnable.length - 1 ];
-    scheduler.last_run = actx;
-    var continuation = actx.continuation;
-    actx.continuation = null;
-    return continuation();
+    return id;
 }
 
-/* private */
-function runToNextYield( actx, generator, is_err, yielded_value )
+var activity_state = Object.freeze( {
+    RUNNING         : 1,
+    WAITING         : 2,
+    RESOLVING       : 3,
+    GENERATOR_ERROR : 4,
+    FINISHED        : 5,
+} );
+
+/* actProc can be called in two ways:
+ *  - with just a generator function
+ *  - an activity context, then a generator function
+ * The latter is mainly for internal use, but is available to client code
+ */
+function actProc( ...ap_params )
 {
-    /* Parameter Types: */
-    /* actx          : activity context type */
-    /* generator     : generator type */
-    /* is_err        : boolean */
-    /* yielded_value : `a or Error */
 
-    /* assert( actx.continuation === null ) */
-
-    try {
-        if( is_err )
-            var next_yielded = generator.throw( yielded_value );
-        else
-            var next_yielded = generator.next( yielded_value );
-    }
-    catch( err ) {
-        return P.reject( err );
-    }
-    /* next_yielded : { done : boolean, value : `b } */
-
-    if( next_yielded.done )
+    function runToNextYield( actx, generator, is_err, yielded_value )
     {
-        return P.resolve( next_yielded.value );
-    }
-    /* "else": */
+        /* Parameter Types: */
+        /* actx          : activity context type */
+        /* generator     : generator type */
+        /* is_err        : boolean */
+        /* yielded_value : any */
 
-    function valueOrError( is_err, next_yielded_value )
-    {
-        /* TODO: Maybe a special case for only one activity? (for performance)
-         * pitfall: if we add special case, starvation might be a problem. */
-        if( scheduler.atomic_actx === null )
+        /* assert( actx.continuation === null ) */
+
+        var scheduler = actx.scheduler;
+
+        if( scheduler.inAtomicMode() && !( scheduler.inAtomicMode( actx ) ) )
         {
-            return runToNextYield( actx, generator, is_err, next yielded_value );
-        }
-        else
-        {
+            /* Must suspend self */
+            /* assert( actx not in scheduler.waiting_activities ) */
+            actx.state = activity_state.WAITING;
+            actx.waits++;
+            scheduler.waiting_activities.push( actx );
             return new Promise( function( resolve, reject ) {
+                /* XXX: I hope this function is called immediately by the Promise constructor.
+                 *      If not, maybe there is a race with leaving atomic mode. */
                 actx.continuation = resolve;
-                scheduler.waiting_activities.push( actx );
             } ).then(
                 function() {
                     return runToNextYield(
-                        actx, generator, is_err, next_yielded_value );
+                        actx, generator, is_err, yielded_value );
                 } );
         }
+
+        /* Either no activities in atomic mode, or actx is in atomic mode */
+        actx.state = activity_state.RUNNING;
+        actx.waits = 0;
+        try {
+            if( is_err )
+                var next_yielded = generator.throw( yielded_value );
+            else
+                var next_yielded = generator.next( yielded_value );
+            actx.state = activity_state.RESOLVING;
+        }
+        catch( err ) {
+            actx.state = activity_state.GENERATOR_ERROR;
+            return P.reject( err );
+        }
+        /* next_yielded : { done : boolean, value : `b } */
+
+        if( next_yielded.done )
+        {
+            return P.resolve( next_yielded.value );
+        }
+        /* "else": The generator yielded; it didn't return */
+
+        return P.resolve( next_yielded.value ).then(
+            function( next_yielded_value ) {
+                return runToNextYield( actx, generator, false, next_yielded_value );
+            },
+            function( err ) {
+                return runToNextYield( actx, generator, true, err );
+            } );
     }
 
-    return P.resolve( next_yielded.value ).then(
-        function( next_yielded_value ) {
-            return valueOrError( false, next_yielded_value );
-        },
-        function( err ) {
-            return valueOrError( true, err );
-        } );
-}
 
-function actProc( generator_function )
-{
-    function f( actx, ...params )
+    /* Finally, the actual code that runs when actProc is called */
+    if( ap_params.length === 1 )
+    {
+        var generator_function = ap_params[ 0 ];
+        var actx_maybe         = null;
+    }
+    else if( ap_params.length === 2 )
+    {
+        var generator_function = ap_params[ 1 ];
+        var actx_maybe         = ap_params[ 0 ];
+    }
+    else
+    {
+        throw "XXX Replace Me";
+    }
+
+    function f_either_mode( pass_actx, actx, ...params )
     {
         /* actx : activity context type */
         try {
-            var generator = generator_function( actx, ...params );
+            if( pass_actx )
+                var generator = generator_function( actx, ...params );
+            else
+                var generator = generator_function( ...params );
             /* generator : iterator type */
-            generator.good_name_entry_fn = false;
         }
         catch( err ) {
             return P.reject( err );
@@ -124,16 +138,57 @@ function actProc( generator_function )
          * a real value. */
         return runToNextYield( actx, generator, false );
     }
-    f.good_name_js = {};
+
+    if( actx_maybe )
+    {
+        var f = function( ...params )
+        {
+            return f_either_mode( false, actx_maybe, ...params );
+        }
+        f.ACTIVITIES_JS_EXPECTS_CTX = false;
+    }
+    else
+    {
+        var f = function( ...params )
+        {
+            /* assert( params[ 0 ] is an activity context ) */
+            return f_either_mode( true, ...params );
+        }
+        f.ACTIVITIES_JS_EXPECTS_CTX = true;
+    }
+    f.ACTIVITIES_JS_TOKEN = {};
     return f;
 }
 
 
-class ActivitiesContext
+class ActivityContext
 {
-    constructor() {
-        this.activities   = [];
-        this.actomic_actx = null;
+    constructor( ctx ) {
+        this.continuation            = null;
+        this.waits                   = 0;
+        if( ctx )
+        {
+            this.scheduler = ctx.scheduler;
+            this.id = makeUniqueId( this.scheduler.activities );
+        }
+        else
+        {
+            scheduler = {}
+            scheduler.activities         = {};
+            scheduler.atomic_actx        = null;
+            scheduler.waiting_activities = [];
+            scheduler.inAtomicMode       =
+                function( a ) {
+                    if( a )
+                        return this.atomic_actx === a;
+                    else
+                        return !( this.atomic_actx === null );
+                }
+
+            this.scheduler = scheduler;
+            this.id        = 0;
+        }
+        this.scheduler.activities[ this.id ] = this;
     }
 
     atomic( ...params_plus_fn )
@@ -144,7 +199,7 @@ class ActivitiesContext
         /* fn : ActFn | generator function */
         if( !fn.hasOwnProperty( 'ACTIVITIES_JS_TOKEN' ) )
         {
-            fn = actProc( fn );
+            fn = actProc( this_actx, fn );
         }
         var scheduler = this_actx.scheduler;
         var first_entry = scheduler.atomic_actx === null;
@@ -155,13 +210,16 @@ class ActivitiesContext
 
         function leave_atomic()
         {
-            /* assert( scheduler.atomic_actx == this_actx ) */
+            /* assert( scheduler.atomic_actx === this_actx ) */
             if( !first_entry )
             {
                 /* NOTE: nested atomics are effectively ignored */
                 return;
             }
             scheduler.atomic_actx = null;
+            scheduler.waiting_activities.sort( function( a, b ) {
+                return a.waits - b.waits;
+            } );
             while( scheduler.waiting_activities.length > 0 )
             {
                 wactx = scheduler.waiting_activities.pop();
@@ -171,7 +229,18 @@ class ActivitiesContext
             }
         }
 
-        return fn( params ).then(
+        try {
+            if( fn.ACTIVITIES_JS_EXPECTS_CTX )
+                var p = fn( this, ...params );
+            else
+                var p = fn( ...params );
+        }
+        catch( err ) {
+            leave_atomic();
+            return P.reject( err );
+        }
+
+        return p.then(
             function( val ) {
                 leave_atomic();
                 return P.resolve( val );
@@ -181,16 +250,8 @@ class ActivitiesContext
                 return P.reject( err );
             } );
     }
-}
 
-function activities_js_makeContext()
-{
-    actx = {};
-    actx.activities = [];
-
-    actx.atomic = function( ...params_plus_f )
-
-    actx.activate = function( ...params_plus_f )
+    activate( ...params_plus_f )
     {
         var scheduler = this.scheduler;
         var params = params_plus_f.slice( 0, params_plus_f.length - 1 );
@@ -201,51 +262,65 @@ function activities_js_makeContext()
         {
             fn = actProc( fn );
         }
-        var actx_child = this.clone();
-        /* TODO: Add new activity to the scheduler */
+        var actx_child = new ActivityContext( this );
         actx_child.state = activity_state.RUNNABLE;
         actx_child.finished_promise =
-            fn.apply( null, [ actx_child ].concat( params ) ).then(
+            fn( actx_child, ...params ).then(
                 function( rv ) {
                     actx_child.state = activity_state.FINISHED;
-                    /* TODO. Remove actx from the scheduler's collection */
+                    /* TODO. Improve scaling, maybe */
+                    for( var i = 0; i < scheduler.activities.length; ++i )
+                    {
+                        
+                    }
                     return P.resolve( rv );
                 } );
         return actx_child;
     }
 
-    return actx;
 }
-
 
 /* scribbling */
 
-actx.call( function*( actx))
+var ctx = new ActivityContext()
 
-
-var ex1 = actProc( function*( actx, a, b, c )
-{
-    
+var f = actProc( function*( actx, letter ) {
+    while( true )
+    {
+        yield new Promise( resolve => setTimeout( resolve, 1000 ) );
+        console.log( letter );
+    }
 } );
 
-var blah = actProc( function* blah( actx )
-{
-    var handle = actx.activate( function*( child ) {
-        do_stuff();
-        yield child.atomic( function*() {
-            yield do_something();
-            return yield do_other();
-        } );
-    } );
-} );
+ctx.activate( "A", f );
+ctx.activate( "B", f );
 
-actjs.makeCtx( function*( actx ) {
+// actx.call( function*( actx))
+
+
+// var ex1 = actProc( function*( actx, a, b, c )
+// {
     
-} )
+// } );
 
-handle = actx.activate( 1, '2', [ 3 ], function*( actx, a, b, c ) {
-} )
+// var blah = actProc( function* blah( actx )
+// {
+//     var handle = actx.activate( function*( child ) {
+//         do_stuff();
+//         var whatever = yield child.atomic( function*() {
+//             yield do_something();
+//             return yield do_other();
+//         } );
+//     } );
+// } );
 
-handle = actx.activate( function*( actx ) {
-    log( 'blah' );
-} )
+// actjs.makeCtx( function*( actx ) {
+    
+// } )
+
+// handle = actx.activate( 1, '2', [ 3 ], function*( actx, a, b, c ) {
+// } )
+
+// handle = actx.activate( function*( actx ) {
+//     log( 'blah' );
+// } )
