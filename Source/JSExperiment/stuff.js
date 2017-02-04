@@ -4,7 +4,6 @@ var scheduler;
 
 var P = Promise;
 
-
 function makeUniqueId( ids, min, max )
 {
     var id;
@@ -34,13 +33,15 @@ var activity_state = Object.freeze( {
     FINISHED        : 5,
 } );
 
-/* actProc can be called in two ways:
+/* Function for defining "interruptible functions"
+ * intFn can be called in two ways:
  *  - with just a generator function
  *  - an activity context, then a generator function
  * The latter is mainly for internal use, but is available to client code
  */
-function actProc( ...ap_params )
+function intFn( ...ap_params )
 {
+    // console.log( "intFn", ap_params )
 
     function runToNextYield( actx, generator, is_err, yielded_value )
     {
@@ -49,6 +50,7 @@ function actProc( ...ap_params )
         /* generator     : generator type */
         /* is_err        : boolean */
         /* yielded_value : any */
+        // console.log( "runToNextYield", generator );
 
         /* assert( actx.continuation === null ) */
 
@@ -90,12 +92,21 @@ function actProc( ...ap_params )
 
         if( next_yielded.done )
         {
+            actx.names.pop();
             return P.resolve( next_yielded.value );
         }
         /* "else": The generator yielded; it didn't return */
 
         return P.resolve( next_yielded.value ).then(
             function( next_yielded_value ) {
+                try {
+                    if( ACTIVITIES_JS_RETURN_FROM_ATOMIC in next_yielded_value
+                        && !( next_yielded_value.value === undefined ) )
+                    {
+                        return P.resolve( next_yielded_value.value );
+                    }
+                }
+                catch( err ) {}
                 return runToNextYield( actx, generator, false, next_yielded_value );
             },
             function( err ) {
@@ -104,7 +115,7 @@ function actProc( ...ap_params )
     }
 
 
-    /* Finally, the actual code that runs when actProc is called */
+    /* Finally, the actual code that runs when intFn is called */
     if( ap_params.length === 1 )
     {
         var generator_function = ap_params[ 0 ];
@@ -120,21 +131,40 @@ function actProc( ...ap_params )
         throw "XXX Replace Me";
     }
 
-    function f_either_mode( pass_actx, actx, ...params )
+    function fnEitherMode( pass_actx, actx, ...params )
     {
         /* actx : activity context type */
         try {
             if( pass_actx )
+            {
                 var generator = generator_function( actx, ...params );
+            }
             else
+            {
                 var generator = generator_function( ...params );
+            }
             /* generator : iterator type */
         }
         catch( err ) {
             return P.reject( err );
         }
+        if( generator_function.name.length > 0 )
+            var name = generator_function.name;
+        else
+            var name = '(anon)'
+        if( actx.names.length >  0 )
+        {
+            var names = { no_bracket :
+                          ( actx.names[ actx.names.length - 1 ].no_bracket + ':' + name ) };
+        }
+        else
+        {
+            var names = { no_bracket : name };
+        }
+        names.bracket = '[' + names.no_bracket + ']';
+        actx.names.push( names );
         /* NOTE: leaving the value parameter out of the following call,
-         * because the first call to next on a generator doesn't expect
+         * because the first call to 'next' on a generator doesn't expect
          * a real value. */
         return runToNextYield( actx, generator, false );
     }
@@ -143,7 +173,7 @@ function actProc( ...ap_params )
     {
         var f = function( ...params )
         {
-            return f_either_mode( false, actx_maybe, ...params );
+            return fnEitherMode( false, actx_maybe, ...params );
         }
         f.ACTIVITIES_JS_EXPECTS_CTX = false;
     }
@@ -152,7 +182,7 @@ function actProc( ...ap_params )
         var f = function( ...params )
         {
             /* assert( params[ 0 ] is an activity context ) */
-            return f_either_mode( true, ...params );
+            return fnEitherMode( true, ...params );
         }
         f.ACTIVITIES_JS_EXPECTS_CTX = true;
     }
@@ -164,8 +194,9 @@ function actProc( ...ap_params )
 class ActivityContext
 {
     constructor( ctx ) {
-        this.continuation            = null;
-        this.waits                   = 0;
+        this.continuation = null;
+        this.waits        = 0;
+        this.names        = [];
         if( ctx )
         {
             this.scheduler = ctx.scheduler;
@@ -179,6 +210,7 @@ class ActivityContext
             scheduler.waiting_activities = [];
             scheduler.inAtomicMode       =
                 function( a ) {
+                    // console.log( "inAtomicMode", a ? "A" : "0", this.atomic_actx ? "B" : "0" );
                     if( a )
                         return this.atomic_actx === a;
                     else
@@ -199,7 +231,7 @@ class ActivityContext
         /* fn : ActFn | generator function */
         if( !fn.hasOwnProperty( 'ACTIVITIES_JS_TOKEN' ) )
         {
-            fn = actProc( this_actx, fn );
+            fn = intFn( this_actx, fn );
         }
         var scheduler = this_actx.scheduler;
         var first_entry = scheduler.atomic_actx === null;
@@ -208,9 +240,10 @@ class ActivityContext
             /* assert( this_actx === scheduler.atomic_actx ) */
         }
 
-        function leave_atomic()
+        function leaveAtomic()
         {
             /* assert( scheduler.atomic_actx === this_actx ) */
+            // console.log( "leaveAtomic", first_entry );
             if( !first_entry )
             {
                 /* NOTE: nested atomics are effectively ignored */
@@ -222,13 +255,14 @@ class ActivityContext
             } );
             while( scheduler.waiting_activities.length > 0 )
             {
-                wactx = scheduler.waiting_activities.pop();
+                var wactx = scheduler.waiting_activities.shift();
                 var cont = wactx.continuation;
                 wactx.continuation = null;
                 cont();
             }
         }
 
+        scheduler.atomic_actx = this_actx;
         try {
             if( fn.ACTIVITIES_JS_EXPECTS_CTX )
                 var p = fn( this, ...params );
@@ -236,31 +270,34 @@ class ActivityContext
                 var p = fn( ...params );
         }
         catch( err ) {
-            leave_atomic();
+            leaveAtomic();
             return P.reject( err );
         }
 
         return p.then(
             function( val ) {
-                leave_atomic();
+                leaveAtomic();
+                var rv = { value : val,
+                           ACTIVITIES_JS_RETURN_FROM_ATOMIC : true };
                 return P.resolve( val );
             },
             function( err ) {
-                leave_atomic();
+                leaveAtomic();
                 return P.reject( err );
             } );
     }
 
     activate( ...params_plus_f )
     {
+        // console.log( "activate" );
         var scheduler = this.scheduler;
         var params = params_plus_f.slice( 0, params_plus_f.length - 1 );
         var fn = params_plus_f[ params_plus_f.length - 1 ];
         // fn should either be a generator or an act fun
         // fn must expect actx as its first parameter
-        if( !fn.hasOwnProperty( 'GOOD_NAME_JS' ) )
+        if( !fn.hasOwnProperty( 'ACTIVITIES_JS_TOKEN' ) )
         {
-            fn = actProc( fn );
+            fn = intFn( fn );
         }
         var actx_child = new ActivityContext( this );
         actx_child.state = activity_state.RUNNABLE;
@@ -268,42 +305,74 @@ class ActivityContext
             fn( actx_child, ...params ).then(
                 function( rv ) {
                     actx_child.state = activity_state.FINISHED;
-                    /* TODO. Improve scaling, maybe */
+                    /* TODO: Improve scaling, maybe */
                     for( var i = 0; i < scheduler.activities.length; ++i )
                     {
-                        
+                        if( actx_child === scheduler.activities[ i ] )
+                            break;
                     }
+                    scheduler.activities.splice( i, 1 );
                     return P.resolve( rv );
                 } );
         return actx_child;
     }
 
+    log( ...params )
+    {
+        /* assert( this.names.length > 0 ) */
+        var names = this.names[ this.names.length - 1 ];
+        console.log( this.id, names.bracket, ...params );
+    }
 }
 
 /* scribbling */
 
-var ctx = new ActivityContext()
+function sleep( ms )
+{
+    return new Promise( resolve => setTimeout( resolve, ms ) );
+}
 
-var f = actProc( function*( actx, letter ) {
-    while( true )
-    {
-        yield new Promise( resolve => setTimeout( resolve, 1000 ) );
-        console.log( letter );
+var f = intFn( function*f( actx, letter ) {
+    while( true ) {
+        yield sleep( 500 );
+        actx.log( letter );
+        yield actx.atomic( function*at() {
+            for( var i = 0; i < 5; i++ ) {
+                yield sleep( 200 );
+                actx.log( letter + "*" );
+            }
+        } );
     }
 } );
 
+/*
+function% f( letter ) {
+    while( true ) {
+        sleep( 500 );
+        console.log( letter );
+        atomic {
+            for( var i = 0; i < 5; i++ ) {
+                sleep( 200 );
+                console.log( letter + "*" );
+            }
+        }
+    }
+}
+*/
+
+var ctx = new ActivityContext()
 ctx.activate( "A", f );
 ctx.activate( "B", f );
 
 // actx.call( function*( actx))
 
 
-// var ex1 = actProc( function*( actx, a, b, c )
+// var ex1 = intFn( function*( actx, a, b, c )
 // {
     
 // } );
 
-// var blah = actProc( function* blah( actx )
+// var blah = intFn( function* blah( actx )
 // {
 //     var handle = actx.activate( function*( child ) {
 //         do_stuff();
