@@ -1,16 +1,26 @@
 "use strict";
 
-var scheduler;
+/*
+ * Header Comment
+ */
 
 var P = Promise;
 
+/* TODO: Better assert */
+function assert( condition, message )
+{
+    if( condition )
+        return;
+    throw new Error( message );
+}
+
 function makeUniqueId( ids, min, max )
 {
-    var id;
+    var id = undefined;
     var found = false;
     if( !max )
     {
-        max = 1000000;
+        max = 100;
     }
     if( !min )
     {
@@ -37,11 +47,16 @@ var activity_state = Object.freeze( {
  * intFn can be called in two ways:
  *  - with just a generator function
  *  - an activity context, then a generator function
- * The latter is mainly for internal use, but is available to client code
+ * The former creates a function that can be invoked in different contexts and passes
+ * an activity context reference to the generator function.
+ * The latter creates a function that can only be invoked in the given context, and
+ * does _not_ pass that context on to the generator function.
+ * The latter is primarily for internal use (with "atomic"), but can be used by client
+ * code.
  */
-function intFn( ...ap_params )
+function intFn( ...intFn_params )
 {
-    // console.log( "intFn", ap_params )
+    // console.log( "intFn", intFn_params )
 
     function runToNextYield( actx, generator, is_err, yielded_value )
     {
@@ -52,16 +67,17 @@ function intFn( ...ap_params )
         /* yielded_value : any */
         // console.log( "runToNextYield", generator );
 
-        /* assert( actx.continuation === null ) */
+        assert( actx.continuation === null );
 
         var scheduler = actx.scheduler;
 
-        if( scheduler.inAtomicMode() && !( scheduler.inAtomicMode( actx ) ) )
+        if( scheduler.inAtomicMode() && !scheduler.inAtomicMode( actx ) )
         {
             /* Must suspend self */
-            /* assert( actx not in scheduler.waiting_activities ) */
+            /* assert( actx not in scheduler.waiting_activities ); */
             actx.state = activity_state.WAITING;
             actx.waits++;
+            actx.queue_len = scheduler.waiting_activities.length;
             scheduler.waiting_activities.push( actx );
             return new Promise( function( resolve, reject ) {
                 /* XXX: I hope this function is called immediately by the Promise constructor.
@@ -85,25 +101,30 @@ function intFn( ...ap_params )
             actx.state = activity_state.RESOLVING;
         }
         catch( err ) {
+            console.log( "!!! generator error", err );
+            console.log( "!!! generator error", err.stack );
             actx.state = activity_state.GENERATOR_ERROR;
             return P.reject( err );
         }
         /* next_yielded : { done : boolean, value : `b } */
 
-        if( next_yielded.done )
+        function realReturn( v )
         {
-            actx.names.pop();
-            return P.resolve( next_yielded.value );
+            actx.generator_fns.pop();
+            return P.resolve( v );
         }
+
+        if( next_yielded.done )
+            return realReturn( next_yielded.value );
         /* "else": The generator yielded; it didn't return */
 
         return P.resolve( next_yielded.value ).then(
             function( next_yielded_value ) {
                 try {
-                    if( ACTIVITIES_JS_RETURN_FROM_ATOMIC in next_yielded_value
+                    if( 'ACTIVITIES_JS_RETURN_FROM_ATOMIC' in next_yielded_value
                         && !( next_yielded_value.value === undefined ) )
                     {
-                        return P.resolve( next_yielded_value.value );
+                        return realReturn( next_yielded_value.value );
                     }
                 }
                 catch( err ) {}
@@ -116,15 +137,15 @@ function intFn( ...ap_params )
 
 
     /* Finally, the actual code that runs when intFn is called */
-    if( ap_params.length === 1 )
+    if( intFn_params.length === 1 )
     {
-        var generator_function = ap_params[ 0 ];
+        var generator_function = intFn_params[ 0 ];
         var actx_maybe         = null;
     }
-    else if( ap_params.length === 2 )
+    else if( intFn_params.length === 2 )
     {
-        var generator_function = ap_params[ 1 ];
-        var actx_maybe         = ap_params[ 0 ];
+        var generator_function = intFn_params[ 1 ];
+        var actx_maybe         = intFn_params[ 0 ];
     }
     else
     {
@@ -148,21 +169,7 @@ function intFn( ...ap_params )
         catch( err ) {
             return P.reject( err );
         }
-        if( generator_function.name.length > 0 )
-            var name = generator_function.name;
-        else
-            var name = '(anon)'
-        if( actx.names.length >  0 )
-        {
-            var names = { no_bracket :
-                          ( actx.names[ actx.names.length - 1 ].no_bracket + ':' + name ) };
-        }
-        else
-        {
-            var names = { no_bracket : name };
-        }
-        names.bracket = '[' + names.no_bracket + ']';
-        actx.names.push( names );
+        actx.generator_fns.push( generator_function );
         /* NOTE: leaving the value parameter out of the following call,
          * because the first call to 'next' on a generator doesn't expect
          * a real value. */
@@ -194,9 +201,9 @@ function intFn( ...ap_params )
 class ActivityContext
 {
     constructor( ctx ) {
-        this.continuation = null;
-        this.waits        = 0;
-        this.names        = [];
+        this.continuation  = null;
+        this.waits         = 0;
+        this.generator_fns = [];
         if( ctx )
         {
             this.scheduler = ctx.scheduler;
@@ -204,7 +211,7 @@ class ActivityContext
         }
         else
         {
-            scheduler = {}
+            var scheduler = {}
             scheduler.activities         = {};
             scheduler.atomic_actx        = null;
             scheduler.waiting_activities = [];
@@ -237,12 +244,12 @@ class ActivityContext
         var first_entry = scheduler.atomic_actx === null;
         if( !first_entry )
         {
-            /* assert( this_actx === scheduler.atomic_actx ) */
+            assert( this_actx === scheduler.atomic_actx );
         }
 
         function leaveAtomic()
         {
-            /* assert( scheduler.atomic_actx === this_actx ) */
+            assert( scheduler.atomic_actx === this_actx );
             // console.log( "leaveAtomic", first_entry );
             if( !first_entry )
             {
@@ -251,11 +258,21 @@ class ActivityContext
             }
             scheduler.atomic_actx = null;
             scheduler.waiting_activities.sort( function( a, b ) {
-                return a.waits - b.waits;
+                var diff = b.waits - a.waits;
+                if( diff == 0 )
+                    return a.queue_len - b.queue_len;
+                else
+                    return diff;
             } );
-            while( scheduler.waiting_activities.length > 0 )
+            var waiting_activities = scheduler.waiting_activities;
+            scheduler.waiting_activities = [];
+            /* TODO: Consider the pattern where the first activity
+             * enters atomic mode immediately, so all the others
+             * immediately go back to waiting.  This code is inefficient
+             * for the pattern.  But it seems unlikely to happen much. */
+            for( var i = 0; i < waiting_activities.length; i++ )
             {
-                var wactx = scheduler.waiting_activities.shift();
+                var wactx = waiting_activities[ i ];
                 var cont = wactx.continuation;
                 wactx.continuation = null;
                 cont();
@@ -319,9 +336,10 @@ class ActivityContext
 
     log( ...params )
     {
-        /* assert( this.names.length > 0 ) */
-        var names = this.names[ this.names.length - 1 ];
-        console.log( this.id, names.bracket, ...params );
+        assert( this.generator_fns.length > 0 );
+        var gen_fn = this.generator_fns[ this.generator_fns.length - 1 ];
+        // XXX bracket??? console.log( this.id, names.bracket, ...params );
+        console.log( this.id, gen_fn.name, ...params );
     }
 }
 
@@ -333,27 +351,27 @@ function sleep( ms )
 }
 
 var f = intFn( function*f( actx, letter ) {
-    while( true ) {
+    for( var j = 0; j < 3; j++ ) {
         yield sleep( 500 );
         actx.log( letter );
-        yield actx.atomic( function*at() {
+        yield actx.atomic( function*() {
             for( var i = 0; i < 5; i++ ) {
                 yield sleep( 200 );
-                actx.log( letter + "*" );
+                actx.log( letter, "*" );
             }
         } );
     }
 } );
 
 /*
-function% f( letter ) {
-    while( true ) {
+function^ f( letter ) {
+    for( i = 0; i < 3; i++ ) {
         sleep( 500 );
-        console.log( letter );
+        log( letter );
         atomic {
-            for( var i = 0; i < 5; i++ ) {
+            for( var j = 0; j < 5; j++ ) {
                 sleep( 200 );
-                console.log( letter + "*" );
+                log( letter + "*" );
             }
         }
     }
@@ -363,33 +381,5 @@ function% f( letter ) {
 var ctx = new ActivityContext()
 ctx.activate( "A", f );
 ctx.activate( "B", f );
-
-// actx.call( function*( actx))
-
-
-// var ex1 = intFn( function*( actx, a, b, c )
-// {
-    
-// } );
-
-// var blah = intFn( function* blah( actx )
-// {
-//     var handle = actx.activate( function*( child ) {
-//         do_stuff();
-//         var whatever = yield child.atomic( function*() {
-//             yield do_something();
-//             return yield do_other();
-//         } );
-//     } );
-// } );
-
-// actjs.makeCtx( function*( actx ) {
-    
-// } )
-
-// handle = actx.activate( 1, '2', [ 3 ], function*( actx, a, b, c ) {
-// } )
-
-// handle = actx.activate( function*( actx ) {
-//     log( 'blah' );
-// } )
+ctx.activate( "C", f );
+ctx.activate( "D", f );
