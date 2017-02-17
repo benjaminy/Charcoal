@@ -57,7 +57,22 @@ var activity_state = Object.freeze( {
 function intFn( ...intFn_params )
 {
     // console.log( "intFn", intFn_params )
+    assert( intFn_params.length > 0 && intFn_params.length < 3, 'XXX Replace Me' );
+    if( intFn_params.length === 1 )
+    {
+        var generator_function = intFn_params[ 0 ];
+        var actx_maybe         = null;
+    }
+    else
+    {
+        var generator_function = intFn_params[ 1 ];
+        var actx_maybe         = intFn_params[ 0 ];
+    }
 
+    /* runToNextYield is the heart of the interruptible function
+     * implementation.  It gets called after every yield performed by
+     * 'generator_function'.
+     */
     function runToNextYield( actx, generator, is_err, yielded_value )
     {
         /* Parameter Types: */
@@ -90,7 +105,7 @@ function intFn( ...intFn_params )
                 } );
         }
 
-        /* Either no activities in atomic mode, or actx is in atomic mode */
+        /* Either the system is not in atomic mode, or actx is in atomic mode */
         actx.state = activity_state.RUNNING;
         actx.waits = 0;
         try {
@@ -110,7 +125,9 @@ function intFn( ...intFn_params )
 
         function realReturn( v )
         {
-            actx.generator_fns.pop();
+            assert( actx.generator_fns.length > 0 );
+            var g = actx.generator_fns.pop();
+            assert( g === generator_function );
             return P.resolve( v );
         }
 
@@ -137,21 +154,6 @@ function intFn( ...intFn_params )
 
 
     /* Finally, the actual code that runs when intFn is called */
-    if( intFn_params.length === 1 )
-    {
-        var generator_function = intFn_params[ 0 ];
-        var actx_maybe         = null;
-    }
-    else if( intFn_params.length === 2 )
-    {
-        var generator_function = intFn_params[ 1 ];
-        var actx_maybe         = intFn_params[ 0 ];
-    }
-    else
-    {
-        throw "XXX Replace Me";
-    }
-
     function fnEitherMode( pass_actx, actx, ...params )
     {
         /* actx : activity context type */
@@ -167,6 +169,7 @@ function intFn( ...intFn_params )
             /* generator : iterator type */
         }
         catch( err ) {
+            console.log( "Error starting generator" );
             return P.reject( err );
         }
         actx.generator_fns.push( generator_function );
@@ -213,13 +216,13 @@ class ActivityContext
         {
             var scheduler = {}
             scheduler.activities         = {};
+            scheduler.num_activities     = 0;
             scheduler.atomic_actx        = null;
             scheduler.waiting_activities = [];
             scheduler.inAtomicMode       =
-                function( a ) {
-                    // console.log( "inAtomicMode", a ? "A" : "0", this.atomic_actx ? "B" : "0" );
-                    if( a )
-                        return this.atomic_actx === a;
+                function( actx ) {
+                    if( actx )
+                        return this.atomic_actx === actx;
                     else
                         return !( this.atomic_actx === null );
                 }
@@ -228,6 +231,7 @@ class ActivityContext
             this.id        = 0;
         }
         this.scheduler.activities[ this.id ] = this;
+        this.scheduler.num_activities++;
     }
 
     atomic( ...params_plus_fn )
@@ -249,8 +253,8 @@ class ActivityContext
 
         function leaveAtomic()
         {
-            assert( scheduler.atomic_actx === this_actx );
             // console.log( "leaveAtomic", first_entry );
+            assert( scheduler.atomic_actx === this_actx );
             if( !first_entry )
             {
                 /* NOTE: nested atomics are effectively ignored */
@@ -322,13 +326,12 @@ class ActivityContext
             fn( actx_child, ...params ).then(
                 function( rv ) {
                     actx_child.state = activity_state.FINISHED;
-                    /* TODO: Improve scaling, maybe */
-                    for( var i = 0; i < scheduler.activities.length; ++i )
-                    {
-                        if( actx_child === scheduler.activities[ i ] )
-                            break;
-                    }
-                    scheduler.activities.splice( i, 1 );
+                    assert( actx_child.id in scheduler.activities );
+                    delete scheduler.activities[ actx_child.id ];
+                    scheduler.num_activities--;
+                    assert( Object.keys( scheduler.activities ).length ==
+                            scheduler.num_activities )
+                    console.log( "DONE", scheduler.num_activities );
                     return P.resolve( rv );
                 } );
         return actx_child;
@@ -350,13 +353,15 @@ function sleep( ms )
     return new Promise( resolve => setTimeout( resolve, ms ) );
 }
 
+var TC = 10;
+
 var f = intFn( function*f( actx, letter ) {
     for( var j = 0; j < 3; j++ ) {
-        yield sleep( 500 );
+        yield sleep( 5 * TC );
         actx.log( letter );
         yield actx.atomic( function*() {
             for( var i = 0; i < 5; i++ ) {
-                yield sleep( 200 );
+                yield sleep( 2 * TC );
                 actx.log( letter, "*" );
             }
         } );
