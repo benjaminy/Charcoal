@@ -1,0 +1,19 @@
+[BY - May 24]
+Background for the summer project with Clara & Miguel:
+- Very broad, old-ish background on the challenges of concurrency:
+  - https://web.stanford.edu/~ouster/cgi-bin/papers/threads.pdf
+  - https://people.eecs.berkeley.edu/~brewer/papers/threads-hotos-2003.pdf
+- More recent references TBD
+- What I am expecting us to do:
+  - Instrument JS ecosystems (browsers, node, electron, others?)
+  - Collect traces of event callbacks from real applications
+  - Analyze these traces for potentially problematic patterns
+- What I am hoping/expecting to find:
+  - Many applications are composed of tons of extremely short callbacks.
+    Sometimes there are chains of callbacks that typically execute in short succession.
+    If some other action happened in the middle of such a chain, it could cause a concurrency bug.
+
+First steps:
+- Gain familiarity with JavaScript event logging/tracing tools. For example (these are just starting points):
+  - https://developers.google.com/web/tools/chrome-devtools/console/events
+  - https://nodejs.org/api/tracing.html
