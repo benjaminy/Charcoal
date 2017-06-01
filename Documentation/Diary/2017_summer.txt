@@ -17,3 +17,11 @@ First steps:
 - Gain familiarity with JavaScript event logging/tracing tools. For example (these are just starting points):
   - https://developers.google.com/web/tools/chrome-devtools/console/events
   - https://nodejs.org/api/tracing.html
+
+May 31: Miguel
+ - Progress was made in understanding a trace profile
+ - There are obstacles in extracting wanted data
+    1. There are a lot of events being traced irrelevant to our purposes
+    2. Lack of definition in function calls
+ - Effort will be made in identifying useful data by tracing simple JavaScript / HTML programs. This will help me understand what    
+   to look for in a event trace of a complex application.
