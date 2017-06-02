@@ -24,4 +24,12 @@ May 31: Miguel
     1. There are a lot of events being traced irrelevant to our purposes
     2. Lack of definition in function calls
  - Effort will be made in identifying useful data by tracing simple JavaScript / HTML programs. This will help me understand what    
-   to look for in a event trace of a complex application.
+   to look for in a event trace of a complex application
+   
+June 1: Miguel
+ - Progress was made in identifiying callbacks using simple test JavaScript programs. 
+ - Using event categories v8 and v8.execute (credit to Ben), I was able to see how the event tracer profiles callbacks. Namely, in
+   the case of setTimeout(), it appears as ScheduleAction::execute; profiles of callbacks outside of functions such as setTimeout()      
+   seem to appear as sequences of events, instead of stacks of functions, but I find this odd and will continue to look at this.
+ - Also, I will look into how to use the event tracer with other developer tools, mainly the inspector, to achieve greater control
+   over the execution of a program. 
