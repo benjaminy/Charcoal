@@ -1,5 +1,17 @@
+[Miguel - June  3-7]
+ - I learned a working amount of Python to make scripts that can read from JSON files and manipulate them
+ - I am developing a set of utility functions to manipulate the data from the Chrome Event Profiler
+ - 
+ 
+[Miguel - June 2]
+
+ - Looked into the inspector tool and made several observations. Of them, the several are important:
+	1. It is possible to stop the execution of a program and still have the Chrome Event Profiler run
+	2. The profiler will show when events/functions calls has not finished when a trace ends
+ - Also, another thing passively observed: the Profiler will trace events across all tabs, not just 'opened' ones.
+
 [Miguel - June 1]
- - Progress was made in identifiying callbacks using simple test JavaScript programs.
+ - Progress was made in identifying callbacks using simple test JavaScript programs.
  - Using event categories v8 and v8.execute (credit to Ben), I was able to see how the event tracer profiles callbacks. Namely, in
    the case of setTimeout(), it appears as ScheduleAction::execute; profiles of callbacks outside of functions such as setTimeout()
    seem to appear as sequences of events, instead of stacks of functions, but I find this odd and will continue to look at this.
@@ -13,7 +25,7 @@
     2. Lack of definition in function calls
  - Effort will be made in identifying useful data by tracing simple JavaScript / HTML programs. This will help me understand what
    to look for in a event trace of a complex application
-
+   
 [BY - May 24]
 Background for the summer project with Clara & Miguel:
 - Very broad, old-ish background on the challenges of concurrency:
