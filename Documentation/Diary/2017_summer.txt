@@ -1,7 +1,12 @@
 [Miguel - June  3-7]
  - I learned a working amount of Python to make scripts that can read from JSON files and manipulate them
  - I am developing a set of utility functions to manipulate the data from the Chrome Event Profiler
- - 
+ - I will make more effort into understanding several key questions that I have:
+ 	1. How would the theoretical concurrency bug that can result from series of call backs look like in the profiler?
+ 	2. What other processes that the Event Profiler traces that could contribute to concurrency concerns 
+ 	   beyond the v8 category?
+ - To begin to answer these questions, I will look into other tools beyond just the Chrome developer 
+   tools to see if there is some way to provide more information about events. 
  
 [Miguel - June 2]
 
