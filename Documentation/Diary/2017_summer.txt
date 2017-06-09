@@ -1,3 +1,14 @@
+[BY - June 9]
+A couple relevant papers for the project.
+- A student of Ben's senior project from last year.  Blake looked at similar
+  questions to what we're dealing with in the context of multi-threaded apps
+http://cs.coloradocollege.edu/~bylvisaker/Blake_Jackson_Capstone.pdf
+
+- An interesting publication on concurrency errors in JavaScript.  We should
+  probably do a group discussion of this one at some point.
+http://cs.coloradocollege.edu/~bylvisaker/p381-mutlu.pdf
+
+
 [Miguel - June 1]
  - Progress was made in identifiying callbacks using simple test JavaScript programs.
  - Using event categories v8 and v8.execute (credit to Ben), I was able to see how the event tracer profiles callbacks. Namely, in
@@ -6,6 +17,7 @@
  - Also, I will look into how to use the event tracer with other developer tools, mainly the inspector, to achieve greater control
    over the execution of a program.
 
+
 [Miguel - May 31]
  - Progress was made in understanding a trace profile
  - There are obstacles in extracting wanted data
@@ -13,6 +25,7 @@
     2. Lack of definition in function calls
  - Effort will be made in identifying useful data by tracing simple JavaScript / HTML programs. This will help me understand what
    to look for in a event trace of a complex application
+
 
 [BY - May 24]
 Background for the summer project with Clara & Miguel:
