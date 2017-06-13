@@ -13,6 +13,7 @@
  - My datautil module will be a dump file for any tools needed to process profiles
  - So far, trying to manipulate the output data for Event Profiler tool in a GENERIC way is a bit harder than expected,
    and I do not want to ad-hoc the process in case I find other tools to supplement the output data. 
+ - Looking for other tools are still on-going.
    
 [Miguel - June  7]
  - I learned a working amount of Python to make scripts that can read from JSON files and manipulate them
