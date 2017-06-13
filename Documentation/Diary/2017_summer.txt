@@ -1,4 +1,20 @@
-[Miguel - June  3-7]
+[Miguel - June 12]
+ - Several findings with the inspector
+ 	- A JavaScript profiler: Handles specifically functional calls during the runtime of an application in Chrome
+ 	- Performance analyzer receives runtime information with a trace of all named function calls, as well as events
+ - Creating scripts that work with the JS Profiler, the Performance Analyzer, and the Event Trace seems to be needed in order
+   to greater understand causality relationships in a profile.
+ - In this, it is questionable whether analysis should occur in the scripts or in external applications.
+ - (!) It may be possible to use the performance analyzer to derive event/callback relationships, but the
+    output file is dense...
+ 
+[Miguel - June 9]
+ - Focus has been given to doing some basic data analysis
+ - My datautil module will be a dump file for any tools needed to process profiles
+ - So far, trying to manipulate the output data for Event Profiler tool in a GENERIC way is a bit harder than expected,
+   and I do not want to ad-hoc the process in case I find other tools to supplement the output data. 
+   
+[Miguel - June  7]
  - I learned a working amount of Python to make scripts that can read from JSON files and manipulate them
  - I am developing a set of utility functions to manipulate the data from the Chrome Event Profiler
  - I will make more effort into understanding several key questions that I have:
@@ -6,7 +22,7 @@
  	2. What other processes that the Event Profiler traces that could contribute to concurrency concerns 
  	   beyond the v8 category?
  - To begin to answer these questions, I will look into other tools beyond just the Chrome developer 
-   tools to see if there is some way to provide more information about events. 
+   tools to see if there is some way to provide more information about events.
  
 [Miguel - June 2]
 
