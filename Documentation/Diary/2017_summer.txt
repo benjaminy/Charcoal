@@ -1,3 +1,7 @@
+[BY - June 14]
+- Feeling pessimistic about getting event initiator/source from browsers.
+- However, it might be available in node.js: https://gist.github.com/creationix/7796338
+
 [Miguel - June 12]
  - Several findings with the inspector
  	- A JavaScript profiler: Handles specifically functional calls during the runtime of an application in Chrome
@@ -7,24 +11,24 @@
  - In this, it is questionable whether analysis should occur in the scripts or in external applications.
  - (!) It may be possible to use the performance analyzer to derive event/callback relationships, but the
     output file is dense...
- 
+
 [Miguel - June 9]
  - Focus has been given to doing some basic data analysis
  - My datautil module will be a dump file for any tools needed to process profiles
  - So far, trying to manipulate the output data for Event Profiler tool in a GENERIC way is a bit harder than expected,
-   and I do not want to ad-hoc the process in case I find other tools to supplement the output data. 
+   and I do not want to ad-hoc the process in case I find other tools to supplement the output data.
  - Looking for other tools are still on-going.
-   
+
 [Miguel - June  7]
  - I learned a working amount of Python to make scripts that can read from JSON files and manipulate them
  - I am developing a set of utility functions to manipulate the data from the Chrome Event Profiler
  - I will make more effort into understanding several key questions that I have:
  	1. How would the theoretical concurrency bug that can result from series of call backs look like in the profiler?
- 	2. What other processes that the Event Profiler traces that could contribute to concurrency concerns 
+ 	2. What other processes that the Event Profiler traces that could contribute to concurrency concerns
  	   beyond the v8 category?
- - To begin to answer these questions, I will look into other tools beyond just the Chrome developer 
+ - To begin to answer these questions, I will look into other tools beyond just the Chrome developer
    tools to see if there is some way to provide more information about events.
- 
+
 [Miguel - June 2]
 
  - Looked into the inspector tool and made several observations. Of them, the several are important:
@@ -47,7 +51,7 @@
     2. Lack of definition in function calls
  - Effort will be made in identifying useful data by tracing simple JavaScript / HTML programs. This will help me understand what
    to look for in a event trace of a complex application
-   
+
 [BY - May 24]
 Background for the summer project with Clara & Miguel:
 - Very broad, old-ish background on the challenges of concurrency:
