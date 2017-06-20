@@ -1,3 +1,33 @@
+[Miguel - June 19]
+ - Looked at Firefox developer tools a bit more intently to see if there are cleaner output files for
+   determining function duration
+ - Mozilla's performance analyzer does not yield intuitive, interpretable results
+ - (?) There's an async parent attribute for Firefox's analyzer; simple overlapping asyc call tests suggest
+       that it can't be used for causal relationships...
+ 
+[Miguel - June 16] 
+ - Output files of chrome's performance analyzer and the JavaScript Profiler is more cumbersome than I thought
+ - On top of that, both tools rely on sampling to gain runtime information of functions
+ - I am considering dabbling with the other browser dev-tools in hopes of cleaner output files
+ 
+[Miguel - June 15] 
+ - I followed Ben's suggestion to look at the async listener, and skimmed the code. 
+ - Seems quite promising, if I understood the AsyncListener implementation well enough (separate from the tree)
+ - Will follow up on the AsyncListner implementation, as well as the Node.js native api for async handling and
+   process handling... still having issues with data gathering.
+    
+[Miguel - June 14]
+ - The output file of the current profilers / tracers do not format function time in an obvious way 
+   (there's no attribute like "duration")
+ - I have some leads but nothing solid on how to derive this data
+ 	
+[Miguel - June 13]
+ - I decided to focus on the output of the performance analyzer. It is arguably more 
+   descriptive in profiling an application during runtime.
+ - However, causal relationships are not mapped in the profiler, outside of timeouts
+ - There is reason to suppose that Chrome does, at the very least, can keep track of asynchronous activity because
+   it does so through a stack trace.
+ 
 [Miguel - June 12]
  - Several findings with the inspector
  	- A JavaScript profiler: Handles specifically functional calls during the runtime of an application in Chrome

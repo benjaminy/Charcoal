@@ -1,0 +1,7 @@
+taskTable
+tasksIdToTaskIndexMap
+addressTable
+addressIndicesByLib
+threadTable
+tidToThreadIndexMap
+stringArray

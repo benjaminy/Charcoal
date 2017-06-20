@@ -1,0 +1,15 @@
+The purpose of this document is to provide a reference to how Chrome's JavaScript Profiler interprets its output file, .cpuprofile.
+To my knowledge, there does not exist any official documentation on it.
+I am treating this a dump for ideas on how it works.
+
+- Comprises JSON data
+- Nodes appear to be a basic unit for the JS Profile
+   - Indicated by "callframe" attribute
+- Nodes with no parents are listed as children of the root node
+- Functions that call other functions have 
+
+ - Affecting the following values modify how the profiler interprets function runtime duration
+   - hitCounts
+   - start time / end time
+   - positionTicks
+   that said, the individual values of these attributes affect the runtime interpretations of other nodes...
