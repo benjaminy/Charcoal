@@ -20,7 +20,7 @@
  - (!) After consulting with Ben, it was determined that there may be a arguably straightforward way of extracting
    function duration data from Chrome's Performance Analyzer
  - For the sake of progress, I will assume his approach correct, but I will eventually "modulize" data extraction
- - Also, it was also decided that deriving causality in async acitivity may not be totally neccesary, although
+ - Also, it was also decided that deriving causality in async activity may not be totally necessary, although
    I will keep it in mind
    
 [Miguel - June 19]
