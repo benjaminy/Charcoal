@@ -1,4 +1,0 @@
-function simple()
-{
-   alert("hello");
-}

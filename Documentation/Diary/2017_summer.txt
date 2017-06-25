@@ -1,3 +1,28 @@
+[Miguel - June 24]
+  - Started to clean up the scripts / directions
+  - The focus, by Ben's suggestion, will be to start looking for gaps between callbacks / events
+  - Also, the idea of representative samples is still a concern, and a protocol for how to go about
+    getting profiles may have to be addressed concretely soon
+  
+[Miguel - June 23]
+  - I gathered some more sample performance profiles, but I am growing concerned with whether the profiles are representative of 
+    JavaScript behavior of the sites from which they were derived
+  - (!) Automation of profile analysis / graphing is looking a bit promising, as I think there is a structural pattern in what processes
+    are of interest
+  
+[Miguel - June 22]
+  - I implemented some scripts for graphing data
+  - It's a little rough looking, and the script is beginning to become a bit messy, but I believe it has working value
+  - I am suspecting that I will have to automate the process of looking at data eventually, and I wonder what sort 
+    of statistical analysis can be performed en masse 
+  
+[Miguel - June 20]
+ - (!) After consulting with Ben, it was determined that there may be a arguably straightforward way of extracting
+   function duration data from Chrome's Performance Analyzer
+ - For the sake of progress, I will assume his approach correct, but I will eventually "modulize" data extraction
+ - Also, it was also decided that deriving causality in async acitivity may not be totally neccesary, although
+   I will keep it in mind
+   
 [Miguel - June 19]
  - Looked at Firefox developer tools a bit more intently to see if there are cleaner output files for
    determining function duration
