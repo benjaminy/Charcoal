@@ -1,3 +1,16 @@
+[Miguel - June 26] *In progress 
+  - Goals
+  	1. Clean up graphs
+  	2. Solidify profile-to-function data
+  	3. Work on gaps
+
+[Miguel - June 25]
+  - Started to modulize the scripts, but more refinements have to be made with them, particular the data analysis
+  - More cleaning, to accommodate Clara's involvement in the project
+  - (!?) Added a simple guessing algorithm for finding the pids of processes of interest
+    - It seems the case that the process of interest do on average have an extraordinary # of function calls
+    - Does not work for ALL profiles, and sometimes may pick up rendering processes...
+
 [Miguel - June 24]
   - Started to clean up the scripts / directions
   - The focus, by Ben's suggestion, will be to start looking for gaps between callbacks / events

@@ -6,17 +6,11 @@ import json
 import csv
 import os;
 
-def getJSONDataFromFile():
-    '''Returns the JSON data in a file'''
+def findFile():
     #Gets rid of a GUI element native to tkinter
     root = tkinter.Tk();
     root.withdraw();
-    
-    with open(askopenfilename(),'r') as jsonfile:
-        #Data includes keys 'traceEvents' and metadata
-        data = json.load(jsonfile)
-    
-    return data;
+    return askopenfilename()
 
 def splitList(events, attr):
     '''Split a set of events into set of lists whose elements differ 
@@ -56,45 +50,9 @@ def toTxt(data, name, subdir = ""):
         for element in data:
             out.write(str(element) + "\n");
         
-def toCSV(json_data, common_attributes, filepath):
-    '''Takes JSON data and converts it into a .csv file in an
-    excel dialect'''
-    with open(filepath, 'w') as csvfile:
-        out = csv.DictWriter(csvfile, common_attributes, delimiter = ",", dialect = 'excel');
-        out.writeheader(common_attributes);
-        for event in json_data:
-            out.writerow(event);
-            
 def runtime(events):
     '''Gets the runtime of a list events. This assumes events were derived
     from chrome's profiler, which is already in sorted order'''
     starttime = events[0]["ts"];
     endtime = events[len(events) - 1]["ts"];
     return endtime - starttime;
-
-
-def getDurations(duration_events):
-    function_stack = []
-    durations = []
-    begins_fcall = lambda event: event["ph"] == "B"
-    ends_fcall = lambda event: event["ph"] == "E"
-    for event in duration_events:
-        if(begins_fcall(event)):
-            function_stack.append(event)
-            
-        elif(ends_fcall(event)):
-            startFCall = function_stack.pop()
-            
-            if(ends_fcall(startFCall)):
-                raise Exception("Unexpected event: Not a duration event")
-            
-            else:
-                start_time = float(startFCall["ts"])
-                end_time = float(event["ts"])
-                dur = end_time - start_time
-                durations.append(dur)
-        
-        else:
-            pass
-            
-    return durations

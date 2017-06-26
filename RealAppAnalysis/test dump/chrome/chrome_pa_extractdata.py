@@ -90,9 +90,9 @@ durations = sorted(getDurations(functions))
 print("Cumulative Function Call Duration: " + str(fcall_total_duration))
 print("Durations: \n" + str(durations))
 
-datautil.toTxt(process_of_interest, "test_out", subdir = "out")
-datautil.toTxt(functions, "test_functions_out", subdir = "out")
-datautil.toTxt(durations, "test_fdur_out", subdir = "out")
+# datautil.toTxt(process_of_interest, "test_out", subdir = "out")
+# datautil.toTxt(functions, "test_functions_out", subdir = "out")
+# datautil.toTxt(durations, "test_fdur_out", subdir = "out")
 
 data = getCallDurationDensityData(durations)
 data2 = getDurationPercentageData(durations)
