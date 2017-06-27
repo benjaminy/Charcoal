@@ -4,10 +4,7 @@ import datautil
 import csv
 
 def readCSVFuncData(funcdata_csv):
-    data = DictReader(funcdata_csv)
-    func_data = []
-    for row in data: func_data.append(row)
-    return func_data
+    return list(DictReader(funcdata_csv))
 
 def getDensityData(durations, fcall_total_duration):
     xs = []
