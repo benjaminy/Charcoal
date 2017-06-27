@@ -1,6 +1,7 @@
 import datautil
 import csv
 import json
+
 manual_input = True
 
 def main():
@@ -26,7 +27,7 @@ def main():
     toCSV(condensed_func_data, "data_out.csv")
     
     #datautil.toTxt(process_of_interest, "test_out", subdir = "out")
-    #datautil.toTxt(functions, "test_functions_out", subdir = "out")
+    datautil.toTxt(functions, "test_functions_out", subdir = "out")
     #datautil.toTxt(durations, "test_fdur_out", subdir = "out")
 
 def toCSV(data, filepath):

@@ -20,7 +20,7 @@ def getDensityData(durations, fcall_total_duration):
         xs.append(dur)
         cumulative_time += dur
         percent = cumulative_time / fcall_total_duration
-        print("Cumulative: %d Total: %d" % (cumulative_time, fcall_total_duration))
+        #print("Cumulative: %d Total: %d" % (cumulative_time, fcall_total_duration))
         ys.append(percent)
         
     return (xs, ys)
@@ -43,7 +43,7 @@ def graph(xs, ys, ys2):
     x_max = 100000.0
     x_min = 0.0
     
-    y_max = 1.05
+    y_max = 0.35
     y_min = -0.05
     
     _, plot_one = pyplot.subplots()
@@ -58,7 +58,6 @@ def graph(xs, ys, ys2):
     plot_two.plot(xs, ys, "r.")
     plot_two.set_ylabel("Cumulative Percentage of Duration Time", color = 'b')
     plot_two.set_xscale("log")
-    plot_two.set_xscale('log')
     plot_two.set_ylim([y_min, y_max])
     plot_two.set_xlim([x_min, x_max])
     
@@ -68,6 +67,9 @@ def graph(xs, ys, ys2):
 def main():
     with open(datautil.findFile(), 'r') as funcdata_csv:
         data = readCSVFuncData(funcdata_csv)
+    
+    print(data[-1])
+    print(data[0])
     
     fcall_total_duration = float(data[-1]["end time"]) - float(data[0]["start time"])
     print(fcall_total_duration)

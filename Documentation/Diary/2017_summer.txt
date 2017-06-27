@@ -1,8 +1,13 @@
-[Miguel - June 26] *In progress 
-  - Goals
-  	1. Clean up graphs
-  	2. Solidify profile-to-function data
-  	3. Work on gaps
+[Miguel - June 27]
+  - GOALS:
+  	1. Fiz the graphs
+  	2. Investigate gapping
+
+[Miguel - June 26]
+  - I performed some fixing and cleaning on the scripts
+  - There is a particular concern with the data
+  	1. The cumulative duration calls do not sum up to the total runtime of functions
+  	2. In effect, the cumulative percentages of function durations to total function runtime does not converge to 1.
 
 [Miguel - June 25]
   - Started to modulize the scripts, but more refinements have to be made with them, particular the data analysis

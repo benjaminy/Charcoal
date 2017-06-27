@@ -50,9 +50,9 @@ def toTxt(data, name, subdir = ""):
         for element in data:
             out.write(str(element) + "\n");
         
-def runtime(events):
+def runtime(events, attr = "ts"):
     '''Gets the runtime of a list events. This assumes events were derived
     from chrome's profiler, which is already in sorted order'''
-    starttime = events[0]["ts"];
-    endtime = events[len(events) - 1]["ts"];
+    starttime = events[0][attr];
+    endtime = events[-1][attr];
     return endtime - starttime;
