@@ -1,18 +1,9 @@
 import tkinter
+from datautil import findFile
+from datautil import readCSVFuncData
+from datautil import toTxt
 from tkinter.filedialog import askopenfilename
 from csv import DictReader
-
-def findFile():
-    #Gets rid of a GUI element native to tkinter
-    root = tkinter.Tk();
-    root.withdraw();
-    return askopenfilename()
-
-def readCSVFuncData(funcdata_csv):
-    data = DictReader(funcdata_csv)
-    func_data = []
-    for row in data: func_data.append(row)
-    return func_data
 
 data_csv = findFile()
 with open(data_csv, "r") as funcdata_csv:
@@ -21,7 +12,7 @@ with open(data_csv, "r") as funcdata_csv:
 
 pos = 0
 cumulutive_gap = 0
-
+gaps = []
 for i in range(0, len(data) - 2):
 
     cumulative_duration = 0
@@ -33,9 +24,9 @@ for i in range(0, len(data) - 2):
         print("Discontinuity at: %d" % i)
         gap = f2_start - f1_end
         print("Gap: %f" % gap)
+        gaps.append(gap)
         cumulutive_gap += gap
-        cumulative_duration = f1["duration"] + f2["duration"]
-
+        cumulative_duration += float(f1["duration"]) + float(f2["duration"])
 
 print("Function Duration: %f" % cumulative_duration)
 print("Total gap time: %f" % cumulutive_gap)

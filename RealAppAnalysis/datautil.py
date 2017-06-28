@@ -56,3 +56,6 @@ def runtime(events, attr = "ts"):
     starttime = events[0][attr];
     endtime = events[-1][attr];
     return endtime - starttime;
+
+def readCSVFuncData(funcdata_csv):
+    return list(csv.DictReader(funcdata_csv))

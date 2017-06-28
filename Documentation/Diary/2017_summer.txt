@@ -1,7 +1,13 @@
+[Miguel - June 28]
+  - GOALS: 
+  	1. Refine the process-of-interest identification algorithm
+  	2. Assuming completion of 1:
+  	   1. Test it against sample traces
+ 
 [Miguel - June 27]
-  - GOALS:
-  	1. Fiz the graphs
-  	2. Investigate gapping
+  - Fixed the main concern with the graph, but the x-axes does not represent functions of 0 duration
+  - In doing so, created a script that can serve as a starting point to find "clusters" of functions by
+    identifying gaps between function calls
 
 [Miguel - June 26]
   - I performed some fixing and cleaning on the scripts

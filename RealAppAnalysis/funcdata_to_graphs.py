@@ -2,11 +2,9 @@ import matplotlib.pyplot as pyplot
 from csv import DictReader
 import datautil
 import csv
+from matplotlib.testing.jpl_units.Duration import Duration
 
-def readCSVFuncData(funcdata_csv):
-    return list(DictReader(funcdata_csv))
-
-def getDensityData(durations, fcall_total_duration):
+def getCumulativeDurationPercentages(durations, fcall_total_duration):
     xs = []
     ys = []
     cumulative_time = 0.0
@@ -22,38 +20,38 @@ def getDensityData(durations, fcall_total_duration):
         
     return (xs, ys)
 
-def getFrequencyData(durations, fcall_total_duration):
+def getFunctionCumulation(durations):
     
     ys = []
     num = 0
     percent = 0.0
-    
+    num_of_durations = len(durations)
     for dur in durations:
         num += 1
-        percent = float(num) / float(fcall_total_duration)
+        percent = float(num) / float(num_of_durations)
         ys.append(percent)
         
     return ys
 
 def graph(xs, ys, ys2):
     
-    x_max = 100000.0
-    x_min = 0.0
+    x_max = 1000000.0
+    x_min = -1000.0
     
-    y_max = 0.35
+    y_max = 1.05
     y_min = -0.05
     
     _, plot_one = pyplot.subplots()
     plot_one.plot(xs, ys2, "b.")
     plot_one.set_xlabel("Function call duration (μs)")
-    plot_one.set_ylabel("Cumulative Percentage of Total Function Duration")
+    plot_one.set_ylabel("Cumulative Percentages of Total Function Duration")
     plot_one.set_xscale("log")
     plot_one.set_ylim([y_min, y_max])
     plot_one.set_xlim([x_min, x_max])
 
     plot_two = plot_one.twinx()
     plot_two.plot(xs, ys, "r.")
-    plot_two.set_ylabel("Cumulative Percentage of Duration Time", color = 'b')
+    plot_two.set_ylabel("Cumulative Percentage of Function Duration", color = 'b')
     plot_two.set_xscale("log")
     plot_two.set_ylim([y_min, y_max])
     plot_two.set_xlim([x_min, x_max])
@@ -63,20 +61,20 @@ def graph(xs, ys, ys2):
     
 def main():
     with open(datautil.findFile(), 'r') as funcdata_csv:
-        data = readCSVFuncData(funcdata_csv)
+        data = datautil.readCSVFuncData(funcdata_csv)
     
     print(data[-1])
     print(data[0])
     
-    fcall_total_duration = float(data[-1]["end time"]) - float(data[0]["start time"])
-    print(fcall_total_duration)
     durations_string_repr = datautil.extract(data, "duration")
     just_func_durations = [float(duration) for duration in durations_string_repr]
-    
+
     sorted_durations = sorted(just_func_durations)
-    datautil.toTxt(sorted_durations, "sorted_durations")
-    xs, ys = getDensityData(sorted_durations, fcall_total_duration)
-    ys2 = getFrequencyData(sorted_durations, fcall_total_duration)
+    #datautil.toTxt(sorted_durations, "sorted_durations")
+    fcall_total_duration = sum(just_func_durations)
+    print("Total Function Runtime: %f" % fcall_total_duration)
+    xs, ys = getCumulativeDurationPercentages(sorted_durations, fcall_total_duration)
+    ys2 = getFunctionCumulation(sorted_durations)
     graph(xs, ys, ys2)
     
 main()
