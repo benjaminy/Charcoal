@@ -3,7 +3,7 @@ from os.path import isfile, isdir, join
 from json import load
 import datautil
     
-def getCPUProfile(data): return data[-1]["args"]["data"]["cpuProfile"]["nodes"]
+def getCPUProfileNodes(data): return data[-1]["args"]["data"]["cpuProfile"]["nodes"]
 
 def onAllDataInDir(root_dir, func):
     isDataFile = lambda filename: filename.endswith(".json")
@@ -13,13 +13,15 @@ def onAllDataInDir(root_dir, func):
         print("Files: " + str(files))
         for file in files:
             if(isDataFile(file)):
+                print(file)
                 try:
                     with open((join(filepath, file)), 'r') as data_file: 
                         data = load(data_file)
-                        print(file)
-                        func(data)
+
                 except:
-                    print("Error in processing data file: " + file)               
+                    print("Error in processing data file: " + file)      
+                    
+            func(data)         
     
 def examineProfileAccuracy(data):
     cpu_profile = data[-1]
@@ -35,28 +37,34 @@ def examineProfileAccuracy(data):
     
     
 def compareCPUProfileToFunctionEvents(data):
-    cpu_profile = getCPUProfile(data)
-    cpu_profile_fnames = [node["callFrame"]["functionName"] for node in cpu_profile]
+    cpu_profile_nodes = getCPUProfileNodes(data)
+    cpu_profile_fnames = [node["callFrame"]["functionName"] for node in cpu_profile_nodes]
     functions = datautil.filterEvents(data, "name", "FunctionCall")
-    print(functions)
-    events_fnames = [function["args"]["data"]["functionName"] for function in functions]
-    print(events_fnames)
+    #print(functions)
+    func_events_names = [function["args"]["data"]["functionName"] for function in functions if function["args"]]
+
+    
+    print(func_events_names)
         
     #functions = datautil.filterEvents(data, "name", "FunctionCall")
 
-def getTopLevelFunctions(cpu_profile):
+def getTopLevelFunctions(cpu_profile, debug = False):
     '''Returns all the functions that are not called by other functions from a CPU_Profile
        Ex:
-           Let there be functions a, b, abd c
+           Let there be functions a, b, and c
            If function A calls B, and function B calls C during runtime
            This function would return A
     '''
-    print("Nodes: " + str(len(cpu_profile)))
+
     root = cpu_profile[0]
-    IDS_of_high_level_functions = root["children"]
-    high_level_functions = [function for function in cpu_profile if function["id"] in IDS_of_high_level_functions]
-    print(len(high_level_functions))
-    print(len(IDS_of_high_level_functions))
-    print(high_level_functions)
+    high_level_functions = [function for function in cpu_profile if function["id"] in root["children"]]
+   
+    if debug:
+        print("Nodes: " + str(len(cpu_profile)))
+        print(len(high_level_functions))
+        print(len(IDS_of_high_level_functions))
+        print(high_level_functions)
+    
+    return high_level_functions
     
 onAllDataInDir(getcwd() + "/sample traces/test page", compareCPUProfileToFunctionEvents)

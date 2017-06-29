@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 [Miguel - June 29]
   - GOALS:
   	1. Understand what sort of agreements in data there are between the CPU Profile and the event profile
@@ -33,6 +34,20 @@
   - (!?) Added a simple guessing algorithm for finding the pids of processes of interest
     - It seems the case that the process of interest do on average have an extraordinary # of function calls
     - Does not work for ALL profiles, and sometimes may pick up rendering processes...
+=======
+[BY - June 26]
+A couple relevant papers for the project.
+- A student of Ben's senior project from last year.  Blake looked at similar
+  questions to what we're dealing with in the context of multi-threaded apps
+http://cs.coloradocollege.edu/~bylvisaker/Blake_Jackson_Capstone.pdf
+
+- An interesting publication on concurrency errors in JavaScript.  We should
+  probably do a group discussion of this one at some point.
+http://cs.coloradocollege.edu/~bylvisaker/p381-mutlu.pdf
+
+- Ben's work that is the motivation for this whole thing:
+http://charcoal-lang.org/charcoal_intro_draft.pdf
+>>>>>>> refs/remotes/origin/master
 
 [Miguel - June 24]
   - Started to clean up the scripts / directions
@@ -76,7 +91,11 @@
  - Seems quite promising, if I understood the AsyncListener implementation well enough (separate from the tree)
  - Will follow up on the AsyncListner implementation, as well as the Node.js native api for async handling and
    process handling... still having issues with data gathering.
-    
+ 
+ [BY - June 14]
+- Feeling pessimistic about getting event initiator/source from browsers.
+- However, it might be available in node.js: https://gist.github.com/creationix/7796338
+   
 [Miguel - June 14]
  - The output file of the current profilers / tracers do not format function time in an obvious way 
    (there's no attribute like "duration")
