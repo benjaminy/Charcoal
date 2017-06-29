@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 [Miguel - June 29]
   - GOALS:
   	1. Understand what sort of agreements in data there are between the CPU Profile and the event profile
@@ -34,7 +33,7 @@
   - (!?) Added a simple guessing algorithm for finding the pids of processes of interest
     - It seems the case that the process of interest do on average have an extraordinary # of function calls
     - Does not work for ALL profiles, and sometimes may pick up rendering processes...
-=======
+
 [BY - June 26]
 A couple relevant papers for the project.
 - A student of Ben's senior project from last year.  Blake looked at similar
@@ -47,7 +46,6 @@ http://cs.coloradocollege.edu/~bylvisaker/p381-mutlu.pdf
 
 - Ben's work that is the motivation for this whole thing:
 http://charcoal-lang.org/charcoal_intro_draft.pdf
->>>>>>> refs/remotes/origin/master
 
 [Miguel - June 24]
   - Started to clean up the scripts / directions
