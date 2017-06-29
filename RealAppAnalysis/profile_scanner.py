@@ -16,12 +16,10 @@ def onAllDataInDir(root_dir, func):
                 try:
                     with open((join(filepath, file)), 'r') as data_file: 
                         data = load(data_file)
+                        print(file)
+                        func(data)
                 except:
-                    print("Error in loading file: " + file)
-                
-                print(file)
-                func(data)
-                
+                    print("Error in processing data file: " + file)               
     
 def examineProfileAccuracy(data):
     cpu_profile = data[-1]
@@ -39,14 +37,20 @@ def examineProfileAccuracy(data):
 def compareCPUProfileToFunctionEvents(data):
     cpu_profile = getCPUProfile(data)
     cpu_profile_fnames = [node["callFrame"]["functionName"] for node in cpu_profile]
-    events_fnames = datautil.extract(datautil.filterEvents(data, "name", "FunctionCall"), "functionMname")
-    
-    for function in cpu_profile_functions: 
-        print(function)
+    functions = datautil.filterEvents(data, "name", "FunctionCall")
+    print(functions)
+    events_fnames = [function["args"]["data"]["functionName"] for function in functions]
+    print(events_fnames)
         
     #functions = datautil.filterEvents(data, "name", "FunctionCall")
 
-def getHighLevelFunctionsFromCPUProfile(cpu_profile):
+def getTopLevelFunctions(cpu_profile):
+    '''Returns all the functions that are not called by other functions from a CPU_Profile
+       Ex:
+           Let there be functions a, b, abd c
+           If function A calls B, and function B calls C during runtime
+           This function would return A
+    '''
     print("Nodes: " + str(len(cpu_profile)))
     root = cpu_profile[0]
     IDS_of_high_level_functions = root["children"]

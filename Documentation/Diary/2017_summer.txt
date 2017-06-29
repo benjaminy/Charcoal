@@ -1,3 +1,10 @@
+[Miguel - June 29]
+  - GOALS:
+  	1. Understand what sort of agreements in data there are between the CPU Profile and the event profile
+  	2. Determine which of the two, if no agreement is found, is more reliable
+  	3. Investigate whether the duratons of function evenets are truly represented by the event profile
+  		- I have a suspicion that the CPU Profile is where function events are represented in 0.1 MS resolution...
+  		
 [Miguel - June 28]
   - Refining how to identify process-of-interest automatically is not achieved
   - (!) That said, in this process, it was found that:
