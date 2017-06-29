@@ -59,3 +59,7 @@ def runtime(events, attr = "ts"):
 
 def readCSVFuncData(funcdata_csv):
     return list(csv.DictReader(funcdata_csv))
+
+def onAllProfilesInDir(dir, func):
+    sub_directories = os.listdir(dir)
+    print(sub_directiories)

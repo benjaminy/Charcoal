@@ -1,8 +1,13 @@
 [Miguel - June 28]
-  - GOALS: 
-  	1. Refine the process-of-interest identification algorithm
-  	2. Assuming completion of 1:
-  	   1. Test it against sample traces
+  - Refining how to identify process-of-interest automatically is not achieved
+  - (!) That said, in this process, it was found that:
+  	1. Each data file has a cpuprofile associated with it, which is tailored to profiling JavaScript behavior 
+  	2. Every process and their threads has metadata associated with it, which can be used if trends exist in which thread scripting
+  	   events occur (the descriptors for the metadata is consistent across data files)
+  - By mapping the CPU Profile to the FunctionCall events in the data file, it is possible to identify processes of interest
+    but there is no clear 1:1 relationship between the CPU Profile and FunctionCall events
+  - Effort is being made in creating the bridge between the two data subsets so that a more robust process-of-interest
+    algorithm is achieved
  
 [Miguel - June 27]
   - Fixed the main concern with the graph, but the x-axes does not represent functions of 0 duration
