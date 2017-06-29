@@ -4,6 +4,7 @@ from json import load
 import datautil
     
 def getCPUProfileNodes(data): return data[-1]["args"]["data"]["cpuProfile"]["nodes"]
+def log(str, indent = 1): print(("\t" * indent) + str) 
 
 def onAllDataInDir(root_dir, func):
     isDataFile = lambda filename: filename.endswith(".json")
@@ -42,14 +43,26 @@ def compareCPUProfileToFunctionEvents(data):
     functions = datautil.filterEvents(data, "name", "FunctionCall")
     #print(functions)
     func_events_names = [function["args"]["data"]["functionName"] for function in functions if function["args"]]
-
     
-    print(func_events_names)
-        
+    cpu_set = set(cpu_profile_fnames)
+    event_set = set(func_events_names)
+    
+    intersection = cpu_set.intersection(event_set)
+    log("Intersection: " + str(intersection))
+    log("Count: %d" % (len(intersection)), indent = 2)
+
+    dif = cpu_set.difference(event_set)
+    log("Not in Function Events: " + str(dif))
+    log("Count: %d" % (len(dif)), indent = 2)
+    
+    dif = event_set.difference(cpu_set)
+    log("Not in Profile: " + str(dif))
+    log("Count: %d" % (len(dif)), indent = 2)
     #functions = datautil.filterEvents(data, "name", "FunctionCall")
 
 def getTopLevelFunctions(cpu_profile, debug = False):
-    '''Returns all the functions that are not called by other functions from a CPU_Profile
+    '''
+    Returns all the functions that are not called by other functions from a CPU_Profile
        Ex:
            Let there be functions a, b, and c
            If function A calls B, and function B calls C during runtime
@@ -60,11 +73,13 @@ def getTopLevelFunctions(cpu_profile, debug = False):
     high_level_functions = [function for function in cpu_profile if function["id"] in root["children"]]
    
     if debug:
-        print("Nodes: " + str(len(cpu_profile)))
-        print(len(high_level_functions))
-        print(len(IDS_of_high_level_functions))
-        print(high_level_functions)
+        print("Nodes: "                + str(len(cpu_profile)))
+        print("High level functions: " + str(len(high_level_functions)))
+        print("Root children: "        + str(len(IDS_of_high_level_functions)))
+        print("High level functions "  + str(high_level_functions))
     
     return high_level_functions
     
-onAllDataInDir(getcwd() + "/sample traces/test page", compareCPUProfileToFunctionEvents)
+main = getcwd() + "/sample traces"
+test = main + "/test page"
+onAllDataInDir(main, compareCPUProfileToFunctionEvents)
