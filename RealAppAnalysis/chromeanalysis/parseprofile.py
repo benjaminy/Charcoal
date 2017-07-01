@@ -23,14 +23,15 @@ Parse the JSON file from a chrome performance analyzer profile into a Python dat
 '''
 
 def main():
-    parseprofile("profiles/sample.json")
+    parseprofile( load_profile_from_file("profiles/sample.json") )
 
 def load_profile_from_file(filepath):
     with open(filepath) as json_data:
-        events = json.load(json_data)
+        profile = json.load(json_data)
+    return profile
 
 def cpuprofile_event(profile):
-    cpu_profile = profile[-1]
+    return profile[-1]
 
 def parseprofile(profile):
 
