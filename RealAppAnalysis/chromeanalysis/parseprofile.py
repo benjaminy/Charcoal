@@ -23,7 +23,14 @@ Parse the JSON file from a chrome performance analyzer profile into a Python dat
 '''
 
 def main():
-    parseprofile( load_profile_from_file("profiles/sample.json") )
+    pp = pprint.PrettyPrinter(indent=2)
+
+    profile = load_profile_from_file("profiles/sample.json")
+    categorized_events = parseprofile( profile  )
+    cpuprofile = cpuprofile_event( profile )
+    
+    pp.pprint(categorized_events)
+    #pp.pprint(cpuprofile)
 
 def load_profile_from_file(filepath):
     with open(filepath) as json_data:
@@ -50,10 +57,6 @@ def parseprofile(profile):
         for tid, value in subdic.items():
             newvalue = categorize_as_dic(value, "ph")
             categorized_events[pid][tid] = newvalue
-
-
-    pp = pprint.PrettyPrinter(indent=2)
-    pp.pprint(categorized_events)
 
     return categorized_events
 
@@ -87,7 +90,6 @@ def categorize_as_tuple(events, attribute):
 
 
 def durationevents(events):
-
     stack = []
     durationevents = []
 
