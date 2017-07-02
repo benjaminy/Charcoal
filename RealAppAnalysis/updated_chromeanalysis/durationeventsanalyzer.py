@@ -1,29 +1,62 @@
+import matplotlib.pyplot as plt
 
-''' Takes as input a list of durationevents and performs analysis on it.
-The functions are fundamentally flawed if complete events are to be considered.'''
+''' Takes as input a list of durationevents, belonging to a certain thread and process, and performs analysis on it.
+NOTE: Some parts of the analysis are fundamentally flawed if complete events should be taken into account.
+
+Prove the following:
+Many applications are composed of tons of extremely short callbacks.
+Sometimes there are chains of callbacks that typically execute in short succession.
+If some other action happened in the middle of such a chain, it could cause a concurrency bug.
+
+events = [
+{
+  { args':
+     {
+       tileData':
+         { layerId': 93,
+           sourceFrameNumber': 311,
+           tileId':
+           {
+             u'id_ref':
+             u'0x7f860ad387b0'
+           },
+
+         tileResolution':
+         u'HIGH_RESOLUTION'
+         }
+     },
+   'cat': u'cc,disabled-by-default-devtools.timeline',
+   'dur': '532',
+   'end time': 27781510672,
+   'name': u'RasterTask',
+   'start time': 27781510140,
+   'tts': 100325},
+},
+
+{}, {}...]
+
+'''
 
 def main():
     pass
 
-def normalize(initial_ts):
-    normalized_times = []
-    start = start_times[0]
-    for starttime in starttimes:
-        normalized_times.append(starttime - initial_ts)
-    return normalized_times
 
-def total_runtime(events):
-    starttime = events[0]["start time"];
-    endtime = events[-1]["end time"];
-    return float(endtime) - float(starttime);
+def get_durations(durationevents):
+    durations = []
+    for durationevent in durationevents:
+        durations.append(durationevent["dur"])
+    return sorted(durations)
 
-def total_functiontime(durationevents):
-    sum=0
-    for durevent in durationevents:
-        sum += durevent["duration"]
-    return sum
+def sort_events_according_to_starttime(durationevents):
+    pass
 
-def gaps_list(durationevents):
+def total_runtime(sorted_durationevents):
+    starttime = sorted_durationevents[0]["start time"];
+    endtime = sorted_durationevents[-1]["end time"];
+    return endtime-starttime;
+
+
+def gaptimes(sorted_durationevents):
     gaps = []
     for i in range(0, len(durationevents) - 1):
 
@@ -37,84 +70,60 @@ def gaps_list(durationevents):
             gaps.append(gap)
     return gaps
 
+def total_functiontime(durations):
+    sum=0
+    for dur in durations:
+        sum += dur
+    return sum
 
-def gaps_count(gaps):
-    count=0
-    for gap in gaps:
-        count+=1
-    return count
-
-def gaps_cumulativetime(gaps):
+def total_idletime(gaps):
     cum_time=0
     for gap in gaps:
         cum_time += gap
     return cum_time
 
-def idle_percent(total_gaptime, total_functiontime):
+def idletime_percentage(total_gaptime, total_functiontime):
     return ( total_gaptime / (total_gaptime + total_functiontime) )
 
 
-def density_data(durationevents, total_functiontime):
+'''One of the lines is the number of events/function calls with duration less than X,
+normalized to the total number of function calls in the trace. '''
+def data1(durations):
     xs = []
     ys = []
-    cumulative_time = 0.0
-    percent = 0.0
 
-    for durevent in durationevents:
-        duration = durevent["duration"]
-        xs.append(duration)
+    number_of_durevents = len(durations)
+    for i in range( number_of_durevents ):
+        xs.append( durations[i] )
+        ys.append( float(i+1)/float(number_of_durevents) )
+
+    print ys
+    return (xs, ys)
+
+'''The other line is the total duration (sum) of all the event/function calls with duration less than X,
+normalized to the total duration of all function calls in the trace. '''
+def data2(durations):
+
+    xs = []
+    ys = []
+
+    total_duration = total_functiontime(durations)
+    cumulative_time = 0.0
+
+    for dur in durations:
         cumulative_time += dur
-        ys.append(cumulative_time / total_functiontime)
+        xs.append( dur )
+        ys.append( float(cumulative_time)/float(total_duration) )
 
     return (xs, ys)
 
-def frequency_data(durationevents, total_functiontime):
-
-    ys = []
-    number_of_calls = len(durationevents)
-
-    for i in range(1, length+1):
-        ys.append(float(i) / float(number_of_calls))
-
-    return ys
 
 
-def simple_graph(path, xs):
-    ys=[]
-    for i in range(len(xs)):
-        ys.append(0)
-
-    plt.figure(2)
-    plt.plot(xs, ys, 'ro')
-    plt.axis([0, 1000, 0, 1])
-    plt.savefig(path)
-
-
-def create_graph(path, xs, ys, ys2):
-    plt.figure(1)
-
-    x_max = 100000.0
-    x_min = 0.0
-
-    y_max = 1.05
-    y_min = -0.05
-
-    _, plot_one = plt.subplots()
-    plot_one.plot(xs, ys2, "b.")
-    plot_one.set_xlabel("Function call duration (microsec)")
-    plot_one.set_ylabel("Cumulative Percentage of Total Function Duration")
-    plot_one.set_xscale("log")
-    plot_one.set_ylim([y_min, y_max])
-    plot_one.set_xlim([x_min, x_max])
-
-    plot_two = plot_one.twinx()
-    plot_two.plot(xs, ys, "r.")
-    plot_two.set_ylabel("Cumulative Percentage of Duration Time", color = 'b')
-    plot_two.set_xscale("log")
-    plot_two.set_ylim([y_min, y_max])
-    plot_two.set_xlim([x_min, x_max])
-
-    plt.savefig(path)
+def create_graph(filepath, xs, ys):
+    plt.plot(xs, ys, "ro")
+    plt.axis([0, 10000, -0.05, 1.05])
+    plt.show()
+    plt.savefig(filepath)
 
 if __name__ == '__main__':
     main()

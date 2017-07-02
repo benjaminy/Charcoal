@@ -1,18 +1,31 @@
 import parseprofile as parser
-import cpuprofileanalyzer as cpu
+import cpuprofileparser as cpuparser
+import durationeventsanalyzer as duranalyzer
+import profileanalyzer
+import utils
 import pprint
+
 
 
 def main():
     pp = pprint.PrettyPrinter(indent=2)
 
-    profile = parser.load_profile_from_file("/Users/clararichter/Desktop/workspace/Charcoal/RealAppAnalysis/chromeanalysis/profiles/sample.json")
+    profile = utils.load_profile_from_file("/Users/clararichter/Desktop/workspace/Charcoal/RealAppAnalysis/chromeanalysis/profiles/facebook.json")
 
-    nodes = cpu.nodes( ( parser.cpuprofile_event(profile) ) )
-    nodes_by_id = cpu.categorize_as_dic(nodes)
-    dic = cpu.create_stack_hierarchy(nodes_by_id)
-    #pp.pprint( dic )
-    print cpu.getcalls(dic)
+
+    ( cpu_pid, cpu_tid ) = cpuparser.process_and_thread_ids(cpuparser.cpuprofile(profile))
+    categorized_profile = parser.parseprofile(profile)
+    print profileanalyzer.event_types(categorized_profile)
+
+    #obtain durationevents from thread of interest
+    durationevents = categorized_profile[cpu_pid][cpu_tid]["Dx"]
+    durations = duranalyzer.get_durations(durationevents)
+    (xs, ys) = duranalyzer.data2(durations)
+    duranalyzer.create_graph("testgraph.png", xs, ys)
+    #pp.pprint(durations)
+
+
+
 
 
 
