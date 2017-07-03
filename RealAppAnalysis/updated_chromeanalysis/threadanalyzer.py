@@ -22,12 +22,14 @@ def main():
 
 
 def event_types_count(dic_of_events):
-    ''' { "M": 34, "D":45, "X":65, "I":67 }'''
+    ''' { "M": 34, "Dx":45, "X":65, "I":67 }'''
     dic = {}
     for key, value in dic_of_events.items():
         dic[key] = len(value)
     return dic
 
+def durationevents_count(dic_of_events):
+    return len(dic_of_events["Dx"])
 
 if __name__ == '__main__':
     main()

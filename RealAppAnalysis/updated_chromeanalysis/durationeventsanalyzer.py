@@ -97,7 +97,7 @@ def data1(durations):
         xs.append( durations[i] )
         ys.append( float(i+1)/float(number_of_durevents) )
 
-    print ys
+    #print ys
     return (xs, ys)
 
 '''The other line is the total duration (sum) of all the event/function calls with duration less than X,
@@ -122,8 +122,8 @@ def data2(durations):
 def create_graph(filepath, xs, ys):
     plt.plot(xs, ys, "ro")
     plt.axis([0, 10000, -0.05, 1.05])
-    plt.show()
     plt.savefig(filepath)
+    plt.clf()
 
 if __name__ == '__main__':
     main()
