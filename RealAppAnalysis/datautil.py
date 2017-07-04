@@ -30,9 +30,8 @@ def splitList(events, attr):
     
     return categorized_events;
 
-
 def filterEvents(events, attr, val):
-   return [event for event in events if event[attr] == val]
+   return [event for event in events if attr in event and event[attr] == val]
 
 def extract(events, attr):
     return [event[attr] for event in events if attr in event];
@@ -59,3 +58,11 @@ def runtime(events, attr = "ts"):
 
 def readCSVFuncData(funcdata_csv):
     return list(csv.DictReader(funcdata_csv))
+
+def trimDict(dict, *attrs):
+    for attr in attrs:
+        if attr in dict: del(dict[attr])
+        
+def log(val, indent = 1, tag = ""):
+    if tag: tag += ": "
+    print(("\t" * indent) + tag + str(val)) 
