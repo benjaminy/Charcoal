@@ -1,10 +1,19 @@
-[Miguel - June 29]
+[Miguel - July 4]
   - GOALS:
-  	1. Understand what sort of agreements in data there are between the CPU Profile and the event profile
-  	2. Determine which of the two, if no agreement is found, is more reliable
-  	3. Investigate whether the durations of function events are truly represented by the event profile
-  		- I have a suspicion that the CPU Profile is where function events are represented in 0.1 MS resolution...
-  		
+    1. Refactor and clean the scripts
+    2. Merge Clara's and my work
+    
+[Miguel - July 3]
+  - The agreements between the CPU Profile and the Event Tracer were investigated
+  	1. Both seem to not overlap too much, when looking at the differences between what
+  	   functions are found in both
+  	2. The functions found in the CPU Profiler tend to be majorly low-order functions 
+  	3. Functions found only in the event tracer really are mostly found in the same process / thread 
+  	   as the functions found in the CPU profiler
+  - It may be reasonable to assume that, for now, the process and thread that the CPU Profiler 
+    is mapped to is a reasonably place to get data from so that we can automate the
+    process 
+  	     		
 [Miguel - June 28]
   - Refining how to identify process-of-interest automatically is not achieved
   - (!) That said, in this process, it was found that:
