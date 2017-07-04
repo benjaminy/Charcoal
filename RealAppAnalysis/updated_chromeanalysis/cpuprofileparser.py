@@ -33,7 +33,7 @@ in other words, the following mapping:
 
 As we can see, this allows for tracing a functioncall. E.g. the trace of "func_x" would be "root" -> "program" -> "main" -> "func_x"
 
-Why is this helpful? Not quite sure yet.
+Why is this helpful? It's really not, but it's always fun doing recursion.
 '''
 
 def main():
@@ -64,6 +64,12 @@ def process_and_thread_ids(cpuprofile):
 def tracecall(callhierarchy, funcname):
     pass
 
+
+def nodes_functionnames(nodes):
+    funcnames = []
+    for node in nodes:
+        funcnames.append(node["callFrame"]["functionName"])
+    return set(funcnames)
 
 def getcalls(callhierarchy):
     calls = []

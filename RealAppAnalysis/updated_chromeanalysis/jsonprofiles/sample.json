@@ -266,7 +266,6 @@
 {"pid":2247,"tid":775,"ts":27782287655,"ph":"X","cat":"toplevel","name":"TaskQueueManager::ProcessTaskFromWorkQueue","args":{"src_file":"../../third_party/WebKit/Source/core/frame/DOMTimer.cpp","src_func":"DOMTimer"},"dur":182,"tdur":177,"tts":11214981},
 {"pid":2247,"tid":775,"ts":27782287690,"ph":"X","cat":"devtools.timeline","name":"TimerFire","args":{"data":{"frame":"0xa25a6ce1e38","timerId":194}},"dur":117,"tdur":113,"tts":11215016},
 
-
 {
   "pid":2247,
   "tid":775,
@@ -1899,7 +1898,31 @@
 {"pid":2843,"tid":21763,"ts":27781502212,"ph":"X","cat":"toplevel","name":"TaskGraphRunner::RunTask","args":{},"dur":10,"tdur":7,"tts":61835},
 {"pid":2843,"tid":22275,"ts":27781510105,"ph":"X","cat":"toplevel","name":"TaskGraphRunner::RunTask","args":{},"dur":20,"tdur":15,"tts":100291},
 {"pid":2843,"tid":22275,"ts":27781510126,"ph":"X","cat":"toplevel","name":"TaskGraphRunner::RunTask","args":{},"dur":557,"tdur":549,"tts":100311},
-{"pid":2843,"tid":22275,"ts":27781510140,"ph":"B","cat":"cc,disabled-by-default-devtools.timeline","name":"RasterTask","args":{"tileData":{"layerId":93,"sourceFrameNumber":311,"tileId":{"id_ref":"0x7f860ad387b0"},"tileResolution":"HIGH_RESOLUTION"}},"tts":100325},
+
+{
+  "pid":2843,
+  "tid":22275,
+  "ts":27781510140,
+  "ph":"B",
+  "cat":"cc,disabled-by-default-devtools.timeline",
+  "name":"RasterTask",
+  "args":
+  {
+    "tileData":
+    {
+      "layerId":93,
+      "sourceFrameNumber":311,
+      "tileId":
+      {
+        "id_ref":"0x7f860ad387b0"
+      },
+      "tileResolution":"HIGH_RESOLUTION"
+    }
+  },
+
+  "tts":100325
+},
+
 {"pid":2843,"tid":22275,"ts":27781510672,"ph":"E","cat":"cc,disabled-by-default-devtools.timeline","name":"RasterTask","args":{},"tts":100851},
 {"pid":2843,"tid":22275,"ts":27781510684,"ph":"X","cat":"toplevel","name":"TaskGraphRunner::RunTask","args":{},"dur":80,"tdur":77,"tts":100863},
 {"pid":2843,"tid":22275,"ts":27781510693,"ph":"B","cat":"cc,disabled-by-default-devtools.timeline","name":"RasterTask","args":{"tileData":{"layerId":87,"sourceFrameNumber":311,"tileId":{"id_ref":"0x7f860d05d5d0"},"tileResolution":"HIGH_RESOLUTION"}},"tts":100872},
@@ -2094,8 +2117,11 @@
 {"pid":2843,"tid":775,"ts":27781523497,"ph":"X","cat":"toplevel","name":"TaskQueueManager::ProcessTaskFromWorkQueue","args":{"src_file":"../../ipc/ipc_channel_proxy.cc","src_func":"OnMessageReceivedNoFilter"},"dur":292,"tdur":272,"tts":2927039},
 {"pid":2843,"tid":775,"ts":27781523584,"ph":"X","cat":"devtools.timeline","name":"EvaluateScript","args":{"data":{"columnNumber":1,"frame":"0x217f5c6e1e38","lineNumber":1,"url":""}},"dur":193,"tdur":186,"tts":2927114},
 {"pid":2843,"tid":775,"ts":27781523597,"ph":"X","cat":"v8,devtools.timeline","name":"v8.compile","args":{"fileName":"","data":{"columnNumber":1,"lineNumber":1,"url":""}},"dur":106,"tdur":96,"tts":2927126},
+
 {"pid":2843,"tid":775,"ts":27781523765,"ph":"X","cat":"v8.execute","name":"RunMicrotasks","args":{},"dur":9,"tdur":6,"tts":2927291},
+
 {"pid":2843,"tid":775,"ts":27781523791,"ph":"X","cat":"toplevel","name":"TaskQueueManager::ProcessTaskFromWorkQueue","args":{"src_file":"../../content/renderer/render_view_impl.cc","src_func":"DidUpdateLayout"},"dur":2931,"tdur":2929,"tts":2927316},
+
 {"pid":2843,"tid":775,"ts":27781523806,"ph":"B","cat":"blink,devtools.timeline","name":"UpdateLayoutTree","args":{"beginData":{"frame":"0x217f5c6e1e38"}},"tts":2927330},
 {"pid":2843,"tid":775,"ts":27781524175,"ph":"I","cat":"disabled-by-default-devtools.timeline","name":"InvalidateLayout","args":{"data":{"frame":"0x217f5c6e1e38"}},"tts":2927701,"s":"t"},
 {"pid":2843,"tid":775,"ts":27781524429,"ph":"E","cat":"blink,devtools.timeline","name":"UpdateLayoutTree","args":{"elementCount":16},"tts":2927955},
@@ -2121,7 +2147,34 @@
 {"pid":2843,"tid":775,"ts":27781527456,"ph":"X","cat":"v8.execute","name":"RunMicrotasks","args":{},"dur":1518,"tdur":1513,"tts":2930970},
 {"pid":2843,"tid":775,"ts":27781527919,"ph":"I","cat":"disabled-by-default-devtools.timeline","name":"InvalidateLayout","args":{"data":{"frame":"0x217f5c6e1e38","stackTrace":[{"columnNumber":733,"functionName":"Element.removeChild","lineNumber":1069,"scriptId":"28","url":"chrome-devtools://devtools/bundled/inspector.js"}]}},"tts":2931434,"s":"t"},
 {"pid":2843,"tid":775,"ts":27781528004,"ph":"I","cat":"disabled-by-default-devtools.timeline","name":"ScheduleStyleRecalculation","args":{"data":{"frame":"0x217f5c6e1e38","stackTrace":[{"columnNumber":264,"functionName":"Element.appendChild","lineNumber":1069,"scriptId":"28","url":"chrome-devtools://devtools/bundled/inspector.js"}]}},"tts":2931518,"s":"t"},
-{"pid":2843,"tid":775,"ts":27781528049,"ph":"B","cat":"blink,devtools.timeline","name":"UpdateLayoutTree","args":{"beginData":{"frame":"0x217f5c6e1e38","stackTrace":[{"columnNumber":135,"functionName":"_updateCurtains","lineNumber":316,"scriptId":"89","url":"chrome-devtools://devtools/bundled/perf_ui/perf_ui_module.js"}]}},"tts":2931563},
+
+{
+  "pid":2843,
+  "tid":775,
+  "ts":27781528049,
+  "ph":"B",
+  "cat":"blink,devtools.timeline",
+  "name":"UpdateLayoutTree",
+  "args":
+  {
+    "beginData":
+    {
+      "frame":"0x217f5c6e1e38",
+      "stackTrace":
+      [
+        {
+          "columnNumber":135,
+          "functionName":"_updateCurtains",
+          "lineNumber":316,
+          "scriptId":"89",
+          "url":"chrome-devtools://devtools/bundled/perf_ui/perf_ui_module.js"
+        }
+      ]
+    }
+  },
+  "tts":2931563
+},
+
 {"pid":2843,"tid":775,"ts":27781528198,"ph":"I","cat":"disabled-by-default-devtools.timeline","name":"InvalidateLayout","args":{"data":{"frame":"0x217f5c6e1e38","stackTrace":[{"columnNumber":135,"functionName":"_updateCurtains","lineNumber":316,"scriptId":"89","url":"chrome-devtools://devtools/bundled/perf_ui/perf_ui_module.js"}]}},"tts":2931712,"s":"t"},
 {"pid":2843,"tid":775,"ts":27781528224,"ph":"E","cat":"blink,devtools.timeline","name":"UpdateLayoutTree","args":{"elementCount":1},"tts":2931737},
 {"pid":2843,"tid":775,"ts":27781528271,"ph":"B","cat":"devtools.timeline","name":"Layout","args":{"beginData":{"dirtyObjects":13,"frame":"0x217f5c6e1e38","partialLayout":true,"stackTrace":[{"columnNumber":135,"functionName":"_updateCurtains","lineNumber":316,"scriptId":"89","url":"chrome-devtools://devtools/bundled/perf_ui/perf_ui_module.js"}],"totalObjects":248}},"tts":2931784},
@@ -9580,9 +9633,10 @@
               {"id":16,"callFrame":{"functionName":"InjectedScript.RemoteObject","scriptId":"35","url":"","lineNumber":123,"columnNumber":76},"hitCount":0,"children":[17,18,24]},
               {"id":17,"callFrame":{"functionName":"isPrimitiveValue","scriptId":"35","url":"","lineNumber":28,"columnNumber":513},"hitCount":1,"positionTicks":[{"line":29,"ticks":1}]},
               {"id":18,"callFrame":{"functionName":"_generatePreview","scriptId":"35","url":"","lineNumber":149,"columnNumber":73},"hitCount":0,"children":[19]},
-              {"id":19,"callFrame":{"functionName":"_propertyDescriptors","scriptId":"35","url":"","lineNumber":51,"columnNumber":119},"hitCount":2,"children":[26],"positionTicks":[{"line":74,"ticks":1},{"line":52,"ticks":1}]},{"id":26,"callFrame":{"functionName":"process","scriptId":"35","url":"","lineNumber":52,"columnNumber":171},"hitCount":0,"children":[27]},{"id":27,"callFrame":{"functionName":"addPropertyIfNeeded","scriptId":"35","url":"","lineNumber":155,"columnNumber":43},"hitCount":1,"positionTicks":[{"line":156,"ticks":1}]},
+              {"id":19,"callFrame":{"functionName":"_propertyDescriptors","scriptId":"35","url":"","lineNumber":51,"columnNumber":119},"hitCount":2,"children":[26],"positionTicks":[{"line":74,"ticks":1},{"line":52,"ticks":1}]},
+              {"id":26,"callFrame":{"functionName":"process","scriptId":"35","url":"","lineNumber":52,"columnNumber":171},"hitCount":0,"children":[27]},{"id":27,"callFrame":{"functionName":"addPropertyIfNeeded","scriptId":"35","url":"","lineNumber":155,"columnNumber":43},"hitCount":1,"positionTicks":[{"line":156,"ticks":1}]},
               {"id":24,"callFrame":{"functionName":"_describe","scriptId":"35","url":"","lineNumber":97,"columnNumber":46},"hitCount":0,"children":[25]},
               {"id":25,"callFrame":{"functionName":"exec","scriptId":"0","url":"","lineNumber":-1,"columnNumber":-1},"hitCount":1}
             ],
             "startTime":27781495354,
-            "endTime":27786205310,"samples":[2,3,2,2,2,2,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3147,137,130]}}}}]
+            "endTime":27786205310,"samples":[2,3,2,2,2,2,3,3,3,3,3,3,3,3,3,3,   3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3147,137,130]}}}}]

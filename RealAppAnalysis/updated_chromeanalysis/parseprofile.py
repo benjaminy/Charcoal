@@ -27,7 +27,7 @@ Parse the JSON file from a chrome performance analyzer profile into a Python dat
 
 def main():
     pp = pprint.PrettyPrinter(indent=2)
-    profile = load_profile_from_file("smallsample.json")
+    profile = utils.load_profile_from_file("jsonprofiles/sample.json")
     categorized_events = parseprofile( profile  )
     pp.pprint(categorized_events)
 
