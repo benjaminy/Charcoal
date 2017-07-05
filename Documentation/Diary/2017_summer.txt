@@ -1,3 +1,14 @@
+[Miguel - July 5]
+  - Decided to format some of the data analysis scripts and clean up some of the scripts
+  - I am preparing to do a map over the data, and somehow reduce the results to something
+    that can be used to inform us on identifying clusters
+  - GOAL:
+  	    1. Refine / adapt some of the present scripts, since they provide useful information about
+  	       the data
+  	    2. Continue merging works
+  	    3. Demonstrate  an example of reducing profile data, maybe post-process of the data map
+  	    
+
 [Miguel - July 4]
   - I was able to develop a data mapper, a script that applies an input script over all files in 
     specified directory
