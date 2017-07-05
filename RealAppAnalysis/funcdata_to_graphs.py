@@ -1,32 +1,43 @@
 import matplotlib.pyplot as pyplot
 from csv import DictReader
-from datautil import findFile, parseCmdLnArgs
+from datautil import findFile, parseCmdLnArgs, _flagged
 import datautil
 import sys
 
 def main(argv):
-    opts, args = parseCmdLnArgs(argv,"ho:", ["help, outdir="])
+    opts, args = parseCmdLnArgs(argv,"hos:", ["help",  "outdir=", "show"])
     
-    if not args:
-        with open(findFile(), 'r') as funcdata_csv:
-            data = readCSV(funcdata_csv)
-            
-    else:
-        filepath = args[0]
-        data = readCSV(filepath)
+    _handleHelpFlag(opts)
+    graph_data = _formatData(_loadFile(args))
+    fcall_total_duration = sum(graph_data)
     
-    durations_string_repr = datautil.extract(data, "duration")
-    just_func_durations = [float(duration) for duration in durations_string_repr]
-
-    sorted_durations = sorted(just_func_durations)
-    fcall_total_duration = sum(just_func_durations)
-    
-    xs, ys = getCumulativeDurationPercentages(sorted_durations, fcall_total_duration)
-    ys2 = getFunctionAccumulation(sorted_durations)
+    xs, ys = getCumulativeDurationPercentages(graph_data, fcall_total_duration)
+    ys2 = getFunctionAccumulation(graph_data)
     graph(xs, ys, ys2)
     
 def readCSV(dict_csv):
     return list(DictReader(dict_csv))
+
+def _handleHelpFlag(opts):
+    if _flagged(opts, "-h", "--help"):
+        _usage()
+        sys.exit(2)
+
+def _handleOutputFlag(opts):
+    pass
+
+def _loadfile(args):
+    if not args:
+        with open(findFile(), 'r') as funcdata_csv:
+            return readCSV(funcdata_csv)
+    else:
+        filepath = args[0]
+        return readCSV(filepath)
+    
+def _formatData(data):
+    durations_string_repr = datautil.extract(data, "duration")
+    just_func_durations = [float(duration) for duration in durations_string_repr]
+    return sorted(just_func_durations)
 
 def getCumulativeDurationPercentages(durations, fcall_total_duration):
     xs = []
