@@ -24,7 +24,7 @@ Parse the JSON file from a chrome performance analyzer profile into a Python dat
     }
 '''
 
-def main():
+def main(debug = False):
     pp = pprint.PrettyPrinter(indent=2)
 
     profile = load_profile_from_file("smallsample.json")
@@ -35,8 +35,9 @@ def main():
         for tid, subsubdic in subdic.items():
             pp.pprint( len(subsubdic['durationevents']) )
 
-    #pp.pprint(categorized_events)
-    #pp.pprint(cpuprofile)
+    if debug:
+        pp.pprint(categorized_events)
+        pp.pprint(cpuprofile)
 
 def load_profile_from_file(filepath):
     with open(filepath) as json_data:
@@ -69,8 +70,6 @@ def parseprofile(profile):
 
     return categorized_events
 
-
-
 def categorize_as_dic(events, attribute):
     '''Categorizes a list of events according to specified attributeibute.
     [ events ] --> { "attribute1:[ events ], attribute2:[ events ], attribute3:[ events ]..."} '''
@@ -83,7 +82,7 @@ def categorize_as_dic(events, attribute):
         if(category_key not in categorized_events):
             categorized_events[category_key] = []
 
-        categorized_events[category_key].append(trim_event(event, attribute))
+        categorized_events[category_key].append(trimDict(event, attribute))
 
     if(attribute == "ph"):
         if 'B' in categorized_events:
@@ -91,12 +90,6 @@ def categorize_as_dic(events, attribute):
             del categorized_events['E']
 
     return categorized_events
-
-
-def categorize_as_tuple(events, attribute):
-    ''' [ events ] -> ( eventtype1 ], [ eventtype2 ], ... ) '''
-    return tuple( categorize_as_dic(events, attribute).values() )
-
 
 def durationevents(events):
     stack = []
@@ -115,11 +108,6 @@ def durationevents(events):
             durationevents.append( durationevent )
 
     return durationevents
-
-def trim_event(event, *argv):
-    for arg in argv:del event[arg]
-    return event
-
 
 if __name__ == '__main__':
     main()

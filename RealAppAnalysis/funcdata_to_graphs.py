@@ -1,8 +1,32 @@
 import matplotlib.pyplot as pyplot
 from csv import DictReader
+from datautil import findFile, parseCmdLnArgs
 import datautil
-import csv
-from matplotlib.testing.jpl_units.Duration import Duration
+import sys
+
+def main(argv):
+    opts, args = parseCmdLnArgs(argv,"ho:", ["help, outdir="])
+    
+    if not args:
+        with open(findFile(), 'r') as funcdata_csv:
+            data = readCSV(funcdata_csv)
+            
+    else:
+        filepath = args[0]
+        data = readCSV(filepath)
+    
+    durations_string_repr = datautil.extract(data, "duration")
+    just_func_durations = [float(duration) for duration in durations_string_repr]
+
+    sorted_durations = sorted(just_func_durations)
+    fcall_total_duration = sum(just_func_durations)
+    
+    xs, ys = getCumulativeDurationPercentages(sorted_durations, fcall_total_duration)
+    ys2 = getFunctionAccumulation(sorted_durations)
+    graph(xs, ys, ys2)
+    
+def readCSV(dict_csv):
+    return list(DictReader(dict_csv))
 
 def getCumulativeDurationPercentages(durations, fcall_total_duration):
     xs = []
@@ -15,12 +39,11 @@ def getCumulativeDurationPercentages(durations, fcall_total_duration):
         xs.append(dur)
         cumulative_time += dur
         percent = cumulative_time / fcall_total_duration
-        #print("Cumulative: %d Total: %d" % (cumulative_time, fcall_total_duration))
         ys.append(percent)
-        
+                
     return (xs, ys)
 
-def getFunctionCumulation(durations):
+def getFunctionAccumulation(durations):
     
     ys = []
     num = 0
@@ -58,23 +81,5 @@ def graph(xs, ys, ys2):
     
     pyplot.show()
     
-    
-def main():
-    with open(datautil.findFile(), 'r') as funcdata_csv:
-        data = datautil.readCSVFuncData(funcdata_csv)
-    
-    print(data[-1])
-    print(data[0])
-    
-    durations_string_repr = datautil.extract(data, "duration")
-    just_func_durations = [float(duration) for duration in durations_string_repr]
-
-    sorted_durations = sorted(just_func_durations)
-    #datautil.toTxt(sorted_durations, "sorted_durations")
-    fcall_total_duration = sum(just_func_durations)
-    print("Total Function Runtime: %f" % fcall_total_duration)
-    xs, ys = getCumulativeDurationPercentages(sorted_durations, fcall_total_duration)
-    ys2 = getFunctionCumulation(sorted_durations)
-    graph(xs, ys, ys2)
-    
-main()
+if __name__ == "__main__":
+    main(sys.argv[1:])

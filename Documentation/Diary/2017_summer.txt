@@ -1,6 +1,10 @@
 [Miguel - July 4]
   - GOALS:
     1. Refactor and clean the scripts
+       - Adding some command line functionality to scripts
+       - Will plan to integrate the data mapper, meaning one can 
+         process multiple files through the command line
+         
     2. Merge Clara's and my work
     
 [Miguel - July 3]
