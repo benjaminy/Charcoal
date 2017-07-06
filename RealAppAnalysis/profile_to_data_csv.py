@@ -100,7 +100,9 @@ def _usage():
                        finding a data file and selecting which \n\
                        process to extract data")
     
-    _log("d, --debug", "Displays information about the data as it processed")
+    _log("d, --debug", "Displays information about the data as it is processed")
+    
+    _log("args", "<inputfile><module function>")
     
 if __name__ == "__main__":
     main(sys.argv[1:])

@@ -7,8 +7,8 @@ import sys
 
 def main(argv):
     opts, args = parseCmdLnArgs(argv, "hf:", ["help", "fileformat="])
-    log(opts, tag = "opts")
-    log(args, tag = "args")
+    #log(opts, tag = "opts")
+    #log(args, tag = "args")
     
     if _flagged(opts, "--help"):
         _usage()
@@ -25,8 +25,10 @@ def main(argv):
             log(opt[1], tag = "ext")
             _isData = _isDataGenerator(opt[1])
             
-    index_of_flags_for_map_script = 3
-    onAllDataInDir(dir, script.main, cmdln = argv[index_of_flags_for_map_script:], 
+    index_of_flags_for_map_script = len(opts) * 2 + 2
+    onAllDataInDir(dir, 
+                   script.main, 
+                   cmdln = argv[index_of_flags_for_map_script:], 
                    isData = _isData)
     
 def _isDataGenerator(ext): return lambda filename: filename.endswith(ext)
@@ -47,6 +49,7 @@ def onAllDataInDir(root_dir, func, cmdln = [], inputfile = True, isData = _defau
                 if inputfile:
                     cmdln.append(join(filepath, file))
                     results.update({file: func(cmdln)})
+                    cmdln = cmdln[:-1]
                 
                 #Else, loads the data and inserts that as an argument to the script
                 else:
@@ -54,26 +57,26 @@ def onAllDataInDir(root_dir, func, cmdln = [], inputfile = True, isData = _defau
                         with open((join(filepath, file)), 'r') as data_file: 
                             data = load(data_file)
                             cmdln.append(data)
+                            
                     except:
                         print("Error in processing data file: " + file)  
                         continue
                     
-#                     try: results.update({file: func(cmdln)})
-#                     
-#                     except: log("Error in storing results")
-#                 
-#     return results
+                    results.update({file: func(cmdln)})
+                    cmdln = cmdln[:-1]
+                                      
+    return results
 
 def _usage():
     def flag_log(flag, description): log(description, indent = 1, tag = "-" + flag)
     log("Maps a function over the data files found in the provided directory")
-    flag_log("", )
+    flag_log("f, --fileformat", "Specifies the format of the input file. Default is .json")
     args =  ("<module name>" ,"<directory>", "<script flags>")
     mn, dir, sf = args
     flag_log("args", mn + dir + sf)
     desc = {mn: "The name of the module whose main method can be be passed a \n\
                  filepath or loaded data",
-            dir: "The complete path of a directory that contains .json files" ,
+            dir: "The complete path of a directory that contains files of a specified format." ,
             sf: "Flags to be passed into " + mn + "."}
     for arg in args:
         log(desc[arg], indent = 2, tag = arg)

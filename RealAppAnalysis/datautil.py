@@ -6,7 +6,6 @@ import json
 import csv
 import os;
 from getopt import getopt, GetoptError
-from os import walk
 import sys
 
 def findFile():
@@ -98,11 +97,9 @@ def findFileFromCWD(filename, root_subdir = ""):
     
     If provided a root subdirectory, the search will begin in that
        directory if it exists in the the current working directory'''
-    for filepath, sub_directories, files in walk(root_dir):
+    for filepath, sub_directories, files in os.walk(root_dir):
         for file in files:
             if file == filename: return join(filepath, file)
-    pass
-
 
 def getJSONDataFromFile(file, find = False):
     '''Returns the the data from a .json file.
@@ -114,12 +111,23 @@ def getJSONDataFromFile(file, find = False):
         data = json.load(jsonfile)
         
     return data;
-
             
 def _flagged(opts, *flags):
     '''Checks for whether any of the flags are found in the argumented options'''
     for opt in opts:
         for f in flags:
-            if f in opt: 
-                return True            
+            if f in opt:
+                return True
+            
     return False
+
+def _flaggedRetArg(opts, *flags):
+    '''Checks for whether any of the flags are found in the argumented options and 
+    returns the argument of a found flag, or an empty string'''
+
+    for opt in opts:
+        for f in flags:
+            if f in opt: 
+                return opt[1]
+                
+    return ""              

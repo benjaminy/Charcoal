@@ -1,41 +1,56 @@
 import matplotlib.pyplot as pyplot
 from csv import DictReader
-from datautil import findFile, parseCmdLnArgs, _flagged
-import datautil
+from datautil import findFile, parseCmdLnArgs, _flagged, _flaggedRetArg, log, extract
 import sys
+from os.path import join
+from _operator import index
 
 def main(argv):
-    opts, args = parseCmdLnArgs(argv,"hos:", ["help",  "outdir=", "show"])
-    
+    opts, args = parseCmdLnArgs(argv,"ho:sd", ["help",  "outdir=", "show", "debug"])
     _handleHelpFlag(opts)
+    
     graph_data = _formatData(_loadFile(args))
-    fcall_total_duration = sum(graph_data)
     
-    xs, ys = getCumulativeDurationPercentages(graph_data, fcall_total_duration)
+    xs, ys = getCumulativeDurationPercentages(graph_data, sum(graph_data))
     ys2 = getFunctionAccumulation(graph_data)
-    graph(xs, ys, ys2)
-    
-def readCSV(dict_csv):
-    return list(DictReader(dict_csv))
 
+    show_graph = _flagged(opts, "-s", "--show")
+    figure = graph(xs, ys, ys2, show = show_graph)
+    filepath = _handleOutFlag(opts, args)
+    figure.savefig(filepath, indent = 2, format = "png")
+    
+    debug = _flagged(opts, "-d", "--debug")
+    if debug:
+        log(opts, indent = 2, tag = "opts")
+        log(args, indent = 2, tag = "args")
+        log(filepath, indent = 2, tag = "Output")
+    
 def _handleHelpFlag(opts):
     if _flagged(opts, "-h", "--help"):
         _usage()
         sys.exit(2)
+        
+def _handleOutFlag(opts, args):
+    index_extension = -3
+    filename = args[0][:index_extension] + "png" 
+    outdir = _flaggedRetArg(opts, "-o", "--outdir")
+    if outdir:
+        filename = filename.split("//")[-1]        
+    return join(outdir, filename)
 
-def _handleOutputFlag(opts):
-    pass
-
-def _loadfile(args):
+def _loadFile(args):
+    def readCSV(dict_csv): return list(DictReader(dict_csv))
     if not args:
-        with open(findFile(), 'r') as funcdata_csv:
+        file = findFile()
+        args.insert(0, file)
+        with open(file, 'r') as funcdata_csv:
             return readCSV(funcdata_csv)
     else:
         filepath = args[0]
         return readCSV(filepath)
     
 def _formatData(data):
-    durations_string_repr = datautil.extract(data, "duration")
+    durations_string_repr = extract(data, "duration")
     just_func_durations = [float(duration) for duration in durations_string_repr]
     return sorted(just_func_durations)
 
@@ -67,10 +82,13 @@ def getFunctionAccumulation(durations):
         
     return ys
 
-def graph(xs, ys, ys2):
+def _usage():
+    pass
+
+def graph(xs, ys, ys2, show = False, outdir = ""):
     
     x_max = 1000000.0
-    x_min = -1000.0
+    x_min = 0.0
     
     y_max = 1.05
     y_min = -0.05
@@ -90,7 +108,8 @@ def graph(xs, ys, ys2):
     plot_two.set_ylim([y_min, y_max])
     plot_two.set_xlim([x_min, x_max])
     
-    pyplot.show()
+    if show: pyplot.show()
+    return pyplot
     
 if __name__ == "__main__":
     main(sys.argv[1:])
