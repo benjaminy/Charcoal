@@ -4,7 +4,6 @@ from datautil import findFile, parseCmdLnArgs, _flagged, _flaggedRetArg, log, ex
 import sys
 from os.path import join
 from _operator import index
-from matplotlib.testing.jpl_units.Duration import Duration
 
 def main(argv):
     opts, args = parseCmdLnArgs(argv,"ho:sd", ["help",  "outdir=", "show", "debug"])
@@ -39,17 +38,17 @@ def _handleOutFlag(opts, args):
     return join(outdir, filename)
 
 def _loadFile(args):
-    def readCSV(dict_csv): return list(DictReader(dict_csv))
-    if not args:
-        file = findFile()
-        args.insert(0, file)
-        with open(file, 'r') as funcdata_csv:
-            data = readCSV(funcdata_csv)
-    else:
-        filepath = args[0]
-        data = readCSV(filepath)
+    def readCSV(path): 
+        with open(path, 'r') as funcdata_csv:
+            return list(DictReader(funcdata_csv))
         
-    print(list(data[0]))
+    if not args:
+        filepath = findFile()
+        args.insert(0, filepath)
+    
+    else: filepath = args[0]
+    
+    data = readCSV(filepath)
     return data
     
 def _formatData(data):

@@ -78,10 +78,5 @@ def main():
     duranalyzer.create_graph("testgraph.png", xs, ys)
     #pp.pprint(durations)'''
 
-
-
-
-
-
 if __name__ == '__main__':
     main()

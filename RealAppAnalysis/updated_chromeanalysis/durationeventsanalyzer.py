@@ -169,7 +169,6 @@ def data2(durations):
     return (xs, ys)
 
 
-
 def create_graph(filepath, xs, ys, xmax):
     plt.plot(xs, ys, "ro")
     plt.axis([0, xmax, -0.05, 1.05])

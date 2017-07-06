@@ -1,6 +1,7 @@
 [Miguel - July 6]
   - GOALS:
     1. Fix the graphs
+      - Fixed reading error of the graphs
     2. Develop a data reducer, or namely, a big reduce operation over all the data files through the
        data mapper, or something similar. I imagine this would require storing of results...
       - See if I can determine variation in web application behavior for the same operations
