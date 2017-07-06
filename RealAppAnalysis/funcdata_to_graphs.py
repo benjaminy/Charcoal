@@ -4,13 +4,13 @@ from datautil import findFile, parseCmdLnArgs, _flagged, _flaggedRetArg, log, ex
 import sys
 from os.path import join
 from _operator import index
+from matplotlib.testing.jpl_units.Duration import Duration
 
 def main(argv):
     opts, args = parseCmdLnArgs(argv,"ho:sd", ["help",  "outdir=", "show", "debug"])
     _handleHelpFlag(opts)
     
     graph_data = _formatData(_loadFile(args))
-    
     xs, ys = getCumulativeDurationPercentages(graph_data, sum(graph_data))
     ys2 = getFunctionAccumulation(graph_data)
 
@@ -44,10 +44,13 @@ def _loadFile(args):
         file = findFile()
         args.insert(0, file)
         with open(file, 'r') as funcdata_csv:
-            return readCSV(funcdata_csv)
+            data = readCSV(funcdata_csv)
     else:
         filepath = args[0]
-        return readCSV(filepath)
+        data = readCSV(filepath)
+        
+    print(list(data[0]))
+    return data
     
 def _formatData(data):
     durations_string_repr = extract(data, "duration")
