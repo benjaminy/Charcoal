@@ -57,3 +57,13 @@
 
 
     #parentname = parent["callFrame"]["functionName"]
+
+
+    def categorize_as_tuple(events, attribute):
+        ''' [ events ] -> ( eventtype1 ], [ eventtype2 ], ... ) '''
+        return tuple( categorize_as_dic(events, attribute).values() )
+
+
+        '''for pid, subdic in categorized_events.items():
+              for tid, subsubdic in subdic.items():
+                  pp.pprint( len(subsubdic['durationevents']) )'''
