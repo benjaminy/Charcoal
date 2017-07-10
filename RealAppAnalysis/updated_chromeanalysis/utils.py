@@ -11,6 +11,14 @@ def load_profile_from_file(filepath):
         profile = json.load(json_data)
     return profile
 
-def newfilepath(dirpath, inputfilename, newextension):
+def newfilepath(newhead, inputfilename, newextension):
     _, tail = os.path.split(inputfilename)
-    return dirpath + tail.split('.')[0] + newextension
+    newtail = tail.split('.')[0] + newextension
+    return newhead + newtail
+
+def sort_by_attribute(list_of_dic, attribute):
+    return sorted(list_of_dic, key=lambda k: k[attribute])
+
+def log(val, indent = 1, tag = ""):
+    if tag: tag = str(tag) + ": "
+    print(("\t" * indent) + tag + str(val))

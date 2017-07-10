@@ -1,10 +1,10 @@
 import profileanalyzer
 import utils
-import parseprofile as parser
+import profileparser as parser
 
 def main():
     profile = utils.load_profile_from_file("/Users/clararichter/Desktop/workspace/Charcoal/RealAppAnalysis/chromeanalysis/profiles/sample.json")
-    categorized_events = parser.parseprofile( profile  )
+    categorized_events = parser.profileparser( profile  )
     (pid, tid) = profileanalyzer.thread_with_most_durationevents(categorized_events)
     #types_of_events(categorized_events[pid][tid])
     for pid, subdic in categorized_events.items():
