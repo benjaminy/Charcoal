@@ -1,32 +1,74 @@
 import tkinter
-from datautil import findFile
-from datautil import readCSVFuncData
-from datautil import toTxt
-from tkinter.filedialog import askopenfilename
+from datautil import findFile, \
+                     toTxt, \
+                     parseCmdLnArgs,\
+                     filterEvents, \
+                     readCSV, \
+                     log, \
+                     _flaggedRetArg
+                     
 from csv import DictReader
+import sys
 
-data_csv = findFile()
-with open(data_csv, "r") as funcdata_csv:
-    data = readCSVFuncData(funcdata_csv) 
+_DEFAULT_THRESHOLD = 1000
+_DEFAULT_CLUSTER_SIZE = 2
 
+def main(argv):
+    opts, args = parseCmdLnArgs(argv, "s:t:", ["cluster-size=", "gap-threshold="])
+    
+    raw_data = _loadFile(args)
+    clusters = findClusters(raw_data, 
+                            min_cluster_size = _handleSizeFlag(opts),
+                            threshold = _handleThresholdFlag(opts))
 
-pos = 0
-cumulutive_gap = 0
-gaps = []
-for i in range(0, len(data) - 2):
+    log(len(clusters), indent = 2, tag = "Clusters found")
 
-    cumulative_duration = 0
-    f1 = data[i]
-    f2 = data[i + 1]
-    f1_end = float(f1["end time"])
-    f2_start = float(f2["start time"])
-    if(f1_end != f2_start):
-        print("Discontinuity at: %d" % i)
-        gap = f2_start - f1_end
-        print("Gap: %f" % gap)
-        gaps.append(gap)
-        cumulutive_gap += gap
-        cumulative_duration += float(f1["duration"]) + float(f2["duration"])
+    return clusters
+    
+def _handleThresholdFlag(opts):
+    threshold = _flaggedRetArg(opts, "-t", "--gap-threshold")
+    if threshold: 
+        return float(threshold)
+    else: 
+        return _DEFAULT_THRESHOLD
+    
+def _handleSizeFlag(opts):
+    size = _flaggedRetArg(opts, "-s", "--cluser-size")
+    if size: 
+        return int(size)
+    else:
+        return _DEFAULT_CLUSTER_SIZE
+    
+def _loadFile(args):
+    if not args:
+        filepath = findFile()
+    else:
+        filepath = args[0]
 
-print("Function Duration: %f" % cumulative_duration)
-print("Total gap time: %f" % cumulutive_gap)
+    return readCSV(filepath)
+        
+def findClusters(func_data, 
+                 min_cluster_size = _DEFAULT_CLUSTER_SIZE, 
+                 threshold = _DEFAULT_THRESHOLD):
+    clusters = []
+    cluster = [func_data[0]]
+    
+    def registCluster(): 
+        if len(cluster) >= min_cluster_size: 
+            clusters.append(cluster) 
+            
+    for func_cur in func_data[1:]:
+        func_prev = cluster[-1]
+        gap = float(func_cur["start time"]) - float(func_prev["end time"])
+        if(gap <= threshold): 
+            cluster.append(func_cur)
+            
+        else: registCluster()
+               
+    #In case for loop ends while a cluster is growing
+    registCluster()
+    
+    return clusters
+    
+if __name__ == "__main__":
+    main(sys.argv[1:])

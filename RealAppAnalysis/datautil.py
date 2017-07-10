@@ -81,10 +81,10 @@ def trimDict(dict, direct = True, *attrs):
     return dict
     
 def log(val, indent = 1, tag = ""):
-    if tag: tag += ": "
-    print(("\t" * indent) + tag + str(val)) 
+    if tag: tag = str(tag) + ": "
+    print(("\t" * indent) + tag + str(val))
    
-def parseCmdLnArgs(argv, short_flags, long_flags, usage = None):
+def parseCmdLnArgs(argv, short_flags, long_flags = [], usage = None):
     try: return getopt(argv, short_flags, long_flags)
     except GetoptError:
         log("Unrecognized option")
@@ -111,7 +111,11 @@ def getJSONDataFromFile(file, find = False):
         data = json.load(jsonfile)
         
     return data;
-            
+
+def readCSV(path): 
+     with open(path, 'r') as fcsv:
+        return list(csv.DictReader(fcsv))
+    
 def _flagged(opts, *flags):
     '''Checks for whether any of the flags are found in the argumented options'''
     for opt in opts:

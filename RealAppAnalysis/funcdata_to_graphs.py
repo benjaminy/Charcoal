@@ -1,14 +1,13 @@
 import matplotlib.pyplot as pyplot
 from csv import DictReader
-from datautil import findFile, parseCmdLnArgs, _flagged, _flaggedRetArg, log, extract
+from datautil import findFile, parseCmdLnArgs, _flagged, _flaggedRetArg, log, extract, readCSV
 import sys
 from os.path import join
-from _operator import index
-
+ 
 def main(argv):
-    opts, args = parseCmdLnArgs(argv,"ho:sd", ["help",  "outdir=", "show", "debug"])
+    opts, args = parseCmdLnArgs(argv,"ho:sdg:", ["help",  "outdir=", "show", "debug"])
     _handleHelpFlag(opts)
-    
+    _selectGraph()
     graph_data = _formatData(_loadFile(args))
     xs, ys = getCumulativeDurationPercentages(graph_data, sum(graph_data))
     ys2 = getFunctionAccumulation(graph_data)
@@ -24,6 +23,22 @@ def main(argv):
         log(args, indent = 2, tag = "args")
         log(filepath, indent = 2, tag = "Output")
     
+def _selectGraph():
+    options = [("Scatter Plot", scatterPlot),
+               ("Cumulative Distribution", cumulativeDistribution)]
+              
+    for index, opt in enumerate(options): log(options[index][0], tag = index + 1)
+    plot = int(input("Select a plot: ")) - 1
+    
+    func_index = 1
+    return options[plot][func_index]
+
+def scatterPlot():
+    pass
+
+def cumulativeDistribution():
+    pass
+    
 def _handleHelpFlag(opts):
     if _flagged(opts, "-h", "--help"):
         _usage()
@@ -37,11 +52,7 @@ def _handleOutFlag(opts, args):
         filename = filename.split("//")[-1]        
     return join(outdir, filename)
 
-def _loadFile(args):
-    def readCSV(path): 
-        with open(path, 'r') as funcdata_csv:
-            return list(DictReader(funcdata_csv))
-        
+def _loadFile(args):        
     if not args:
         filepath = findFile()
         args.insert(0, filepath)
@@ -50,7 +61,7 @@ def _loadFile(args):
     
     data = readCSV(filepath)
     return data
-    
+
 def _formatData(data):
     durations_string_repr = extract(data, "duration")
     just_func_durations = [float(duration) for duration in durations_string_repr]
@@ -78,7 +89,7 @@ def getFunctionAccumulation(durations):
     percent = 0.0
     num_of_durations = len(durations)
     for dur in durations:
-        num += 1
+        num += 1 
         percent = float(num) / float(num_of_durations)
         ys.append(percent)
         
@@ -89,29 +100,28 @@ def _usage():
 
 def graph(xs, ys, ys2, show = False, outdir = ""):
     
-    x_max = 1000000.0
+    x_max = 10000.0
     x_min = 0.0
     
     y_max = 1.05
     y_min = -0.05
     
-    _, plot_one = pyplot.subplots()
-    plot_one.plot(xs, ys2, "b.")
+    figure, plot_one = pyplot.subplots()
     plot_one.set_xlabel("Function call duration (μs)")
-    plot_one.set_ylabel("Cumulative Percentages of Total Function Duration")
+    plot_one.set_ylabel("Cumulative Percentages of Total Function Duration", color = 'b')
     plot_one.set_xscale("log")
-    plot_one.set_ylim([y_min, y_max])
-    plot_one.set_xlim([x_min, x_max])
+    plot_one.set_ylim(y_min, y_max)
+    plot_one.plot(xs, ys2, "b.")
 
     plot_two = plot_one.twinx()
-    plot_two.plot(xs, ys, "r.")
-    plot_two.set_ylabel("Cumulative Percentage of Function Duration", color = 'b')
+    plot_two.set_ylabel("Cumulative Percentage of Function Duration", color = 'r')
     plot_two.set_xscale("log")
-    plot_two.set_ylim([y_min, y_max])
-    plot_two.set_xlim([x_min, x_max])
+    plot_two.set_ylim(y_min, y_max)
+    plot_two.plot(xs, ys, "r.")
+
     
     if show: pyplot.show()
     return pyplot
-    
+
 if __name__ == "__main__":
     main(sys.argv[1:])

@@ -1,16 +1,16 @@
 from os import listdir, getcwd, walk
 from os.path import isfile, isdir, join
 from json import load
-from datautil import log, parseCmdLnArgs, _flagged
+from datautil import log, parseCmdLnArgs, _flagged, _flaggedRetArg
 from importlib import import_module
 import sys
 
 def main(argv):
-    opts, args = parseCmdLnArgs(argv, "hf:", ["help", "fileformat="])
+    opts, args = parseCmdLnArgs(argv, "hf:p:", ["help", "fileformat=", "post-process-"])
     #log(opts, tag = "opts")
     #log(args, tag = "args")
     
-    if _flagged(opts, "--help"):
+    if _flagged(opts, "-h", "--help"):
         _usage()
         sys.exit(2)
     
@@ -22,20 +22,32 @@ def main(argv):
     
     for opt in opts:
         if "--fileformat" in opt or "-f" in opt:
-            log(opt[1], tag = "ext")
+            log(opt[1], tag = "eSxt")
             _isData = _isDataGenerator(opt[1])
             
     index_of_flags_for_map_script = len(opts) * 2 + 2
-    onAllDataInDir(dir, 
+    results = onAllDataInDir(dir, 
                    script.main, 
-                   cmdln = argv[index_of_flags_for_map_script:], 
+                   func_args = argv[index_of_flags_for_map_script:], 
                    isData = _isData)
     
+    post_process_script = _flaggedRetArg(opts, "-p", "--post-process")
+
+    if post_process_script:
+        try:
+            post_process_module = import_module(post_process_script, package = None)
+            post_process_module.main(results)
+            
+        except ModuleNotFoundError:
+            print("Error: Post process module not found")
+        
+    return results
+
 def _isDataGenerator(ext): return lambda filename: filename.endswith(ext)
  
 def _defaultIsData(filename): return filename.endswith(".json")
 
-def onAllDataInDir(root_dir, func, cmdln = [], inputfile = True, isData = _defaultIsData):
+def onAllDataInDir(root_dir, func, func_args = [], inputfile = True, isData = _defaultIsData):
     results = {}
     for (filepath, sub_directories, files) in walk(root_dir):
         log(filepath, tag = "Filepath")
@@ -47,23 +59,23 @@ def onAllDataInDir(root_dir, func, cmdln = [], inputfile = True, isData = _defau
                 
                 #Inputs filepath as an argument to the script
                 if inputfile:
-                    cmdln.append(join(filepath, file))
-                    results.update({file: func(cmdln)})
-                    cmdln = cmdln[:-1]
+                    func_args.append(join(filepath, file))
+                    results.update({file: func(func_args)})
+                    func_args = func_args[:-1]
                 
                 #Else, loads the data and inserts that as an argument to the script
                 else:
                     try:
                         with open((join(filepath, file)), 'r') as data_file: 
                             data = load(data_file)
-                            cmdln.append(data)
+                            func_args.append(data)
                             
                     except:
                         print("Error in processing data file: " + file)  
                         continue
                     
-                    results.update({file: func(cmdln)})
-                    cmdln = cmdln[:-1]
+                    results.update({file: func(func_args)})
+                    func_args = func_args[:-1]
                                       
     return results
 
@@ -78,8 +90,9 @@ def _usage():
                  filepath or loaded data",
             dir: "The complete path of a directory that contains files of a specified format." ,
             sf: "Flags to be passed into " + mn + "."}
+    
     for arg in args:
         log(desc[arg], indent = 2, tag = arg)
- 
+
 if __name__ == "__main__":
     main(sys.argv[1:])    
