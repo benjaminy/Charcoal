@@ -107,9 +107,12 @@ def getJSONDataFromFile(file, find = False):
        file explorer'''
     
     if find: file = findFile()
-    with open(file,'r') as jsonfile:
-        data = json.load(jsonfile)
-        
+    try:
+        with open(file,'r') as jsonfile:
+            data = json.load(jsonfile)
+    except:
+        return None
+    
     return data;
 
 def readCSV(path): 

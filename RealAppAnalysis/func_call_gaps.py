@@ -11,6 +11,7 @@ from csv import DictReader
 import sys
 
 _DEFAULT_THRESHOLD = 1000
+_DEFAULT_FUNCDURATION_THRESHOLD = _DEFAULT_THRESHOLD * 2
 _DEFAULT_CLUSTER_SIZE = 2
 
 def main(argv):
@@ -47,9 +48,11 @@ def _loadFile(args):
 
     return readCSV(filepath)
         
-def findClusters(func_data, 
-                 min_cluster_size = _DEFAULT_CLUSTER_SIZE, 
-                 threshold = _DEFAULT_THRESHOLD):
+def findClusters(func_data 
+                 , min_cluster_size = _DEFAULT_CLUSTER_SIZE
+                 , threshold = _DEFAULT_THRESHOLD
+                 , func_duration_threshold = _DEFAULT_FUNCDURATION_THRESHOLD):
+    
     clusters = []
     cluster = [func_data[0]]
     
@@ -58,12 +61,19 @@ def findClusters(func_data,
             clusters.append(cluster) 
             
     for func_cur in func_data[1:]:
+        if cluster[-1:]: 
+            cluster.append(func_cur) 
+            continue
+        
         func_prev = cluster[-1]
-        gap = float(func_cur["start time"]) - float(func_prev["end time"])
-        if(gap <= threshold): 
-            cluster.append(func_cur)
-            
-        else: registCluster()
+        if float(func_cur["duration"]) <= func_duration_threshold:
+            gap = float(func_cur["start time"]) - float(func_prev["end time"])
+            if(gap <= threshold): 
+                cluster.append(func_cur)
+                
+        else: 
+            registCluster()
+            cluster = []
                
     #In case for loop ends while a cluster is growing
     registCluster()

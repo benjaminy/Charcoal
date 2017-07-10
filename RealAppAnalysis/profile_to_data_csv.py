@@ -11,6 +11,7 @@ def main(argv):
     
     if not args: profile = getJSONDataFromFile(None, find = True)    
     else: profile = getJSONDataFromFile(args[0])
+    if not profile: return
     
     profile_by_pids = categorizeByValue(profile, "pid")
     
@@ -67,6 +68,7 @@ def functionSummary(fcall_events):
         if(is_beginning(fcall_event)): function_stack.append(fcall_event)
             
         elif(is_end(fcall_event)):
+            if not function_stack: continue
             start_fcall = function_stack.pop()
             start_time = float(start_fcall["ts"])
             end_time = float(fcall_event["ts"])

@@ -60,7 +60,8 @@ def onAllDataInDir(root_dir, func, func_args = [], inputfile = True, isData = _d
                 #Inputs filepath as an argument to the script
                 if inputfile:
                     func_args.append(join(filepath, file))
-                    results.update({file: func(func_args)})
+                    path_without_root = filepath[len(root_dir) + 1:] 
+                    results.update({(path_without_root, file): func(func_args)})
                     func_args = func_args[:-1]
                 
                 #Else, loads the data and inserts that as an argument to the script
@@ -74,7 +75,7 @@ def onAllDataInDir(root_dir, func, func_args = [], inputfile = True, isData = _d
                         print("Error in processing data file: " + file)  
                         continue
                     
-                    results.update({file: func(func_args)})
+                    results.update({(filepath.split("\\")[-1:], file): func(func_args)})
                     func_args = func_args[:-1]
                                       
     return results
