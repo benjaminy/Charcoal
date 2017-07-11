@@ -1,5 +1,5 @@
 import datautil
-from datautil import log, parseCmdLnArgs, categorizeByValue, getJSONDataFromFile, _flagged
+from datautil import filterEvents, log, parseCmdLnArgs, categorizeByValue, getJSONDataFromFile, _flagged
 from csv import DictWriter
 from os.path import join
 import json
@@ -17,16 +17,22 @@ def main(argv):
     
     if _flagged(opts, "-m", "--manual"):
         pids = list(profile_by_pids.keys())
-        if debug: log(pids, indent = 1, tag = "Process ID") 
+        if debug: log(pids, indent = 3, tag = "Process ID") 
         pid = _inputKey(profile_by_pids)
+        tid = _inputKey(categorizeByValue(profile_by_pids))
     
-    #Use the process of the CPU Profile   
-    else: pid = profile[-1]["pid"]
+    #Use the process of the CPU Profile     
+    else: 
+        cpu_profile = profile[-1]
+        pid = cpu_profile["pid"]
+        tid = cpu_profile["tid"]
     
-    process_of_interest = profile_by_pids[pid]
     if debug: datautil.log(pid, tag = "Process Selected")
-    processed_data = toFuncData(process_of_interest)
-    
+    if debug: datautil.log(tid, tag = "Thread Selected")
+    filtered_data = filterEvents(filterEvents(profile, "pid", pid), "tid", tid)
+    if debug: log(len(filtered_data), indent = 3, tag = "Number of events")
+    processed_data = toFuncData(filtered_data)
+    if debug: log(len(processed_data), indent = 3, tag = "Processe data")
     outdir = ""
     filename = argv[-1]
     
@@ -37,7 +43,7 @@ def main(argv):
     out_filename = filename + ".csv"
     out_filepath = join(outdir, out_filename)
     dataToCSV(processed_data, out_filepath)
-    if debug: log(out_filepath, tag = "Out")
+    if debug: log(out_filepath, indent = 3, tag = "Out")
 
 def toFuncData(data):
     functions = datautil.filterEvents(data, "name", "FunctionCall")

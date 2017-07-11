@@ -1,3 +1,4 @@
 from datautil import parseCmdLnArgs
 def main(argv):
-    opt
+    opts, args = parseCmdLnArgs(argv, "", [])
+    

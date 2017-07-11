@@ -19,6 +19,8 @@ def main(data):
         
         pp = PrettyPrinter(indent = 2)
         #pp.pprint(cluster_list)
+        
+        log(len(cluster_list), indent = 4, tag = "Clusters Found")
         sizes, durations = maps(cluster_list, len, clusterDurations)  
         
         printStats(sorted(sizes), "Cluster Sizes")

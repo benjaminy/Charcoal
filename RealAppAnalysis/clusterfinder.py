@@ -1,4 +1,3 @@
-import tkinter
 from datautil import findFile, \
                      toTxt, \
                      parseCmdLnArgs,\
@@ -12,18 +11,21 @@ import sys
 
 _DEFAULT_THRESHOLD = 1000
 _DEFAULT_FUNCDURATION_THRESHOLD = _DEFAULT_THRESHOLD * 2
-_DEFAULT_CLUSTER_SIZE = 2
+_DEFAULT_CLUSTER_SIZE = 3
 
 def main(argv):
     opts, args = parseCmdLnArgs(argv, "s:t:", ["cluster-size=", "gap-threshold="])
     
     raw_data = _loadFile(args)
-    clusters = findClusters(raw_data, 
+    
+    if True: clusters = findClusters(raw_data, 
                             min_cluster_size = _handleSizeFlag(opts),
                             threshold = _handleThresholdFlag(opts))
-
+    
+    
+    else: clusters = find_clusters(raw_data, threshold = 1000)
+    
     log(len(clusters), indent = 2, tag = "Clusters found")
-
     return clusters
     
 def _handleThresholdFlag(opts):
@@ -48,28 +50,28 @@ def _loadFile(args):
 
     return readCSV(filepath)
         
-def findClusters(func_data 
+def findClusters(functions 
                  , min_cluster_size = _DEFAULT_CLUSTER_SIZE
                  , threshold = _DEFAULT_THRESHOLD
                  , func_duration_threshold = _DEFAULT_FUNCDURATION_THRESHOLD):
     
     clusters = []
-    cluster = [func_data[0]]
+    cluster = [functions[0]]
     
     def registCluster(): 
         if len(cluster) >= min_cluster_size: 
             clusters.append(cluster) 
             
-    for func_cur in func_data[1:]:
-        if cluster[-1:]: 
+    for func_cur in functions[1:]:
+        if not cluster: 
             cluster.append(func_cur) 
             continue
         
         func_prev = cluster[-1]
-        if float(func_cur["duration"]) <= func_duration_threshold:
-            gap = float(func_cur["start time"]) - float(func_prev["end time"])
-            if(gap <= threshold): 
-                cluster.append(func_cur)
+        #if float(func_cur["duration"]) <= func_duration_threshold:
+        gap = float(func_cur["start time"]) - float(func_prev["end time"])
+        if(gap <= threshold): 
+            cluster.append(func_cur)
                 
         else: 
             registCluster()
@@ -79,6 +81,32 @@ def findClusters(func_data
     registCluster()
     
     return clusters
-    
+
+def find_clusters(durationevents_sorted, threshold = 1000000):
+    clusters = []
+    current_cluster = []
+    current_cluster_is_empty = True
+
+    for i in range(len(durationevents_sorted) - 1):
+        f1 = durationevents_sorted[i]
+
+        if ( current_cluster_is_empty ):
+            current_cluster.append( f1 )
+            current_cluster_is_empty = False
+
+        f2 = durationevents_sorted[i + 1]
+
+        if( (float(f2["start time"]) - float(f1["end time"])) < threshold ):
+            current_cluster.append( f2 )
+
+        else:
+            clusters.append(current_cluster)
+            if (i < len(durationevents_sorted)-2):
+                current_cluster = []
+                current_cluster_is_empty = True
+
+    clusters.append(current_cluster)
+    return clusters
+
 if __name__ == "__main__":
     main(sys.argv[1:])
