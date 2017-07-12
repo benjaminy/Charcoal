@@ -8,17 +8,18 @@ from datautil import findFile, \
                      
 from csv import DictReader
 import sys
+from _operator import itemgetter
 
 _DEFAULT_THRESHOLD = 1000
 _DEFAULT_FUNCDURATION_THRESHOLD = _DEFAULT_THRESHOLD * 2
-_DEFAULT_CLUSTER_SIZE = 3
+_DEFAULT_CLUSTER_SIZE = 1
 
 def main(argv):
     opts, args = parseCmdLnArgs(argv, "s:t:", ["cluster-size=", "gap-threshold="])
     
     raw_data = _loadFile(args)
     
-    if True: clusters = findClusters(raw_data, 
+    if False: clusters = findClusters(raw_data, 
                             min_cluster_size = _handleSizeFlag(opts),
                             threshold = _handleThresholdFlag(opts))
     
@@ -82,17 +83,16 @@ def findClusters(functions
     
     return clusters
 
-def find_clusters(durationevents_sorted, threshold = 1000000):
+def find_clusters(durationevents_sorted, threshold = 1000):
     clusters = []
     current_cluster = []
-    current_cluster_is_empty = True
 
     for i in range(len(durationevents_sorted) - 1):
         f1 = durationevents_sorted[i]
 
-        if ( current_cluster_is_empty ):
+        if not current_cluster:
             current_cluster.append( f1 )
-            current_cluster_is_empty = False
+            continue
 
         f2 = durationevents_sorted[i + 1]
 
@@ -103,7 +103,6 @@ def find_clusters(durationevents_sorted, threshold = 1000000):
             clusters.append(current_cluster)
             if (i < len(durationevents_sorted)-2):
                 current_cluster = []
-                current_cluster_is_empty = True
 
     clusters.append(current_cluster)
     return clusters
