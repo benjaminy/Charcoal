@@ -1,21 +1,25 @@
+[BIY - July 12]
+A good paper for discussion:
+http://cs.coloradocollege.edu/~bylvisaker/p251-petrov.pdf
+
 [Miguel - June 29]
   - GOALS:
   	1. Understand what sort of agreements in data there are between the CPU Profile and the event profile
   	2. Determine which of the two, if no agreement is found, is more reliable
   	3. Investigate whether the durations of function events are truly represented by the event profile
   		- I have a suspicion that the CPU Profile is where function events are represented in 0.1 MS resolution...
-  		
+
 [Miguel - June 28]
   - Refining how to identify process-of-interest automatically is not achieved
   - (!) That said, in this process, it was found that:
-  	1. Each data file has a cpuprofile associated with it, which is tailored to profiling JavaScript behavior 
+  	1. Each data file has a cpuprofile associated with it, which is tailored to profiling JavaScript behavior
   	2. Every process and their threads has metadata associated with it, which can be used if trends exist in which thread scripting
   	   events occur (the descriptors for the metadata is consistent across data files)
   - By mapping the CPU Profile to the FunctionCall events in the data file, it is possible to identify processes of interest
     but there is no clear 1:1 relationship between the CPU Profile and FunctionCall events
   - Effort is being made in creating the bridge between the two data subsets so that a more robust process-of-interest
     algorithm is achieved
- 
+
 [Miguel - June 27]
   - Fixed the main concern with the graph, but the x-axes does not represent functions of 0 duration
   - In doing so, created a script that can serve as a starting point to find "clusters" of functions by
@@ -52,60 +56,60 @@ http://charcoal-lang.org/charcoal_intro_draft.pdf
   - The focus, by Ben's suggestion, will be to start looking for gaps between callbacks / events
   - Also, the idea of representative samples is still a concern, and a protocol for how to go about
     getting profiles may have to be addressed concretely soon
-  
+
 [Miguel - June 23]
-  - I gathered some more sample performance profiles, but I am growing concerned with whether the profiles are representative of 
+  - I gathered some more sample performance profiles, but I am growing concerned with whether the profiles are representative of
     JavaScript behavior of the sites from which they were derived
   - (!) Automation of profile analysis / graphing is looking a bit promising, as I think there is a structural pattern in what processes
     are of interest
-  
+
 [Miguel - June 22]
   - I implemented some scripts for graphing data
   - It's a little rough looking, and the script is beginning to become a bit messy, but I believe it has working value
-  - I am suspecting that I will have to automate the process of looking at data eventually, and I wonder what sort 
-    of statistical analysis can be performed en masse 
-  
+  - I am suspecting that I will have to automate the process of looking at data eventually, and I wonder what sort
+    of statistical analysis can be performed en masse
+
 [Miguel - June 20]
  - (!) After consulting with Ben, it was determined that there may be a arguably straightforward way of extracting
    function duration data from Chrome's Performance Analyzer
  - For the sake of progress, I will assume his approach correct, but I will eventually "modulize" data extraction
  - Also, it was also decided that deriving causality in async activity may not be totally necessary, although
    I will keep it in mind
-   
+
 [Miguel - June 19]
  - Looked at Firefox developer tools a bit more intently to see if there are cleaner output files for
    determining function duration
  - Mozilla's performance analyzer does not yield intuitive, interpretable results
  - (?) There's an async parent attribute for Firefox's analyzer; simple overlapping asyc call tests suggest
        that it can't be used for causal relationships...
- 
-[Miguel - June 16] 
+
+[Miguel - June 16]
  - Output files of chrome's performance analyzer and the JavaScript Profiler is more cumbersome than I thought
  - On top of that, both tools rely on sampling to gain runtime information of functions
  - I am considering dabbling with the other browser dev-tools in hopes of cleaner output files
- 
-[Miguel - June 15] 
- - I followed Ben's suggestion to look at the async listener, and skimmed the code. 
+
+[Miguel - June 15]
+ - I followed Ben's suggestion to look at the async listener, and skimmed the code.
  - Seems quite promising, if I understood the AsyncListener implementation well enough (separate from the tree)
  - Will follow up on the AsyncListner implementation, as well as the Node.js native api for async handling and
    process handling... still having issues with data gathering.
- 
+
  [BY - June 14]
 - Feeling pessimistic about getting event initiator/source from browsers.
 - However, it might be available in node.js: https://gist.github.com/creationix/7796338
-   
+
 [Miguel - June 14]
- - The output file of the current profilers / tracers do not format function time in an obvious way 
+ - The output file of the current profilers / tracers do not format function time in an obvious way
    (there's no attribute like "duration")
  - I have some leads but nothing solid on how to derive this data
- 	
+
 [Miguel - June 13]
- - I decided to focus on the output of the performance analyzer. It is arguably more 
+ - I decided to focus on the output of the performance analyzer. It is arguably more
    descriptive in profiling an application during runtime.
  - However, causal relationships are not mapped in the profiler, outside of timeouts
  - There is reason to suppose that Chrome does, at the very least, can keep track of asynchronous activity because
    it does so through a stack trace.
- 
+
 [Miguel - June 12]
  - Several findings with the inspector
  	- A JavaScript profiler: Handles specifically functional calls during the runtime of an application in Chrome
@@ -115,24 +119,24 @@ http://charcoal-lang.org/charcoal_intro_draft.pdf
  - In this, it is questionable whether analysis should occur in the scripts or in external applications.
  - (!) It may be possible to use the performance analyzer to derive event/callback relationships, but the
     output file is dense...
- 
+
 [Miguel - June 9]
  - Focus has been given to doing some basic data analysis
  - My datautil module will be a dump file for any tools needed to process profiles
  - So far, trying to manipulate the output data for Event Profiler tool in a GENERIC way is a bit harder than expected,
-   and I do not want to ad-hoc the process in case I find other tools to supplement the output data. 
+   and I do not want to ad-hoc the process in case I find other tools to supplement the output data.
  - Looking for other tools are still on-going.
-   
+
 [Miguel - June  7]
  - I learned a working amount of Python to make scripts that can read from JSON files and manipulate them
  - I am developing a set of utility functions to manipulate the data from the Chrome Event Profiler
  - I will make more effort into understanding several key questions that I have:
  	1. How would the theoretical concurrency bug that can result from series of call backs look like in the profiler?
- 	2. What other processes that the Event Profiler traces that could contribute to concurrency concerns 
+ 	2. What other processes that the Event Profiler traces that could contribute to concurrency concerns
  	   beyond the v8 category?
- - To begin to answer these questions, I will look into other tools beyond just the Chrome developer 
+ - To begin to answer these questions, I will look into other tools beyond just the Chrome developer
    tools to see if there is some way to provide more information about events.
- 
+
 [Miguel - June 2]
 
  - Looked into the inspector tool and made several observations. Of them, the several are important:
@@ -155,7 +159,7 @@ http://charcoal-lang.org/charcoal_intro_draft.pdf
     2. Lack of definition in function calls
  - Effort will be made in identifying useful data by tracing simple JavaScript / HTML programs. This will help me understand what
    to look for in a event trace of a complex application
-   
+
 [BY - May 24]
 Background for the summer project with Clara & Miguel:
 - Very broad, old-ish background on the challenges of concurrency:
