@@ -1,8 +1,26 @@
+[Miguel - July 11]
+  - (w/ Clara) There we disagreements between the clusters I found and the clusters Clara found,
+    but we eventually came to fix both our scripts and got identical results
+  - More investigations into identifying API calls in the profile
+  
+[Miguel - July 10]
+  - (!) (w/ Clara) Developed a first approach to identifying clusters on the profiles
+  - ( w/ Clara ) We attempted to find ways to determining Web API calls through the the profiles,
+    but nothing of practical use...
+  - Finally got a hacked reduction feature to be implemented with the datamapper. Stoked.
+
+[Miguel - July 7]
+  - I began to modulize the my graphing scripts, separating details of the input data away
+    from the code
+  - This way, the graphing scripts can receive any arbitrary set of data
+  - Also, refactored some of my code so that the datamapper can be used to find clusters
+    across all profilers
+  
 [Miguel - July 6]
-  - GOALS:
-    1. Fix the graphs
-      - Fixed reading error of the graphs
-    2. Develop a data reducer, or namely, a big reduce operation over all the data files through the
+  - Developed something with the datamapper
+  - There was an error with the scripts reading the graphs and fixed it
+  Fixed reading error of the graphs
+  - Develop a data reducer, or namely, a big reduce operation over all the data files through the
        data mapper, or something similar. I imagine this would require storing of results...
       - See if I can determine variation in web application behavior for the same operations
       - Aggregate data?
