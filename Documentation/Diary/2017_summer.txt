@@ -15,15 +15,6 @@
   - This way, the graphing scripts can receive any arbitrary set of data
   - Also, refactored some of my code so that the datamapper can be used to find clusters
     across all profilers
-  
-[Miguel - July 6]
-  - Developed something with the datamapper
-  - There was an error with the scripts reading the graphs and fixed it
-  Fixed reading error of the graphs
-  - Develop a data reducer, or namely, a big reduce operation over all the data files through the
-       data mapper, or something similar. I imagine this would require storing of results...
-      - See if I can determine variation in web application behavior for the same operations
-      - Aggregate data?
  
 [Miguel - July 5]
   - Decided to format some of the data analysis scripts and clean up some of the scripts
