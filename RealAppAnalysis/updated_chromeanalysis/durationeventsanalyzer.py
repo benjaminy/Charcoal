@@ -208,6 +208,7 @@ def find_clusters(durationevents_sorted, threshold = 1000000):
     clusters.append(current_cluster)
     return clusters
 
+<<<<<<< HEAD
 
 
 def stdev(l):
@@ -257,6 +258,9 @@ def get_clusters_fnames(clusters):
 
 
 def create_graph(filepath, xs, ys, xmax, ymax, logscale = False):
+=======
+def create_graph(filepath, xs, ys, xmax):
+>>>>>>> refs/remotes/origin/miguel
     plt.plot(xs, ys, "ro")
     if logscale:
         plt.xscale("log")

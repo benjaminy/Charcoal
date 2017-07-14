@@ -1,0 +1,12 @@
+name,start time,end time,duration
+onclick,18735877000.0,18735885000.0,8000.0
+cascade.(anonymous function),18735886000.0,18735887000.0,1000.0
+cascade.(anonymous function),18735987000.0,18735987000.0,0.0
+cascade.(anonymous function),18736187000.0,18736188000.0,1000.0
+cascade.(anonymous function),18736487000.0,18736487000.0,0.0
+cascade.(anonymous function),18736887000.0,18736888000.0,1000.0
+cascade.(anonymous function),18737387000.0,18737388000.0,1000.0
+cascade.(anonymous function),18737987000.0,18737987000.0,0.0
+cascade.(anonymous function),18738688000.0,18738688000.0,0.0
+cascade.(anonymous function),18739488000.0,18739489000.0,1000.0
+recursiveFun,18740388000.0,18741723000.0,1335000.0

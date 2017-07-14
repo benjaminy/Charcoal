@@ -21,6 +21,7 @@ def main():
             types_of_events(subsubdic)
 
 
+
 def event_types_count(dic_of_events):
     ''' { "M": 34, "Dx":45, "X":65, "I":67 }'''
     dic = {}
