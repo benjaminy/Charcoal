@@ -1,3 +1,10 @@
+[Clara - July 13]
+Today we hope to...
+- Get an idea about how Node works, and how it runs.
+- Look for debugging tools, in particular the "AsyncListener" module and how we can possibly
+integrate it into and run it against some code.
+
+
 [Miguel - July 14]
   - GOALS
     1. Continue scraping / grepping for Web API that have async behavior
