@@ -8,6 +8,8 @@
     	   - Node
     	     - See if AsyncListner can be used...
 
+
+
 [Miguel - July 13]
   - (w/ Clara) We were able to request HTML docs from Mozilla's servers and parse them
     for relevant links to their web APIs.
@@ -15,6 +17,12 @@
     tags have to be addressed
   - Seems I was able to create a rough approximation for the Mozilla's doc; got the
     potential API calls
+
+[Clara - July 13]
+  - Scraping the web page with all of the web APIs. Our goal is to create a list with all
+  APIs, or functioncalls, that have a callback and/or promise. For starters, we are gonna look for
+  Python libraries that allow us to download/parse the web page.
+
 
 [BIY - July 12]
 A good paper for discussion:
