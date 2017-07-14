@@ -1,0 +1,564 @@
+Total API Count: 748
+
+	Async APIs
+		API: Animation
+
+					METHOD: cancel
+
+		API: AudioContext
+
+					METHOD: close
+
+					METHOD: createBuffer
+
+					METHOD: createBuffer
+
+					METHOD: decodeAudioData
+
+					METHOD: createGain
+
+					METHOD: decodeAudioData
+
+					METHOD: resume
+
+					METHOD: suspend
+
+		API: BluetoothRemoteGATTServer
+
+					METHOD: getPrimaryService
+
+					METHOD: getPrimaryServices
+
+		API: Body
+
+					METHOD: arrayBuffer
+
+					METHOD: ArrayBuffer
+
+					METHOD: blob
+
+					METHOD: Blob
+
+					METHOD: formData
+
+					METHOD: FormData
+
+					METHOD: json
+
+					METHOD: text
+
+		API: Cache
+
+					METHOD: add
+
+					METHOD: addAll
+
+					METHOD: put
+
+		API: CacheStorage
+
+					METHOD: match
+
+					METHOD: has
+
+		API: Client
+
+					METHOD: postMessage
+
+		API: CustomElementRegistry
+
+					METHOD: whenDefined
+
+		API: DOMTokenList
+
+					METHOD: forEach
+
+		API: DataTransferItem
+
+					METHOD: getAsString
+
+		API: Document
+
+					METHOD: adoptNode
+
+					METHOD: caretPositionFromPoint
+
+					METHOD: caretRangeFromPoint
+
+					METHOD: createAttribute
+
+					METHOD: createCDATASection
+
+					METHOD: createComment
+
+					METHOD: createDocumentFragment
+
+					METHOD: createElement
+
+					METHOD: createElementNS
+
+					METHOD: createEntityReference
+
+					METHOD: createEvent
+
+					METHOD: createNodeIterator
+
+					METHOD: createProcessingInstruction
+
+					METHOD: createRange
+
+					METHOD: createTextNode
+
+					METHOD: createTouch
+
+					METHOD: createTouchList
+
+					METHOD: createTreeWalker
+
+					METHOD: elementFromPoint
+
+					METHOD: elementsFromPoint
+
+					METHOD: enableStyleSheetsForSet
+
+					METHOD: exitPointerLock
+
+					METHOD: getAnimations
+
+					METHOD: getElementsByClassName
+
+					METHOD: getElementsByTagName
+
+					METHOD: getElementsByTagNameNS
+
+					METHOD: importNode
+
+					METHOD: registerElement
+
+					METHOD: releaseCapture
+
+					METHOD: mozSetImageElement
+
+					METHOD: getElementById
+
+					METHOD: querySelector
+
+					METHOD: querySelectorAll
+
+					METHOD: createExpression
+
+					METHOD: createNSResolver
+
+					METHOD: evaluate
+
+					METHOD: clear
+
+					METHOD: close
+
+					METHOD: execCommand
+
+					METHOD: getElementsByName
+
+					METHOD: getSelection
+
+					METHOD: hasFocus
+
+					METHOD: open
+
+					METHOD: queryCommandEnabled
+
+					METHOD: queryCommandState
+
+					METHOD: queryCommandSupported
+
+					METHOD: write
+
+					METHOD: writeln
+
+		API: DocumentTouch
+
+					METHOD: createTouch
+
+					METHOD: createTouchList
+
+		API: Element
+
+					METHOD: requestFullscreen
+
+					METHOD: requestPointerLock
+
+		API: ExtendableEvent
+
+					METHOD: waitUntil
+
+		API: FetchEvent
+
+					METHOD: respondWith
+
+		API: FileSystemDirectoryEntry
+
+					METHOD: getDirectory
+
+					METHOD: getFile
+
+					METHOD: removeRecursively
+
+		API: FileSystemDirectoryReader
+
+					METHOD: readEntries
+
+		API: FileSystemEntry
+
+					METHOD: copyTo
+
+					METHOD: getMetadata
+
+					METHOD: getParent
+
+					METHOD: moveTo
+
+					METHOD: remove
+
+		API: FileSystemFileEntry
+
+					METHOD: file
+
+					METHOD: File
+
+					METHOD: createWriter
+
+		API: FontFaceSet
+
+					METHOD: load
+
+		API: GamepadHapticActuator
+
+					METHOD: pulse
+
+		API: Geolocation
+
+					METHOD: getCurrentPosition
+
+					METHOD: watchPosition
+
+		API: GlobalFetch
+
+					METHOD: fetch
+
+		API: HTMLCanvasElement
+
+					METHOD: toBlob
+
+		API: HTMLIFrameElement
+
+					METHOD: getVolume
+
+					METHOD: getMuted
+
+					METHOD: getManifest
+
+		API: HTMLMediaElement
+
+					METHOD: play
+
+					METHOD: seekToNextFrame
+
+		API: IDBDatabase
+
+					METHOD: createObjectStore
+
+					METHOD: deleteObjectStore
+
+		API: IDBFactory
+
+					METHOD: open
+
+					METHOD: deleteDatabase
+
+		API: IDBIndex
+
+					METHOD: count
+
+					METHOD: get
+
+					METHOD: getKey
+
+		API: IDBObjectStore
+
+					METHOD: createIndex
+
+					METHOD: deleteIndex
+
+		API: IntersectionObserver
+
+					METHOD: observe
+
+					METHOD: takeRecords
+
+					METHOD: unobserve
+
+				METHOD: Media_Streams_API
+
+					METHOD: getUserMedia
+
+		API: MediaKeyStatusMap
+
+					METHOD: forEach
+
+		API: MediaQueryList
+
+					METHOD: addListener
+
+					METHOD: removeListener
+
+		API: MediaSession
+
+					METHOD: setActionHandler
+
+		API: MediaStreamTrack
+
+					METHOD: applyConstraints
+
+					METHOD: applyConstraints
+
+		API: Navigator
+
+					METHOD: getUserMedia
+
+		API: Node
+
+					METHOD: setUserData
+
+		API: NodeList
+
+					METHOD: forEach
+
+		API: notification
+
+					METHOD: requestPermission
+
+		API: OfflineAudioContext
+
+					METHOD: resume
+
+					METHOD: suspend
+
+					METHOD: startRendering
+
+		API: PaymentRequest
+
+					METHOD: canMakePayment
+
+					METHOD: show
+
+		API: PerformanceObserver
+
+					METHOD: observe
+
+		API: PerformanceObserverEntryList
+
+					METHOD: getEntries
+
+					METHOD: getEntriesByType
+
+					METHOD: getEntriesByName
+
+		API: PositionSensorVRDevice
+
+					METHOD: getState
+
+		API: RTCDataChannel
+
+					METHOD: close
+
+		API: RTCPeerConnection
+
+					METHOD: addIceCandidate
+
+					METHOD: createAnswer
+
+					METHOD: createOffer
+
+					METHOD: setLocalDescription
+
+					METHOD: setRemoteDescription
+
+		API: RTCSessionDescription
+
+					METHOD: RTCSessionDescription
+
+		API: Request
+
+					METHOD: arrayBuffer
+
+					METHOD: ArrayBuffer
+
+					METHOD: blob
+
+					METHOD: Blob
+
+					METHOD: json
+
+					METHOD: JSON
+
+					METHOD: text
+
+		API: Response
+
+					METHOD: error
+
+					METHOD: arrayBuffer
+
+					METHOD: ArrayBuffer
+
+					METHOD: blob
+
+					METHOD: Blob
+
+					METHOD: json
+
+					METHOD: text
+
+		API: ServiceWorkerGlobalScope
+
+					METHOD: fetch
+
+		API: ServiceWorkerRegistration
+
+					METHOD: update
+
+					METHOD: unregister
+
+		API: SourceBuffer
+
+					METHOD: abort
+
+		API: Storage
+
+					METHOD: key
+
+		API: StorageManager
+
+					METHOD: estimate
+
+		API: SubtleCrypto
+
+					METHOD: encrypt
+
+					METHOD: decrypt
+
+					METHOD: sign
+
+					METHOD: verify
+
+					METHOD: digest
+
+					METHOD: generateKey
+
+					METHOD: deriveKey
+
+					METHOD: importKey
+
+					METHOD: exportKey
+
+					METHOD: wrapKey
+
+					METHOD: unwrapKey
+
+		API: VRDisplay
+
+					METHOD: cancelAnimationFrame
+
+					METHOD: cancelAnimationFrame
+
+					METHOD: requestAnimationFrame
+
+					METHOD: requestAnimationFrame
+
+					METHOD: requestAnimationFrame
+
+					METHOD: requestPresent
+
+					METHOD: exitPresent
+
+		API: Window
+
+					METHOD: cancelAnimationFrame
+
+					METHOD: requestAnimationFrame
+
+					METHOD: cancelIdleCallback
+
+					METHOD: requestIdleCallback
+
+					METHOD: open
+
+					METHOD: postMessage
+
+					METHOD: requestAnimationFrame
+
+					METHOD: requestIdleCallback
+
+					METHOD: setImmediate
+
+					METHOD: setInterval
+
+					METHOD: setTimeout
+
+					METHOD: fetch
+
+					METHOD: setInterval
+
+					METHOD: setTimeout
+
+		API: WindowOrWorkerGlobalScope
+
+					METHOD: setInterval
+
+					METHOD: setTimeout
+
+					METHOD: fetch
+
+					METHOD: setInterval
+
+					METHOD: setTimeout
+
+		API: WindowTimers
+
+					METHOD: setInterval
+
+					METHOD: setTimeout
+
+					METHOD: setInterval
+
+					METHOD: setTimeout
+
+		API: WorkerGlobalScope
+
+					METHOD: setInterval
+
+					METHOD: setTimeout
+
+					METHOD: fetch
+
+					METHOD: setInterval
+
+					METHOD: setTimeout
+
+		API: WorkerNavigator
+
+					METHOD: sendBeacon
+
+		API: XMLDocument
+
+					METHOD: load
+
+		API: XMLHttpRequest
+
+					METHOD: open
+
+					METHOD: overrideMimeType
+
+					METHOD: send
+
+Async API Count: 64

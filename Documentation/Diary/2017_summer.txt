@@ -1,8 +1,20 @@
-[Clara - July 13]
-Topics for today:
-- Scraping the web page with all of the web APIs. Our goal is to create a list with all
-APIs, or functioncalls, that have a callback and/or promise. For starters, we are gonna look for
-Python libraries that allow us to download/parse the web page.
+[Miguel - July 14]
+  - GOALS
+    1. Continue scraping / grepping for Web API that have async behavior
+    2. Possibly...
+    	A. Do more additional testing regarding the clusters (verification tests...)
+    	B. Continue refactoring my code
+    	C. Look into the other frameworks
+    	   - Node
+    	     - See if AsyncListner can be used...
+
+[Miguel - July 13]
+  - (w/ Clara) We were able to request HTML docs from Mozilla's servers and parse them
+    for relevant links to their web APIs.
+  - Although, various edge cases regarding the presence and absence of certain HTML
+    tags have to be addressed
+  - Seems I was able to create a rough approximation for the Mozilla's doc; got the
+    potential API calls
 
 [BIY - July 12]
 A good paper for discussion:
@@ -12,7 +24,7 @@ http://cs.coloradocollege.edu/~bylvisaker/p251-petrov.pdf
   - (w/ Clara) There we disagreements between the clusters I found and the clusters Clara found,
     but we eventually came to fix both our scripts and got identical results
   - More investigations into identifying API calls in the profile
-  
+
 [Miguel - July 10]
   - (!) (w/ Clara) Developed a first approach to identifying clusters on the profiles
   - ( w/ Clara ) We attempted to find ways to determining Web API calls through the the profiles,
@@ -25,7 +37,7 @@ http://cs.coloradocollege.edu/~bylvisaker/p251-petrov.pdf
   - This way, the graphing scripts can receive any arbitrary set of data
   - Also, refactored some of my code so that the datamapper can be used to find clusters
     across all profilers
- 
+
 [Miguel - July 5]
   - Decided to format some of the data analysis scripts and clean up some of the scripts
   - I am preparing to do a map over the data, and somehow reduce the results to something
@@ -34,25 +46,25 @@ http://cs.coloradocollege.edu/~bylvisaker/p251-petrov.pdf
     the data
 
 [Miguel - July 4]
-  - I was able to develop a data mapper, a script that applies an input script over all files in 
+  - I was able to develop a data mapper, a script that applies an input script over all files in
     specified directory
   - My hope is that it will be useful in simplifying data analysis and conversions, as well as
     formatting of data.
   - My scripts require some adapting to the interface of the data mapper, but mainly this is
     accommodating command line arguments on a per script basis.
   - This is beneficial, since I would no longer have to edit the scripts to apply them to a file
-    
+
 [Miguel - July 3]
   - The agreements between the CPU Profile and the Event Tracer were investigated
   	1. Both seem to not overlap too much, when looking at the differences between what
   	   functions are found in both
-  	2. The functions found in the CPU Profiler tend to be majorly low-order functions 
-  	3. Functions found only in the event tracer really are mostly found in the same process / thread 
+  	2. The functions found in the CPU Profiler tend to be majorly low-order functions
+  	3. Functions found only in the event tracer really are mostly found in the same process / thread
   	   as the functions found in the CPU profiler
-  - It may be reasonable to assume that, for now, the process and thread that the CPU Profiler 
+  - It may be reasonable to assume that, for now, the process and thread that the CPU Profiler
     is mapped to is a reasonably place to get data from so that we can automate the
-    process 
-  	     		
+    process
+
 [Miguel - June 29]
   - GOALS:
   	1. Understand what sort of agreements in data there are between the CPU Profile and the event profile

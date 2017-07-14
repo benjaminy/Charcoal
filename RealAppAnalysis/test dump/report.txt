@@ -1,0 +1,2 @@
+	API: ANGLE_instanced_arrays
+			METHOD: drawArraysInstancedANGLE
