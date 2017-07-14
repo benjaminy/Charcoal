@@ -1,3 +1,9 @@
+[Clara - July 13]
+Topics for today:
+- Scraping the web page with all of the web APIs. Our goal is to create a list with all
+APIs, or functioncalls, that have a callback and/or promise. For starters, we are gonna look for
+Python libraries that allow us to download/parse the web page.
+
 [BIY - July 12]
 A good paper for discussion:
 http://cs.coloradocollege.edu/~bylvisaker/p251-petrov.pdf
