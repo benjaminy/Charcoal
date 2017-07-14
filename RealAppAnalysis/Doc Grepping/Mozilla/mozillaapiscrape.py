@@ -21,15 +21,13 @@ def testGrep():
         print("ASYNC")
 
 def main():
-    #testGrep()
-    #return
     base_url = "https://developer.mozilla.org/en-US/docs/Web/API"
     page = content(base_url)
     links = getRelevantLinks(page, "/en-US/docs/Web/API")
 
     async_apis = []
     for link in links[5:]:
-        api_url = urlToAPI(base_url, link)
+        api_url = urlToAPI(base_url, link[0])
         _log(link, tag = "API")
 
         async_methods = findAsyncBehaviorInAPI(api_url)
@@ -61,12 +59,27 @@ def hasAsyncBehavior(page):
 
 def content(url): return BeautifulSoup(requests.get(url).content, "html.parser")
 
+
 def getRelevantLinks(soup, common_url):
     links = []
-    refs = [l.get("href") for l in soup.find_all("a") if hasattr(l, "href")]
-    for r in refs:
-        if common_url in r:
-            links.append(r.split("/")[-1])
+
+    for list_item in soup.find_all( "li"):
+        k = list_item.find_next("a")
+        if k.has_attr("href"):
+            link = k.get("href")
+            if common_url in link:
+                api_name = link.split("/")[-1]
+                badges_tag = list_item.find( "span",{ "class" : "indexListBadges" } )
+                if badges_tag: badge = badges_tag.find("i")['class'][0]
+                else: badge = None
+                links.append( (api_name, badge) )
+
+
+
+    #refs = [l.get("href") for l in soup.find_all("a") if hasattr(l, "href")]
+    #for r in refs:
+    #    if common_url in r:
+    #        links.append(r.split("/")[-1])
 
     return links
 
