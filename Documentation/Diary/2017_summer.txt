@@ -1,3 +1,19 @@
+[Miguel - July 14]
+  - GOALS
+    1. Continue scraping / grepping for Web API that have async behavior
+    2. Possibly...
+    	A. Do more additional testing regarding the clusters (verification tests...)
+    	B. Continue refactoring my code 
+    	C. Look into the other frameworks
+  
+[Miguel - July 13]
+  - (w/ Clara) We were able to request HTML docs from Mozilla's servers and parse them
+    for relevant links to their web APIs.
+  - Although, various edge cases regarding the presence and absence of certain HTML
+    tags have to be addressed
+  - Seems I was able to create a rough approximation for the Mozilla's doc; got the
+    potential API calls
+  		
 [BIY - July 12]
 A good paper for discussion:
 http://cs.coloradocollege.edu/~bylvisaker/p251-petrov.pdf
