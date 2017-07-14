@@ -5,6 +5,8 @@
     	A. Do more additional testing regarding the clusters (verification tests...)
     	B. Continue refactoring my code 
     	C. Look into the other frameworks
+    	   - Node
+    	     - See if AsyncListner can be used...
   
 [Miguel - July 13]
   - (w/ Clara) We were able to request HTML docs from Mozilla's servers and parse them

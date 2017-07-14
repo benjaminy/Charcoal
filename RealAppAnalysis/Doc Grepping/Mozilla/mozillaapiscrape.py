@@ -22,13 +22,13 @@ def main():
     links = getRelevantLinks(page, "/en-US/docs/Web/API")
     
     async_apis = []
-    for l in links[5:]: 
-        api_url = urlToAPI(base_url, l)
-        _log(l, tag = "API")
+    for link in links[5:]: 
+        api_url = urlToAPI(base_url, link)
+        _log(link, tag = "API")
         
         async_methods = findAsyncBehaviorInAPI(api_url)
         if async_methods:
-            async_apis.append((l, async_methods))
+            async_apis.append((link, async_methods))
     
 def findAsyncBehaviorInAPI(api_url):
     methods = getAPIMethods(api_url)

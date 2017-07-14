@@ -1,3439 +1,564 @@
-	API: ANGLE_instanced_arrays
-			METHOD: drawArraysInstancedANGLE
-			METHOD: drawArrays
-			METHOD: drawElementsInstancedANGLE
-			METHOD: drawElements
-			METHOD: vertexAttribDivisorANGLE
-			METHOD: drawArraysInstancedANGLE
-			METHOD: drawElementsInstancedANGLE
-	API: AbstractWorker
-	API: AmbientLightSensor
-	API: AmbientLightSensorReading
-	API: AnalyserNode
-			METHOD: AudioNode
-			METHOD: getFloatFrequencyData
-			METHOD: Float32Array
-			METHOD: getByteFrequencyData
-			METHOD: Uint8Array
-			METHOD: getFloatTimeDomainData
-			METHOD: Float32Array
-			METHOD: getByteTimeDomainData
-			METHOD: Uint8Array
-	API: Animation
-			METHOD: cancel
-				Potential Async: Indicator - promise
-			METHOD: KeyframeEffect
-			METHOD: finish
-			METHOD: pause
-			METHOD: play
-			METHOD: reverse
-	API: AnimationEffectReadOnly
-			METHOD: getComputedTiming
-	API: AnimationEffectTiming
-	API: AnimationEffectTimingProperties
-	API: AnimationEffectTimingReadOnly
-	API: AnimationEvent
-			METHOD: Event
-			METHOD: initAnimationEvent
-			METHOD: createEvent
-	API: AnimationPlaybackEvent
-	API: AnimationTimeline
-	API: ArrayBufferView
-	API: Attr
-	API: AudioBuffer
-			METHOD: getChannelData
-			METHOD: copyFromChannel
-			METHOD: copyToChannel
-	API: AudioBufferSourceNode
-			METHOD: AudioScheduledSourceNode
-	API: AudioContext
-			METHOD: EventTarget
-			METHOD: close
-				Potential Async: Indicator - promise
-			METHOD: createBuffer
-				Potential Async: Indicator - async
-			METHOD: AudioBuffer
-			METHOD: AudioBufferSourceNode
-			METHOD: createConstantSource
-			METHOD: ConstantSourceNode
-			METHOD: createBufferSource
-			METHOD: AudioBufferSourceNode
-			METHOD: AudioBuffer
-			METHOD: AudioBuffer
-			METHOD: createBuffer
-				Potential Async: Indicator - async
-			METHOD: decodeAudioData
-				Potential Async: Indicator - async
-			METHOD: createMediaElementSource
-			METHOD: MediaElementAudioSourceNode
-			METHOD: HTMLMediaElement
-			METHOD: createMediaStreamSource
-			METHOD: MediaStreamAudioSourceNode
-			METHOD: MediaStream
-			METHOD: createMediaStreamDestination
-			METHOD: MediaStreamAudioDestinationNode
-			METHOD: MediaStream
-			METHOD: createScriptProcessor
-			METHOD: ScriptProcessorNode
-			METHOD: createStereoPanner
-			METHOD: StereoPannerNode
-			METHOD: createAnalyser
-			METHOD: AnalyserNode
-			METHOD: createBiquadFilter
-			METHOD: BiquadFilterNode
-			METHOD: createChannelMerger
-			METHOD: ChannelMergerNode
-			METHOD: createChannelSplitter
-			METHOD: ChannelSplitterNode
-			METHOD: createConvolver
-			METHOD: ConvolverNode
-			METHOD: createDelay
-			METHOD: DelayNode
-			METHOD: createDynamicsCompressor
-			METHOD: DynamicsCompressorNode
-			METHOD: createGain
-				Potential Async: Indicator - callback
-			METHOD: GainNode
-			METHOD: createIIRFilter
-			METHOD: IIRFilterNode
-			METHOD: createOscillator
-			METHOD: OscillatorNode
-			METHOD: createPanner
-			METHOD: PannerNode
-			METHOD: createPeriodicWave
-			METHOD: PeriodicWave
-			METHOD: OscillatorNode
-			METHOD: createWaveShaper
-			METHOD: WaveShaperNode
-			METHOD: createAudioWorker
-			METHOD: AudioWorkerNode
-			METHOD: decodeAudioData
-				Potential Async: Indicator - async
-			METHOD: ArrayBuffer
-			METHOD: XMLHttpRequest
-			METHOD: getOutputTimestamp
-			METHOD: currentTime
-			METHOD: now
-			METHOD: resume
-				Potential Async: Indicator - promise
-			METHOD: suspend
-				Potential Async: Indicator - promise
-	API: AudioDestinationNode
-			METHOD: AudioNode
-	API: AudioListener
-			METHOD: AudioNode
-			METHOD: setOrientation
-			METHOD: setPosition
-	API: AudioNode
-			METHOD: EventTarget
-			METHOD: connect
-			METHOD: AudioParam
-			METHOD: disconnect
-	API: AudioParam
-			METHOD: setValueAtTime
-			METHOD: currentTime
-			METHOD: linearRampToValueAtTime
-			METHOD: exponentialRampToValueAtTime
-			METHOD: setTargetAtTime
-			METHOD: setValueCurveAtTime
-			METHOD: Float32Array
-			METHOD: cancelScheduledValues
-			METHOD: cancelAndHoldAtTime
-	API: AudioProcessingEvent
-	API: AudioScheduledSourceNode
-			METHOD: AudioNode
-			METHOD: start
-			METHOD: stop
-	API: BatteryManager
-			METHOD: EventTarget
-			METHOD: addEventListener
-			METHOD: removeEventListener
-			METHOD: dispatchEvent
-	API: BeforeInstallPromptEvent
-			METHOD: prompt
-	API: BeforeUnloadEvent
-	API: BiquadFilterNode
-			METHOD: AudioNode
-			METHOD: getFrequencyResponse
-	API: Blob
-			METHOD: slice
-	API: BlobBuilder
-			METHOD: Blob
-			METHOD: Blob
-			METHOD: Blob
-			METHOD: Blob
-			METHOD: BlobBuilder#append()
-			METHOD: Blob
-			METHOD: Blob
-			METHOD: BlobBuilder#append()
-			METHOD: BlobBuilder#append()
-			METHOD: File
-			METHOD: File
-			METHOD: File
-	API: BlobEvent
-			METHOD: Event
-	API: Bluetooth
-			METHOD: getAvailability
-			METHOD: requestDevice
-			METHOD: BluetoothDevice
-	API: BluetoothAdvertisingData
-	API: BluetoothCharacteristicProperties
-	API: BluetoothRemoteGATTCharacteristic
-			METHOD: getDescriptor
-			METHOD: BluetoothGATTDescriptor
-			METHOD: getDescriptors
-			METHOD: BluetoothGATTDescriptor
-			METHOD: readValue
-			METHOD: writeValue
-			METHOD: startNotifications
-			METHOD: stopNotifications
-	API: BluetoothRemoteGATTDescriptor
-			METHOD: readValue
-			METHOD: writeValue
-	API: BluetoothRemoteGATTServer
-			METHOD: connect
-			METHOD: disconnect
-			METHOD: getPrimaryService
-				Potential Async: Indicator - promise
-			METHOD: BluetoothGATTService
-			METHOD: getPrimaryServices
-				Potential Async: Indicator - promise
-			METHOD: BluetoothGATTService
-	API: BluetoothStatusChangedEvent
-	API: Body
-			METHOD: arrayBuffer
-				Potential Async: Indicator - promise
-			METHOD: Response
-			METHOD: ArrayBuffer
-				Potential Async: Indicator - promise
-			METHOD: blob
-				Potential Async: Indicator - promise
-			METHOD: Response
-			METHOD: Blob
-				Potential Async: Indicator - promise
-			METHOD: formData
-				Potential Async: Indicator - promise
-			METHOD: Response
-			METHOD: FormData
-				Potential Async: Indicator - promise
-			METHOD: json
-				Potential Async: Indicator - promise
-			METHOD: Response
-			METHOD: text
-				Potential Async: Indicator - promise
-			METHOD: Response
-			METHOD: USVString
-	API: BroadcastChannel
-			METHOD: EventTarget
-			METHOD: postMessage
-			METHOD: close
-	API: BudgetService
-			METHOD: getCost
-			METHOD: Promise
-			METHOD: getBudget
-			METHOD: Promise
-			METHOD: BudgetState
-			METHOD: reserve
-			METHOD: Promise
-	API: BudgetState
-	API: BufferSource
-	API: ByteString
-	API: CDATASection
-			METHOD: Text
-	API: CSS
-	API: CSSConditionRule
-			METHOD: CSSRule
-			METHOD: CSSGroupingRule
-	API: CSSCounterStyleRule
-			METHOD: CSSRule
-	API: CSSGroupingRule
-	API: CSSKeyframeRule
-			METHOD: CSSRule
-	API: CSSKeyframesRule
-			METHOD: CSSRule
-			METHOD: appendRule
-			METHOD: DOMString
-			METHOD: DOMException
-			METHOD: deleteRule
-			METHOD: DOMString
-			METHOD: findRule
-			METHOD: DOMString
-	API: CSSMatrix
-	API: CSSMediaRule
-			METHOD: CSSConditionRule
-			METHOD: CSSGroupingRule
-			METHOD: CSSRule
-	API: CSSNamespaceRule
-			METHOD: CSSRule
-	API: CSSPageRule
-			METHOD: CSSRule
-	API: CSSPrimitiveValue
-			METHOD: getCounterValue
-			METHOD: DOMException
-			METHOD: Counter
-			METHOD: getFloatValue
-			METHOD: DOMException
-			METHOD: getRGBColorValue
-			METHOD: DOMException
-			METHOD: RGBColor
-			METHOD: getRectValue
-			METHOD: DOMException
-			METHOD: Rect
-			METHOD: getStringValue
-			METHOD: DOMException
-			METHOD: setFloatValue
-			METHOD: DOMException
-			METHOD: setStringValue
-			METHOD: DOMException
-	API: CSSRule
-	API: CSSRuleList
-	API: CSSStyleDeclaration
-	API: CSSStyleRule
-	API: CSSStyleSheet
-			METHOD: Stylesheet
-			METHOD: deleteRule
-			METHOD: insertRule
-	API: CSSSupportsRule
-			METHOD: CSSConditionRule
-			METHOD: CSSRule
-			METHOD: CSSGroupingRule
-	API: CSSValue
-	API: CSSValueList
-			METHOD: item
-			METHOD: CSSValue
-	API: Cache
-			METHOD: match
-			METHOD: Cache
-			METHOD: matchAll
-			METHOD: Cache
-			METHOD: add
-				Potential Async: Indicator - promise
-			METHOD: addAll
-				Potential Async: Indicator - promise
-			METHOD: put
-				Potential Async: Indicator - promise
-			METHOD: delete
-			METHOD: Cache
-			METHOD: Cache
-			METHOD: Cache
-			METHOD: keys
-			METHOD: Cache
-	API: CacheStorage
-			METHOD: match
-				Potential Async: Indicator - promise
-			METHOD: Request
-			METHOD: Cache
-			METHOD: CacheStorage
-			METHOD: has
-				Potential Async: Indicator - promise
-			METHOD: Cache
-			METHOD: open
-			METHOD: Cache
-			METHOD: delete
-			METHOD: Cache
-			METHOD: Cache
-			METHOD: Cache
-			METHOD: keys
-			METHOD: Cache
-			METHOD: CacheStorage
-			METHOD: Cache
-	API: CanvasCaptureMediaStream
-			METHOD: MediaStream
-			METHOD: EventTarget
-			METHOD: requestFrame
-	API: CanvasGradient
-			METHOD: addColorStop
-	API: CanvasImageSource
-	API: CanvasPattern
-			METHOD: setTransform
-			METHOD: SVGMatrix
-	API: CanvasRenderingContext2D
-	API: CaretPosition
-			METHOD: getClientRect
-	API: ChannelMergerNode
-			METHOD: AudioNode
-	API: ChannelSplitterNode
-			METHOD: AudioNode
-	API: CharacterData
-			METHOD: Node
-			METHOD: ChildNode
-			METHOD: NonDocumentTypeChildNode
-			METHOD: appendData
-			METHOD: DOMString
-			METHOD: DOMString
-			METHOD: deleteData
-			METHOD: DOMString
-			METHOD: insertData
-			METHOD: DOMString
-			METHOD: remove
-			METHOD: replaceData
-			METHOD: DOMString
-			METHOD: DOMString
-			METHOD: substringData
-			METHOD: DOMString
-	API: ChildNode
-			METHOD: remove
-			METHOD: before
-			METHOD: Node
-			METHOD: DOMString
-			METHOD: DOMString
-			METHOD: Text
-			METHOD: after
-			METHOD: Node
-			METHOD: DOMString
-			METHOD: DOMString
-			METHOD: Text
-			METHOD: replaceWith
-			METHOD: Node
-			METHOD: DOMString
-			METHOD: DOMString
-			METHOD: Text
-	API: ChromeWorker
-	API: Client
-			METHOD: postMessage
-				Potential Async: Indicator - promise
-			METHOD: ServiceWorkerClient
-	API: Clients
-			METHOD: get
-			METHOD: matchAll
-			METHOD: openWindow
-			METHOD: Client
-			METHOD: claim
-	API: ClipboardEvent
-			METHOD: Event
-	API: CloseEvent
-			METHOD: Event
-			METHOD: initCloseEvent
-			METHOD: CloseEvent
-	API: Comment
-			METHOD: CharacterData
-			METHOD: Node
-	API: CompositionEvent
-			METHOD: UIEvent
-			METHOD: Event
-			METHOD: initCompositionEvent
-	API: Console
-			METHOD: assert
-			METHOD: clear
-			METHOD: count
-			METHOD: debug
-			METHOD: dir
-			METHOD: dirxml
-			METHOD: error
-			METHOD: console#Using_string_substitutions
-			METHOD: exception
-			METHOD: group
-			METHOD: console#Using_groups_in_the_console
-			METHOD: groupCollapsed
-			METHOD: console#Using_groups_in_the_console
-			METHOD: groupEnd
-			METHOD: console#Using_groups_in_the_console
-			METHOD: info
-			METHOD: console#Using_string_substitutions
-			METHOD: log
-			METHOD: console#Using_string_substitutions
-			METHOD: profile
-			METHOD: profileEnd
-			METHOD: table
-			METHOD: time
-			METHOD: console#Timers
-			METHOD: timeEnd
-			METHOD: console#Timers
-			METHOD: timeStamp
-			METHOD: trace
-			METHOD: console#Stack_traces
-			METHOD: warn
-			METHOD: console#Using_string_substitutions
-	API: ConstantSourceNode
-			METHOD: AudioScheduledSourceNode
-			METHOD: AudioScheduledSourceNode
-			METHOD: start
-			METHOD: stop
-	API: ConstrainBoolean
-	API: ConstrainDOMString
-	API: ConstrainDouble
-	API: ConstrainLong
-	API: ConvolverNode
-			METHOD: AudioNode
-	API: Coordinates
-	API: Credential
-	API: CredentialsContainer
-			METHOD: get
-			METHOD: Credential
-			METHOD: requireUserMediation
-			METHOD: store
-			METHOD: Credential
-	API: Crypto
-			METHOD: RandomSource
-			METHOD: getRandomValues
-	API: CryptoKey
-	API: CustomElementRegistry
-			METHOD: define
-			METHOD: get
-			METHOD: whenDefined
-				Potential Async: Indicator - promise
-	API: CustomEvent
-			METHOD: initCustomEvent
-			METHOD: Event
-			METHOD: initEvent
-			METHOD: preventBubble
-			METHOD: stopPropagation
-			METHOD: preventCapture
-			METHOD: stopPropagation
-			METHOD: preventDefault
-			METHOD: stopImmediatePropagation
-			METHOD: stopPropagation
-			METHOD: getPreventDefault
-			METHOD: defaultPrevented
-			METHOD: defaultPrevented
-	API: DOMConfiguration
-			METHOD: canSetParameter
-			METHOD: getParameter
-			METHOD: DOMUserData
-			METHOD: setParameter
-	API: DOMError
-	API: DOMErrorHandler
-			METHOD: handleError
-			METHOD: severity
-	API: DOMException
-	API: DOMHighResTimeStamp
-	API: DOMImplementation
-			METHOD: createDocument
-			METHOD: XMLDocument
-			METHOD: createDocumentType
-			METHOD: DocumentType
-			METHOD: createHTMLDocument
-			METHOD: Document
-			METHOD: hasFeature
-			METHOD: Boolean
-	API: DOMImplementationList
-			METHOD: item
-	API: DOMImplementationRegistry
-			METHOD: getDOMImplementation
-			METHOD: getDOMImplementation
-			METHOD: getDOMImplementationList
-			METHOD: getDOMImplementationList
-	API: DOMImplementationSource
-			METHOD: getDOMImplementation
-			METHOD: DOMImplementation
-			METHOD: getDOMImplementationList
-			METHOD: DOMImplementationList
-	API: DOMLocator
-	API: DOMMatrix
-			METHOD: DOMMatrixReadOnly
-			METHOD: multiplySelf
-			METHOD: DOMMatrix
-			METHOD: DOMMatrix
-			METHOD: preMultiplySelf
-			METHOD: DOMMatrix
-			METHOD: DOMMatrix
-			METHOD: translateSelf
-			METHOD: DOMMatrix
-			METHOD: scaleSelf
-			METHOD: DOMMatrix
-			METHOD: scale3dSelf
-			METHOD: DOMMatrix
-			METHOD: scaleNonUniformSelf
-			METHOD: DOMMatrix
-			METHOD: rotateSelf
-			METHOD: DOMMatrix
-			METHOD: rotateFromVectorSelf
-			METHOD: DOMMatrix
-			METHOD: rotateAxisAngleSelf
-			METHOD: DOMMatrix
-			METHOD: skewXSelf
-			METHOD: DOMMatrix
-			METHOD: skewYSelf
-			METHOD: DOMMatrix
-			METHOD: invertSelf
-			METHOD: DOMMatrix
-			METHOD: setMatrixValue
-			METHOD: DOMMatrix
-			METHOD: Transform
-	API: DOMMatrixReadOnly
-			METHOD: translate
-			METHOD: DOMMatrix
-			METHOD: scale
-			METHOD: DOMMatrix
-			METHOD: scale3d
-			METHOD: DOMMatrix
-			METHOD: scaleNonUniform
-			METHOD: DOMMatrix
-			METHOD: rotate
-			METHOD: DOMMatrix
-			METHOD: rotateFromVector
-			METHOD: DOMMatrix
-			METHOD: rotateAxisAngle
-			METHOD: DOMMatrix
-			METHOD: skewX
-			METHOD: DOMMatrix
-			METHOD: skewY
-			METHOD: DOMMatrix
-			METHOD: multiply
-			METHOD: DOMMatrix
-			METHOD: DOMMatrix
-			METHOD: flipX
-			METHOD: DOMMatrix
-			METHOD: flipY
-			METHOD: DOMMatrix
-			METHOD: inverse
-			METHOD: DOMMatrix
-			METHOD: transformPoint
-			METHOD: DOMPoint
-			METHOD: toFloat32Array
-			METHOD: toFloat64Array
-			METHOD: toString
-			METHOD: DOMString
-	API: DOMObject
-	API: DOMParser
-	API: DOMPoint
-			METHOD: DOMPointReadOnly
-			METHOD: fromPoint
-	API: DOMPointReadOnly
-			METHOD: fromPoint
-			METHOD: matrixTransform
-	API: DOMRect
-			METHOD: DOMRectReadOnly
-			METHOD: fromRect
-	API: DOMRectReadOnly
-			METHOD: fromRect
-	API: DOMString
-	API: DOMStringList
-			METHOD: item
-			METHOD: DOMString
-			METHOD: contains
-	API: DOMStringMap
-	API: DOMTimeStamp
-	API: DOMTokenList
-			METHOD: item
-			METHOD: contains
-			METHOD: add
-			METHOD: remove
-			METHOD: replace
-			METHOD: supports
-			METHOD: toggle
-			METHOD: entries
-			METHOD: forEach
-				Potential Async: Indicator - callback
-			METHOD: keys
-			METHOD: values
-	API: DOMUserData
-	API: DataTransfer
-			METHOD: clearData
-			METHOD: getData
-			METHOD: setData
-			METHOD: setDragImage
-			METHOD: addElement
-			METHOD: mozClearDataAt
-			METHOD: mozGetDataAt
-			METHOD: mozSetDataAt
-			METHOD: mozTypesAt
-	API: DataTransferItem
-			METHOD: getAsFile
-			METHOD: File
-			METHOD: getAsString
-				Potential Async: Indicator - callback
-			METHOD: webkitGetAsEntry
-			METHOD: FileSystemEntry
-			METHOD: FileSystemFileEntry
-			METHOD: FileSystemDirectoryEntry
-	API: DataTransferItemList
-			METHOD: add
-			METHOD: File
-			METHOD: DOMString
-			METHOD: DataTransferItem
-			METHOD: remove
-			METHOD: clear
-			METHOD: DataTransferItem
-			METHOD: DataTransferItem
-	API: DedicatedWorkerGlobalScope
-			METHOD: WorkerGlobalScope
-			METHOD: EventTarget
-			METHOD: WindowTimers
-			METHOD: WindowBase64
-			METHOD: WindowEventHandlers
-			METHOD: close
-			METHOD: postMessage
-			METHOD: dump
-			METHOD: importScripts
-			METHOD: atob
-			METHOD: btoa
-			METHOD: clearInterval
-			METHOD: setInterval
-			METHOD: clearTimeout
-			METHOD: setTimeout
-			METHOD: setInterval
-			METHOD: setTimeout
-	API: DelayNode
-			METHOD: AudioNode
-	API: DeviceAcceleration
-	API: DeviceLightEvent
-	API: DeviceMotionEvent
-	API: DeviceOrientationEvent
-	API: DeviceProximityEvent
-	API: DeviceRotationRate
-	API: DirectoryEntrySync
-	API: DirectoryReaderSync
-	API: Document
-			METHOD: Node
-			METHOD: EventTarget
-			METHOD: adoptNode
-				Potential Async: Indicator - async
-			METHOD: captureEvents
-			METHOD: captureEvents
-			METHOD: caretPositionFromPoint
-				Potential Async: Indicator - async
-			METHOD: CaretPosition
-			METHOD: caretRangeFromPoint
-				Potential Async: Indicator - async
-			METHOD: Range
-			METHOD: createAttribute
-				Potential Async: Indicator - async
-			METHOD: Attr
-			METHOD: createAttributeNS
-			METHOD: createCDATASection
-				Potential Async: Indicator - async
-			METHOD: createComment
-				Potential Async: Indicator - async
-			METHOD: createDocumentFragment
-				Potential Async: Indicator - async
-			METHOD: createElement
-				Potential Async: Indicator - async
-			METHOD: createElementNS
-				Potential Async: Indicator - async
-			METHOD: createEntityReference
-				Potential Async: Indicator - async
-			METHOD: createEvent
-				Potential Async: Indicator - async
-			METHOD: createNodeIterator
-				Potential Async: Indicator - async
-			METHOD: NodeIterator
-			METHOD: createProcessingInstruction
-				Potential Async: Indicator - async
-			METHOD: ProcessingInstruction
-			METHOD: createRange
-				Potential Async: Indicator - async
-			METHOD: Range
-			METHOD: createTextNode
-				Potential Async: Indicator - async
-			METHOD: createTouch
-				Potential Async: Indicator - async
-			METHOD: Touch
-			METHOD: createTouchList
-				Potential Async: Indicator - async
-			METHOD: TouchList
-			METHOD: createTreeWalker
-				Potential Async: Indicator - async
-			METHOD: TreeWalker
-			METHOD: elementFromPoint
-				Potential Async: Indicator - async
-			METHOD: elementsFromPoint
-				Potential Async: Indicator - async
-			METHOD: enableStyleSheetsForSet
-				Potential Async: Indicator - async
-			METHOD: exitPointerLock
-				Potential Async: Indicator - async
-			METHOD: getAnimations
-				Potential Async: Indicator - async
-			METHOD: Animation
-			METHOD: getElementsByClassName
-				Potential Async: Indicator - async
-			METHOD: getElementsByTagName
-				Potential Async: Indicator - async
-			METHOD: getElementsByTagNameNS
-				Potential Async: Indicator - async
-			METHOD: importNode
-				Potential Async: Indicator - async
-			METHOD: normalizeDocument
-			METHOD: registerElement
-				Potential Async: Indicator - async
-			METHOD: releaseCapture
-				Potential Async: Indicator - async
-			METHOD: releaseEvents
-			METHOD: releaseEvents
-			METHOD: routeEvent
-			METHOD: routeEvent
-			METHOD: mozSetImageElement
-				Potential Async: Indicator - async
-			METHOD: ParentNode
-			METHOD: getElementById
-				Potential Async: Indicator - async
-			METHOD: querySelector
-				Potential Async: Indicator - async
-			METHOD: querySelectorAll
-				Potential Async: Indicator - async
-			METHOD: XPathEvaluator
-			METHOD: createExpression
-				Potential Async: Indicator - async
-			METHOD: createNSResolver
-				Potential Async: Indicator - async
-			METHOD: XPathNSResolver
-			METHOD: evaluate
-				Potential Async: Indicator - async
-			METHOD: HTMLDocument
-			METHOD: clear
-				Potential Async: Indicator - async
-			METHOD: close
-				Potential Async: Indicator - async
-			METHOD: execCommand
-				Potential Async: Indicator - async
-			METHOD: getElementsByName
-				Potential Async: Indicator - async
-			METHOD: getSelection
-				Potential Async: Indicator - async
-			METHOD: Selection
-			METHOD: hasFocus
-				Potential Async: Indicator - async
-			METHOD: open
-				Potential Async: Indicator - async
-			METHOD: queryCommandEnabled
-				Potential Async: Indicator - async
-			METHOD: queryCommandIndeterm
-			METHOD: queryCommandState
-				Potential Async: Indicator - async
-			METHOD: queryCommandSupported
-				Potential Async: Indicator - async
-			METHOD: queryCommandValue
-			METHOD: write
-				Potential Async: Indicator - async
-			METHOD: writeln
-				Potential Async: Indicator - async
-	API: DocumentFragment
-			METHOD: Node
-			METHOD: ParentNode
-			METHOD: find
-			METHOD: Element
-			METHOD: findAll
-			METHOD: NodeList
-			METHOD: Element
-			METHOD: querySelector
-			METHOD: Element
-			METHOD: querySelectorAll
-			METHOD: NodeList
-			METHOD: Element
-			METHOD: getElementById
-			METHOD: Element
-	API: DocumentOrShadowRoot
-			METHOD: getSelection
-			METHOD: Selection
-			METHOD: elementFromPoint
-			METHOD: elementsFromPoint
-			METHOD: caretPositionFromPoint
-			METHOD: CaretPosition
-	API: DocumentTimeline
-	API: DocumentTouch
-			METHOD: createTouch
-				Potential Async: Indicator - async
-			METHOD: Touch
-			METHOD: createTouchList
-				Potential Async: Indicator - async
-			METHOD: TouchList
-	API: DocumentType
-			METHOD: Node
-			METHOD: ChildNode
-			METHOD: remove
-	API: DoubleRange
-	API: DragEvent
-	API: DynamicsCompressorNode
-			METHOD: AudioNode
-	API: EXT_blend_minmax
-	API: EXT_color_buffer_float
-	API: EXT_color_buffer_half_float
-	API: EXT_disjoint_timer_query
-			METHOD: createQueryEXT
-			METHOD: WebGLQuery
-			METHOD: deleteQueryEXT
-			METHOD: WebGLQuery
-			METHOD: isQueryEXT
-			METHOD: WebGLQuery
-			METHOD: beginQueryEXT
-			METHOD: endQueryEXT
-			METHOD: queryCounterEXT
-			METHOD: getQueryEXT
-			METHOD: getQueryObjectEXT
-	API: EXT_frag_depth
-	API: EXT_sRGB
-	API: EXT_shader_texture_lod
-	API: EXT_texture_filter_anisotropic
-	API: Element
-			METHOD: Node
-			METHOD: EventTarget
-			METHOD: ParentNode
-			METHOD: ChildNode
-			METHOD: NonDocumentTypeChildNode
-			METHOD: Animatable
-			METHOD: addEventListener
-			METHOD: attachShadow
-			METHOD: ShadowRoot
-			METHOD: animate
-			METHOD: closest
-			METHOD: Element
-			METHOD: createShadowRoot
-			METHOD: ShadowRoot
-			METHOD: dispatchEvent
-			METHOD: find
-			METHOD: findAll
-			METHOD: getAnimations
-			METHOD: getAttribute
-			METHOD: getAttributeNames
-			METHOD: getAttributeNS
-			METHOD: getAttributeNode
-			METHOD: Attr
-			METHOD: getAttributeNodeNS
-			METHOD: Attr
-			METHOD: getBoundingClientRect
-			METHOD: getClientRects
-			METHOD: getElementsByClassName
-			METHOD: HTMLCollection
-			METHOD: getElementsByTagName
-			METHOD: HTMLCollection
-			METHOD: getElementsByTagNameNS
-			METHOD: HTMLCollection
-			METHOD: hasAttribute
-			METHOD: hasAttributeNS
-			METHOD: hasAttributes
-			METHOD: insertAdjacentElement
-			METHOD: insertAdjacentHTML
-			METHOD: insertAdjacentText
-			METHOD: matches
-			METHOD: querySelector
-			METHOD: Node
-			METHOD: querySelectorAll
-			METHOD: NodeList
-			METHOD: releasePointerCapture
-			METHOD: PointerEvent
-			METHOD: remove
-			METHOD: removeAttribute
-			METHOD: removeAttributeNS
-			METHOD: removeAttributeNode
-			METHOD: removeEventListener
-			METHOD: requestFullscreen
-				Potential Async: Indicator - async
-			METHOD: requestPointerLock
-				Potential Async: Indicator - async
-			METHOD: scrollIntoView
-			METHOD: setAttribute
-			METHOD: setAttributeNS
-			METHOD: setAttributeNode
-			METHOD: setAttributeNodeNS
-			METHOD: setCapture
-			METHOD: setPointerCapture
-			METHOD: PointerEvent
-	API: ElementTraversal
-	API: Entity
-	API: EntityReference
-	API: EntrySync
-	API: ErrorEvent
-			METHOD: Event
-	API: Event
-			METHOD: initEvent
-			METHOD: preventBubble
-			METHOD: stopPropagation
-			METHOD: preventCapture
-			METHOD: stopPropagation
-			METHOD: preventDefault
-			METHOD: stopImmediatePropagation
-			METHOD: stopPropagation
-			METHOD: getPreventDefault
-			METHOD: defaultPrevented
-			METHOD: defaultPrevented
-	API: EventListener
-			METHOD: Event
-			METHOD: EventListener#handleEvent()
-	API: EventSource
-			METHOD: EventTarget
-			METHOD: close
-	API: EventTarget
-			METHOD: addEventListener
-			METHOD: removeEventListener
-			METHOD: dispatchEvent
-	API: ExtendableEvent
-			METHOD: Event
-			METHOD: waitUntil
-				Potential Async: Indicator - async
-			METHOD: EventHandler
-			METHOD: installing
-			METHOD: EventHandler
-			METHOD: active
-	API: ExtendableMessageEvent
-			METHOD: ExtendableEvent
-	API: FederatedCredential
-	API: FetchController
-			METHOD: abort
-	API: FetchEvent
-			METHOD: ExtendableEvent
-			METHOD: respondWith
-				Potential Async: Indicator - promise
-			METHOD: Response
-			METHOD: waitUntil
-			METHOD: EventHandler
-			METHOD: installing
-			METHOD: EventHandler
-			METHOD: active
-	API: FetchObserver
-			METHOD: EventTarget
-	API: FetchSignal
-			METHOD: EventTarget
-	API: File
-			METHOD: Blob
-	API: FileEntrySync
-	API: FileError
-	API: FileException
-	API: FileList
-	API: FileReader
-			METHOD: abort
-			METHOD: readAsArrayBuffer
-			METHOD: Blob
-			METHOD: ArrayBuffer
-			METHOD: readAsBinaryString
-			METHOD: Blob
-			METHOD: readAsDataURL
-			METHOD: Blob
-			METHOD: readAsText
-			METHOD: Blob
-	API: FileReaderSync
-	API: FileRequest
-	API: FileSystem
-	API: FileSystemDirectoryEntry
-			METHOD: FileSystemEntry
-			METHOD: createReader
-			METHOD: FileSystemDirectoryReader
-			METHOD: getDirectory
-				Potential Async: Indicator - callback
-			METHOD: FileSystemDirectoryEntry
-			METHOD: getFile
-				Potential Async: Indicator - callback
-			METHOD: FileSystemFileEntry
-			METHOD: removeRecursively
-				Potential Async: Indicator - callback
-	API: FileSystemDirectoryReader
-			METHOD: readEntries
-				Potential Async: Indicator - callback
-			METHOD: FileSystemEntry
-			METHOD: FileSystemFileEntry
-			METHOD: FileSystemDirectoryEntry
-	API: FileSystemEntry
-			METHOD: copyTo
-				Potential Async: Indicator - callback
-			METHOD: getMetadata
-				Potential Async: Indicator - callback
-			METHOD: getParent
-				Potential Async: Indicator - callback
-			METHOD: FileSystemDirectoryEntry
-			METHOD: moveTo
-				Potential Async: Indicator - callback
-			METHOD: remove
-				Potential Async: Indicator - callback
-			METHOD: toURL
-	API: FileSystemFileEntry
-			METHOD: file
-				Potential Async: Indicator - callback
-			METHOD: File
-				Potential Async: Indicator - callback
-			METHOD: createWriter
-				Potential Async: Indicator - callback
-			METHOD: FileWriter
-	API: FileSystemFlags
-	API: FileSystemSync
-	API: FocusEvent
-			METHOD: UIEvent
-			METHOD: Event
-	API: FontFace
-			METHOD: load
-			METHOD: Promise
-	API: FontFaceSet
-			METHOD: add
-			METHOD: check
-			METHOD: Boolean
-			METHOD: clear
-			METHOD: delete
-			METHOD: load
-				Potential Async: Indicator - promise
-			METHOD: ready
-	API: FontFaceSetLoadEvent
-	API: FormData
-			METHOD: append
-			METHOD: delete
-			METHOD: entries
-			METHOD: get
-			METHOD: getAll
-			METHOD: has
-			METHOD: keys
-			METHOD: set
-			METHOD: values
-	API: GainNode
-			METHOD: AudioNode
-	API: Gamepad
-	API: GamepadButton
-	API: GamepadEvent
-	API: GamepadHapticActuator
-			METHOD: pulse
-				Potential Async: Indicator - promise
-	API: GamepadPose
-	API: Geolocation
-			METHOD: getCurrentPosition
-				Potential Async: Indicator - callback
-			METHOD: Position
-			METHOD: watchPosition
-				Potential Async: Indicator - callback
-			METHOD: clearWatch
-	API: GestureEvent
-			METHOD: UIEvent
-			METHOD: Event
-			METHOD: initGestureEvent
-	API: GlobalEventHandlers
-	API: GlobalFetch
-			METHOD: fetch
-				Potential Async: Indicator - callback
-	API: HMDVRDevice
-			METHOD: getEyeParameters
-			METHOD: VREyeParameters
-			METHOD: setFieldOfView
-	API: HTMLAnchorElement
-			METHOD: HTMLElement
-			METHOD: HTMLHyperlinkElementUtils
-			METHOD: blur
-			METHOD: focus
-			METHOD: toString
-			METHOD: USVString
-			METHOD: href
-			METHOD: HTMLElement
-	API: HTMLAreaElement
-			METHOD: HTMLElement
-			METHOD: HTMLHyperlinkElementUtils
-			METHOD: toString
-			METHOD: USVString
-			METHOD: Worker
-			METHOD: href
-	API: HTMLAudioElement
-			METHOD: HTMLMediaElement
-			METHOD: HTMLElement
-			METHOD: DOMString
-	API: HTMLBRElement
-			METHOD: HTMLElement
-	API: HTMLBaseElement
-			METHOD: HTMLElement
-	API: HTMLBaseFontElement
-			METHOD: HTMLElement
-	API: HTMLBodyElement
-			METHOD: HTMLElement
-			METHOD: WindowEventHandlers
-	API: HTMLButtonElement
-			METHOD: HTMLElement
-			METHOD: Boolean
-	API: HTMLCanvasElement
-			METHOD: HTMLElement
-			METHOD: captureStream
-			METHOD: CanvasCaptureMediaStream
-			METHOD: getContext
-			METHOD: CanvasRenderingContext2D
-			METHOD: WebGLRenderingContext
-			METHOD: toDataURL
-			METHOD: toBlob
-				Potential Async: Indicator - callback
-			METHOD: Blob
-			METHOD: transferControlToOffscreen
-			METHOD: OffscreenCanvas
-			METHOD: mozGetAsFile
-			METHOD: File
-	API: HTMLCollection
-			METHOD: item
-			METHOD: namedItem
-	API: HTMLContentElement
-			METHOD: HTMLElement
-			METHOD: getDistributedNodes
-			METHOD: NodeList
-	API: HTMLDListElement
-			METHOD: HTMLElement
-	API: HTMLDataElement
-			METHOD: HTMLElement
-	API: HTMLDataListElement
-			METHOD: HTMLElement
-	API: HTMLDialogElement
-			METHOD: HTMLElement
-			METHOD: close
-			METHOD: DOMString
-			METHOD: show
-			METHOD: showModal
-	API: HTMLDivElement
-			METHOD: HTMLElement
-	API: HTMLDocument
-	API: HTMLElement
-			METHOD: Element
-			METHOD: blur
-			METHOD: click
-			METHOD: focus
-			METHOD: forceSpellCheck
-	API: HTMLEmbedElement
-			METHOD: HTMLElement
-	API: HTMLFieldSetElement
-			METHOD: HTMLElement
-			METHOD: checkValidity
-			METHOD: setCustomValidity
-	API: HTMLFontElement
-			METHOD: HTMLElement
-	API: HTMLFormControlsCollection
-			METHOD: HTMLCollection
-			METHOD: namedItem
-			METHOD: RadioNodeList
-			METHOD: Element
-			METHOD: HTMLCollection
-	API: HTMLFormElement
-			METHOD: HTMLElement
-			METHOD: submit
-			METHOD: reset
-			METHOD: checkValidity
-			METHOD: reportValidity
-			METHOD: requestAutocomplete
-	API: HTMLFrameSetElement
-			METHOD: HTMLElement
-			METHOD: WindowEventHandlers
-	API: HTMLHRElement
-			METHOD: HTMLElement
-	API: HTMLHeadElement
-			METHOD: HTMLElement
-	API: HTMLHeadingElement
-			METHOD: HTMLElement
-	API: HTMLHtmlElement
-			METHOD: HTMLElement
-	API: HTMLHyperlinkElementUtils
-			METHOD: toString
-			METHOD: DOMString
-			METHOD: href
-	API: HTMLIFrameElement
-			METHOD: HTMLElement
-			METHOD: reload
-			METHOD: stop
-			METHOD: getCanGoBack
-			METHOD: goBack
-			METHOD: getCanGoForward
-			METHOD: goForward
-			METHOD: executeScript
-			METHOD: purgeHistory
-			METHOD: setVisible
-			METHOD: requestAnimationFrame
-			METHOD: getVisible
-			METHOD: setActive
-			METHOD: getActive
-			METHOD: getVolume
-				Potential Async: Indicator - callback
-			METHOD: setVolume
-			METHOD: mute
-			METHOD: unmute
-			METHOD: getMuted
-				Potential Async: Indicator - callback
-			METHOD: findAll
-			METHOD: findNext
-			METHOD: findAll
-			METHOD: clearMatch
-			METHOD: findAll
-			METHOD: findNext
-			METHOD: EventTarget
-			METHOD: addEventListener
-			METHOD: removeEventListener
-			METHOD: dispatchEvent
-			METHOD: sendMouseEvent
-			METHOD: MouseEvent
-			METHOD: sendTouchEvent
-			METHOD: TouchEvent
-			METHOD: addNextPaintListener
-			METHOD: removeNextPaintListener
-			METHOD: addNextPaintListener
-			METHOD: download
-			METHOD: getContentDimensions
-			METHOD: getManifest
-				Potential Async: Indicator - promise
-			METHOD: getScreenshot
-			METHOD: getStructuredData
-			METHOD: zoom
-	API: HTMLImageElement
-			METHOD: HTMLElement
-			METHOD: Image
-	API: HTMLInputElement
-			METHOD: select
-			METHOD: click
-			METHOD: setSelectionRange
-			METHOD: stepDown
-			METHOD: stepUp
-			METHOD: mozSetFileArray
-			METHOD: File
-			METHOD: mozGetFileNameArray
-			METHOD: mozSetFileNameArray
-	API: HTMLIsIndexElement
-			METHOD: HTMLElement
-	API: HTMLKeygenElement
-	API: HTMLLIElement
-			METHOD: HTMLElement
-	API: HTMLLabelElement
-			METHOD: HTMLElement
-	API: HTMLLegendElement
-			METHOD: HTMLElement
-	API: HTMLLinkElement
-			METHOD: HTMLElement
-			METHOD: LinkStyle
-	API: HTMLMapElement
-			METHOD: HTMLElement
-	API: HTMLMediaElement
-			METHOD: HTMLElement
-			METHOD: Element
-			METHOD: Node
-			METHOD: EventTarget
-			METHOD: addTextTrack
-			METHOD: captureStream
-			METHOD: MediaStream
-			METHOD: canPlayType
-			METHOD: fastSeek
-			METHOD: load
-			METHOD: mozCaptureStream
-			METHOD: mozCaptureStreamUntilEnded
-			METHOD: mozGetMetadata
-			METHOD: mozLoadFrom
-			METHOD: pause
-			METHOD: play
-				Potential Async: Indicator - promise
-			METHOD: seekToNextFrame
-				Potential Async: Indicator - async
-			METHOD: setMediaKeys
-			METHOD: MediaKeys
-			METHOD: setSinkId
-	API: HTMLMetaElement
-			METHOD: HTMLElement
-	API: HTMLMeterElement
-			METHOD: HTMLElement
-	API: HTMLModElement
-	API: HTMLOListElement
-			METHOD: HTMLElement
-	API: HTMLObjectElement
-			METHOD: HTMLElement
-			METHOD: checkValidity
-			METHOD: setCustomValidity
-	API: HTMLOptGroupElement
-			METHOD: HTMLElement
-	API: HTMLOptionElement
-			METHOD: HTMLElement
-			METHOD: Option
-	API: HTMLOptionsCollection
-	API: HTMLOutputElement
-			METHOD: HTMLElement
-			METHOD: checkValidity
-			METHOD: Boolean
-			METHOD: reportValidity
-			METHOD: setCustomValidity
-	API: HTMLParagraphElement
-			METHOD: HTMLElement
-	API: HTMLParamElement
-			METHOD: HTMLElement
-	API: HTMLPictureElement
-			METHOD: HTMLElement
-	API: HTMLPreElement
-			METHOD: HTMLElement
-	API: HTMLProgressElement
-			METHOD: HTMLElement
-	API: HTMLQuoteElement
-			METHOD: HTMLElement
-	API: HTMLScriptElement
-			METHOD: HTMLElement
-	API: HTMLSelectElement
-			METHOD: HTMLElement
-			METHOD: Element
-			METHOD: Node
-			METHOD: add
-			METHOD: blur
-			METHOD: HTMLElement
-			METHOD: checkValidity
-			METHOD: focus
-			METHOD: HTMLElement
-			METHOD: item
-			METHOD: namedItem
-			METHOD: remove
-			METHOD: setCustomValidity
-	API: HTMLShadowElement
-			METHOD: HTMLElement
-			METHOD: getDistributedNodes
-			METHOD: NodeList
-	API: HTMLSlotElement
-			METHOD: assignedNodes
-	API: HTMLSourceElement
-			METHOD: HTMLElement
-	API: HTMLSpanElement
-			METHOD: HTMLElement
-	API: HTMLStyleElement
-			METHOD: HTMLElement
-			METHOD: LinkStyle
-	API: HTMLTableCaptionElement
-			METHOD: HTMLElement
-	API: HTMLTableCellElement
-			METHOD: HTMLElement
-	API: HTMLTableColElement
-			METHOD: HTMLElement
-	API: HTMLTableDataCellElement
-			METHOD: HTMLTableCellElement
-			METHOD: HTMLElement
-	API: HTMLTableElement
-			METHOD: HTMLElement
-			METHOD: createTHead
-			METHOD: HTMLElement
-			METHOD: deleteTHead
-			METHOD: createTFoot
-			METHOD: HTMLElement
-			METHOD: deleteTFoot
-			METHOD: createCaption
-			METHOD: HTMLElement
-			METHOD: deleteCaption
-			METHOD: insertRow
-			METHOD: HTMLTableRowElement
-			METHOD: DOMException
-			METHOD: deleteRow
-			METHOD: DOMException
-			METHOD: stopSorting
-	API: HTMLTableHeaderCellElement
-			METHOD: HTMLTableCellElement
-			METHOD: HTMLElement
-	API: HTMLTableRowElement
-			METHOD: HTMLElement
-			METHOD: deleteCell
-			METHOD: DOMException
-			METHOD: insertCell
-			METHOD: DOMException
-			METHOD: HTMLTableCellElement
-	API: HTMLTableSectionElement
-			METHOD: HTMLElement
-			METHOD: deleteRow
-			METHOD: DOMException
-			METHOD: insertRow
-			METHOD: DOMException
-	API: HTMLTemplateElement
-			METHOD: HTMLElement
-	API: HTMLTextAreaElement
-			METHOD: setSelectionRange
-			METHOD: HTMLElement
-	API: HTMLTimeElement
-			METHOD: HTMLElement
-	API: HTMLTitleElement
-			METHOD: HTMLElement
-	API: HTMLTrackElement
-			METHOD: HTMLElement
-	API: HTMLUListElement
-			METHOD: HTMLElement
-	API: HTMLUnknownElement
-			METHOD: HTMLElement
-	API: HTMLVideoElement
-			METHOD: HTMLMediaElement
-			METHOD: HTMLElement
-			METHOD: getVideoPlaybackQuality
-			METHOD: VideoPlaybackQuality
-	API: HashChangeEvent
-	API: Headers
-			METHOD: append
-			METHOD: delete
-			METHOD: entries
-			METHOD: get
-			METHOD: ByteString
-			METHOD: has
-			METHOD: keys
-			METHOD: set
-			METHOD: values
-			METHOD: set
-			METHOD: append
-			METHOD: set
-			METHOD: append
-			METHOD: getAll
-			METHOD: get
-	API: History
-			METHOD: back
-			METHOD: forward
-			METHOD: go
-			METHOD: pushState
-			METHOD: replaceState
-	API: IDBCursor
-			METHOD: advance
-			METHOD: continue
-			METHOD: continuePrimaryKey
-			METHOD: delete
-			METHOD: IDBRequest
-			METHOD: update
-			METHOD: IDBRequest
-	API: IDBCursorSync
-	API: IDBCursorWithValue
-			METHOD: IDBCursor
-	API: IDBDatabase
-			METHOD: close
-			METHOD: createObjectStore
-				Potential Async: Indicator - callback
-			METHOD: deleteObjectStore
-				Potential Async: Indicator - callback
-			METHOD: transaction
-			METHOD: IDBTransaction
-			METHOD: objectStore
-	API: IDBDatabaseException
-	API: IDBDatabaseSync
-	API: IDBEnvironment
-	API: IDBEnvironmentSync
-	API: IDBFactory
-			METHOD: open
-				Potential Async: Indicator - async
-			METHOD: deleteDatabase
-				Potential Async: Indicator - async
-			METHOD: cmp
-			METHOD: IDBFactory.open-obsolete
-	API: IDBFactorySync
-	API: IDBIndex
-			METHOD: count
-				Potential Async: Indicator - callback
-			METHOD: IDBRequest
-			METHOD: get
-				Potential Async: Indicator - callback
-			METHOD: IDBRequest
-			METHOD: IDBKeyRange
-			METHOD: getKey
-				Potential Async: Indicator - callback
-			METHOD: IDBRequest
-			METHOD: IDBKeyRange
-			METHOD: getAll
-			METHOD: IDBRequest
-			METHOD: IDBKeyRange
-			METHOD: getAllKeys
-			METHOD: IDBRequest
-			METHOD: IDBKeyRange
-			METHOD: openCursor
-			METHOD: IDBRequest
-			METHOD: openKeyCursor
-			METHOD: IDBRequest
-	API: IDBIndexSync
-	API: IDBKeyRange
-			METHOD: bound
-			METHOD: only
-			METHOD: lowerBound
-			METHOD: upperBound
-			METHOD: includes
-	API: IDBLocaleAwareKeyRange
-			METHOD: IDBKeyRange
-	API: IDBMutableFile
-			METHOD: open
-			METHOD: LockedFile
-			METHOD: getFile
-			METHOD: DOMRequest
-			METHOD: File
-	API: IDBObjectStore
-			METHOD: add
-			METHOD: IDBRequest
-			METHOD: clear
-			METHOD: IDBRequest
-			METHOD: count
-			METHOD: IDBRequest
-			METHOD: IDBKeyRange
-			METHOD: createIndex
-				Potential Async: Indicator - callback
-			METHOD: IDBIndex
-			METHOD: delete
-			METHOD: IDBRequest
-			METHOD: deleteIndex
-				Potential Async: Indicator - callback
-			METHOD: get
-			METHOD: IDBRequest
-			METHOD: getKey
-			METHOD: IDBRequest
-			METHOD: getAll
-			METHOD: IDBRequest
-			METHOD: getAllKeys
-			METHOD: IDBRequest
-			METHOD: index
-			METHOD: openCursor
-			METHOD: IDBRequest
-			METHOD: IDBCursorWithValue
-			METHOD: openKeyCursor
-			METHOD: IDBRequest
-			METHOD: IDBCursorWithValue
-			METHOD: put
-			METHOD: IDBRequest
-	API: IDBObjectStoreSync
-	API: IDBOpenDBRequest
-			METHOD: IDBRequest
-			METHOD: EventTarget
-	API: IDBRequest
-			METHOD: EventTarget
-	API: IDBTransaction
-			METHOD: EventTarget
-			METHOD: abort
-			METHOD: objectStore
-			METHOD: IDBObjectStore
-	API: IDBTransactionSync
-	API: IDBVersionChangeEvent
-			METHOD: Method
-	API: IDBVersionChangeRequest
-			METHOD: setVersion
-	API: IIRFilterNode
-			METHOD: AudioNode
-			METHOD: getFrequencyResponse
-	API: IdentityManager
-	API: IdleDeadline
-	API: ImageBitmap
-			METHOD: close
-	API: ImageBitmapFactories
-			METHOD: createImageBitmap
-			METHOD: Promise
-			METHOD: ImageBitmap
-	API: ImageBitmapRenderingContext
-			METHOD: transferFromImageBitmap
-	API: ImageData
-	API: Index
-	API: InputDeviceCapabilities
-	API: InputEvent
-			METHOD: UIEvent
-			METHOD: Event
-	API: FetchEvent_clone
-			METHOD: ExtendableEvent
-	API: InstallEvent
-			METHOD: ExtendableEvent
-	API: InstallTrigger
-	API: IntersectionObserver
-			METHOD: disconnect
-			METHOD: observe
-				Potential Async: Indicator - callback
-			METHOD: takeRecords
-				Potential Async: Indicator - callback
-			METHOD: IntersectionObserverEntry
-			METHOD: unobserve
-				Potential Async: Indicator - callback
-	API: IntersectionObserverEntry
-	API: KeyboardEvent
-			METHOD: UIEvent
-			METHOD: Event
-			METHOD: getModifierState
-			METHOD: initKeyEvent
-			METHOD: initKeyboardEvent
-			METHOD: KeyboardEvent
-			METHOD: initKeyboardEvent
-			METHOD: initKeyEvent
-			METHOD: KeyboardEvent
-	API: KeyframeEffect
-			METHOD: getKeyframes
-			METHOD: setKeyframes
-			METHOD: getComputedTiming
-	API: KeyframeEffectReadOnly
-			METHOD: getKeyframes
-			METHOD: getComputedTiming
-	API: L10n.formatValue
-	API: L10n.get
-	API: L10n.language.code
-	API: L10n.language.direction
-	API: L10n.once
-	API: L10n.ready
-	API: L10n.readyState
-	API: L10n.setAttributes
-	API: LinkStyle
-	API: LocalFileSystem
-	API: LocalFileSystemSync
-	API: LocalMediaStream
-			METHOD: stop
-	API: Location
-			METHOD: URLUtils
-			METHOD: assign
-			METHOD: reload
-			METHOD: Boolean
-			METHOD: replace
-			METHOD: History
-			METHOD: toString
-			METHOD: DOMString
-			METHOD: href
-	API: LockedFile
-			METHOD: getMetadata
-			METHOD: FileRequest
-			METHOD: readAsArrayBuffer
-			METHOD: ArrayBuffer
-			METHOD: FileRequest
-			METHOD: readAsText
-			METHOD: FileRequest
-			METHOD: write
-			METHOD: location
-			METHOD: FileRequest
-			METHOD: append
-			METHOD: FileRequest
-			METHOD: truncate
-			METHOD: FileRequest
-			METHOD: flush
-			METHOD: abort
-	API: LongRange
-	API: MIDIAccess
-	API: MIDIConnectionEvent
-	API: MIDIInput
-	API: MIDIInputMap
-	API: MIDIOutputMap
-	API: MSGestureEvent
-			METHOD: UIEvent
-			METHOD: Event
-			METHOD: initGestureEvent
-	API: MediaDeviceInfo
-	API: MediaDevices
-			METHOD: EventTarget
-			METHOD: addEventListener
-			METHOD: enumerateDevices
-			METHOD: getSupportedConstraints
-			METHOD: MediaTrackSupportedConstraints
-			METHOD: MediaStreamTrack
-			METHOD: Media_Streams_API#Capabilities_and_constraints
-			METHOD: Media_Streams_API
-			METHOD: getUserMedia
-				Potential Async: Indicator - promise
-			METHOD: MediaStream
-			METHOD: removeEventListener
-	API: MediaElementAudioSourceNode
-			METHOD: AudioNode
-	API: MediaError
-	API: MediaKeyMessageEvent
-			METHOD: Event
-	API: MediaKeySession
-			METHOD: close
-			METHOD: generateRequest
-			METHOD: load
-			METHOD: remove
-			METHOD: update
-	API: MediaKeyStatusMap
-			METHOD: entries
-			METHOD: forEach
-				Potential Async: Indicator - callback
-			METHOD: get
-			METHOD: has
-			METHOD: keys
-			METHOD: values
-			METHOD: [@@iterator]
-	API: MediaKeySystemAccess
-			METHOD: createMediaKeys
-			METHOD: MediaKeys
-			METHOD: getConfiguration
-			METHOD: MediaKeySystemConfiguration
-	API: MediaKeySystemConfiguration
-	API: MediaKeys
-			METHOD: createSession
-			METHOD: MediaKeySession
-			METHOD: setServerCertificate
-	API: MediaMetadata
-	API: MediaQueryList
-			METHOD: EventTarget
-			METHOD: addListener
-				Potential Async: Indicator - callback
-			METHOD: addEventListener
-			METHOD: removeListener
-				Potential Async: Indicator - callback
-			METHOD: removeEventListener
-	API: MediaQueryListEvent
-			METHOD: Event
-	API: MediaQueryListListener
-	API: MediaRecorder
-			METHOD: canRecordMimeType
-			METHOD: Boolean
-			METHOD: pause
-			METHOD: requestData
-			METHOD: Blob
-			METHOD: resume
-			METHOD: start
-			METHOD: stop
-	API: MediaSession
-			METHOD: setActionHandler
-				Potential Async: Indicator - callback
-	API: MediaSource
-			METHOD: EventTarget
-			METHOD: addSourceBuffer
-			METHOD: SourceBuffer
-			METHOD: SourceBuffers
-			METHOD: removeSourceBuffer
-			METHOD: SourceBuffer
-			METHOD: SourceBuffers
-			METHOD: endOfStream
-			METHOD: isTypeSupported
-			METHOD: Boolean
-			METHOD: SourceBuffer
-	API: MediaStream
-			METHOD: EventTarget
-			METHOD: addTrack
-			METHOD: MediaStreamTrack
-			METHOD: clone
-			METHOD: id
-			METHOD: getAudioTracks
-			METHOD: MediaStreamTrack
-			METHOD: getTrackById
-			METHOD: getTracks
-			METHOD: MediaStreamTrack
-			METHOD: getVideoTracks
-			METHOD: MediaStreamTrack
-			METHOD: removeTrack
-			METHOD: MediaStreamTrack
-	API: MediaStreamAudioDestinationNode
-			METHOD: AudioNode
-	API: MediaStreamAudioSourceNode
-			METHOD: AudioNode
-	API: MediaStreamConstraints
-	API: MediaStreamEvent
-			METHOD: MediaStreamEvent
-			METHOD: Event
-			METHOD: MediaStreamEvent
-	API: MediaStreamTrack
-			METHOD: applyConstraints
-				Potential Async: Indicator - promise
-			METHOD: clone
-			METHOD: getCapabilities
-			METHOD: getConstraints
-			METHOD: MediaTrackConstraints
-			METHOD: applyConstraints
-				Potential Async: Indicator - promise
-			METHOD: getSettings
-			METHOD: MediaTrackSettings
-			METHOD: stop
-	API: MediaStreamTrackEvent
-			METHOD: Event
-	API: MediaTrackConstraints
-	API: MediaTrackSettings
-	API: MediaTrackSupportedConstraints
-	API: MessageChannel
-	API: MessageEvent
-			METHOD: Event
-			METHOD: initMessageEvent
-			METHOD: MessageEvent
-	API: MessagePort
-			METHOD: EventTarget
-			METHOD: postMessage
-			METHOD: start
-			METHOD: addEventListener
-			METHOD: onmessage
-			METHOD: close
-	API: Metadata
-	API: MouseEvent
-			METHOD: UIEvent
-			METHOD: Event
-			METHOD: getModifierState
-			METHOD: getModifierState
-			METHOD: initMouseEvent
-	API: MouseScrollEvent
-	API: MouseWheelEvent
-	API: MutationEvent
-	API: MutationObserver
-	API: MutationRecord
-	API: NameList
-			METHOD: contains
-			METHOD: containsNS
-			METHOD: getName
-			METHOD: DOMString
-			METHOD: getNamespaceURI
-			METHOD: DOMString
-	API: NamedNodeMap
-			METHOD: getNamedItem
-			METHOD: Attr
-			METHOD: setNamedItem
-			METHOD: Attr
-			METHOD: removeNamedItem
-			METHOD: Attr
-			METHOD: item
-			METHOD: Attr
-			METHOD: getNamedItemNS
-			METHOD: Attr
-			METHOD: setNamedItemNS
-			METHOD: Attr
-			METHOD: removeNamedItemNS
-			METHOD: Attr
-	API: Navigator
-			METHOD: buildID
-			METHOD: cookieEnabled
-			METHOD: credentials
-			METHOD: CredentialsContainer
-			METHOD: doNotTrack
-			METHOD: id
-			METHOD: id
-			METHOD: mediaDevices
-			METHOD: MediaDevices
-			METHOD: enumerateDevices
-			METHOD: getSupportedConstraints
-			METHOD: getUserMedia
-				Potential Async: Indicator - callback
-			METHOD: mozNotification
-			METHOD: webkitNotification
-			METHOD: mozNotification
-			METHOD: mozSocial
-			METHOD: presentation
-			METHOD: Presentation
-			METHOD: productSub
-			METHOD: securitypolicy
-			METHOD: standalone
-			METHOD: storageQuota
-			METHOD: StorageQuota
-			METHOD: vendor
-			METHOD: vendorSub
-			METHOD: webkitPointer
-	API: NavigatorConcurrentHardware
-	API: NavigatorGeolocation
-	API: NavigatorID
-			METHOD: taintEnabled
-	API: NavigatorLanguage
-	API: NavigatorOnLine
-	API: NavigatorPlugins
-			METHOD: javaEnabled
-			METHOD: Boolean
-	API: NavigatorStorage
-	API: NetworkInformation
-			METHOD: EventTarget
-	API: Node
-			METHOD: EventTarget
-			METHOD: appendChild
-			METHOD: cloneNode
-			METHOD: Node
-			METHOD: compareDocumentPosition
-			METHOD: contains
-			METHOD: getRootNode
-			METHOD: hasChildNodes
-			METHOD: insertBefore
-			METHOD: Node
-			METHOD: isDefaultNamespace
-			METHOD: isEqualNode
-			METHOD: isSameNode
-			METHOD: lookupPrefix
-			METHOD: DOMString
-			METHOD: lookupNamespaceURI
-			METHOD: normalize
-			METHOD: removeChild
-			METHOD: replaceChild
-			METHOD: Node
-			METHOD: getFeature
-			METHOD: getUserData
-			METHOD: DOMUserData
-			METHOD: hasAttributes
-			METHOD: isSupported
-			METHOD: setUserData
-				Potential Async: Indicator - callback
-			METHOD: DOMUserData
-	API: NodeFilter
-			METHOD: acceptNode
-			METHOD: Node
-			METHOD: NodeIterator
-			METHOD: TreeWalker
-			METHOD: acceptNode
-			METHOD: acceptNode
-			METHOD: TreeWalker
-			METHOD: NodeIterator
-			METHOD: acceptNode
-			METHOD: NodeIterator
-			METHOD: TreeWalker
-	API: NodeIterator
-			METHOD: detach
-			METHOD: previousNode
-			METHOD: Node
-			METHOD: nextNode
-			METHOD: Node
-	API: NodeList
-			METHOD: item
-			METHOD: entries
-			METHOD: forEach
-				Potential Async: Indicator - callback
-			METHOD: keys
-			METHOD: values
-	API: NonDocumentTypeChildNode
-	API: Notation
-	API: notification
-			METHOD: requestPermission
-				Potential Async: Indicator - callback
-			METHOD: EventTarget
-			METHOD: close
-	API: NotificationEvent
-			METHOD: ExtendableEvent
-			METHOD: waitUntil
-			METHOD: EventHandler
-			METHOD: installing
-			METHOD: EventHandler
-			METHOD: active
-	API: NotifyAudioAvailableEvent
-	API: OES_element_index_uint
-	API: OES_standard_derivatives
-	API: OES_texture_float
-	API: OES_texture_float_linear
-	API: OES_texture_half_float
-	API: OES_texture_half_float_linear
-	API: OES_vertex_array_object
-			METHOD: createVertexArrayOES
-			METHOD: WebGLVertexArrayObject
-			METHOD: deleteVertexArrayOES
-			METHOD: WebGLVertexArrayObject
-			METHOD: isVertexArrayOES
-			METHOD: WebGLVertexArrayObject
-			METHOD: bindVertexArrayOES
-			METHOD: WebGLVertexArrayObject
-	API: ObserverCallback
-			METHOD: handleEvent
-			METHOD: FetchObserver
-	API: OfflineAudioCompletionEvent
-	API: OfflineAudioContext
-			METHOD: AudioContext
-			METHOD: EventTarget
-			METHOD: resume
-				Potential Async: Indicator - promise
-			METHOD: suspend
-				Potential Async: Indicator - promise
-			METHOD: startRendering
-				Potential Async: Indicator - promise
-	API: OffscreenCanvas
-			METHOD: getContext
-			METHOD: toBlob
-			METHOD: Blob
-			METHOD: transferToImageBitmap
-			METHOD: ImageBitmap
-	API: OscillatorNode
-			METHOD: AudioScheduledSourceNode
-			METHOD: setPeriodicWave
-			METHOD: PeriodicWave
-			METHOD: setWaveTable
-	API: PageTransitionEvent
-	API: PannerNode
-			METHOD: AudioNode
-			METHOD: setPosition
-			METHOD: AudioListener
-			METHOD: listener
-			METHOD: setOrientation
-			METHOD: setVelocity
-			METHOD: PannerNode
-			METHOD: AudioBufferSourceNode
-	API: ParentNode
-			METHOD: append
-			METHOD: Node
-			METHOD: DOMString
-			METHOD: DOMString
-			METHOD: Text
-			METHOD: prepend
-			METHOD: Node
-			METHOD: DOMString
-			METHOD: DOMString
-			METHOD: Text
-			METHOD: querySelector
-			METHOD: Element
-			METHOD: querySelectorAll
-			METHOD: NodeList
-	API: PasswordCredential
-	API: Path2D
-			METHOD: addPath
-			METHOD: closePath
-			METHOD: moveTo
-			METHOD: lineTo
-			METHOD: bezierCurveTo
-			METHOD: quadraticCurveTo
-			METHOD: arc
-			METHOD: arcTo
-			METHOD: ellipse
-			METHOD: rect
-	API: PaymentAddress
-	API: PaymentRequest
-			METHOD: canMakePayment
-				Potential Async: Indicator - async
-			METHOD: show
-				Potential Async: Indicator - async
-			METHOD: abort
-	API: PaymentRequestUpdateEvent
-			METHOD: updateWith
-			METHOD: PaymentRequest
-	API: PaymentResponse
-			METHOD: complete
-			METHOD: show
-	API: Performance
-			METHOD: clearMarks
-			METHOD: clearMeasures
-			METHOD: clearResourceTimings
-			METHOD: PerformanceEntry
-			METHOD: entryType
-			METHOD: getEntries
-			METHOD: PerformanceEntry
-			METHOD: getEntriesByName
-			METHOD: PerformanceEntry
-			METHOD: getEntriesByType
-			METHOD: PerformanceEntry
-			METHOD: mark
-			METHOD: DOMHighResTimeStamp
-			METHOD: measure
-			METHOD: DOMHighResTimeStamp
-			METHOD: now
-			METHOD: DOMHighResTimeStamp
-			METHOD: setResourceTimingBufferSize
-			METHOD: entryType
-			METHOD: PerformanceEntry
-			METHOD: toJSON
-	API: PerformanceEntry
-			METHOD: toJSON
-	API: PerformanceFrameTiming
-	API: PerformanceLongTaskTiming
-	API: PerformanceMark
-	API: PerformanceMeasure
-	API: PerformanceNavigation
-			METHOD: toJSON
-	API: PerformanceNavigationTiming
-			METHOD: toJSON
-			METHOD: DOMString
-			METHOD: PerformanceNavigationTiming
-	API: PerformanceObserver
-			METHOD: observe
-				Potential Async: Indicator - callback
-			METHOD: entryType
-			METHOD: PerformanceEntry
-			METHOD: disconnect
-			METHOD: PerformanceEntry
-	API: PerformanceObserverEntryList
-			METHOD: getEntries
-				Potential Async: Indicator - callback
-			METHOD: PerformanceEntry
-			METHOD: getEntriesByType
-				Potential Async: Indicator - callback
-			METHOD: PerformanceEntry
-			METHOD: getEntriesByName
-				Potential Async: Indicator - callback
-			METHOD: PerformanceEntry
-	API: PerformanceResourceTiming
-			METHOD: toJSON
-			METHOD: DOMString
-			METHOD: PerformanceResourceTiming
-	API: PerformanceTiming
-			METHOD: toJSON
-	API: PeriodicSyncEvent
-			METHOD: ExtendableEvent
-	API: PeriodicSyncManager
-			METHOD: register
-			METHOD: PeriodicSyncRegistration
-			METHOD: getRegistration
-			METHOD: PeriodicSyncRegistration
-			METHOD: id
-			METHOD: getRegistrations
-			METHOD: PeriodicSyncRegistration
-			METHOD: permissionState
-	API: PeriodicSyncRegistration
-			METHOD: unregister
-			METHOD: PeriodicSyncRegistration
-	API: PeriodicWave
-	API: PermissionStatus
-	API: Permissions
-			METHOD: query
-			METHOD: request
-			METHOD: revoke
-	API: Plugin
-			METHOD: item
-			METHOD: namedItem
-	API: PluginArray
-			METHOD: item
-			METHOD: Plugin
-			METHOD: namedItem
-			METHOD: Plugin
-			METHOD: refresh
-	API: Point
-	API: PointerEvent
-			METHOD: getCoalescedEvents
-	API: PopStateEvent
-	API: PortCollection
-	API: Position
-	API: PositionError
-	API: PositionOptions
-	API: PositionSensorVRDevice
-			METHOD: getState
-				Potential Async: Indicator - callback
-			METHOD: requestAnimationFrame
-			METHOD: VRPositionState
-			METHOD: getImmediateState
-			METHOD: resetSensor
-	API: Presentation
-	API: PresentationAvailability
-	API: PresentationConnection
-			METHOD: close
-			METHOD: PresentationConnectionCloseEvent
-			METHOD: send
-			METHOD: terminate
-	API: PresentationConnectionAvailableEvent
-	API: PresentationConnectionCloseEvent
-	API: PresentationConnectionClosedEvent
-	API: PresentationConnectionList
-	API: PresentationReceiver
-	API: PresentationRequest
-			METHOD: start
-			METHOD: reconnect
-			METHOD: getAvailability
-	API: ProcessingInstruction
-	API: ProgressEvent
-			METHOD: Event
-			METHOD: initProgressEvent
-			METHOD: createEvent
-	API: PromiseRejection
-	API: PromiseRejectionEvent
-			METHOD: Event
-	API: PromiseResolver
-			METHOD: fulfill
-			METHOD: resolve
-			METHOD: reject
-	API: PushEvent
-	API: PushManager
-			METHOD: getSubscription
-			METHOD: PushSubscription
-			METHOD: permissionState
-			METHOD: PushManager
-			METHOD: subscribe
-			METHOD: PushSubscription
-			METHOD: hasPermission
-			METHOD: permissionState
-			METHOD: register
-			METHOD: subscribe
-			METHOD: registrations
-			METHOD: getSubscription
-			METHOD: unregister
-			METHOD: unsubscribe
-	API: PushMessageData
-			METHOD: arrayBuffer
-			METHOD: ArrayBuffer
-			METHOD: blob
-			METHOD: Blob
-			METHOD: json
-			METHOD: text
-	API: PushRegistrationManager
-			METHOD: register
-			METHOD: PushRegistration
-			METHOD: unregister
-			METHOD: PushRegistration
-			METHOD: getRegistration
-			METHOD: PushRegistration
-			METHOD: hasPermission
-			METHOD: PushPermissionStatus
-	API: PushSubscription
-			METHOD: getKey
-			METHOD: ArrayBuffer
-			METHOD: toJSON
-			METHOD: unsubscribe
-			METHOD: Boolean
-	API: RTCCertificate
-	API: RTCConfiguration
-	API: RTCDTMFSender
-	API: RTCDTMFToneChangeEvent
-			METHOD: Event
-	API: RTCDataChannel
-			METHOD: EventTarget
-			METHOD: close
-				Potential Async: Indicator - async
-			METHOD: RTCDataChannel
-			METHOD: send
-			METHOD: RTCDataChannel
-	API: RTCDataChannelEvent
-			METHOD: Event
-	API: RTCIceCandidate
-	API: RTCIceServer
-	API: RTCIdentityAssertion
-	API: RTCIdentityErrorEvent
-			METHOD: RTCIdentityErrorEvent
-			METHOD: Event
-			METHOD: RTCIdentityErrorEvent
-	API: RTCIdentityEvent
-			METHOD: RTCIdentityEvent
-			METHOD: Event
-			METHOD: RTCIdentityEvent
-	API: RTCPeerConnection
-			METHOD: EventTarget
-			METHOD: addIceCandidate
-				Potential Async: Indicator - callback
-			METHOD: RTCPeerConnection
-			METHOD: addStream
-			METHOD: MediaStream
-			METHOD: addTrack
-			METHOD: RTCPeerConnection
-			METHOD: close
-			METHOD: createAnswer
-				Potential Async: Indicator - callback
-			METHOD: RTCPeerConnection
-			METHOD: createOffer
-				Potential Async: Indicator - callback
-			METHOD: RTCPeerConnection
-			METHOD: MediaStreamTrack
-			METHOD: generateCertificate
-			METHOD: RTCPeerConnection
-			METHOD: RTCCertificate
-			METHOD: getConfiguration
-			METHOD: RTCConfiguration
-			METHOD: RTCPeerConnection
-			METHOD: getIdentityAssertion
-			METHOD: signalingState
-			METHOD: getLocalStreams
-			METHOD: MediaStream
-			METHOD: getRemoteStreams
-			METHOD: MediaStream
-			METHOD: getSenders
-			METHOD: RTCRtpSender
-			METHOD: getStreamById
-			METHOD: MediaStream
-			METHOD: removeStream
-			METHOD: MediaStream
-			METHOD: removeTrack
-			METHOD: removeTrack
-			METHOD: RTCRtpSender
-			METHOD: getSenders
-			METHOD: setConfiguration
-			METHOD: RTCPeerConnection
-			METHOD: RTCConfiguration
-			METHOD: setIdentityProvider
-			METHOD: setLocalDescription
-				Potential Async: Indicator - async
-			METHOD: setRemoteDescription
-				Potential Async: Indicator - async
-			METHOD: createDTMFSender
-			METHOD: RTCDTMFSender
-			METHOD: MediaStreamTrack
-	API: RTCPeerConnectionIceEvent
-			METHOD: RTCPeerConnectionIceEvent
-			METHOD: Event
-			METHOD: RTCDataChannelEvent
-	API: RTCRtpSender
-	API: RTCSctpTransport
-	API: RTCSessionDescription
-			METHOD: RTCSessionDescription
-				Potential Async: Indicator - callback
-			METHOD: toJSON
-			METHOD: type
-			METHOD: sdp
-	API: RTCSessionDescriptionCallback
-	API: RTCStatsReport
-	API: RadioNodeList
-			METHOD: NodeList
-	API: RandomSource
-			METHOD: getRandomValues
-			METHOD: ArrayBufferView
-	API: Range
-			METHOD: setStart
-			METHOD: setEnd
-			METHOD: setStartBefore
-			METHOD: Node
-			METHOD: setStartAfter
-			METHOD: Node
-			METHOD: setEndBefore
-			METHOD: Node
-			METHOD: setEndAfter
-			METHOD: Node
-			METHOD: selectNode
-			METHOD: Node
-			METHOD: selectNodeContents
-			METHOD: Node
-			METHOD: collapse
-			METHOD: cloneContents
-			METHOD: DocumentFragment
-			METHOD: deleteContents
-			METHOD: Document
-			METHOD: extractContents
-			METHOD: DocumentFragment
-			METHOD: insertNode
-			METHOD: Node
-			METHOD: surroundContents
-			METHOD: Node
-			METHOD: compareBoundaryPoints
-			METHOD: cloneRange
-			METHOD: detach
-			METHOD: toString
-			METHOD: compareNode
-			METHOD: Node
-			METHOD: comparePoint
-			METHOD: createContextualFragment
-			METHOD: DocumentFragment
-			METHOD: getBoundingClientRect
-			METHOD: DOMRect
-			METHOD: getClientRects
-			METHOD: getClientRects
-			METHOD: DOMRect
-			METHOD: getClientRects
-			METHOD: intersectsNode
-			METHOD: isPointInRange
-	API: ReadableStream
-			METHOD: getReader
-			METHOD: cancel
-	API: RenderingContext
-	API: Request
-			METHOD: clone
-			METHOD: Body
-			METHOD: arrayBuffer
-				Potential Async: Indicator - promise
-			METHOD: ArrayBuffer
-				Potential Async: Indicator - promise
-			METHOD: blob
-				Potential Async: Indicator - promise
-			METHOD: Blob
-				Potential Async: Indicator - promise
-			METHOD: formData
-			METHOD: FormData
-			METHOD: json
-				Potential Async: Indicator - promise
-			METHOD: JSON
-				Potential Async: Indicator - promise
-			METHOD: text
-				Potential Async: Indicator - promise
-			METHOD: USVString
-			METHOD: Body
-	API: Response
-			METHOD: clone
-			METHOD: error
-				Potential Async: Indicator - promise
-			METHOD: redirect
-			METHOD: Body
-			METHOD: arrayBuffer
-				Potential Async: Indicator - promise
-			METHOD: Response
-			METHOD: ArrayBuffer
-				Potential Async: Indicator - promise
-			METHOD: blob
-				Potential Async: Indicator - promise
-			METHOD: Response
-			METHOD: Blob
-				Potential Async: Indicator - promise
-			METHOD: formData
-			METHOD: Response
-			METHOD: FormData
-			METHOD: json
-				Potential Async: Indicator - promise
-			METHOD: Response
-			METHOD: text
-				Potential Async: Indicator - promise
-			METHOD: Response
-			METHOD: USVString
-	API: SVGAElement
-			METHOD: SVGGraphicsElement
-	API: SVGAltGlyphDefElement
-			METHOD: SVGElement
-	API: SVGAltGlyphElement
-			METHOD: SVGElement
-	API: SVGAltGlyphItemElement
-			METHOD: SVGElement
-	API: SVGAngle
-			METHOD: DOMException
-			METHOD: DOMException
-	API: SVGAnimateColorElement
-			METHOD: SVGAnimationElement
-	API: SVGAnimateElement
-			METHOD: SVGAnimationElement
-	API: SVGAnimateMotionElement
-			METHOD: SVGAnimationElement
-	API: SVGAnimateTransformElement
-			METHOD: SVGAnimationElement
-	API: SVGAnimatedAngle
-	API: SVGAnimatedBoolean
-	API: SVGAnimatedEnumeration
-	API: SVGAnimatedInteger
-	API: SVGAnimatedLength
-	API: SVGAnimatedLengthList
-	API: SVGAnimatedNumber
-	API: SVGAnimatedNumberList
-	API: SVGAnimatedPoints
-	API: SVGAnimatedPreserveAspectRatio
-	API: SVGAnimatedRect
-	API: SVGAnimatedString
-	API: SVGAnimatedTransformList
-	API: SVGAnimationElement
-			METHOD: SVGElement
-			METHOD: getStartTime
-			METHOD: DOMException
-			METHOD: getCurrentTime
-			METHOD: getSimpleDuration
-			METHOD: DOMException
-			METHOD: beginElement
-			METHOD: beginElementAt
-			METHOD: endElement
-			METHOD: endElementAt
-	API: SVGCircleElement
-			METHOD: SVGGeometryElement
-	API: SVGClipPathElement
-			METHOD: SVGElement
-	API: SVGColorProfileElement
-			METHOD: SVGElement
-			METHOD: SVGURIReference
-			METHOD: SVGRenderingIntent
-	API: SVGComponentTransferFunctionElement
-			METHOD: SVGElement
-	API: SVGCursorElement
-			METHOD: SVGElement
-	API: SVGDefsElement
-			METHOD: SVGGraphicsElement
-	API: SVGDescElement
-			METHOD: SVGGeometryElement
-	API: SVGElement
-			METHOD: Element
-	API: SVGEllipseElement
-			METHOD: SVGGeometryElement
-	API: SVGEvent
-	API: SVGExternalResourcesRequired
-	API: SVGFEBlendElement
-			METHOD: SVGElement
-			METHOD: SVGFilterPrimitiveStandardAttributes
-	API: SVGFEComponentTransferElement
-			METHOD: SVGElement
-			METHOD: SVGFilterPrimitiveStandardAttributes
-	API: SVGFECompositeElement
-			METHOD: SVGElement
-			METHOD: SVGFilterPrimitiveStandardAttributes
-	API: SVGFEConvolveMatrixElement
-			METHOD: SVGElement
-			METHOD: SVGFilterPrimitiveStandardAttributes
-	API: SVGFEDiffuseLightingElement
-			METHOD: SVGElement
-			METHOD: SVGFilterPrimitiveStandardAttributes
-	API: SVGFEDisplacementMapElement
-			METHOD: SVGElement
-			METHOD: SVGFilterPrimitiveStandardAttributes
-	API: SVGFEDistantLightElement
-			METHOD: SVGElement
-	API: SVGFEDropShadowElement
-			METHOD: SVGElement
-			METHOD: SVGFilterPrimitiveStandardAttributes
-			METHOD: setStdDeviation
-	API: SVGFEFloodElement
-			METHOD: SVGElement
-			METHOD: SVGFilterPrimitiveStandardAttributes
-	API: SVGFEFuncAElement
-			METHOD: SVGComponentTransferFunctionElement
-	API: SVGFEFuncBElement
-			METHOD: SVGComponentTransferFunctionElement
-	API: SVGFEFuncGElement
-			METHOD: SVGComponentTransferFunctionElement
-	API: SVGFEFuncRElement
-			METHOD: SVGComponentTransferFunctionElement
-	API: SVGFEGaussianBlurElement
-			METHOD: SVGElement
-			METHOD: SVGFilterPrimitiveStandardAttributes
-			METHOD: setStdDeviation
-	API: SVGFEImageElement
-			METHOD: SVGElement
-			METHOD: SVGFilterPrimitiveStandardAttributes
-			METHOD: SVGURIReference
-	API: SVGFEMergeElement
-			METHOD: SVGElement
-			METHOD: SVGFilterPrimitiveStandardAttributes
-	API: SVGFEMergeNodeElement
-			METHOD: SVGElement
-	API: SVGFEMorphologyElement
-			METHOD: SVGElement
-			METHOD: SVGFilterPrimitiveStandardAttributes
-	API: SVGFEOffsetElement
-			METHOD: SVGElement
-			METHOD: SVGFilterPrimitiveStandardAttributes
-	API: SVGFEPointLightElement
-			METHOD: SVGElement
-	API: SVGFESpecularLightingElement
-			METHOD: SVGElement
-			METHOD: SVGFilterPrimitiveStandardAttributes
-	API: SVGFESpotLightElement
-			METHOD: SVGElement
-	API: SVGFETileElement
-			METHOD: SVGElement
-			METHOD: SVGFilterPrimitiveStandardAttributes
-	API: SVGFETurbulenceElement
-			METHOD: SVGElement
-			METHOD: SVGFilterPrimitiveStandardAttributes
-	API: SVGFilterElement
-			METHOD: setFilterRes
-	API: SVGFilterPrimitiveStandardAttributes
-	API: SVGFontElement
-			METHOD: SVGElement
-			METHOD: SVGExternalResourcesRequired
-			METHOD: SVGStylable
-	API: SVGFontFaceElement
-			METHOD: SVGElement
-	API: SVGFontFaceFormatElement
-			METHOD: SVGElement
-	API: SVGFontFaceNameElement
-			METHOD: SVGElement
-	API: SVGFontFaceSrcElement
-			METHOD: SVGElement
-	API: SVGFontFaceUriElement
-			METHOD: SVGElement
-	API: SVGForeignObjectElement
-			METHOD: SVGGraphicsElement
-			METHOD: SVGURIReference
-	API: SVGGElement
-			METHOD: SVGGraphicsElement
-	API: SVGGeometryElement
-			METHOD: SVGGraphicsElement
-			METHOD: isPointInFill
-			METHOD: isPointInStroke
-			METHOD: getTotalLength
-			METHOD: getPointAtLength
-	API: SVGGlyphElement
-			METHOD: SVGElement
-	API: SVGGlyphRefElement
-			METHOD: SVGElement
-			METHOD: SVGURIReference
-			METHOD: SVGStylable
-	API: SVGGradientElement
-			METHOD: SVGElement
-	API: SVGGraphicsElement
-			METHOD: SVGElement
-			METHOD: getBBox
-			METHOD: DOMRect
-			METHOD: getCTM
-			METHOD: DOMMatrix
-			METHOD: getScreenCTM
-			METHOD: DOMMatrix
-	API: SVGHKernElement
-			METHOD: SVGElement
-	API: SVGImageElement
-			METHOD: SVGGraphicsElement
-	API: SVGLength
-			METHOD: DOMException
-			METHOD: DOMException
-	API: SVGLengthList
-			METHOD: DOMException
-			METHOD: SVGLength
-			METHOD: SVGLength
-			METHOD: DOMException
-			METHOD: SVGLength
-			METHOD: DOMException
-			METHOD: SVGLength
-			METHOD: SVGLength
-			METHOD: DOMException
-			METHOD: SVGLength
-			METHOD: SVGLength
-			METHOD: DOMException
-			METHOD: DOMException
-			METHOD: SVGLength
-			METHOD: DOMException
-			METHOD: DOMException
-			METHOD: SVGLength
-			METHOD: SVGLength
-			METHOD: DOMException
-	API: SVGLineElement
-			METHOD: SVGGeometryElement
-	API: SVGLinearGradientElement
-			METHOD: SVGGradientElement
-	API: SVGMPathElement
-			METHOD: SVGElement
-	API: SVGMaskElement
-			METHOD: SVGElement
-	API: SVGMatrix
-			METHOD: multiply
-			METHOD: inverse
-			METHOD: translate
-			METHOD: scale
-			METHOD: scaleNonUniform
-			METHOD: rotate
-			METHOD: rotateFromVector
-			METHOD: flipX
-			METHOD: flipY
-			METHOD: skewX
-			METHOD: skewY
-	API: SVGMeshElement
-			METHOD: SVGGeometryElement
-			METHOD: SVGURIReference
-	API: SVGMetadataElement
-			METHOD: SVGElement
-	API: SVGMissingGlyphElement
-			METHOD: SVGElement
-			METHOD: SVGStylable
-	API: SVGNumber
-	API: SVGNumberList
-			METHOD: DOMException
-			METHOD: SVGNumber
-			METHOD: SVGNumber
-			METHOD: DOMException
-			METHOD: SVGNumber
-			METHOD: DOMException
-			METHOD: SVGNumber
-			METHOD: SVGNumber
-			METHOD: DOMException
-			METHOD: SVGNumber
-			METHOD: SVGNumber
-			METHOD: DOMException
-			METHOD: DOMException
-			METHOD: SVGNumber
-			METHOD: DOMException
-			METHOD: DOMException
-			METHOD: SVGNumber
-			METHOD: SVGNumber
-			METHOD: DOMException
-	API: SVGPathElement
-			METHOD: SVGGeometryElement
-			METHOD: getTotalLength
-			METHOD: SVGGeometryElement
-			METHOD: getPointAtLength
-			METHOD: SVGPoint
-			METHOD: SVGGeometryElement
-			METHOD: getPathSegAtLength
-			METHOD: pathSegList
-			METHOD: createSVGPathSegClosePath
-			METHOD: SVGPathSegClosePath
-			METHOD: createSVGPathSegMovetoAbs
-			METHOD: SVGPathSegMovetoAbs
-			METHOD: createSVGPathSegMovetoRel
-			METHOD: SVGPathSegMovetoRel
-			METHOD: createSVGPathSegLinetoAbs
-			METHOD: SVGPathSegLinetoAbs
-			METHOD: createSVGPathSegLinetoRel
-			METHOD: SVGPathSegLinetoRel
-			METHOD: createSVGPathSegCurvetoCubicAbs
-			METHOD: SVGPathSegCurvetoCubicAbs
-			METHOD: createSVGPathSegCurvetoCubicRel
-			METHOD: SVGPathSegCurvetoCubicRel
-			METHOD: createSVGPathSegCurvetoQuadraticAbs
-			METHOD: SVGPathSegCurvetoQuadraticAbs
-			METHOD: createSVGPathSegCurvetoQuadraticRel
-			METHOD: SVGPathSegCurvetoQuadraticRel
-			METHOD: createSVGPathSegArcAbs
-			METHOD: SVGPathSegArcAbs
-			METHOD: createSVGPathSegArcRel
-			METHOD: SVGPathSegArcRel
-			METHOD: createSVGPathSegLinetoHorizontalAbs
-			METHOD: SVGPathSegLinetoHorizontalAbs
-			METHOD: createSVGPathSegLinetoHorizontalRel
-			METHOD: SVGPathSegLinetoHorizontalRel
-			METHOD: createSVGPathSegLinetoVerticalAbs
-			METHOD: SVGPathSegLinetoVerticalAbs
-			METHOD: createSVGPathSegLinetoVerticalRel
-			METHOD: SVGPathSegLinetoVerticalRel
-			METHOD: createSVGPathSegCurvetoCubicSmoothAbs
-			METHOD: SVGPathSegCurvetoCubicSmoothAbs
-			METHOD: createSVGPathSegCurvetoCubicSmoothRel
-			METHOD: SVGPathSegCurvetoCubicSmoothRel
-			METHOD: createSVGPathSegCurvetoQuadraticSmoothAbs
-			METHOD: SVGPathSegCurvetoQuadraticSmoothAbs
-			METHOD: createSVGPathSegCurvetoQuadraticSmoothRel
-			METHOD: SVGPathSegCurvetoQuadraticSmoothRel
-	API: SVGPatternElement
-			METHOD: SVGElement
-			METHOD: SVGFitToViewBox
-			METHOD: SVGURIReference
-	API: SVGPoint
-	API: SVGPolygonElement
-			METHOD: SVGGeometryElement
-	API: SVGPolylineElement
-			METHOD: SVGGeometryElement
-	API: SVGPreserveAspectRatio
-	API: SVGRadialGradientElement
-			METHOD: SVGGradientElement
-	API: SVGRect
-			METHOD: SVGGeometryElement
-	API: SVGRectElement
-			METHOD: SVGGeometryElement
-	API: SVGRenderingIntent
-	API: SVGSVGElement
-			METHOD: SVGGraphicsElement
-			METHOD: SVGZoomAndPan
-			METHOD: SVGFitToViewBox
-			METHOD: WindowEventHandlers
-			METHOD: suspendRedraw
-			METHOD: unsuspendRedraw
-			METHOD: unsuspendRedrawAll
-			METHOD: forceRedraw
-			METHOD: pauseAnimations
-			METHOD: unpauseAnimations
-			METHOD: animationsPaused
-			METHOD: getCurrentTime
-			METHOD: setCurrentTime
-			METHOD: getIntersectionList
-			METHOD: NodeList
-			METHOD: getEnclosureList
-			METHOD: NodeList
-			METHOD: checkIntersection
-			METHOD: checkEnclosure
-			METHOD: deselectAll
-			METHOD: createSVGNumber
-			METHOD: SVGNumber
-			METHOD: createSVGLength
-			METHOD: SVGLength
-			METHOD: createSVGAngle
-			METHOD: SVGAngle
-			METHOD: createSVGPoint
-			METHOD: SVGPoint
-			METHOD: createSVGMatrix
-			METHOD: SVGMatrix
-			METHOD: createSVGRect
-			METHOD: SVGRect
-			METHOD: createSVGTransform
-			METHOD: SVGTransform
-			METHOD: createSVGTransformFromMatrix
-			METHOD: SVGTransform
-			METHOD: getElementById
-	API: SVGScriptElement
-			METHOD: SVGElement
-	API: SVGSetElement
-			METHOD: SVGAnimationElement
-	API: SVGSolidcolorElement
-			METHOD: SVGElement
-	API: SVGStopElement
-			METHOD: SVGElement
-	API: SVGStringList
-			METHOD: DOMException
-			METHOD: DOMString
-			METHOD: DOMString
-			METHOD: DOMException
-			METHOD: DOMString
-			METHOD: DOMException
-			METHOD: DOMString
-			METHOD: DOMString
-			METHOD: DOMException
-			METHOD: DOMString
-			METHOD: DOMString
-			METHOD: DOMException
-			METHOD: DOMException
-			METHOD: DOMString
-			METHOD: DOMException
-			METHOD: DOMException
-			METHOD: DOMString
-			METHOD: DOMString
-			METHOD: DOMException
-	API: SVGStylable
-			METHOD: DOMString
-			METHOD: CSSValue
-			METHOD: CSSValue
-			METHOD: CSSValue
-	API: SVGStyleElement
-			METHOD: SVGElement
-			METHOD: LinkStyle
-	API: SVGSwitchElement
-			METHOD: SVGGraphicsElement
-	API: SVGSymbolElement
-			METHOD: SVGGraphicsElement
-			METHOD: SVGFitToViewBox
-	API: SVGTRefElement
-			METHOD: em>SVGTextPositioningElement<em>
-			METHOD: em>SVGTextPositioningElement<em>
-			METHOD: em>SVGURIReference<em>
-			METHOD: em>SVGURIReference<em>
-	API: SVGTSpanElement
-	API: SVGTests
-			METHOD: hasExtension
-	API: SVGTextContentElement
-			METHOD: SVGGraphicsElement
-			METHOD: getNumberOfChars
-			METHOD: getComputedTextLength
-			METHOD: getSubStringLength
-			METHOD: getStartPositionOfChar
-			METHOD: DOMPoint
-			METHOD: SVGPoint
-			METHOD: getEndPositionOfChar
-			METHOD: DOMPoint
-			METHOD: SVGPoint
-			METHOD: getExtentOfChar
-			METHOD: DOMRect
-			METHOD: getRotationOfChar
-			METHOD: getCharNumAtPosition
-			METHOD: selectSubString
-	API: SVGTextElement
-			METHOD: SVGTextPositioningElement
-	API: SVGTextPathElement
-			METHOD: SVGTextContentElement
-			METHOD: SVGURIReference
-	API: SVGTextPositioningElement
-			METHOD: SVGTextContentElement
-	API: SVGTitleElement
-			METHOD: SVGElement
-	API: SVGTransform
-			METHOD: SVGMatrix
-			METHOD: DOMException
-			METHOD: DOMException
-			METHOD: DOMException
-			METHOD: DOMException
-			METHOD: DOMException
-			METHOD: DOMException
-	API: SVGTransformList
-			METHOD: DOMException
-			METHOD: SVGTransform
-			METHOD: SVGTransform
-			METHOD: DOMException
-			METHOD: SVGTransform
-			METHOD: DOMException
-			METHOD: SVGTransform
-			METHOD: SVGTransform
-			METHOD: DOMException
-			METHOD: SVGTransform
-			METHOD: SVGTransform
-			METHOD: DOMException
-			METHOD: DOMException
-			METHOD: SVGTransform
-			METHOD: DOMException
-			METHOD: DOMException
-			METHOD: SVGTransform
-			METHOD: SVGTransform
-			METHOD: DOMException
-			METHOD: SVGMatrix
-			METHOD: SVGTransform
-			METHOD: SVGTransform
-			METHOD: DOMException
-	API: SVGTransformable
-	API: SVGURIReference
-	API: SVGUnitTypes
-	API: SVGUseElement
-			METHOD: SVGGraphicsElement
-			METHOD: SVGURIReference
-	API: SVGVKernElement
-			METHOD: SVGElement
-	API: SVGViewElement
-			METHOD: SVGElement
-	API: SVGZoomAndPan
-	API: Screen
-			METHOD: lockOrientation
-			METHOD: unlockOrientation
-			METHOD: EventTarget
-			METHOD: addEventListener
-			METHOD: removeEventListener
-			METHOD: dispatchEvent
-	API: ScriptProcessorNode
-			METHOD: AudioNode
-	API: SecurityPolicyViolationEvent
-	API: Selection
-			METHOD: addRange
-			METHOD: Range
-			METHOD: collapse
-			METHOD: collapseToEnd
-			METHOD: collapseToStart
-			METHOD: containsNode
-			METHOD: deleteFromDocument
-			METHOD: removeAllRanges
-			METHOD: extend
-			METHOD: getRangeAt
-			METHOD: Range
-			METHOD: modify
-			METHOD: removeRange
-			METHOD: removeAllRanges
-			METHOD: selectAllChildren
-			METHOD: setBaseAndExtent
-			METHOD: collapse
-			METHOD: toString
-	API: ServiceWorker
-			METHOD: Worker
-			METHOD: terminate
-	API: ServiceWorkerContainer
-			METHOD: register
-			METHOD: ServiceWorkerRegistration
-			METHOD: getRegistration
-			METHOD: ServiceWorkerRegistration
-			METHOD: ServiceWorkerRegistration
-			METHOD: getRegistrations
-			METHOD: ServiceWorkerRegistration
-			METHOD: ServiceWorkerRegistration
-	API: ServiceWorkerGlobalScope
-			METHOD: skipWaiting
-			METHOD: WorkerGlobalScope
-			METHOD: GlobalFetch
-			METHOD: fetch
-				Potential Async: Indicator - callback
-			METHOD: Response
-	API: ServiceWorkerMessageEvent
-			METHOD: Event
-	API: ServiceWorkerRegistration
-			METHOD: EventTarget
-			METHOD: getNotifications
-			METHOD: Notification
-			METHOD: showNotification
-			METHOD: update
-				Potential Async: Indicator - promise
-			METHOD: unregister
-				Potential Async: Indicator - promise
-	API: ServiceWorkerState
-	API: ShadowRoot
-	API: SharedKeyframeList
-	API: SharedWorker
-			METHOD: EventTarget
-			METHOD: AbstractWorker
-	API: SharedWorkerGlobalScope
-			METHOD: WorkerGlobalScope
-			METHOD: EventTarget
-			METHOD: WindowTimers
-			METHOD: WindowBase64
-			METHOD: WindowEventHandlers
-			METHOD: close
-			METHOD: dump
-			METHOD: dump
-			METHOD: importScripts
-			METHOD: atob
-			METHOD: btoa
-			METHOD: clearInterval
-			METHOD: setInterval
-			METHOD: clearTimeout
-			METHOD: setTimeout
-			METHOD: setInterval
-			METHOD: setTimeout
-	API: SourceBuffer
-			METHOD: EventTarget
-			METHOD: appendBuffer
-			METHOD: ArrayBuffer
-			METHOD: appendStream
-			METHOD: abort
-				Potential Async: Indicator - async
-			METHOD: remove
-	API: SourceBufferList
-			METHOD: EventTarget
-			METHOD: SourceBuffer
-	API: SpeechGrammar
-	API: SpeechGrammarList
-			METHOD: item
-			METHOD: SpeechGrammar
-			METHOD: addFromURI
-			METHOD: SpeechGrammar
-			METHOD: addFromString
-			METHOD: DOMString
-			METHOD: SpeechGrammar
-	API: SpeechRecognition
-			METHOD: EventTarget
-			METHOD: abort
-			METHOD: SpeechRecognitionResult
-			METHOD: start
-			METHOD: stop
-			METHOD: SpeechRecognitionResult
-	API: SpeechRecognitionAlternative
-	API: SpeechRecognitionError
-	API: SpeechRecognitionEvent
-	API: SpeechRecognitionResult
-			METHOD: item
-			METHOD: SpeechRecognitionAlternative
-	API: SpeechRecognitionResultList
-			METHOD: item
-			METHOD: SpeechRecognitionResult
-	API: SpeechSynthesis
-			METHOD: EventTarget
-			METHOD: cancel
-			METHOD: getVoices
-			METHOD: SpeechSynthesisVoice
-			METHOD: pause
-			METHOD: resume
-			METHOD: speak
-			METHOD: SpeechSynthesisUtterance
-	API: SpeechSynthesisErrorEvent
-			METHOD: SpeechSynthesisEvent
-			METHOD: Event
-	API: SpeechSynthesisEvent
-			METHOD: SpeechSynthesisEvent
-			METHOD: Event
-	API: SpeechSynthesisUtterance
-	API: SpeechSynthesisVoice
-	API: StereoPannerNode
-			METHOD: AudioNode
-	API: Storage
-			METHOD: key
-				Potential Async: Indicator - callback
-			METHOD: getItem
-			METHOD: setItem
-			METHOD: removeItem
-			METHOD: clear
-	API: StorageEstimate
-	API: StorageEvent
-			METHOD: Storage
-	API: StorageManager
-			METHOD: estimate
-				Potential Async: Indicator - async
-			METHOD: StorageEstimate
-			METHOD: persist
-			METHOD: persisted
-	API: StorageQuota
-			METHOD: queryInfo
-			METHOD: StorageInfo
-			METHOD: requestPersistentQuota
-	API: StyleSheet
-	API: StyleSheetList
-	API: SubtleCrypto
-			METHOD: encrypt
-				Potential Async: Indicator - promise
-			METHOD: decrypt
-				Potential Async: Indicator - promise
-			METHOD: sign
-				Potential Async: Indicator - promise
-			METHOD: verify
-				Potential Async: Indicator - promise
-			METHOD: digest
-				Potential Async: Indicator - async
-			METHOD: generateKey
-				Potential Async: Indicator - promise
-			METHOD: CryptoKey
-			METHOD: CryptoKeyPair
-			METHOD: deriveKey
-				Potential Async: Indicator - promise
-			METHOD: CryptoKey
-			METHOD: deriveBits
-			METHOD: importKey
-				Potential Async: Indicator - promise
-			METHOD: CryptoKey
-			METHOD: exportKey
-				Potential Async: Indicator - promise
-			METHOD: wrapKey
-				Potential Async: Indicator - promise
-			METHOD: unwrapKey
-				Potential Async: Indicator - promise
-			METHOD: CryptoKey
-	API: SyncEvent
-			METHOD: ExtendableEvent
-	API: SyncManager
-			METHOD: register
-			METHOD: getTags
-	API: TaskAttributionTiming
-	API: Text
-			METHOD: Text
-	API: TextDecoder
-			METHOD: decode
-			METHOD: DOMString
-	API: TextEncoder
-			METHOD: encode
-	API: TextMetrics
-	API: TextTrack
-	API: TimeEvent
-	API: TimeRanges
-			METHOD: start
-			METHOD: end
-	API: Touch
-	API: TouchEvent
-	API: TouchList
-			METHOD: identifiedTouch
-			METHOD: Touch
-			METHOD: item
-			METHOD: Touch
-	API: TrackDefault
-	API: TrackDefaultList
-			METHOD: EventTarget
-			METHOD: TrackDefault
-	API: Transferable
-	API: TransitionEvent
-			METHOD: Event
-			METHOD: initTransitionEvent
-			METHOD: createEvent
-	API: TreeWalker
-			METHOD: parentNode
-			METHOD: Node
-			METHOD: firstChild
-			METHOD: Node
-			METHOD: lastChild
-			METHOD: Node
-			METHOD: previousSibling
-			METHOD: Node
-			METHOD: nextSibling
-			METHOD: Node
-			METHOD: previousNode
-			METHOD: Node
-			METHOD: nextNode
-			METHOD: Node
-	API: TypeInfo
-			METHOD: isDerivedFrom
-	API: UIEvent
-			METHOD: Event
-			METHOD: initUIEvent
-	API: URL
-	API: URLSearchParams
-			METHOD: append
-			METHOD: delete
-			METHOD: entries
-			METHOD: get
-			METHOD: getAll
-			METHOD: has
-			METHOD: keys
-			METHOD: set
-			METHOD: sort
-			METHOD: toString
-			METHOD: values
-	API: URLUtilsReadOnly
-			METHOD: toString
-			METHOD: DOMString
-			METHOD: href
-	API: USVString
-	API: UserDataHandler
-			METHOD: DOMString
-			METHOD: DOMUserData
-			METHOD: Node
-			METHOD: Node
-	API: UserProximityEvent
-	API: VRDisplay
-			METHOD: getEyeParameters
-			METHOD: VREyeParameters
-			METHOD: getFrameData
-			METHOD: VRFrameData
-			METHOD: getLayers
-			METHOD: resetPose
-			METHOD: position
-			METHOD: orientation
-			METHOD: cancelAnimationFrame
-				Potential Async: Indicator - callback
-			METHOD: cancelAnimationFrame
-				Potential Async: Indicator - callback
-			METHOD: requestAnimationFrame
-				Potential Async: Indicator - callback
-			METHOD: requestAnimationFrame
-				Potential Async: Indicator - callback
-			METHOD: requestAnimationFrame
-				Potential Async: Indicator - callback
-			METHOD: requestPresent
-				Potential Async: Indicator - promise
-			METHOD: exitPresent
-				Potential Async: Indicator - promise
-			METHOD: submitFrame
-			METHOD: VRLayer
-			METHOD: getPose
-			METHOD: VRPose
-			METHOD: getFrameData
-			METHOD: VRPose
-			METHOD: getImmediatePose
-			METHOD: VRPose
-			METHOD: hardwareUnitId
-			METHOD: DOMString
-			METHOD: displayId
-			METHOD: displayId
-	API: VRDisplayCapabilities
-	API: VRDisplayEvent
-	API: VREyeParameters
-	API: VRFieldOfView
-	API: VRFieldOfViewReadOnly
-	API: VRFrameData
-	API: VRLayerInit
-	API: VRPose
-	API: VRStageParameters
-	API: VTTCue
-	API: ValidityState
-	API: VideoPlaybackQuality
-	API: WEBGL_color_buffer_float
-	API: WEBGL_compressed_texture_astc
-			METHOD: getSupportedProfiles
-	API: WEBGL_compressed_texture_atc
-	API: WEBGL_compressed_texture_etc
-	API: WEBGL_compressed_texture_etc1
-	API: WEBGL_compressed_texture_pvrtc
-	API: WEBGL_compressed_texture_s3tc
-	API: WEBGL_compressed_texture_s3tc_srgb
-	API: WEBGL_debug_renderer_info
-	API: WEBGL_debug_shaders
-			METHOD: getTranslatedShaderSource
-	API: WEBGL_depth_texture
-	API: WEBGL_draw_buffers
-			METHOD: drawBuffersWEBGL
-			METHOD: WebGL2RenderingContext
-			METHOD: drawBuffers
-	API: WEBGL_lose_context
-			METHOD: loseContext
-			METHOD: restoreContext
-	API: WaveShaperNode
-			METHOD: AudioNode
-	API: WebGL_API
-	API: WebGL2RenderingContext
-	API: WebGLActiveInfo
-	API: WebGLBuffer
-	API: WebGLContextEvent
-			METHOD: Event
-	API: WebGLFramebuffer
-	API: WebGLProgram
-	API: WebGLQuery
-	API: WebGLRenderbuffer
-	API: WebGLRenderingContext
-	API: WebGLSampler
-	API: WebGLShader
-	API: WebGLShaderPrecisionFormat
-	API: WebGLSync
-	API: WebGLTexture
-	API: WebGLTransformFeedback
-	API: WebGLUniformLocation
-	API: WebGLVertexArrayObject
-	API: WebSocket
-			METHOD: CloseEvent#Status_codes
-			METHOD: CloseEvent
-			METHOD: Blob
-	API: WebSockets_API
-	API: WheelEvent
-			METHOD: MouseEvent
-			METHOD: UIEvent
-			METHOD: Event
-	API: Window
-			METHOD: EventTarget
-			METHOD: WindowOrWorkerGlobalScope
-			METHOD: EventTarget
-			METHOD: alert
-			METHOD: back
-			METHOD: blur
-			METHOD: cancelAnimationFrame
-				Potential Async: Indicator - callback
-			METHOD: requestAnimationFrame
-				Potential Async: Indicator - callback
-			METHOD: cancelIdleCallback
-				Potential Async: Indicator - callback
-			METHOD: requestIdleCallback
-				Potential Async: Indicator - callback
-			METHOD: captureEvents
-			METHOD: clearImmediate
-			METHOD: close
-			METHOD: confirm
-			METHOD: disableExternalCapture
-			METHOD: dispatchEvent
-			METHOD: dump
-			METHOD: enableExternalCapture
-			METHOD: find
-			METHOD: focus
-			METHOD: forward
-			METHOD: getAttention
-			METHOD: getAttentionWithCycleCount
-			METHOD: getComputedStyle
-			METHOD: getDefaultComputedStyle
-			METHOD: getSelection
-			METHOD: home
-			METHOD: matchMedia
-			METHOD: MediaQueryList
-			METHOD: maximize
-			METHOD: minimize
-			METHOD: moveBy
-			METHOD: moveTo
-			METHOD: open
-				Potential Async: Indicator - async
-			METHOD: openDialog
-			METHOD: postMessage
-				Potential Async: Indicator - async
-			METHOD: print
-			METHOD: prompt
-			METHOD: releaseEvents
-			METHOD: requestAnimationFrame
-				Potential Async: Indicator - callback
-			METHOD: requestIdleCallback
-				Potential Async: Indicator - callback
-			METHOD: resizeBy
-			METHOD: resizeTo
-			METHOD: restore
-			METHOD: routeEvent
-			METHOD: scroll
-			METHOD: scrollBy
-			METHOD: scrollByLines
-			METHOD: scrollByPages
-			METHOD: scrollTo
-			METHOD: setCursor
-			METHOD: setImmediate
-				Potential Async: Indicator - callback
-			METHOD: setResizable
-			METHOD: showModalDialog
-			METHOD: sizeToContent
-			METHOD: stop
-			METHOD: updateCommands
-			METHOD: addEventListener
-			METHOD: atob
-			METHOD: btoa
-			METHOD: clearInterval
-			METHOD: setInterval
-				Potential Async: Indicator - callback
-			METHOD: clearTimeout
-			METHOD: setTimeout
-				Potential Async: Indicator - callback
-			METHOD: createImageBitmap
-			METHOD: Promise
-			METHOD: ImageBitmap
-			METHOD: fetch
-				Potential Async: Indicator - callback
-			METHOD: removeEventListener
-			METHOD: setInterval
-				Potential Async: Indicator - callback
-			METHOD: setTimeout
-				Potential Async: Indicator - callback
-	API: WindowBase64
-			METHOD: atob
-			METHOD: btoa
-	API: WindowClient
-			METHOD: Client
-			METHOD: focus
-			METHOD: navigate
-	API: WindowEventHandlers
-	API: WindowOrWorkerGlobalScope
-			METHOD: WindowOrWorkerGlobalScope
-			METHOD: Window
-			METHOD: WorkerGlobalScope
-			METHOD: atob
-			METHOD: btoa
-			METHOD: clearInterval
-			METHOD: setInterval
-				Potential Async: Indicator - callback
-			METHOD: clearTimeout
-			METHOD: setTimeout
-				Potential Async: Indicator - callback
-			METHOD: createImageBitmap
-			METHOD: Promise
-			METHOD: ImageBitmap
-			METHOD: fetch
-				Potential Async: Indicator - callback
-			METHOD: setInterval
-				Potential Async: Indicator - callback
-			METHOD: setTimeout
-				Potential Async: Indicator - callback
-	API: WindowTimers
-			METHOD: clearInterval
-			METHOD: setInterval
-				Potential Async: Indicator - callback
-			METHOD: clearTimeout
-			METHOD: setTimeout
-				Potential Async: Indicator - callback
-			METHOD: setInterval
-				Potential Async: Indicator - callback
-			METHOD: setTimeout
-				Potential Async: Indicator - callback
-	API: Worker
-			METHOD: EventTarget
-			METHOD: AbstractWorker
-			METHOD: postMessage
-			METHOD: terminate
-	API: WorkerGlobalScope
-			METHOD: EventTarget
-			METHOD: WindowOrWorkerGlobalScope
-			METHOD: WindowEventHandlers
-			METHOD: importScripts
-			METHOD: dump
-			METHOD: dump
-			METHOD: atob
-			METHOD: btoa
-			METHOD: clearInterval
-			METHOD: setInterval
-				Potential Async: Indicator - callback
-			METHOD: clearTimeout
-			METHOD: setTimeout
-				Potential Async: Indicator - callback
-			METHOD: createImageBitmap
-			METHOD: Promise
-			METHOD: ImageBitmap
-			METHOD: fetch
-				Potential Async: Indicator - callback
-			METHOD: setInterval
-				Potential Async: Indicator - callback
-			METHOD: setTimeout
-				Potential Async: Indicator - callback
-			METHOD: close
-			METHOD: close
-	API: WorkerLocation
-			METHOD: URLUtilsReadOnly
-			METHOD: toString
-			METHOD: DOMString
-			METHOD: Worker
-			METHOD: href
-	API: WorkerNavigator
-			METHOD: NavigatorID
-			METHOD: NavigatorLanguage
-			METHOD: NavigatorOnLine
-			METHOD: sendBeacon
-				Potential Async: Indicator - async
-			METHOD: Worker
-	API: XDomainRequest
-			METHOD: open
-			METHOD: send
-			METHOD: abort
-	API: XMLDocument
-			METHOD: load
-				Potential Async: Indicator - async
-	API: XMLHttpRequest
-			METHOD: abort
-			METHOD: getAllResponseHeaders
-			METHOD: getResponseHeader
-			METHOD: open
-				Potential Async: Indicator - async
-			METHOD: overrideMimeType
-				Potential Async: Indicator - callback
-			METHOD: send
-				Potential Async: Indicator - async
-			METHOD: setRequestHeader
-			METHOD: init
-			METHOD: openRequest
-			METHOD: sendAsBinary
-	API: XMLHttpRequestEventTarget
-	API: XMLSerializer
-	API: XPathExpression
-			METHOD: XPathResult
-	API: XPathResult
-			METHOD: iterateNext
-			METHOD: snapshotItem
-	API: XSLTProcessor
-			METHOD: importStylesheet
-			METHOD: Node
-			METHOD: DocumentFragment
-			METHOD: transformToFragment
-			METHOD: Node
-			METHOD: Document
-			METHOD: importStylesheet
-			METHOD: Document
-			METHOD: transformToDocument
-			METHOD: Node
-			METHOD: importStylesheet
-			METHOD: HTMLDocument
-			METHOD: XMLDocument
-			METHOD: XMLDocument
-			METHOD: setParameter
-			METHOD: getParameter
-			METHOD: removeParameter
-			METHOD: clearParameters
-			METHOD: reset
+Total API Count: 748
+
+	Async APIs
+		API: Animation
+
+					METHOD: cancel
+
+		API: AudioContext
+
+					METHOD: close
+
+					METHOD: createBuffer
+
+					METHOD: createBuffer
+
+					METHOD: decodeAudioData
+
+					METHOD: createGain
+
+					METHOD: decodeAudioData
+
+					METHOD: resume
+
+					METHOD: suspend
+
+		API: BluetoothRemoteGATTServer
+
+					METHOD: getPrimaryService
+
+					METHOD: getPrimaryServices
+
+		API: Body
+
+					METHOD: arrayBuffer
+
+					METHOD: ArrayBuffer
+
+					METHOD: blob
+
+					METHOD: Blob
+
+					METHOD: formData
+
+					METHOD: FormData
+
+					METHOD: json
+
+					METHOD: text
+
+		API: Cache
+
+					METHOD: add
+
+					METHOD: addAll
+
+					METHOD: put
+
+		API: CacheStorage
+
+					METHOD: match
+
+					METHOD: has
+
+		API: Client
+
+					METHOD: postMessage
+
+		API: CustomElementRegistry
+
+					METHOD: whenDefined
+
+		API: DOMTokenList
+
+					METHOD: forEach
+
+		API: DataTransferItem
+
+					METHOD: getAsString
+
+		API: Document
+
+					METHOD: adoptNode
+
+					METHOD: caretPositionFromPoint
+
+					METHOD: caretRangeFromPoint
+
+					METHOD: createAttribute
+
+					METHOD: createCDATASection
+
+					METHOD: createComment
+
+					METHOD: createDocumentFragment
+
+					METHOD: createElement
+
+					METHOD: createElementNS
+
+					METHOD: createEntityReference
+
+					METHOD: createEvent
+
+					METHOD: createNodeIterator
+
+					METHOD: createProcessingInstruction
+
+					METHOD: createRange
+
+					METHOD: createTextNode
+
+					METHOD: createTouch
+
+					METHOD: createTouchList
+
+					METHOD: createTreeWalker
+
+					METHOD: elementFromPoint
+
+					METHOD: elementsFromPoint
+
+					METHOD: enableStyleSheetsForSet
+
+					METHOD: exitPointerLock
+
+					METHOD: getAnimations
+
+					METHOD: getElementsByClassName
+
+					METHOD: getElementsByTagName
+
+					METHOD: getElementsByTagNameNS
+
+					METHOD: importNode
+
+					METHOD: registerElement
+
+					METHOD: releaseCapture
+
+					METHOD: mozSetImageElement
+
+					METHOD: getElementById
+
+					METHOD: querySelector
+
+					METHOD: querySelectorAll
+
+					METHOD: createExpression
+
+					METHOD: createNSResolver
+
+					METHOD: evaluate
+
+					METHOD: clear
+
+					METHOD: close
+
+					METHOD: execCommand
+
+					METHOD: getElementsByName
+
+					METHOD: getSelection
+
+					METHOD: hasFocus
+
+					METHOD: open
+
+					METHOD: queryCommandEnabled
+
+					METHOD: queryCommandState
+
+					METHOD: queryCommandSupported
+
+					METHOD: write
+
+					METHOD: writeln
+
+		API: DocumentTouch
+
+					METHOD: createTouch
+
+					METHOD: createTouchList
+
+		API: Element
+
+					METHOD: requestFullscreen
+
+					METHOD: requestPointerLock
+
+		API: ExtendableEvent
+
+					METHOD: waitUntil
+
+		API: FetchEvent
+
+					METHOD: respondWith
+
+		API: FileSystemDirectoryEntry
+
+					METHOD: getDirectory
+
+					METHOD: getFile
+
+					METHOD: removeRecursively
+
+		API: FileSystemDirectoryReader
+
+					METHOD: readEntries
+
+		API: FileSystemEntry
+
+					METHOD: copyTo
+
+					METHOD: getMetadata
+
+					METHOD: getParent
+
+					METHOD: moveTo
+
+					METHOD: remove
+
+		API: FileSystemFileEntry
+
+					METHOD: file
+
+					METHOD: File
+
+					METHOD: createWriter
+
+		API: FontFaceSet
+
+					METHOD: load
+
+		API: GamepadHapticActuator
+
+					METHOD: pulse
+
+		API: Geolocation
+
+					METHOD: getCurrentPosition
+
+					METHOD: watchPosition
+
+		API: GlobalFetch
+
+					METHOD: fetch
+
+		API: HTMLCanvasElement
+
+					METHOD: toBlob
+
+		API: HTMLIFrameElement
+
+					METHOD: getVolume
+
+					METHOD: getMuted
+
+					METHOD: getManifest
+
+		API: HTMLMediaElement
+
+					METHOD: play
+
+					METHOD: seekToNextFrame
+
+		API: IDBDatabase
+
+					METHOD: createObjectStore
+
+					METHOD: deleteObjectStore
+
+		API: IDBFactory
+
+					METHOD: open
+
+					METHOD: deleteDatabase
+
+		API: IDBIndex
+
+					METHOD: count
+
+					METHOD: get
+
+					METHOD: getKey
+
+		API: IDBObjectStore
+
+					METHOD: createIndex
+
+					METHOD: deleteIndex
+
+		API: IntersectionObserver
+
+					METHOD: observe
+
+					METHOD: takeRecords
+
+					METHOD: unobserve
+
+				METHOD: Media_Streams_API
+
+					METHOD: getUserMedia
+
+		API: MediaKeyStatusMap
+
+					METHOD: forEach
+
+		API: MediaQueryList
+
+					METHOD: addListener
+
+					METHOD: removeListener
+
+		API: MediaSession
+
+					METHOD: setActionHandler
+
+		API: MediaStreamTrack
+
+					METHOD: applyConstraints
+
+					METHOD: applyConstraints
+
+		API: Navigator
+
+					METHOD: getUserMedia
+
+		API: Node
+
+					METHOD: setUserData
+
+		API: NodeList
+
+					METHOD: forEach
+
+		API: notification
+
+					METHOD: requestPermission
+
+		API: OfflineAudioContext
+
+					METHOD: resume
+
+					METHOD: suspend
+
+					METHOD: startRendering
+
+		API: PaymentRequest
+
+					METHOD: canMakePayment
+
+					METHOD: show
+
+		API: PerformanceObserver
+
+					METHOD: observe
+
+		API: PerformanceObserverEntryList
+
+					METHOD: getEntries
+
+					METHOD: getEntriesByType
+
+					METHOD: getEntriesByName
+
+		API: PositionSensorVRDevice
+
+					METHOD: getState
+
+		API: RTCDataChannel
+
+					METHOD: close
+
+		API: RTCPeerConnection
+
+					METHOD: addIceCandidate
+
+					METHOD: createAnswer
+
+					METHOD: createOffer
+
+					METHOD: setLocalDescription
+
+					METHOD: setRemoteDescription
+
+		API: RTCSessionDescription
+
+					METHOD: RTCSessionDescription
+
+		API: Request
+
+					METHOD: arrayBuffer
+
+					METHOD: ArrayBuffer
+
+					METHOD: blob
+
+					METHOD: Blob
+
+					METHOD: json
+
+					METHOD: JSON
+
+					METHOD: text
+
+		API: Response
+
+					METHOD: error
+
+					METHOD: arrayBuffer
+
+					METHOD: ArrayBuffer
+
+					METHOD: blob
+
+					METHOD: Blob
+
+					METHOD: json
+
+					METHOD: text
+
+		API: ServiceWorkerGlobalScope
+
+					METHOD: fetch
+
+		API: ServiceWorkerRegistration
+
+					METHOD: update
+
+					METHOD: unregister
+
+		API: SourceBuffer
+
+					METHOD: abort
+
+		API: Storage
+
+					METHOD: key
+
+		API: StorageManager
+
+					METHOD: estimate
+
+		API: SubtleCrypto
+
+					METHOD: encrypt
+
+					METHOD: decrypt
+
+					METHOD: sign
+
+					METHOD: verify
+
+					METHOD: digest
+
+					METHOD: generateKey
+
+					METHOD: deriveKey
+
+					METHOD: importKey
+
+					METHOD: exportKey
+
+					METHOD: wrapKey
+
+					METHOD: unwrapKey
+
+		API: VRDisplay
+
+					METHOD: cancelAnimationFrame
+
+					METHOD: cancelAnimationFrame
+
+					METHOD: requestAnimationFrame
+
+					METHOD: requestAnimationFrame
+
+					METHOD: requestAnimationFrame
+
+					METHOD: requestPresent
+
+					METHOD: exitPresent
+
+		API: Window
+
+					METHOD: cancelAnimationFrame
+
+					METHOD: requestAnimationFrame
+
+					METHOD: cancelIdleCallback
+
+					METHOD: requestIdleCallback
+
+					METHOD: open
+
+					METHOD: postMessage
+
+					METHOD: requestAnimationFrame
+
+					METHOD: requestIdleCallback
+
+					METHOD: setImmediate
+
+					METHOD: setInterval
+
+					METHOD: setTimeout
+
+					METHOD: fetch
+
+					METHOD: setInterval
+
+					METHOD: setTimeout
+
+		API: WindowOrWorkerGlobalScope
+
+					METHOD: setInterval
+
+					METHOD: setTimeout
+
+					METHOD: fetch
+
+					METHOD: setInterval
+
+					METHOD: setTimeout
+
+		API: WindowTimers
+
+					METHOD: setInterval
+
+					METHOD: setTimeout
+
+					METHOD: setInterval
+
+					METHOD: setTimeout
+
+		API: WorkerGlobalScope
+
+					METHOD: setInterval
+
+					METHOD: setTimeout
+
+					METHOD: fetch
+
+					METHOD: setInterval
+
+					METHOD: setTimeout
+
+		API: WorkerNavigator
+
+					METHOD: sendBeacon
+
+		API: XMLDocument
+
+					METHOD: load
+
+		API: XMLHttpRequest
+
+					METHOD: open
+
+					METHOD: overrideMimeType
+
+					METHOD: send
+
+Async API Count: 64
