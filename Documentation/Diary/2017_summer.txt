@@ -1,20 +1,9 @@
-[Clara - July 13]
+[Clara and Miguel - July 14]
 Today we hope to...
+- Clean up, debugged and refined the web scraper.
 - Get an idea about how Node works, and how it runs.
 - Look for debugging tools, in particular the "AsyncListener" module and how we can possibly
 integrate it into and run it against some code.
-
-
-[Miguel - July 14]
-  - GOALS
-    1. Continue scraping / grepping for Web API that have async behavior
-    2. Possibly...
-    	A. Do more additional testing regarding the clusters (verification tests...)
-    	B. Continue refactoring my code
-    	C. Look into the other frameworks
-    	   - Node
-    	     - See if AsyncListner can be used...
-
 
 
 [Miguel - July 13]
