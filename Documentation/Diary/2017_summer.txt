@@ -1,25 +1,26 @@
-[Miguel - July 17]
-  - GOALS
+[July 17]
+  - Goals for today:
     1. Get an idea about how Node works, and how it runs.
-    2. Look for debugging tools, in particular the "AsyncListener" module and how we can possibly
-       integrate it into and run it against some code.
-  
-
+    2. Look for debugging tools, in particular the "AsyncListener" module and 
+       how we can possibly integrate it into and run it against some code.
+    
+ 
 [Clara and Miguel - July 14]
   - Clean up, debugged and refined the web scraper.
 
 [Miguel - July 13]
-  - (w/ Clara) We were able to request HTML docs from Mozilla's servers and parse them
-    for relevant links to their web APIs.
-  - Although, various edge cases regarding the presence and absence of certain HTML
-    tags have to be addressed
-  - Seems I was able to create a rough approximation for the Mozilla's doc; got the
-    potential API calls
+  - (w/ Clara) We were able to request HTML docs from Mozilla's servers and 
+    parse them for relevant links to their web APIs.
+  - Although, various edge cases regarding the presence and absence of certain 
+    HTML tags have to be addressed
+  - Seems I was able to create a rough approximation for the Mozilla's doc; 
+    got the potential API calls
 
 [Clara - July 13]
-  - Scraping the web page with all of the web APIs. Our goal is to create a list with all
-  APIs, or functioncalls, that have a callback and/or promise. For starters, we are gonna look for
-  Python libraries that allow us to download/parse the web page.
+  - Scraping the web page with all of the web APIs. Our goal is to create a 
+    list with all APIs, or functioncalls, that have a callback and/or promise. 
+  - For starters, we are gonna look for Python libraries that allow us to 
+    download/parse the web page.
 
 [BIY - July 12]
 A good paper for discussion:
