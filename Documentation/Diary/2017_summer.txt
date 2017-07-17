@@ -1,10 +1,13 @@
+[July 17]
+  - Goals for today:
+    1. Get an idea about how Node works, and how it runs.
+    2. Look for debugging tools, in particular the "AsyncListener" module and 
+       how we can possibly integrate it into and run it against some code.
+    
+ 
 [Clara and Miguel - July 14]
-Today we hope to...
-- Clean up, debugged and refined the web scraper.
-- Get an idea about how Node works, and how it runs.
-- Look for debugging tools, in particular the "AsyncListener" module and how we can possibly
-integrate it into and run it against some code.
-
+  - Clean up, debugged and refined the web scraper.
+  - Got a foothold on running Node
 
 [Miguel - July 13]
   - (w/ Clara) We were able to request HTML docs from Mozilla's servers and parse them
