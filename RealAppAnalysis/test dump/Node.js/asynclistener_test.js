@@ -3,22 +3,15 @@ var asyncListener = require("async-listener");
 //Ex: hCreate means handler upon creation
 
 function hCreate(storage){
-	console.log(storage);
 }
 
 function hBefore(context, storage){
-	console.log("Something is about to happen?");
-	console.log(context);
 }
 
 function hAfter(context, storage){
-	console.log("Something has happened");
-	console.log(context);
 }
 
 function hError(storage, error){
-	console.log("Somee error");
-	console.log(storage);
 }
 
 var handlers = {create: hCreate, before: hBefore, after: hAfter, error: hError};
@@ -32,6 +25,8 @@ applications without using require()
 **/
 
 al = process.createAsyncListener(handlers, initValue);
-process.addAsyncListener(al);
+process.addAsyncListener(handlers, initValue);
 
-setImmediate(function(){console.log("Hello")}, 1);
+var dummy = function(){console.log("hello")};
+setImmediate(dummy);
+new Promise(dummy);
