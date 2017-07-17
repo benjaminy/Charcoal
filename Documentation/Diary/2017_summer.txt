@@ -1,9 +1,13 @@
+[ July 17]
+  - Got the async-listener installed for testing
+  - Was able to verify that async-listener does 
+    listen for async things (it works)
+  
 [July 17]
   - Goals for today:
     1. Get an idea about how Node works, and how it runs.
     2. Look for debugging tools, in particular the "AsyncListener" module and 
        how we can possibly integrate it into and run it against some code.
-    
  
 [Clara and Miguel - July 14]
   - Clean up, debugged and refined the web scraper.
