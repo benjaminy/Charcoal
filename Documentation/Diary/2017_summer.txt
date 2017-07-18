@@ -1,8 +1,7 @@
 [Clara - July 18]
-Goals:
 Continue testing the async tracing tools in the npm library.
 If none of them works exactly how we want it (which is quite likely), then also try to get a better understanding
-of the inner works of these tools in order to see how we can modify them to suit our needs.
+of the inner works of these tools in order to see how we can modify them to suit our needs. These ideas should be discussed w mr.Ben.
 
 [Clara - July 17]
 		- Read the paper "Race Detection for Web Applications"
@@ -16,7 +15,7 @@ of the inner works of these tools in order to see how we can modify them to suit
 														The module has significant popularity so it's possible that it's good and useful though I don't have enough understanding of js to see how and why.
 		  3 async-profile --Can track init functions, however, unclear if it works for nested callbacks. Infrastructural changes would be required.
 		  4 asynctrace --Appears to be working. However, unclear to what extent it works with more elaborate test scripts.
-		  5 superstacktrace
+		  5 superstacktrace  --Works basically the same as 'asynctrace'
 		  6 tree
 
 [Miguel - July 17]
