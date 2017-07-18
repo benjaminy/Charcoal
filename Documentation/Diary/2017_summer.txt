@@ -18,9 +18,11 @@
   - Tested some of modules built on the async-listener
     1. Asynctrace
     2. Async-Profile
+    3. Async Tree
     
   - I have not gotten them to work practically, and I suspect if they can't really give
     the chain of callbacks that we need. 
+  - Still hopeful about the tree...
     
 [Clara and Miguel - July 14]
   - Clean up, debugged and refined the web scraper.
