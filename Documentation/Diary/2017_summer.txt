@@ -1,3 +1,8 @@
+[Miguel - July 18]
+  - I tinkered with tree.js, but I could not get it to produce something useful
+  - Decided to look for other means to get analytical information about javascript 
+    programs through Node.js...
+
 [Clara - July 17]
 		- Read the paper "Race Detection for Web Applications"
 		- Look into Node.js and the async-listener tool.
