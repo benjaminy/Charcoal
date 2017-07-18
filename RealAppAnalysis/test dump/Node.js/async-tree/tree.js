@@ -1,16 +1,16 @@
 // polyfill process.addAsyncListener for older nodes.
 if (!process.addAsyncListener) require('async-listener');
 
-process.addAsyncListener(setup, {
-  before: onBefore,
-  after: onAfter,
-  error: onError
-});
-
 var current = null;
 var stack = [];
 var leaves = [];
 var nextId = 1;
+
+process.addAsyncListener({
+  before: onBefore,
+  after: onAfter,
+  error: onError
+}, setup());
 
 function guessName() {
   var stack = (new Error()).stack.split("\n");
@@ -65,6 +65,12 @@ function onError(storage, error) {
   return true;
 }
 
+if(true){
+	var targetModule = process.argv[2];
+	console.log(targetModule);
+	require(targetModule);
+}
+
 process.on('exit', function () {
   var inspect = require('util').inspect;
   var nodes = leaves;
@@ -92,6 +98,3 @@ process.on('exit', function () {
 
   console.log('}');
 });
-
-
-require(process.argv[2]);
