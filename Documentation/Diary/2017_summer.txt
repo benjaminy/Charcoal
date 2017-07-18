@@ -1,3 +1,9 @@
+[Clara - July 18]
+Goals:
+Continue testing the async tracing tools in the npm library.
+If none of them works exactly how we want it (which is quite likely), then also try to get a better understanding
+of the inner works of these tools in order to see how we can modify them to suit our needs.
+
 [Clara - July 17]
 		- Read the paper "Race Detection for Web Applications"
 		- Look into Node.js and the async-listener tool.
@@ -7,7 +13,7 @@
 		0. (async-listener) --unclear to what extent this module is compatible with the more recent versions of Node
 		  1 stackup --VERY confusing. Not only does our own test scripts not work with this module -- the designers own test file gives questionable output
 		  2 async stacktrace
-		  3 async-profile
+		  3 async-profile --can track init functions, however, unclear if it works for nested callbacks. Infrastructural changes would be required.
 		  4 asynctrace --Appears to be working. However, unclear to what extent it works with more elaborate test scripts.
 		  5 superstacktrace
 		  6 tree
