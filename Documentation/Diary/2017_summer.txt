@@ -3,11 +3,11 @@
 		- Look into Node.js and the async-listener tool.
 		- Several tools for getting the tree of callback chain were found, all of which more of less build off of the async-listener module:
 
-		0. (async-listener)
-		  1 stackup
+		0. (async-listener) --unclear to what extent this module is compatible with the more recent versions of Node
+		  1 stackup --VERY confusing. Not only does our own test scripts not work with this module -- the designers own test file gives questionable output
 		  2 async stacktrace
 		  3 async-profile
-		  4 asynctrace
+		  4 asynctrace --Appears to be working. However, unclear to what extent it works with more elaborate test scripts.
 		  5 superstacktrace
 		  6 tree
 
