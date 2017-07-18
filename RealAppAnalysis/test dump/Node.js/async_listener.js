@@ -5,7 +5,7 @@ var asyncListener = require("async-listener");
 function hCreate(storage){
 }
 
-function hBefore(context, storage){
+async function hBefore(context, storage){
 }
 
 function hAfter(context, storage){
@@ -27,6 +27,4 @@ applications without using require()
 al = process.createAsyncListener(handlers, initValue);
 process.addAsyncListener(handlers, initValue);
 
-var dummy = function(){console.log("hello")};
-setImmediate(dummy);
-new Promise(dummy);
+new Promise(function(){console.log("hello")});
