@@ -12,7 +12,8 @@ of the inner works of these tools in order to see how we can modify them to suit
 
 		0. (async-listener) --unclear to what extent this module is compatible with the more recent versions of Node
 		  1 stackup --VERY confusing. Not only does our own test scripts not work with this module -- the designers own test file gives questionable output
-		  2 async stacktrace
+		  2 async stacktrace -- This one is also confusing... it appears as if the test code needs to include some certain commands and special syntax for it use the module properly.
+														The module has significant popularity so it's possible that it's good and useful though I don't have enough understanding of js to see how and why.
 		  3 async-profile --Can track init functions, however, unclear if it works for nested callbacks. Infrastructural changes would be required.
 		  4 asynctrace --Appears to be working. However, unclear to what extent it works with more elaborate test scripts.
 		  5 superstacktrace
