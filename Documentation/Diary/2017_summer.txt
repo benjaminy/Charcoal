@@ -1,29 +1,46 @@
+[Clara - July 17]
+		- Read the paper "Race Detection for Web Applications"
+		- Look into Node.js and the async-listener tool.
+		- Several tools for getting the tree of callback chain were found, all of which more of less build off of the async-listener module:
+
+		0. (async-listener)
+		  1 stackup
+		  2 async stacktrace
+		  3 async-profile
+		  4 asynctrace
+		  5 superstacktrace
+		  6 tree
+
+		- However, not yet clear how useful, or reliable, they are, and whether they give us what we want.
+		- Finally figured out how to run them all.
+		- Optimistic about #4, asynctrace.
+
 [ July 17]
   - Got the async-listener installed for testing
-  - Was able to verify that async-listener does 
+  - Was able to verify that async-listener does
     listen for async things (it works)
-  
+
 [July 17]
   - Goals for today:
     1. Get an idea about how Node works, and how it runs.
-    2. Look for debugging tools, in particular the "AsyncListener" module and 
+    2. Look for debugging tools, in particular the "AsyncListener" module and
        how we can possibly integrate it into and run it against some code.
- 
+
 [Clara and Miguel - July 14]
   - Clean up, debugged and refined the web scraper.
 
 [Miguel - July 13]
-  - (w/ Clara) We were able to request HTML docs from Mozilla's servers and 
+  - (w/ Clara) We were able to request HTML docs from Mozilla's servers and
     parse them for relevant links to their web APIs.
-  - Although, various edge cases regarding the presence and absence of certain 
+  - Although, various edge cases regarding the presence and absence of certain
     HTML tags have to be addressed
-  - Seems I was able to create a rough approximation for the Mozilla's doc; 
+  - Seems I was able to create a rough approximation for the Mozilla's doc;
     got the potential API calls
 
 [Clara - July 13]
-  - Scraping the web page with all of the web APIs. Our goal is to create a 
-    list with all APIs, or functioncalls, that have a callback and/or promise. 
-  - For starters, we are gonna look for Python libraries that allow us to 
+  - Scraping the web page with all of the web APIs. Our goal is to create a
+    list with all APIs, or functioncalls, that have a callback and/or promise.
+  - For starters, we are gonna look for Python libraries that allow us to
     download/parse the web page.
 
 [BIY - July 12]
