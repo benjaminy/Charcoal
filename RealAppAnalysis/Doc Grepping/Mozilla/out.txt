@@ -1,0 +1,1121 @@
+	API: ('API$history', None)
+	API: ('ANGLE_instanced_arrays', None)
+			METHOD: drawArraysInstancedANGLE
+			METHOD: drawElementsInstancedANGLE
+			METHOD: vertexAttribDivisorANGLE
+	API: ('AbstractWorker', None)
+	API: ('AmbientLightSensor', None)
+	API: ('AmbientLightSensorReading', None)
+	API: ('AnalyserNode', None)
+			METHOD: getFloatFrequencyData
+			METHOD: getByteFrequencyData
+			METHOD: getFloatTimeDomainData
+			METHOD: getByteTimeDomainData
+	API: ('Animation', 'icon-beaker')
+			METHOD: cancel
+				Potential Async: Indicator - promise
+			METHOD: finish
+			METHOD: pause
+			METHOD: play
+			METHOD: reverse
+	API: ('AnimationEffectReadOnly', 'icon-beaker')
+			METHOD: getComputedTiming
+	API: ('AnimationEffectTiming', 'icon-beaker')
+	API: ('AnimationEffectTimingProperties', 'icon-beaker')
+	API: ('AnimationEffectTimingReadOnly', 'icon-beaker')
+	API: ('AnimationEvent', 'icon-beaker')
+			METHOD: initAnimationEvent
+	API: ('AnimationPlaybackEvent', 'icon-beaker')
+	API: ('AnimationTimeline', 'icon-beaker')
+	API: ('ArrayBufferView', None)
+	API: ('Attr', None)
+	API: ('AudioBuffer', None)
+			METHOD: getChannelData
+			METHOD: copyFromChannel
+			METHOD: copyToChannel
+	API: ('AudioBufferSourceNode', None)
+	API: ('AudioContext', None)
+			METHOD: close
+				Potential Async: Indicator - promise
+			METHOD: createBuffer
+				Potential Async: Indicator - async
+			METHOD: createConstantSource
+			METHOD: createBufferSource
+			METHOD: createMediaElementSource
+			METHOD: createMediaStreamSource
+			METHOD: createMediaStreamDestination
+			METHOD: createScriptProcessor
+			METHOD: createStereoPanner
+			METHOD: createAnalyser
+			METHOD: createBiquadFilter
+			METHOD: createChannelMerger
+			METHOD: createChannelSplitter
+			METHOD: createConvolver
+			METHOD: createDelay
+			METHOD: createDynamicsCompressor
+			METHOD: createGain
+				Potential Async: Indicator - callback
+			METHOD: createIIRFilter
+			METHOD: createOscillator
+			METHOD: createPanner
+			METHOD: createPeriodicWave
+			METHOD: createWaveShaper
+			METHOD: createAudioWorker
+			METHOD: decodeAudioData
+				Potential Async: Indicator - callback
+			METHOD: getOutputTimestamp
+			METHOD: resume
+				Potential Async: Indicator - promise
+			METHOD: suspend
+				Potential Async: Indicator - promise
+	API: ('AudioDestinationNode', None)
+	API: ('AudioListener', None)
+			METHOD: setOrientation
+			METHOD: setPosition
+	API: ('AudioNode', None)
+			METHOD: connect
+			METHOD: disconnect
+	API: ('AudioParam', None)
+			METHOD: setValueAtTime
+			METHOD: linearRampToValueAtTime
+			METHOD: exponentialRampToValueAtTime
+			METHOD: setTargetAtTime
+			METHOD: setValueCurveAtTime
+			METHOD: cancelScheduledValues
+			METHOD: cancelAndHoldAtTime
+	API: ('AudioProcessingEvent', 'icon-thumbs-down-alt')
+	API: ('AudioScheduledSourceNode', None)
+			METHOD: start
+			METHOD: stop
+	API: ('BatteryManager', None)
+			METHOD: addEventListener
+			METHOD: removeEventListener
+			METHOD: dispatchEvent
+	API: ('BeforeInstallPromptEvent', 'icon-beaker')
+			METHOD: prompt
+	API: ('BeforeUnloadEvent', None)
+	API: ('BiquadFilterNode', None)
+			METHOD: getFrequencyResponse
+	API: ('Blob', None)
+			METHOD: slice
+	API: ('BlobBuilder', 'icon-trash')
+	API: ('BlobEvent', 'icon-beaker')
+	API: ('Bluetooth', 'icon-warning-sign')
+			METHOD: getAvailability
+			METHOD: requestDevice
+	API: ('BluetoothAdvertisingData', 'icon-warning-sign')
+	API: ('BluetoothCharacteristicProperties', 'icon-warning-sign')
+	API: ('BluetoothRemoteGATTCharacteristic', 'icon-warning-sign')
+			METHOD: getDescriptor
+			METHOD: getDescriptors
+			METHOD: readValue
+			METHOD: writeValue
+			METHOD: startNotifications
+			METHOD: stopNotifications
+	API: ('BluetoothRemoteGATTDescriptor', 'icon-warning-sign')
+			METHOD: readValue
+			METHOD: writeValue
+	API: ('BluetoothRemoteGATTServer', 'icon-warning-sign')
+			METHOD: connect
+			METHOD: disconnect
+			METHOD: getPrimaryService
+				Potential Async: Indicator - promise
+			METHOD: getPrimaryServices
+				Potential Async: Indicator - promise
+	API: ('BluetoothStatusChangedEvent', None)
+	API: ('Body', 'icon-beaker')
+			METHOD: arrayBuffer
+				Potential Async: Indicator - promise
+			METHOD: blob
+				Potential Async: Indicator - promise
+			METHOD: formData
+				Potential Async: Indicator - promise
+			METHOD: json
+				Potential Async: Indicator - promise
+			METHOD: text
+				Potential Async: Indicator - promise
+	API: ('BroadcastChannel', 'icon-beaker')
+			METHOD: postMessage
+			METHOD: close
+	API: ('BudgetService', None)
+			METHOD: getCost
+			METHOD: getBudget
+			METHOD: reserve
+	API: ('BudgetState', None)
+	API: ('BufferSource', None)
+	API: ('ByteString', None)
+	API: ('CDATASection', 'icon-thumbs-down-alt')
+	API: ('CSS', None)
+	API: ('CSSConditionRule', None)
+	API: ('CSSCounterStyleRule', None)
+	API: ('CSSGroupingRule', None)
+	API: ('CSSKeyframeRule', 'icon-beaker')
+	API: ('CSSKeyframesRule', 'icon-beaker')
+			METHOD: appendRule
+			METHOD: deleteRule
+			METHOD: findRule
+	API: ('CSSMatrix', None)
+	API: ('CSSMediaRule', None)
+	API: ('CSSNamespaceRule', 'icon-beaker')
+	API: ('CSSPageRule', None)
+	API: ('CSSPrimitiveValue', None)
+			METHOD: getCounterValue
+			METHOD: getFloatValue
+			METHOD: getRGBColorValue
+			METHOD: getRectValue
+			METHOD: getStringValue
+			METHOD: setFloatValue
+			METHOD: setStringValue
+	API: ('CSSRule', None)
+	API: ('CSSRuleList', None)
+	API: ('CSSStyleDeclaration', None)
+	API: ('CSSStyleRule', None)
+	API: ('CSSStyleSheet', None)
+			METHOD: deleteRule
+			METHOD: insertRule
+	API: ('CSSSupportsRule', None)
+	API: ('CSSValue', None)
+	API: ('CSSValueList', None)
+			METHOD: item
+	API: ('Cache', 'icon-beaker')
+			METHOD: match
+			METHOD: matchAll
+			METHOD: add
+				Potential Async: Indicator - promise
+			METHOD: addAll
+				Potential Async: Indicator - promise
+			METHOD: put
+				Potential Async: Indicator - promise
+			METHOD: delete
+			METHOD: keys
+	API: ('CacheStorage', 'icon-beaker')
+			METHOD: match
+				Potential Async: Indicator - promise
+			METHOD: has
+				Potential Async: Indicator - promise
+			METHOD: open
+			METHOD: delete
+			METHOD: keys
+	API: ('CanvasCaptureMediaStream', 'icon-beaker')
+			METHOD: requestFrame
+	API: ('CanvasGradient', None)
+			METHOD: addColorStop
+	API: ('CanvasImageSource', None)
+	API: ('CanvasPattern', None)
+			METHOD: setTransform
+	API: ('CanvasRenderingContext2D', None)
+	API: ('CaretPosition', 'icon-beaker')
+			METHOD: getClientRect
+	API: ('ChannelMergerNode', None)
+	API: ('ChannelSplitterNode', None)
+	API: ('CharacterData', None)
+			METHOD: appendData
+			METHOD: deleteData
+			METHOD: insertData
+			METHOD: remove
+			METHOD: replaceData
+			METHOD: substringData
+	API: ('ChildNode', 'icon-beaker')
+			METHOD: remove
+			METHOD: before
+			METHOD: after
+			METHOD: replaceWith
+	API: ('ChromeWorker', None)
+	API: ('Client', 'icon-beaker')
+			METHOD: postMessage
+				Potential Async: Indicator - promise
+	API: ('Clients', 'icon-beaker')
+			METHOD: get
+			METHOD: matchAll
+			METHOD: openWindow
+			METHOD: claim
+	API: ('ClipboardEvent', 'icon-beaker')
+	API: ('CloseEvent', None)
+			METHOD: initCloseEvent
+	API: ('Comment', None)
+	API: ('CompositionEvent', None)
+			METHOD: initCompositionEvent
+	API: ('Console', None)
+			METHOD: assert
+			METHOD: clear
+			METHOD: count
+			METHOD: debug
+			METHOD: dir
+			METHOD: dirxml
+			METHOD: error
+			METHOD: exception
+			METHOD: group
+			METHOD: groupCollapsed
+			METHOD: groupEnd
+			METHOD: info
+			METHOD: log
+			METHOD: profile
+			METHOD: profileEnd
+			METHOD: table
+			METHOD: time
+			METHOD: timeEnd
+			METHOD: timeStamp
+			METHOD: trace
+			METHOD: warn
+	API: ('ConstantSourceNode', None)
+			METHOD: start
+			METHOD: stop
+	API: ('ConstrainBoolean', None)
+	API: ('ConstrainDOMString', None)
+	API: ('ConstrainDouble', None)
+	API: ('ConstrainLong', None)
+	API: ('ConvolverNode', None)
+	API: ('Coordinates', None)
+	API: ('Credential', None)
+	API: ('CredentialsContainer', None)
+			METHOD: get
+			METHOD: requireUserMediation
+			METHOD: store
+	API: ('Crypto', None)
+			METHOD: getRandomValues
+	API: ('CryptoKey', None)
+	API: ('CustomElementRegistry', 'icon-beaker')
+			METHOD: define
+			METHOD: get
+			METHOD: whenDefined
+				Potential Async: Indicator - promise
+	API: ('CustomEvent', None)
+			METHOD: initCustomEvent
+			METHOD: initEvent
+			METHOD: preventBubble
+			METHOD: preventCapture
+			METHOD: preventDefault
+			METHOD: stopImmediatePropagation
+			METHOD: stopPropagation
+			METHOD: getPreventDefault
+	API: ('DOMConfiguration', 'icon-trash')
+			METHOD: canSetParameter
+			METHOD: getParameter
+			METHOD: setParameter
+	API: ('DOMError', None)
+	API: ('DOMErrorHandler', 'icon-trash')
+			METHOD: handleError
+	API: ('DOMException', None)
+	API: ('DOMHighResTimeStamp', None)
+	API: ('DOMImplementation', None)
+			METHOD: createDocument
+			METHOD: createDocumentType
+			METHOD: createHTMLDocument
+			METHOD: hasFeature
+	API: ('DOMImplementationList', 'icon-trash')
+			METHOD: item
+	API: ('DOMImplementationRegistry', 'icon-trash')
+			METHOD: getDOMImplementation
+			METHOD: getDOMImplementationList
+	API: ('DOMImplementationSource', 'icon-trash')
+			METHOD: getDOMImplementation
+			METHOD: getDOMImplementationList
+	API: ('DOMLocator', 'icon-trash')
+	API: ('DOMMatrix', 'icon-beaker')
+			METHOD: multiplySelf
+			METHOD: preMultiplySelf
+			METHOD: translateSelf
+			METHOD: scaleSelf
+			METHOD: scale3dSelf
+			METHOD: scaleNonUniformSelf
+			METHOD: rotateSelf
+			METHOD: rotateFromVectorSelf
+			METHOD: rotateAxisAngleSelf
+			METHOD: skewXSelf
+			METHOD: skewYSelf
+			METHOD: invertSelf
+			METHOD: setMatrixValue
+	API: ('DOMMatrixReadOnly', 'icon-beaker')
+			METHOD: translate
+			METHOD: scale
+			METHOD: scale3d
+			METHOD: scaleNonUniform
+			METHOD: rotate
+			METHOD: rotateFromVector
+			METHOD: rotateAxisAngle
+			METHOD: skewX
+			METHOD: skewY
+			METHOD: multiply
+			METHOD: flipX
+			METHOD: flipY
+			METHOD: inverse
+			METHOD: transformPoint
+			METHOD: toFloat32Array
+			METHOD: toFloat64Array
+			METHOD: toString
+	API: ('DOMObject', 'icon-trash')
+	API: ('DOMParser', 'icon-beaker')
+	API: ('DOMPoint', 'icon-beaker')
+			METHOD: fromPoint
+	API: ('DOMPointReadOnly', 'icon-beaker')
+			METHOD: fromPoint
+			METHOD: matrixTransform
+	API: ('DOMRect', 'icon-beaker')
+			METHOD: fromRect
+	API: ('DOMRectReadOnly', 'icon-beaker')
+			METHOD: fromRect
+	API: ('DOMString', None)
+	API: ('DOMStringList', None)
+			METHOD: item
+			METHOD: contains
+	API: ('DOMStringMap', None)
+	API: ('DOMTimeStamp', None)
+	API: ('DOMTokenList', None)
+			METHOD: item
+			METHOD: contains
+			METHOD: add
+			METHOD: remove
+			METHOD: replace
+			METHOD: supports
+			METHOD: toggle
+			METHOD: entries
+			METHOD: forEach
+				Potential Async: Indicator - callback
+			METHOD: keys
+			METHOD: values
+	API: ('DOMUserData', 'icon-trash')
+	API: ('DataTransfer', None)
+			METHOD: clearData
+			METHOD: getData
+			METHOD: setData
+			METHOD: setDragImage
+			METHOD: addElement
+			METHOD: mozClearDataAt
+			METHOD: mozGetDataAt
+			METHOD: mozSetDataAt
+			METHOD: mozTypesAt
+	API: ('DataTransferItem', None)
+			METHOD: getAsFile
+			METHOD: getAsString
+				Potential Async: Indicator - callback
+			METHOD: webkitGetAsEntry
+	API: ('DataTransferItemList', None)
+			METHOD: add
+			METHOD: remove
+			METHOD: clear
+			METHOD: DataTransferItem
+	API: ('DedicatedWorkerGlobalScope', None)
+			METHOD: close
+			METHOD: postMessage
+			METHOD: dump
+			METHOD: importScripts
+			METHOD: atob
+			METHOD: btoa
+			METHOD: clearInterval
+			METHOD: clearTimeout
+			METHOD: setInterval
+			METHOD: setTimeout
+	API: ('DelayNode', None)
+	API: ('DeviceAcceleration', 'icon-beaker')
+	API: ('DeviceLightEvent', 'icon-beaker')
+	API: ('DeviceMotionEvent', 'icon-beaker')
+	API: ('DeviceOrientationEvent', 'icon-beaker')
+	API: ('DeviceProximityEvent', None)
+	API: ('DeviceRotationRate', 'icon-beaker')
+	API: ('DirectoryEntrySync', None)
+	API: ('DirectoryReaderSync', None)
+	API: ('Document', None)
+			METHOD: adoptNode
+			METHOD: captureEvents
+			METHOD: caretPositionFromPoint
+			METHOD: caretRangeFromPoint
+			METHOD: createAttribute
+			METHOD: createAttributeNS
+			METHOD: createCDATASection
+			METHOD: createComment
+			METHOD: createDocumentFragment
+			METHOD: createElement
+			METHOD: createElementNS
+			METHOD: createEntityReference
+			METHOD: createEvent
+			METHOD: createNodeIterator
+				Potential Async: Indicator - callback
+			METHOD: createProcessingInstruction
+			METHOD: createRange
+			METHOD: createTextNode
+			METHOD: createTouch
+			METHOD: createTouchList
+			METHOD: createTreeWalker
+			METHOD: elementFromPoint
+			METHOD: elementsFromPoint
+			METHOD: enableStyleSheetsForSet
+			METHOD: exitPointerLock
+				Potential Async: Indicator - async
+			METHOD: getAnimations
+			METHOD: getElementsByClassName
+			METHOD: getElementsByTagName
+			METHOD: getElementsByTagNameNS
+			METHOD: importNode
+			METHOD: normalizeDocument
+			METHOD: registerElement
+			METHOD: releaseCapture
+			METHOD: releaseEvents
+			METHOD: routeEvent
+			METHOD: mozSetImageElement
+			METHOD: getElementById
+			METHOD: querySelector
+			METHOD: querySelectorAll
+			METHOD: createExpression
+			METHOD: createNSResolver
+			METHOD: evaluate
+			METHOD: clear
+			METHOD: close
+			METHOD: execCommand
+			METHOD: getElementsByName
+			METHOD: getSelection
+			METHOD: hasFocus
+			METHOD: open
+			METHOD: queryCommandEnabled
+			METHOD: queryCommandIndeterm
+			METHOD: queryCommandState
+			METHOD: queryCommandSupported
+			METHOD: queryCommandValue
+			METHOD: write
+				Potential Async: Indicator - async
+			METHOD: writeln
+	API: ('DocumentFragment', None)
+			METHOD: find
+			METHOD: findAll
+			METHOD: querySelector
+			METHOD: querySelectorAll
+			METHOD: getElementById
+	API: ('DocumentOrShadowRoot', None)
+			METHOD: getSelection
+			METHOD: elementFromPoint
+			METHOD: elementsFromPoint
+			METHOD: caretPositionFromPoint
+	API: ('DocumentTimeline', 'icon-beaker')
+	API: ('DocumentTouch', None)
+			METHOD: createTouch
+			METHOD: createTouchList
+	API: ('DocumentType', None)
+			METHOD: remove
+	API: ('DoubleRange', None)
+	API: ('DragEvent', None)
+	API: ('DynamicsCompressorNode', None)
+	API: ('EXT_blend_minmax', None)
+	API: ('EXT_color_buffer_float', None)
+	API: ('EXT_color_buffer_half_float', None)
+	API: ('EXT_disjoint_timer_query', None)
+			METHOD: createQueryEXT
+			METHOD: deleteQueryEXT
+			METHOD: isQueryEXT
+			METHOD: beginQueryEXT
+			METHOD: endQueryEXT
+			METHOD: queryCounterEXT
+			METHOD: getQueryEXT
+			METHOD: getQueryObjectEXT
+	API: ('EXT_frag_depth', None)
+	API: ('EXT_sRGB', None)
+	API: ('EXT_shader_texture_lod', None)
+	API: ('EXT_texture_filter_anisotropic', None)
+	API: ('Element', None)
+	API: ('ElementTraversal', 'icon-trash')
+	API: ('Entity', 'icon-trash')
+	API: ('EntityReference', 'icon-trash')
+	API: ('EntrySync', None)
+	API: ('ErrorEvent', None)
+	API: ('Event', None)
+			METHOD: initEvent
+			METHOD: preventBubble
+			METHOD: preventCapture
+			METHOD: preventDefault
+			METHOD: stopImmediatePropagation
+			METHOD: stopPropagation
+			METHOD: getPreventDefault
+	API: ('EventListener', None)
+	API: ('EventSource', None)
+			METHOD: close
+	API: ('EventTarget', None)
+			METHOD: addEventListener
+			METHOD: removeEventListener
+			METHOD: dispatchEvent
+	API: ('ExtendableEvent', 'icon-beaker')
+			METHOD: waitUntil
+				Potential Async: Indicator - promise
+	API: ('ExtendableMessageEvent', 'icon-beaker')
+	API: ('FederatedCredential', None)
+	API: ('FetchController', 'icon-warning-sign')
+			METHOD: abort
+	API: ('FetchEvent', None)
+			METHOD: respondWith
+				Potential Async: Indicator - promise
+			METHOD: waitUntil
+	API: ('FetchObserver', 'icon-warning-sign')
+	API: ('FetchSignal', 'icon-warning-sign')
+	API: ('File', None)
+	API: ('FileEntrySync', None)
+	API: ('FileError', 'icon-trash')
+	API: ('FileException', None)
+	API: ('FileList', None)
+	API: ('FileReader', None)
+			METHOD: abort
+			METHOD: readAsArrayBuffer
+			METHOD: readAsBinaryString
+			METHOD: readAsDataURL
+			METHOD: readAsText
+	API: ('FileReaderSync', None)
+	API: ('FileRequest', None)
+	API: ('FileSystem', 'icon-warning-sign')
+	API: ('FileSystemDirectoryEntry', 'icon-warning-sign')
+			METHOD: createReader
+			METHOD: getDirectory
+				Potential Async: Indicator - callback
+			METHOD: getFile
+				Potential Async: Indicator - callback
+			METHOD: removeRecursively
+				Potential Async: Indicator - callback
+	API: ('FileSystemDirectoryReader', 'icon-warning-sign')
+			METHOD: readEntries
+				Potential Async: Indicator - callback
+	API: ('FileSystemEntry', 'icon-warning-sign')
+			METHOD: copyTo
+				Potential Async: Indicator - callback
+			METHOD: getMetadata
+				Potential Async: Indicator - callback
+			METHOD: getParent
+				Potential Async: Indicator - callback
+			METHOD: moveTo
+				Potential Async: Indicator - callback
+			METHOD: remove
+				Potential Async: Indicator - callback
+			METHOD: toURL
+	API: ('FileSystemFileEntry', None)
+			METHOD: file
+				Potential Async: Indicator - callback
+			METHOD: createWriter
+				Potential Async: Indicator - callback
+	API: ('FileSystemFlags', 'icon-warning-sign')
+	API: ('FileSystemSync', None)
+	API: ('FocusEvent', 'icon-beaker')
+	API: ('FontFace', None)
+			METHOD: load
+	API: ('FontFaceSet', 'icon-beaker')
+			METHOD: add
+			METHOD: check
+			METHOD: clear
+			METHOD: delete
+			METHOD: load
+				Potential Async: Indicator - promise
+			METHOD: ready
+	API: ('FontFaceSetLoadEvent', 'icon-beaker')
+	API: ('FormData', None)
+			METHOD: append
+			METHOD: delete
+			METHOD: entries
+			METHOD: get
+			METHOD: getAll
+			METHOD: has
+			METHOD: keys
+			METHOD: set
+			METHOD: values
+	API: ('GainNode', None)
+	API: ('Gamepad', None)
+	API: ('GamepadButton', None)
+	API: ('GamepadEvent', None)
+	API: ('GamepadHapticActuator', 'icon-beaker')
+			METHOD: pulse
+				Potential Async: Indicator - promise
+	API: ('GamepadPose', 'icon-beaker')
+	API: ('Geolocation', None)
+			METHOD: getCurrentPosition
+				Potential Async: Indicator - callback
+			METHOD: watchPosition
+				Potential Async: Indicator - callback
+			METHOD: clearWatch
+	API: ('GestureEvent', 'icon-warning-sign')
+			METHOD: initGestureEvent
+	API: ('GlobalEventHandlers', None)
+	API: ('GlobalFetch', 'icon-trash')
+			METHOD: fetch
+				Potential Async: Indicator - callback
+	API: ('HMDVRDevice', 'icon-trash')
+			METHOD: getEyeParameters
+			METHOD: setFieldOfView
+	API: ('HTMLAnchorElement', None)
+			METHOD: blur
+			METHOD: focus
+			METHOD: toString
+	API: ('HTMLAreaElement', None)
+			METHOD: toString
+	API: ('HTMLAudioElement', None)
+			METHOD: DOMString
+	API: ('HTMLBRElement', None)
+	API: ('HTMLBaseElement', None)
+	API: ('HTMLBaseFontElement', 'icon-trash')
+	API: ('HTMLBodyElement', None)
+	API: ('HTMLButtonElement', None)
+	API: ('HTMLCanvasElement', None)
+			METHOD: captureStream
+			METHOD: getContext
+			METHOD: toDataURL
+			METHOD: toBlob
+				Potential Async: Indicator - callback
+			METHOD: transferControlToOffscreen
+			METHOD: mozGetAsFile
+	API: ('HTMLCollection', None)
+			METHOD: item
+			METHOD: namedItem
+	API: ('HTMLContentElement', 'icon-thumbs-down-alt')
+			METHOD: getDistributedNodes
+	API: ('HTMLDListElement', None)
+	API: ('HTMLDataElement', None)
+	API: ('HTMLDataListElement', None)
+	API: ('HTMLDialogElement', 'icon-beaker')
+			METHOD: close
+			METHOD: show
+			METHOD: showModal
+	API: ('HTMLDivElement', None)
+	API: ('HTMLDocument', None)
+	API: ('HTMLElement', None)
+			METHOD: blur
+			METHOD: click
+			METHOD: focus
+			METHOD: forceSpellCheck
+	API: ('HTMLEmbedElement', None)
+	API: ('HTMLFieldSetElement', None)
+			METHOD: checkValidity
+			METHOD: setCustomValidity
+	API: ('HTMLFontElement', 'icon-trash')
+	API: ('HTMLFormControlsCollection', None)
+			METHOD: namedItem
+	API: ('HTMLFormElement', None)
+			METHOD: submit
+			METHOD: reset
+			METHOD: checkValidity
+			METHOD: reportValidity
+			METHOD: requestAutocomplete
+	API: ('HTMLFrameSetElement', 'icon-trash')
+	API: ('HTMLHRElement', None)
+	API: ('HTMLHeadElement', None)
+	API: ('HTMLHeadingElement', None)
+	API: ('HTMLHtmlElement', None)
+	API: ('HTMLHyperlinkElementUtils', 'icon-beaker')
+			METHOD: toString
+	API: ('HTMLIFrameElement', None)
+			METHOD: reload
+			METHOD: stop
+			METHOD: getCanGoBack
+			METHOD: goBack
+			METHOD: getCanGoForward
+			METHOD: goForward
+			METHOD: executeScript
+			METHOD: purgeHistory
+			METHOD: setVisible
+			METHOD: getVisible
+			METHOD: setActive
+			METHOD: getActive
+			METHOD: getVolume
+				Potential Async: Indicator - callback
+			METHOD: setVolume
+			METHOD: mute
+			METHOD: unmute
+			METHOD: getMuted
+				Potential Async: Indicator - callback
+			METHOD: findAll
+			METHOD: findNext
+			METHOD: clearMatch
+			METHOD: EventTarget
+			METHOD: sendMouseEvent
+			METHOD: sendTouchEvent
+			METHOD: addNextPaintListener
+			METHOD: removeNextPaintListener
+			METHOD: download
+			METHOD: getContentDimensions
+			METHOD: getManifest
+				Potential Async: Indicator - promise
+			METHOD: getScreenshot
+			METHOD: getStructuredData
+			METHOD: zoom
+	API: ('HTMLImageElement', None)
+			METHOD: Image
+	API: ('HTMLInputElement', None)
+			METHOD: stepDown
+			METHOD: stepUp
+			METHOD: mozSetFileArray
+			METHOD: mozGetFileNameArray
+			METHOD: mozSetFileNameArray
+	API: ('HTMLIsIndexElement', 'icon-trash')
+	API: ('HTMLKeygenElement', None)
+	API: ('HTMLLIElement', None)
+	API: ('HTMLLabelElement', None)
+	API: ('HTMLLegendElement', None)
+	API: ('HTMLLinkElement', None)
+	API: ('HTMLMapElement', None)
+	API: ('HTMLMediaElement', None)
+			METHOD: addTextTrack
+			METHOD: captureStream
+			METHOD: canPlayType
+			METHOD: fastSeek
+			METHOD: load
+			METHOD: mozCaptureStream
+			METHOD: mozCaptureStreamUntilEnded
+			METHOD: mozGetMetadata
+			METHOD: mozLoadFrom
+			METHOD: pause
+			METHOD: play
+				Potential Async: Indicator - promise
+			METHOD: seekToNextFrame
+				Potential Async: Indicator - promise
+			METHOD: setMediaKeys
+			METHOD: setSinkId
+	API: ('HTMLMetaElement', None)
+	API: ('HTMLMeterElement', None)
+	API: ('HTMLModElement', None)
+	API: ('HTMLOListElement', None)
+	API: ('HTMLObjectElement', None)
+			METHOD: checkValidity
+			METHOD: setCustomValidity
+	API: ('HTMLOptGroupElement', None)
+	API: ('HTMLOptionElement', None)
+			METHOD: Option
+	API: ('HTMLOptionsCollection', None)
+	API: ('HTMLOutputElement', None)
+			METHOD: checkValidity
+			METHOD: reportValidity
+			METHOD: setCustomValidity
+	API: ('HTMLParagraphElement', None)
+	API: ('HTMLParamElement', None)
+	API: ('HTMLPictureElement', 'icon-beaker')
+	API: ('HTMLPreElement', None)
+	API: ('HTMLProgressElement', None)
+	API: ('HTMLQuoteElement', None)
+	API: ('HTMLScriptElement', None)
+	API: ('HTMLSelectElement', None)
+			METHOD: add
+			METHOD: blur
+			METHOD: checkValidity
+			METHOD: focus
+			METHOD: item
+			METHOD: namedItem
+			METHOD: remove
+			METHOD: setCustomValidity
+	API: ('HTMLShadowElement', 'icon-trash')
+			METHOD: getDistributedNodes
+	API: ('HTMLSlotElement', None)
+			METHOD: assignedNodes
+	API: ('HTMLSourceElement', None)
+	API: ('HTMLSpanElement', None)
+	API: ('HTMLStyleElement', None)
+	API: ('HTMLTableCaptionElement', None)
+	API: ('HTMLTableCellElement', None)
+	API: ('HTMLTableColElement', None)
+	API: ('HTMLTableDataCellElement', None)
+	API: ('HTMLTableElement', None)
+			METHOD: createTHead
+			METHOD: deleteTHead
+			METHOD: createTFoot
+			METHOD: deleteTFoot
+			METHOD: createCaption
+			METHOD: deleteCaption
+			METHOD: insertRow
+			METHOD: deleteRow
+			METHOD: stopSorting
+	API: ('HTMLTableHeaderCellElement', None)
+	API: ('HTMLTableRowElement', None)
+			METHOD: deleteCell
+			METHOD: insertCell
+	API: ('HTMLTableSectionElement', None)
+			METHOD: deleteRow
+			METHOD: insertRow
+	API: ('HTMLTemplateElement', None)
+	API: ('HTMLTextAreaElement', None)
+	API: ('HTMLTimeElement', None)
+	API: ('HTMLTitleElement', None)
+	API: ('HTMLTrackElement', None)
+	API: ('HTMLUListElement', None)
+	API: ('HTMLUnknownElement', None)
+	API: ('HTMLVideoElement', None)
+			METHOD: getVideoPlaybackQuality
+	API: ('HashChangeEvent', None)
+	API: ('Headers', 'icon-beaker')
+			METHOD: append
+			METHOD: delete
+			METHOD: entries
+			METHOD: get
+			METHOD: has
+			METHOD: keys
+			METHOD: set
+			METHOD: values
+			METHOD: getAll
+	API: ('History', None)
+			METHOD: back
+			METHOD: forward
+			METHOD: go
+			METHOD: pushState
+			METHOD: replaceState
+	API: ('IDBCursor', None)
+			METHOD: advance
+			METHOD: continue
+			METHOD: continuePrimaryKey
+			METHOD: delete
+			METHOD: update
+	API: ('IDBCursorSync', 'icon-trash')
+	API: ('IDBCursorWithValue', None)
+	API: ('IDBDatabase', None)
+			METHOD: close
+			METHOD: createObjectStore
+				Potential Async: Indicator - callback
+			METHOD: deleteObjectStore
+				Potential Async: Indicator - callback
+			METHOD: transaction
+	API: ('IDBDatabaseException', 'icon-trash')
+	API: ('IDBDatabaseSync', 'icon-trash')
+	API: ('IDBEnvironment', 'icon-trash')
+	API: ('IDBEnvironmentSync', 'icon-trash')
+	API: ('IDBFactory', None)
+			METHOD: open
+				Potential Async: Indicator - async
+			METHOD: deleteDatabase
+				Potential Async: Indicator - async
+			METHOD: cmp
+			METHOD: IDBFactory.open-obsolete
+	API: ('IDBFactorySync', 'icon-trash')
+	API: ('IDBIndex', None)
+			METHOD: count
+				Potential Async: Indicator - callback
+			METHOD: get
+				Potential Async: Indicator - callback
+			METHOD: getKey
+				Potential Async: Indicator - callback
+			METHOD: getAll
+			METHOD: getAllKeys
+			METHOD: openCursor
+			METHOD: openKeyCursor
+	API: ('IDBIndexSync', 'icon-trash')
+	API: ('IDBKeyRange', None)
+			METHOD: bound
+			METHOD: only
+			METHOD: lowerBound
+			METHOD: upperBound
+			METHOD: includes
+	API: ('IDBLocaleAwareKeyRange', 'icon-beaker')
+	API: ('IDBMutableFile', None)
+			METHOD: open
+			METHOD: getFile
+	API: ('IDBObjectStore', None)
+			METHOD: add
+			METHOD: clear
+			METHOD: count
+			METHOD: createIndex
+				Potential Async: Indicator - callback
+			METHOD: delete
+			METHOD: deleteIndex
+				Potential Async: Indicator - callback
+			METHOD: get
+			METHOD: getKey
+			METHOD: getAll
+			METHOD: getAllKeys
+			METHOD: index
+			METHOD: openCursor
+			METHOD: openKeyCursor
+			METHOD: put
+	API: ('IDBObjectStoreSync', 'icon-trash')
+	API: ('IDBOpenDBRequest', None)
+	API: ('IDBRequest', None)
+	API: ('IDBTransaction', None)
+			METHOD: abort
+			METHOD: objectStore
+	API: ('IDBTransactionSync', 'icon-trash')
+	API: ('IDBVersionChangeEvent', None)
+	API: ('IDBVersionChangeRequest', 'icon-trash')
+			METHOD: setVersion
+	API: ('IIRFilterNode', None)
+			METHOD: getFrequencyResponse
+	API: ('IdentityManager', None)
+	API: ('IdleDeadline', None)
+	API: ('ImageBitmap', None)
+			METHOD: close
+	API: ('ImageBitmapFactories', 'icon-trash')
+			METHOD: createImageBitmap
+	API: ('ImageBitmapRenderingContext', 'icon-beaker')
+			METHOD: transferFromImageBitmap
+	API: ('ImageData', None)
+	API: ('Index', None)
+	API: ('InputDeviceCapabilities', None)
+	API: ('InputEvent', None)
+	API: ('FetchEvent_clone', 'icon-beaker')
+	API: ('InstallEvent', None)
+	API: ('InstallTrigger', None)
+	API: ('IntersectionObserver', 'icon-beaker')
+			METHOD: disconnect
+			METHOD: observe
+				Potential Async: Indicator - callback
+			METHOD: takeRecords
+				Potential Async: Indicator - callback
+			METHOD: unobserve
+				Potential Async: Indicator - callback
+	API: ('IntersectionObserverEntry', 'icon-beaker')
+	API: ('KeyboardEvent', None)
+			METHOD: getModifierState
+			METHOD: initKeyEvent
+			METHOD: initKeyboardEvent
+	API: ('KeyframeEffect', 'icon-beaker')
+			METHOD: getKeyframes
+			METHOD: setKeyframes
+			METHOD: getComputedTiming
+	API: ('KeyframeEffectReadOnly', 'icon-beaker')
+			METHOD: getKeyframes
+			METHOD: getComputedTiming
+	API: ('L10n.formatValue', None)
+	API: ('L10n.get', None)
+	API: ('L10n.language.code', None)
+	API: ('L10n.language.direction', None)
+	API: ('L10n.once', None)
+	API: ('L10n.ready', None)
+	API: ('L10n.readyState', None)
+	API: ('L10n.setAttributes', None)
+	API: ('LinkStyle', None)
+	API: ('LocalFileSystem', None)
+	API: ('LocalFileSystemSync', None)
+	API: ('LocalMediaStream', 'icon-beaker')
+			METHOD: stop
+	API: ('Location', None)
+			METHOD: assign
+			METHOD: reload
+			METHOD: replace
+			METHOD: toString
+	API: ('LockedFile', None)
+			METHOD: getMetadata
+			METHOD: readAsArrayBuffer
+			METHOD: readAsText
+			METHOD: write
+			METHOD: append
+			METHOD: truncate
+			METHOD: flush
+			METHOD: abort
+	API: ('LongRange', None)
+	API: ('MIDIAccess', None)
+	API: ('MIDIConnectionEvent', None)
+	API: ('MIDIInput', None)
+	API: ('MIDIInputMap', None)
+	API: ('MIDIOutputMap', None)
+	API: ('MSGestureEvent', 'icon-warning-sign')
+			METHOD: initGestureEvent
+	API: ('MediaDeviceInfo', 'icon-beaker')
+	API: ('MediaDevices', None)
+			METHOD: addEventListener
+			METHOD: enumerateDevices
+			METHOD: getSupportedConstraints
+			METHOD: getUserMedia
+				Potential Async: Indicator - promise
+			METHOD: removeEventListener
+	API: ('MediaElementAudioSourceNode', None)
+	API: ('MediaError', None)
+	API: ('MediaKeyMessageEvent', None)
+	API: ('MediaKeySession', None)
+			METHOD: close
+			METHOD: generateRequest
+			METHOD: load
+			METHOD: remove
+			METHOD: update
+	API: ('MediaKeyStatusMap', None)
+			METHOD: entries
+			METHOD: forEach
+				Potential Async: Indicator - callback
+			METHOD: get
+			METHOD: has
+			METHOD: keys
+			METHOD: values
+			METHOD: [@@iterator]
+	API: ('MediaKeySystemAccess', None)
+			METHOD: createMediaKeys
+			METHOD: getConfiguration
+	API: ('MediaKeySystemConfiguration', None)
+	API: ('MediaKeys', None)
+			METHOD: createSession
+			METHOD: setServerCertificate
+	API: ('MediaMetadata', None)
+	API: ('MediaQueryList', None)
+			METHOD: addListener
+				Potential Async: Indicator - callback
+			METHOD: removeListener
+				Potential Async: Indicator - callback
+	API: ('MediaQueryListEvent', None)
+	API: ('MediaQueryListListener', None)
+	API: ('MediaRecorder', None)
+			METHOD: canRecordMimeType
+			METHOD: pause
+			METHOD: requestData
+			METHOD: resume
+			METHOD: start
+			METHOD: stop
+	API: ('MediaSession', None)
+			METHOD: setActionHandler
+				Potential Async: Indicator - callback
+	API: ('MediaSource', 'icon-beaker')
+			METHOD: addSourceBuffer
+			METHOD: removeSourceBuffer
+			METHOD: endOfStream
+			METHOD: isTypeSupported
+	API: ('MediaStream', None)
+			METHOD: addTrack
+			METHOD: clone
+			METHOD: getAudioTracks
+			METHOD: getTrackById
+			METHOD: getTracks
+			METHOD: getVideoTracks
+			METHOD: removeTrack
+	API: ('MediaStreamAudioDestinationNode', None)
+	API: ('MediaStreamAudioSourceNode', None)
+	API: ('MediaStreamConstraints', None)
+	API: ('MediaStreamEvent', 'icon-beaker')
+	API: ('MediaStreamTrack', 'icon-beaker')
+			METHOD: applyConstraints
+				Potential Async: Indicator - promise
+			METHOD: clone
+			METHOD: getCapabilities
+			METHOD: getConstraints
+			METHOD: getSettings
+			METHOD: stop
+	API: ('MediaStreamTrackEvent', None)
+	API: ('MediaTrackConstraints', None)
+	API: ('MediaTrackSettings', None)
+	API: ('MediaTrackSupportedConstraints', None)
+	API: ('MessageChannel', None)
+	API: ('MessageEvent', None)
+			METHOD: initMessageEvent
+	API: ('MessagePort', None)
+			METHOD: postMessage
+			METHOD: start
+			METHOD: close
+	API: ('Metadata', 'icon-warning-sign')
+	API: ('MimeType', None)
+	API: ('MimeTypeArray', None)
+			METHOD: item
+			METHOD: namedItem
+	API: ('MouseEvent', None)
+			METHOD: getModifierState
+			METHOD: initMouseEvent
+	API: ('MouseScrollEvent', 'icon-thumbs-down-alt')
+	API: ('MouseWheelEvent', 'icon-thumbs-down-alt')
+	API: ('MutationEvent', 'icon-thumbs-down-alt')
+	API: ('MutationObserver', None)
+	API: ('MutationRecord', None)
+	API: ('NameList', 'icon-trash')
+			METHOD: contains
+			METHOD: containsNS
+			METHOD: getName
+			METHOD: getNamespaceURI
+	API: ('NamedNodeMap', None)
+			METHOD: getNamedItem
+			METHOD: setNamedItem
+			METHOD: removeNamedItem
+			METHOD: item
+			METHOD: getNamedItemNS
+			METHOD: setNamedItemNS
+			METHOD: removeNamedItemNS
+	API: ('Navigator', None)
+			METHOD: cookieEnabled
+			METHOD: credentials
+			METHOD: doNotTrack
+			METHOD: id
+			METHOD: mediaDevices
+			METHOD: mozNotification
+			METHOD: webkitNotification
+			METHOD: mozSocial
+			METHOD: presentation
+			METHOD: productSub
+			METHOD: securitypolicy
+			METHOD: standalone
+			METHOD: storageQuota
