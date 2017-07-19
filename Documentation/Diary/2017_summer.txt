@@ -2,7 +2,12 @@
   - I tinkered with tree.js, but I could not get it to produce something useful
   - Decided to look for other means to get analytical information about javascript 
     programs through Node.js...
-
+  - Found out there is not a whole lot of developing tools in terms
+    of profiling JS code supporting Node's libraries... 
+  - (!) With Ben's confirmation, developing our own 
+    module using process.addAsyncListener to produce an async tree
+    ourselves seems feasible...
+    
 [Clara - July 18]
 Continue testing the async tracing tools in the npm library.
 If none of them works exactly how we want it (which is quite likely), then also try to get a better understanding
