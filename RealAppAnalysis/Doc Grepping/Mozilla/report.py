@@ -5,10 +5,26 @@ def log(log, indent = 1, tag = ""):
     log = str(log)
     if tag: log = tag + ": " + log
     print("\t" * indent + log)
+
+badges = {"icon-beaker": "Experimental", 
+          "None": "Regular", 
+          "icon-trash": "Obsolete",
+          "icon-warning-sign" : "Non-standardize",
+          "icon-thumbs-down-alt": "Deprectated"}
+
+def parseAPILine(line):
+    API = {}
+    #Hacking is fun...
+    name_and_badge = line[5:].replace("(", "").replace(")", "").replace("\'", "").split(",")
+    API["name"] = name_and_badge[0]
+    API["status"] = badges[name_and_badge[1]]
+
+    print(API)
     
 with open("out.txt", "r") as file:
     current_api = []
     for line in file:
+        parseAPILine(line)
         if "API" in line:
             current_api = [line]
             apis.append(current_api)
@@ -17,7 +33,6 @@ with open("out.txt", "r") as file:
 
 log(len(apis), indent = 0, tag = "Total API Count")
 
-print()
 log("Async APIs")
 async_apis = []
 for api in apis:
@@ -37,19 +52,20 @@ for api in apis:
         
 log(len(async_apis), indent = 0, tag = "Async API Count")
 
-explicit = 0
-callbacks = 0
-promise = 0
             
 def methodsStats(async_apis):
+    explicit = 0
+    callbacks = 0
+    promise = 0
     for api in async_apis:
         for m in api["methods"]:
-            print(m[1])
-            if "async" in m[1]: ++explicit
-            if "callback" in m[1]: ++callbacks
-            if "promise" in m[1]: ++promise
+            if "async" in m[1]: explicit += 1
+            if "callback" in m[1]: callbacks += 1
+            if "promise" in m[1]: promise += 1
 
     log(explicit + callbacks + promise, tag = "Total Async Methods")
-    log(explicit)
-    log(callbacks)
-    log(promise)       
+    log(explicit, indent = 2, tag = "Async")
+    log(callbacks, indent = 2, tag = "Callbacks")
+    log(promise, indent = 2, tag = "Promise")       
+    
+methodsStats(async_apis)
