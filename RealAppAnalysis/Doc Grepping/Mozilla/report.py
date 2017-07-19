@@ -6,7 +6,7 @@ def log(log, indent = 1, tag = ""):
     if tag: log = tag + ": " + log
     print("\t" * indent + log)
     
-with open("webapi report.txt", "r") as file:
+with open("out.txt", "r") as file:
     current_api = []
     for line in file:
         if "API" in line:

@@ -26,9 +26,7 @@ A function (context, storage) that is called immediately before the asynchronous
 It will be passed both the context (i.e. this) of the calling function and the storage.
 **/
 AsyncListener.before = function before(context, storage) {
-	ID++;
 };
-
 
 /**
 A function (context, storage) called immediately after the asynchronous event's callback is run. 

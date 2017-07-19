@@ -3,6 +3,7 @@ from os.path import isfile, isdir, join
 from json import load
 from datautil import log, parseCmdLnArgs, _flagged, _flaggedRetArg
 from importlib import import_module
+import subprocess
 import sys
 
 def main(argv):
