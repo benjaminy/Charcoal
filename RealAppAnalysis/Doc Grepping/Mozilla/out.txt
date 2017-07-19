@@ -1118,6 +1118,7 @@
 			METHOD: productSub
 			METHOD: securitypolicy
 			METHOD: standalone
+<<<<<<< HEAD
 			METHOD: storageQuota
 			METHOD: vendor
 			METHOD: vendorSub
@@ -2090,3 +2091,6 @@
 			METHOD: removeParameter
 			METHOD: clearParameters
 			METHOD: reset
+=======
+			METHOD: storageQuota
+>>>>>>> refs/heads/master
