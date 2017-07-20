@@ -3,7 +3,7 @@ require('superstacktrace');
 
 
 setImmediate(function a() {
-    foo( function hello() {console.log("blah");} );
+    foo( );
     bar();
     setImmediate(function b() {
         setImmediate(function c() {
@@ -15,3 +15,11 @@ setImmediate(function a() {
         });
     });
 } );
+
+function foo(){
+  var ben = "a cat. Ben says: MEOOOOOOOOOOOOOW";
+}
+
+function bar(){
+  var miguel = "an architect astronaut";
+}
