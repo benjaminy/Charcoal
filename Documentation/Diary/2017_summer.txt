@@ -1,11 +1,7 @@
-[Miguel - July 19]
-  - GOALS:
-    1. Get a working async-tree
-       a. Visualization
-       b. Possible injection into applications?
-    2. Various
-       a. Finalize the web scraping report
-       b. Routine refactoring and such...
+[Clara and Miguel- July 19]
+-  Got the tree to working, but printing them is like life...
+   Very unsuccesful.
+
 
 [Miguel - July 18]
   - I tinkered with tree.js, but I could not get it to produce something useful
