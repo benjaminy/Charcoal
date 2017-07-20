@@ -1,6 +1,7 @@
 [Clara and Miguel - July 19-20]
-  - Got the tree to working. yay.
-  - and the graph drawing. yay.
+  - We got the tree to working and got dot to draw the results.
+  - We also included timestamps with the function calls
+  - Names appear to be non-trivial to get, however...
 
 [Miguel - July 19]
   - GOALS:
