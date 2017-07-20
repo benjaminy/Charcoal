@@ -1,6 +1,6 @@
 [Clara and Miguel - July 19-20]
-Got the tree to working. yay.
-and the graph drawing. yay.
+  - Got the tree to working. yay.
+  - and the graph drawing. yay.
 
 [Miguel - July 19]
   - GOALS:
