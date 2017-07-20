@@ -1,6 +1,8 @@
 [Clara and Miguel - July 19-20]
   - We got the tree to working and got dot to draw the results.
-  - We also included timestamps with the function calls
+  - We also included timestamps with the function calls, but there 
+    is a grave logical error regarding how to keep track of
+    the current running callback...
   - Names appear to be non-trivial to get, however...
 
 [Miguel - July 19]
