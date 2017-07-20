@@ -46,6 +46,3 @@ var key = process.addAsyncListener(AsyncListener);
 function printID(){console.log(ID);}
 process.on('exit', printID);
 exports.module = key;
-
-
-
