@@ -1,0 +1,31 @@
+4
+Immediate {
+  _idleNext: 
+   Immediate {
+     _idleNext: 
+      Immediate {
+        _idleNext: [Object],
+        _idlePrev: [Circular],
+        _callback: null,
+        _argv: undefined,
+        _onImmediate: [Function],
+        _destroyed: false,
+        domain: null,
+        [Symbol(asyncId)]: 6,
+        [Symbol(triggerId)]: 1 },
+     _idlePrev: [Circular],
+     _callback: null,
+     _argv: undefined,
+     _onImmediate: [Function],
+     _destroyed: false,
+     domain: null,
+     [Symbol(asyncId)]: 5,
+     [Symbol(triggerId)]: 1 },
+  _idlePrev: null,
+  _callback: null,
+  _argv: undefined,
+  _onImmediate: [Function],
+  _destroyed: false,
+  domain: null,
+  [Symbol(asyncId)]: 4,
+  [Symbol(triggerId)]: 1 }
