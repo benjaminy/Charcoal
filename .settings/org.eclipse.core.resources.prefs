@@ -1,4 +1,4 @@
 eclipse.preferences.version=1
-encoding//RealAppAnalysis/funcdata_to_graphs.py=UTF-8
-encoding//RealAppAnalysis/profile_to_data_csv.py=UTF-8
+encoding//RealAppAnalysis/Browsers/funcdata_to_graphs.py=UTF-8
+encoding//RealAppAnalysis/Browsers/profile_to_data_csv.py=UTF-8
 encoding//RealAppAnalysis/test\ dump/chrome/chrome_pa_extractdata.py=UTF-8
