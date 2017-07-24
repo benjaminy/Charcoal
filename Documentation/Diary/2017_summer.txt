@@ -3,6 +3,28 @@
   1. Create a simple electron app, and inject the async-tree sucessfully, such that we gets
   the actions from not only the main process, but also the renderer process.
 
+    How can we include the async-tree module in the renderer process?
+
+    "The main process creates web pages by creating BrowserWindow instances.
+    Each BrowserWindow instance runs the web page in its own renderer process.
+    When a BrowserWindow instance is destroyed, the corresponding renderer process is also terminated."
+    https://github.com/electron/electron/blob/master/docs/tutorial/quick-start.md
+
+    Approach 1:
+    Can we modify the following modules?
+    ...
+    require('app')
+    require('browser-window')
+    require('electron')
+    ...
+
+    Problem a) they come as binaries it appears.
+    Problem b) they are all written in C++?!
+    https://github.com/electron/electron/tree/master/atom
+
+    Approach 2:
+    Can ipcMain, ipcRenderer be used to record async events in the renderer processes?
+
 [July 21]
  - GOALS
    1. Inject code into Atom or other electron application
