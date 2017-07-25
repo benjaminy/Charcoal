@@ -1,5 +1,5 @@
 [July 25]
-Goals:
+Goals: 
 Try to integrate and use the more refined version of async-listener, i.e. async-hooks. Hopefully in this
 module setImmediate and setTimeout are not messed with.
 Since other async calls trees are properly recorded when async-tree is required in main.js,
