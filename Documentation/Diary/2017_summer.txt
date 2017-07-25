@@ -1,3 +1,14 @@
+[July 25]
+Goals:
+Try to integrate and use the more refined version of async-listener, i.e. async-hooks. Hopefully in this
+module setImmediate and setTimeout are not messed with.
+Since other async calls trees are properly recorded when async-tree is required in main.js,
+it appears that the main process is properly recorded after all.
+When it comes to the recording the renderer processes, the following was concluded yesterday:
+There is no way to generally determining what code runs in the renderer processes, and messing
+with the C++ is out of question.
+What we hope instead is to, upon instantiation of every "BrowserWindow", somehow inject the require statement.
+
 [July 24]
 - GOALS
   1. Create a simple electron app, and inject the async-tree sucessfully, such that we gets
