@@ -1,3 +1,7 @@
+[Miguel - July 27]
+   - Pessimistic about using Node.js to get async profiles from Ionic apps
+   - Will be looking at Electron again to see if its possible to use async-wrap / hooks again...
+   
 [Miguel & Clara - July 27]
    1. Have Ionic run with recent version of Node.
       - Ionic is running with Node.js v8.2.1, which supports async-hooks
