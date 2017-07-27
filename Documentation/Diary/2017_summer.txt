@@ -1,5 +1,12 @@
+[July 27]
+Goals:
+- Have Ionic run with recent version of Node.
+- Create a simple Ionic app and successfully import async-hooks. 
+- Run async-tree on application (which uses async-hooks and not async-listener)
+
+
 [July 25]
-Goals: 
+Goals:
 Try to integrate and use the more refined version of async-listener, i.e. async-hooks. Hopefully in this
 module setImmediate and setTimeout are not messed with.
 Since other async calls trees are properly recorded when async-tree is required in main.js,
