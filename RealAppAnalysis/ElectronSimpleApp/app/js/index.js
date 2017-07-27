@@ -1,7 +1,6 @@
 'use strict';
 
 const {ipcRenderer} = require('electron');
-//require('async-tree');
 
 var soundButtons = document.querySelectorAll('.button-sound');
 
@@ -17,6 +16,7 @@ function prepareButton(buttonEl, soundName) {
 
     var audio = new Audio(__dirname + '/wav/' + soundName + '.wav');
     buttonEl.addEventListener('click', function () {
+        console.log(process);
         audio.currentTime = 0;
         audio.play();
     });

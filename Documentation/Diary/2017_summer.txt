@@ -1,9 +1,14 @@
-[July 27]
-Goals:
-- Have Ionic run with recent version of Node.
-- Create a simple Ionic app and successfully import async-hooks. 
-- Run async-tree on application (which uses async-hooks and not async-listener)
-
+[Miguel & Clara - July 27]
+   1. Have Ionic run with recent version of Node.
+      - Ionic is running with Node.js v8.2.1, which supports async-hooks
+        
+   2. Create a simple Ionic app and successfully import async-hooks and run async-tree on 
+      application (which uses async-hooks and not async-listener)
+      - Concerning: https://forum.ionicframework.com/t/nodejs-library-within-ionic-2/53727
+      - An Ionic2 app at runtime does not use node.js?
+     	 a. Ionic apps do not contain the process global object
+     	 b. This is bad since async-wrap and conseqeuntly async-hooks depend on 
+     	    process...
 
 [July 25]
 Goals:

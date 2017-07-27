@@ -1,8 +1,8 @@
 'use strict';
 
-require('async-tree');
-const electron = require('electron')
-const {app, BrowserWindow, ipcMain} = electron
+const electron = require('electron');
+const {app, BrowserWindow, ipcMain} = electron;
+const c = require("async-tree");
 
 var mainWindow = null;
 
