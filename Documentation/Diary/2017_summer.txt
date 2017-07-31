@@ -1,3 +1,8 @@
+[Miguel - July 31]
+  - Decided to look into chrome. I woudl like to see if there is some way
+    to modify the event loop to get us more detailed information about
+    the asynchronous behavior of a web application.
+
 [July 31]
   - On July 27's meeting, it was decided that we should...
      1. Ask whether the event loops for Electron's Main and Renderer processes are different
