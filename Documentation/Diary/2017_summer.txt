@@ -1,6 +1,7 @@
 [Miguel - August 1]
   - Still working on chrome, though downloading the thing is proving to
     be very slow...
+  - Until then, looking at bug reports.
 
 [August 1]
   - GOALS:
