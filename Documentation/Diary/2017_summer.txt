@@ -2,6 +2,7 @@
   - Still working on chrome, though downloading the thing is proving to
     be very slow...
   - Until then, looking at bug reports.
+    1. Interesting read: https://ps.ipd.kit.edu/downloads/ka_2013_mining_concurrency.pdf
 
 [August 1]
   - GOALS:
