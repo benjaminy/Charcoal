@@ -1,3 +1,15 @@
+[Miguel - August 2]
+  - Continuing with Chromium
+  	1. Seems that I resolved yesterday's obstacles to building Chromium... but still building it.
+    2. On the flip side, the chromium project's navigation tool is incredibly useful
+      - Located several of the important classes involved with the async stack trace
+      - Got an intuition for the initialization for how chromium begins the debugging process.
+    3. In addition, learning c++
+  - Poking around the bug reports still. I will be building a list.
+  
+[August 2]
+  - GOALS: Continue with monkey-patching, chromium, and bug reports
+  
 [Clara - August 1]
   Update on monkey patching and "long-stack-traces":
   - with a few modification, the script works for some trivial test cases.
@@ -11,11 +23,15 @@
 
 
 [Miguel - August 1]
-  - Still working on chrome, though downloading the thing is proving to
-    be very slow...
+  - Continued working on building chrome
+    1. Several issues:
+       - Source code downloads fine
+       - Server errors when trying to use the build system
   - Until then, looking at bug reports.
     1. Interesting read: https://ps.ipd.kit.edu/downloads/ka_2013_mining_concurrency.pdf
-
+    2. It may be worth while to look at gitHub API, which seems to be able to provide the information
+       we need
+    
 [August 1]
   - GOALS:
     1. Continuing with the "long shots" projects for getting more
@@ -37,7 +53,7 @@ However, the problem as of now is that the script as it currently is doesn't wor
   - prototyping doesn't work as expected
 
 [Miguel - July 31]
-  - Decided to look into chrome. I woudl like to see if there is some way
+  - Decided to look into chrome. I would like to see if there is some way
     to modify the event loop to get us more detailed information about
     the asynchronous behavior of a web application.
 
@@ -67,7 +83,7 @@ Bug databases
       - Concerning: https://forum.ionicframework.com/t/nodejs-library-within-ionic-2/53727
       - An Ionic2 app at runtime does not use node.js?
      	 a. Ionic apps do not contain the process global object
-     	 b. This is bad since async-wrap and conseqeuntly async-hooks depend on
+     	 b. This is bad since async-wrap and consequently async-hooks depend on
      	    process...
 
 [Miguel & Clara - July 25]
