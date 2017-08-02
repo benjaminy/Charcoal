@@ -1,13 +1,19 @@
+
 [Miguel - August 2]
   - Continuing with Chromium
-  	1. Seems that I resolved yesterday's obstacles to building Chromium... but still building it.
+  	1. Seems that I resolved yesterday's obstacles to building Chromium... but still trying to build it.
+  	   - I will see if building with the toolchain for Windows will get better results...
     2. On the flip side, the chromium project's navigation tool (https://cs.chromium.org/)
        is incredibly useful:
       - Located several of the important classes involved with the async stack trace
-      - Got an intuition for the initialization for how chromium begins the debugging process.
+      - Got an intuition for how chromium starts the debugger.
     3. In addition, learning c++
-  - Poking around the bug reports still. I will be building a list.
-  
+  - Poking around the bug reports still
+    1. So far, nothing suggestive of programmers thinking some API is atmoic when it's really
+       not
+    2. For that, I imagine looking for issues without any preconceptions on its cause may be 
+       fruitful
+    3. I will be building a list, anyhow.
 [August 2]
   - GOALS: Continue with monkey-patching, chromium, and bug reports
   
