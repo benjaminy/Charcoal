@@ -13,7 +13,8 @@
        not
     2. For that, I imagine looking for issues without any preconceptions on its cause may be 
        fruitful
-    3. I will be building a list, anyhow.
+    3. I will be building a list of some seemingly noteworthy issues, anyhow.
+    
 [August 2]
   - GOALS: Continue with monkey-patching, chromium, and bug reports
   
