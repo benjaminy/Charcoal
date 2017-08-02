@@ -1,3 +1,15 @@
+[Clara - August 1]
+  Update on monkey patching and "long-stack-traces":
+  - with a few modification, the script works for some trivial test cases.
+      -- changed wrapRegistrationFunction(window.constructor.prototype, "setTimeout", 0); into
+          wrapRegistrationFunction(window, "setTimeout", 0), which is the less general form.
+          Why the other version doesn't work is not clear.
+  - the causality is succesfully recorded for setTimeout, setInterval and getCurrentPosition (geolocation)
+  - up next:
+      1. additional testing and trying to include different api calls.
+      2. try to inject code in real web applications through chrome extensions
+
+
 [Miguel - August 1]
   - Still working on chrome, though downloading the thing is proving to
     be very slow...
@@ -8,7 +20,7 @@
   - GOALS:
     1. Continuing with the "long shots" projects for getting more
        detailed information about the async behavior of web applications
-       
+
     2. Looking at bug reports
 
 [Clara - July 31]
@@ -33,42 +45,42 @@ However, the problem as of now is that the script as it currently is doesn't wor
   - On July 27's meeting, it was decided that we should...
      1. Ask whether the event loops for Electron's Main and Renderer processes are different
         in terms of async hooks / wrap
-        
+
      2.Attempt some long shots
        - Wrap functions in events Chrome asyc stack api --- "Long stack traces"
-       - Look at Chrome's source code and see if there is a feasible way to 
+       - Look at Chrome's source code and see if there is a feasible way to
          modify the event loop
-         
+
      3. Looking at bug reports
-  
+
 Bug databases
 [Miguel - July 27]
    - Pessimistic about using Node.js to get async profiles from Ionic apps
    - Will be looking at Electron again to see if its possible to use async-wrap / hooks again...
-   
+
 [Miguel & Clara - July 27]
    1. Have Ionic run with recent version of Node.
       - Ionic is running with Node.js v8.2.1, which supports async-hooks
-        
-   2. Create a simple Ionic app and successfully import async-hooks and run async-tree on 
+
+   2. Create a simple Ionic app and successfully import async-hooks and run async-tree on
       application (which uses async-hooks and not async-listener)
       - Concerning: https://forum.ionicframework.com/t/nodejs-library-within-ionic-2/53727
       - An Ionic2 app at runtime does not use node.js?
      	 a. Ionic apps do not contain the process global object
-     	 b. This is bad since async-wrap and conseqeuntly async-hooks depend on 
+     	 b. This is bad since async-wrap and conseqeuntly async-hooks depend on
      	    process...
 
 [Miguel & Clara - July 25]
   1. Try to integrate and use the more refined version of async-listener, i.e. async-hooks. Hopefully in this
      module setImmediate and setTimeout are not messed with
        - Implementing async-hooks was successful
-       
+
   - Since other async calls trees are properly recorded when async-tree is required in main.js
     it appears that the main process is properly recorded after all.
   - When it comes to the recording the renderer processes, the following was concluded yesterday:
     1. There is no way to generally determining what code runs in the renderer processes, and messing
        with the C++ is out of question.
-       
+
     2. What we hope instead is to, upon instantiation of every "BrowserWindow", somehow inject the require statement.
 
 [July 24]
