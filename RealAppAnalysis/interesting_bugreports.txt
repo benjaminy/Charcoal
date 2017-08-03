@@ -1,0 +1,16 @@
+
+GitHub search engine
+query: "race language:JavaScript"
+- https://github.com/prescottprue/react-redux-firebase/issues/207
+  The line that caught my attention here was: "the path gets written to by another client
+  between the check and write". It appears, then, as if the programmer expected the 'check'
+  and 'write' operation to be an atomic block of code, which it wasn't.
+- https://github.com/mojotech/modernator-client-react/issues/10
+  "We experienced an issue where on login the sessions request is fired at the same time as
+  the login request, so it hasn't had time to process the login.
+  For the haskell backend this is fine, but for backends where GET /sessions
+  requires authentication it is a problem."
+
+  This seems to be an instance of unwanted asynchronous behavior, and the
+  programmer hasn't taken appropriate measures to achieve it synchronousness,
+  hence atomicity violation. An atomic block would be helpful!
