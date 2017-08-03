@@ -4,6 +4,7 @@
   	1. Seems that I resolved yesterday's obstacles to building Chromium... but still trying to build it.
   	   - In using the toolchain for Windows
   	     a. Errors on checking out the src code. Great.
+  	     b. Cannot think of alternative building methods.
     2. On the flip side, the chromium project's navigation tool (https://cs.chromium.org/)
        is incredibly useful:
       - Located several of the important classes involved with the async stack trace
