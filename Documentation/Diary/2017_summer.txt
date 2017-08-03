@@ -1,3 +1,15 @@
+[Clara - August 2]
+Continue w monkey-patching
+    More testing:
+    - Array.forEach works - however, it'd be cool to get it working for all objects implenting the DOMTokenList interface
+    - some instances of addEventListener works - however, mysteriosuly, only when I modified the code and not use the 'forEach' function on list
+    containing the objects on which addEventListener is called.
+
+  It is rather clear that it becomes a very non-elegant and ad hoc way of getting the parent-child relationships of callbacks,
+  and in order to get it to work properly we'd have to go in and add all applicable API calls manually, unless
+  (writing a script that does this for us).
+
+  Started to work on a Chrome extension, which will make the 'long-stack-traces' run in the browser.
 
 [Miguel - August 2]
   - Continuing with Chromium
@@ -13,13 +25,13 @@
   - Poking around the bug reports still
     1. So far, nothing suggestive of programmers thinking some API is atmoic when it's really
        not
-    2. For that, I imagine looking for issues without any preconceptions on its cause may be 
+    2. For that, I imagine looking for issues without any preconceptions on its cause may be
        fruitful
     3. I will be building a list of some seemingly noteworthy issues, anyhow.
-    
+
 [August 2]
   - GOALS: Continue with monkey-patching, chromium, and bug reports
-  
+
 [Clara - August 1]
   Update on monkey patching and "long-stack-traces":
   - with a few modification, the script works for some trivial test cases.
@@ -41,7 +53,7 @@
     1. Interesting read: https://ps.ipd.kit.edu/downloads/ka_2013_mining_concurrency.pdf
     2. It may be worth while to look at gitHub API, which seems to be able to provide the information
        we need
-    
+
 [August 1]
   - GOALS:
     1. Continuing with the "long shots" projects for getting more
