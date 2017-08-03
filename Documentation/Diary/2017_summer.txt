@@ -1,3 +1,9 @@
+[Miguel - August 3]
+  - Chromium
+
+[August 3]
+  - GOALS: Exactly what you expect
+  
 [Clara - August 2]
 Continue w monkey-patching
     More testing:
