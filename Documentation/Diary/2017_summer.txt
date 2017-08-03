@@ -11,6 +11,9 @@ Continue w monkey-patching
 
   Started to work on a Chrome extension, which will make the 'long-stack-traces' run in the browser.
 
+Also, created a file /RealAppAnalysis/interesting_bugreports.txt, in which we will include interesting
+bug reports that we come across.
+
 [Miguel - August 2]
   - Continuing with Chromium
   	1. Seems that I resolved yesterday's obstacles to building Chromium... but still trying to build it.
