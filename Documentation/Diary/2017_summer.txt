@@ -1,8 +1,16 @@
+[August 4]
+  - GOALS: Continue with monkey-patching, chromium, and bug reports
+
 [Miguel - August 3]
   - Chromium
+    - Building is STILL not done, but it seems that I gotten farther in the build process
+      using the toolchain for Windows' than I did with that for Linux. 
+  - Bug reports
+    1. Another interesting read: https://www.artemis-emc2.eu/fileadmin/user_upload/Publications/2016_EMC2_Summit_Wien/15RCiancariniPoggiRossiSillittiConcurrencyBugs.pdf
+	2. Considering looking into web reports due to unsatisfying results from GitHub
 
 [August 3]
-  - GOALS: Exactly what you expect
+  - GOALS: Continue with monkey-patching, chromium, and bug reports
   
 [Clara - August 2]
 Continue w monkey-patching
