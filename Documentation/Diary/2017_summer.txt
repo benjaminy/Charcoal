@@ -1,23 +1,32 @@
+[Clara - August 11]
+In meeting w Ben the following was concluded:
+  Since we have a good lead on both monkey patching and chromium, I will continue working on these.
+
+  Monkey patching update: continuation tree is obtained and the script successfully injected into web page
+  through chrome extension. Next: analyzing the output of some web pages.
+
+  Chromium: start the downloading and building process.
+
 [Miguel - August 7]
   - Chromium in all its 100+ GB of glory remains impossible for me to even build; I will
     be halting on this pursuit
   - Will be exploring other options in the mean time.
   - On the other hand, finalizing bug reports...
-  
+
 [August 4, 7]
   - GOALS: To continue with monkey-patching, chromium, and bug reports
 
 [Miguel - August 3]
   - Chromium
     1. Building is STILL not done, but it seems that I gotten farther in the build process
-       using the toolchain for Windows' than I did with that for Linux. 
+       using the toolchain for Windows' than I did with that for Linux.
   - Bug reports
     1. Another interesting read: https://www.artemis-emc2.eu/fileadmin/user_upload/Publications/2016_EMC2_Summit_Wien/15RCiancariniPoggiRossiSillittiConcurrencyBugs.pdf
 	2. Considering looking into web reports due to unsatisfying results from GitHub
 
 [August 3]
   - GOALS: Continue with monkey-patching, chromium, and bug reports
-  
+
 [Clara - August 2]
 Continue w monkey-patching
     More testing:
