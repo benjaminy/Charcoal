@@ -1,0 +1,28 @@
+{
+  "name": "Continuation Tree Observer",
+  "description": "blah blah",
+  "version": "1.0",
+  "permissions": [
+    "tabs", "http://*/*", "activeTab"
+  ],
+  "background": {
+    "scripts": ["background.js"],
+    "persistent": false
+  },
+  "browser_action": {
+    "default_title": "uhmmm"
+  },
+  "content_scripts": [
+    {
+      "js": ["contentscript.js"],
+      "matches": ["<all_urls>"]
+
+    }
+  ],
+
+
+  "web_accessible_resources": ["script.js"],
+
+
+  "manifest_version": 2
+}
