@@ -1,9 +1,23 @@
+[Clara - August 13]
+Tried to execute script upon click of extension button, rather than upon page reload
+(this important to fix since we don't want to reset the tree every time we go to a new url).
+However,not quite working yet.
+
+New events are continually recorded as I do various actions in the browser, such that
+hovering the mouse over buttons. There is some unexpected behaviour however. In particular the
+logging of timestamps leads to some interesting output.
+
+Also need to include more API's.
+
+As for writing to a file rather than simply console logging javascript makes it non-trivial.
+
 [Clara - August 11]
 In meeting w Ben the following was concluded:
   Since we have a good lead on both monkey patching and chromium, I will continue working on these.
 
   Monkey patching update: continuation tree is obtained and the script successfully injected into web page
-  through chrome extension. Next: analyzing the output of some web pages.
+  through chrome extension. Next: analyzing the output of some web pages. Output into textfile, and use
+  Graphviz to generate a nice tree.
 
   Chromium: start the downloading and building process.
 
