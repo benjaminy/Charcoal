@@ -1,11 +1,15 @@
+[Clara - August 17]
+Building of Chromium: Done
+Finally time for some testing
+
 [Clara - August 13]
 Tried to execute script upon click of extension button, rather than upon page reload
 (this important to fix since we don't want to reset the tree every time we go to a new url).
-However,not quite working yet.
 
 New events are continually recorded as I do various actions in the browser, such that
 hovering the mouse over buttons. There is some unexpected behaviour however. In particular the
 logging of timestamps leads to some interesting output.
+Problem resolved with rearrangement of try catch clause.
 
 Also need to include more API's.
 
