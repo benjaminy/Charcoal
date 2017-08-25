@@ -1,0 +1,44 @@
+JS code running:
+function initChain(){
+          setTimeout(function m() {console.log('End of chain #1')}, 100);
+          setTimeout(function a() {
+              setTimeout(function b() {
+                  setTimeout(function c() {
+                      setTimeout(function d() {
+                          setTimeout(function e() {
+                              console.log("End of chain #2");
+                          }, 0);
+                      }, 0);
+                  }, 0);
+              }, 0);
+          }, 0);
+        }
+
+
+
+{ "micro": 0, "phase": 1, "ctx": "AbcdefghijklmnO", "task_ptr": 0x35c1a52a1830, "ctx_ptr": 0x3a3775a029e8, "parent": 0x3 }
+{ "micro": 0, "phase": 1, "ctx": "AbcdefghijklmnO", "task_ptr": 0x35c1a52a18e8, "ctx_ptr": 0x3a3775a029e8, "parent": 0x3 }
+{ "micro": 0, "phase": 2, "ctx": "AbcdefghijklmnO", "task_ptr": 0x35c1a52a18e8, "ctx_ptr": 0x3a3775a029e8, "step": "", "time": 1503688857 }
+{ "micro": 0, "phase": 1, "ctx": "AbcdefghijklmnO", "task_ptr": 0x35c1a52a19a0, "ctx_ptr": 0x3a3775a029e8, "parent": 0x35c1a52a18e8 }
+{ "micro": 0, "phase": 3, "task_ptr": 0x35c1a52a18e8, "recurring": "no", "time": 1503688857 }
+{ "micro": 0, "phase": 3, "task_ptr": 0x35c1a52a18e8 }
+{ "micro": 0, "phase": 2, "ctx": "AbcdefghijklmnO", "task_ptr": 0x35c1a52a19a0, "ctx_ptr": 0x3a3775a029e8, "step": "", "time": 1503688857 }
+{ "micro": 0, "phase": 1, "ctx": "AbcdefghijklmnO", "task_ptr": 0x35c1a52a1a58, "ctx_ptr": 0x3a3775a029e8, "parent": 0x35c1a52a19a0 }
+{ "micro": 0, "phase": 3, "task_ptr": 0x35c1a52a19a0, "recurring": "no", "time": 1503688857 }
+{ "micro": 0, "phase": 3, "task_ptr": 0x35c1a52a19a0 }
+{ "micro": 0, "phase": 2, "ctx": "AbcdefghijklmnO", "task_ptr": 0x35c1a52a1a58, "ctx_ptr": 0x3a3775a029e8, "step": "", "time": 1503688857 }
+{ "micro": 0, "phase": 1, "ctx": "AbcdefghijklmnO", "task_ptr": 0x35c1a52a1b10, "ctx_ptr": 0x3a3775a029e8, "parent": 0x35c1a52a1a58 }
+{ "micro": 0, "phase": 3, "task_ptr": 0x35c1a52a1a58, "recurring": "no", "time": 1503688857 }
+{ "micro": 0, "phase": 3, "task_ptr": 0x35c1a52a1a58 }
+{ "micro": 0, "phase": 2, "ctx": "AbcdefghijklmnO", "task_ptr": 0x35c1a52a1b10, "ctx_ptr": 0x3a3775a029e8, "step": "", "time": 1503688857 }
+{ "micro": 0, "phase": 1, "ctx": "AbcdefghijklmnO", "task_ptr": 0x35c1a52a1bc8, "ctx_ptr": 0x3a3775a029e8, "parent": 0x35c1a52a1b10 }
+{ "micro": 0, "phase": 3, "task_ptr": 0x35c1a52a1b10, "recurring": "no", "time": 1503688857 }
+{ "micro": 0, "phase": 3, "task_ptr": 0x35c1a52a1b10 }
+{ "micro": 0, "phase": 2, "ctx": "AbcdefghijklmnO", "task_ptr": 0x35c1a52a1bc8, "ctx_ptr": 0x3a3775a029e8, "step": "", "time": 1503688857 }
+{ "micro": 0, "phase": 3, "task_ptr": 0x35c1a52a1bc8, "recurring": "no", "time": 1503688857 }
+{ "micro": 0, "phase": 3, "task_ptr": 0x35c1a52a1bc8 }
+[67668:775:0825/132057.841969:INFO:CONSOLE(52)] "End of chain #2", source: file:///Users/clararichter/xworkspace/long-stack-traces/example1.html (52)
+{ "micro": 0, "phase": 2, "ctx": "AbcdefghijklmnO", "task_ptr": 0x35c1a52a1830, "ctx_ptr": 0x3a3775a029e8, "step": "", "time": 1503688857 }
+{ "micro": 0, "phase": 3, "task_ptr": 0x35c1a52a1830, "recurring": "no", "time": 1503688857 }
+{ "micro": 0, "phase": 3, "task_ptr": 0x35c1a52a1830 }
+[67668:775:0825/132057.905696:INFO:CONSOLE(46)] "End of chain #1", source: file:///Users/clararichter/xworkspace/long-stack-traces/example1.html (46)
