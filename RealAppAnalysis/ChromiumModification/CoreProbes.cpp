@@ -80,9 +80,12 @@ void ctxDesc( ExecutionContext *c, char *b )
 
 FILE * file_hack( void )
 {
-    static FILE * f;
-    if( !f )
+    static FILE * f = NULL;
+    static pid = 0;
+    if( !f || pid != getpid() )
+    {
         f = fopen( "/tmp/blah.txt", "w" );
+    }
     return f;
 }
 
