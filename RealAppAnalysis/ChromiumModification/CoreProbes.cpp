@@ -78,7 +78,7 @@ void ctxDesc( ExecutionContext *c, char *b )
 // chrome extension for start/stop
 // timestamp
 
-file_hack()
+FILE * file_hack( void )
 {
     static FILE * f;
     if( !f )
