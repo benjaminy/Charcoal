@@ -52,22 +52,22 @@ namespace probe {
 
 void ctxDesc( ExecutionContext *c, char *b )
 {
-    b[ 0 ] = c->IsDocument()                     ? "A" : "a";
-    b[ 1 ] = c->IsWorkerOrWorkletGlobalScope()   ? "B" : "b";
-    b[ 2 ] = c->IsWorkerGlobalScope()            ? "C" : "c";
-    b[ 3 ] = c->IsWorkletGlobalScope()           ? "D" : "d";
-    b[ 4 ] = c->IsMainThreadWorkletGlobalScope() ? "E" : "e";
-    b[ 5 ] = c->IsDedicatedWorkerGlobalScope()   ? "F" : "f";
-    b[ 6 ] = c->IsSharedWorkerGlobalScope()      ? "G" : "g";
-    b[ 7 ] = c->IsServiceWorkerGlobalScope()     ? "H" : "h";
-    b[ 8 ] = c->IsCompositorWorkerGlobalScope()  ? "I" : "i";
-    b[ 9 ] = c->IsAnimationWorkletGlobalScope()  ? "J" : "j";
-    b[10 ] = c->IsAudioWorkletGlobalScope()      ? "K" : "k";
-    b[11 ] = c->IsPaintWorkletGlobalScope()      ? "L" : "l";
-    b[12 ] = c->IsThreadedWorkletGlobalScope()   ? "M" : "m";
-    b[13 ] = c->IsJSExecutionForbidden()         ? "N" : "n";
-    b[14 ] = c->IsContextThread()                ? "O" : "o";
-    b[15 ] = 0;
+    b[  0 ] = c->IsDocument()                     ? 'A' : 'a';
+    b[  1 ] = c->IsWorkerOrWorkletGlobalScope()   ? 'B' : 'b';
+    b[  2 ] = c->IsWorkerGlobalScope()            ? 'C' : 'c';
+    b[  3 ] = c->IsWorkletGlobalScope()           ? 'D' : 'd';
+    b[  4 ] = c->IsMainThreadWorkletGlobalScope() ? 'E' : 'e';
+    b[  5 ] = c->IsDedicatedWorkerGlobalScope()   ? 'F' : 'f';
+    b[  6 ] = c->IsSharedWorkerGlobalScope()      ? 'G' : 'g';
+    b[  7 ] = c->IsServiceWorkerGlobalScope()     ? 'H' : 'h';
+    b[  8 ] = c->IsCompositorWorkerGlobalScope()  ? 'I' : 'i';
+    b[  9 ] = c->IsAnimationWorkletGlobalScope()  ? 'J' : 'j';
+    b[ 10 ] = c->IsAudioWorkletGlobalScope()      ? 'K' : 'k';
+    b[ 11 ] = c->IsPaintWorkletGlobalScope()      ? 'L' : 'l';
+    b[ 12 ] = c->IsThreadedWorkletGlobalScope()   ? 'M' : 'm';
+    b[ 13 ] = c->IsJSExecutionForbidden()         ? 'N' : 'n';
+    b[ 14 ] = c->IsContextThread()                ? 'O' : 'o';
+    b[ 15 ] = 0;
 }
 
 // printf -> fprintf
@@ -77,6 +77,14 @@ void ctxDesc( ExecutionContext *c, char *b )
 // more info
 // chrome extension for start/stop
 // timestamp
+
+file_hack()
+{
+    static FILE * f;
+    if( !f )
+        f = fopen( "/tmp/blah.txt", "w" );
+    return f;
+}
 
 AsyncTask::AsyncTask(ExecutionContext* context,
                      void* task,
@@ -103,8 +111,8 @@ AsyncTask::AsyncTask(ExecutionContext* context,
 }
 
 AsyncTask::~AsyncTask() {
-  printf( "{ \"micro\": 0, \"phase\": 3, \"task_ptr\": %p, \"recurring\": \"%s\" }\n",
-          task_, recurring_ ? recurring_ : "" );
+  printf( "{ \"micro\": 0, \"phase\": 3, \"task_ptr\": %p, \"recurring\": %s }\n",
+          task_, recurring_ ? "yes" : "no" );
   if( !recurring_ )
       printf( "{ \"micro\": 0, \"phase\": 3, \"task_ptr\": %p }\n", task_ );
   if (debugger_) {
