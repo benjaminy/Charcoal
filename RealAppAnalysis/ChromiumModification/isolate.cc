@@ -3469,7 +3469,69 @@ void Isolate::PromiseResolveThenableJob(
   }
 }
 
-// micro-task vs macro-task?
+struct json_hack {
+    const char * name;
+    /* 0 = string, 1 = number, 2 = object, 3 = array, 4 = true, 5 = false, 6 = null, 7 = ptr */
+    char kind;
+    union {
+        double d;
+        const char *s;
+        void *p;
+    } value;
+};
+
+#include <unistd.h>
+
+void printJsonObject( int n, int micro, struct json_hack *entries )
+{
+    printf( "{ \"pid\": %d, ", getpid() );
+
+    if( __builtin_available( macos 10.12, * ) )
+    {
+        struct timespec ts;
+        int rc = clock_gettime( CLOCK_MONOTONIC, &ts );
+        if( rc )
+        {
+            fprintf( stderr, "WHAT2????\n" );
+            exit( 1 );
+        }
+        long t = ts.tv_sec;
+        t *= 1000000;
+        t += ts.tv_nsec / 1000;
+        printf( "\"ts\": %ld, ", t );
+    }
+
+    printf( "\"micro\": %s", micro ? "true" : "false" );
+    int i;
+    for( i = 0; i < n; ++i )
+    {
+        printf( ", \"%s\": ", entries[ i ].name );
+        switch( entries[ i ].kind )
+        {
+        case 0: printf( "\"%s\"", entries[ i ].value.s ? entries[ i ].value.s : "" ); break;
+        case 1: printf( "%f",     entries[ i ].value.d ); break;
+        case 4: printf( "true" ); break;
+        case 5: printf( "false" ); break;
+        case 6: printf( "null" ); break;
+        case 7: printf( "\"%p\"", entries[ i ].value.p ); break;
+        default: fprintf( stderr, "WHAT????\n" ); exit( 1 );
+        }
+    }
+    printf( "}\n" );
+}
+
+void microTaskDesc( Handle<Object> m, char *b )
+{
+    if( !m )
+    {
+        b[ 0 ] = 0;
+        return;
+    }
+    b[ 0 ] = microtask->IsCallHandlerInfo()               ? 'A' : 'a';
+    b[ 1 ] = microtask->IsJSFunction()                    ? 'B' : 'b';
+    b[ 2 ] = microtask->IsPromiseResolveThenableJobInfo() ? 'C' : 'c';
+    b[ 3 ] = 0;
+}
 
 void Isolate::EnqueueMicrotask(Handle<Object> microtask) {
   DCHECK(microtask->IsJSFunction() || microtask->IsCallHandlerInfo() ||
@@ -3486,10 +3548,12 @@ void Isolate::EnqueueMicrotask(Handle<Object> microtask) {
     heap()->set_microtask_queue(*queue);
   }
   DCHECK(queue->get(num_tasks)->IsUndefined(this));
-  /* NOTE: The next line is copying, so don't use the pointer as identity */
   queue->set(num_tasks, *microtask);
   set_pending_microtask_count(num_tasks + 1);
-  printf( "{ \"micro\": 1, \"phase\": 1 }\n" );
+
+  json_hack vs[ 10 ];
+  vs[ 0 ].name = "phase"; vs[ 0 ].kind = 0; vs[ 0 ].value.s = "enq";
+  printJsonObject( 1, 1, vs );
 }
 
 
@@ -3519,8 +3583,12 @@ void Isolate::RunMicrotasksInternal() {
 
     Isolate* isolate = this;
     FOR_WITH_HANDLE_SCOPE(isolate, int, i = 0, i, i < num_tasks, i++, {
-      printf( "{ \"micro\": 1, \"phase\": 2 }\n" );
       Handle<Object> microtask(queue->get(i), this);
+
+      json_hack vs[ 10 ];
+      vs[ 0 ].name = "phase"; vs[ 0 ].kind = 0; vs[ 0 ].value.s = "start";
+      vs[ 0 ].name = "phase"; vs[ 0 ].kind = 0; vs[ 0 ].value.s = "start";
+      printJsonObject( 1, 1, vs );
 
       if (microtask->IsCallHandlerInfo()) {
         Handle<CallHandlerInfo> callback_info =
@@ -3570,11 +3638,14 @@ void Isolate::RunMicrotasksInternal() {
           // Clear out any remaining callbacks in the queue.
           heap()->set_microtask_queue(heap()->empty_fixed_array());
           set_pending_microtask_count(0);
-          printf( "{ \"micro\": 1, \"phase\": 3 }\n" );
+
+          vs[ 0 ].name = "phase";    vs[ 0 ].kind = 1; vs[ 0 ].value.d = 3;
+          printJsonObject( 1, 1, vs );
           return;
         }
       }
-      printf( "{ \"micro\": 1, \"phase\": 3 }\n" );
+      vs[ 0 ].name = "phase";    vs[ 0 ].kind = 1; vs[ 0 ].value.d = 3;
+      printJsonObject( 1, 1, vs );
     });
   }
 }

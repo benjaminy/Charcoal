@@ -50,8 +50,62 @@
 namespace blink {
 namespace probe {
 
+struct json_hack {
+    const char * name;
+    /* 0 = string, 1 = number, 2 = object, 3 = array, 4 = true, 5 = false, 6 = null, 7 = ptr */
+    char kind;
+    union {
+        double d;
+        const char *s;
+        void *p;
+    } value;
+};
+
+void printJsonObject( int n, int micro, struct json_hack *entries )
+{
+    printf( "{ \"pid\": %d, ", getpid() );
+
+    if( __builtin_available( macos 10.12, * ) )
+    {
+        struct timespec ts;
+        int rc = clock_gettime( CLOCK_MONOTONIC, &ts );
+        if( rc )
+        {
+            fprintf( stderr, "WHAT2????\n" );
+            exit( 1 );
+        }
+        long t = ts.tv_sec;
+        t *= 1000000;
+        t += ts.tv_nsec / 1000;
+        printf( "\"ts\": %ld, ", t );
+    }
+
+    printf( "\"micro\": %s", micro ? "true" : "false" );
+    int i;
+    for( i = 0; i < n; ++i )
+    {
+        printf( ", \"%s\": ", entries[ i ].name );
+        switch( entries[ i ].kind )
+        {
+        case 0: printf( "\"%s\"", entries[ i ].value.s ? entries[ i ].value.s : "" ); break;
+        case 1: printf( "%f",     entries[ i ].value.d ); break;
+        case 4: printf( "true" ); break;
+        case 5: printf( "false" ); break;
+        case 6: printf( "null" ); break;
+        case 7: printf( "\"%p\"", entries[ i ].value.p ); break;
+        default: fprintf( stderr, "WHAT????\n" ); exit( 1 );
+        }
+    }
+    printf( "}\n" );
+}
+
 void ctxDesc( ExecutionContext *c, char *b )
 {
+    if( !c )
+    {
+        b[ 0 ] = 0;
+        return;
+    }
     b[  0 ] = c->IsDocument()                     ? 'A' : 'a';
     b[  1 ] = c->IsWorkerOrWorkletGlobalScope()   ? 'B' : 'b';
     b[  2 ] = c->IsWorkerGlobalScope()            ? 'C' : 'c';
@@ -70,32 +124,6 @@ void ctxDesc( ExecutionContext *c, char *b )
     b[ 15 ] = 0;
 }
 
-// printf -> fprintf
-//   - fopen
-//   - temp names
-//   - process id in the file name
-// more info
-// chrome extension for start/stop
-// timestamp
-
-#if 0
-FILE * file_hack( void )
-{
-    static FILE * f = NULL;
-    static pid_t old_pid = 0, pid = getpid();
-    printf( "file_hack  \t%d  \t%d  \t%p\n", old_pid, pid, f );
-    if( !f || old_pid != pid )
-    {
-        char buffer[ 1000 ];
-        /* include pid in file name */
-        snprintf( buffer, 999, "./tmp/blah_%d.txt", pid );
-        f = fopen( buffer, "w" );
-    }
-    old_pid = pid;
-    return f;
-}
-#endif
-
 AsyncTask::AsyncTask(ExecutionContext* context,
                      void* task,
                      const char* step,
@@ -113,22 +141,18 @@ AsyncTask::AsyncTask(ExecutionContext* context,
   }
   char d[ 16 ];
   ctxDesc( context, d );
-  // FILE * f = file_hack();
-  fprintf( stdout,
-           "{ \"micro\": 0, \"phase\": 2, \"ctx\": \"%s\", \"task_ptr\": %p, \"ctx_ptr\": %p, "
-           "\"step\": \"%s\" }\n",
-           d, task, context, step ? step : "" );
+  json_hack vs[ 10 ];
+  vs[ 0 ].name = "phase";    vs[ 0 ].kind = 1; vs[ 0 ].value.d = 2;
+  vs[ 1 ].name = "ctx";      vs[ 1 ].kind = 0; vs[ 1 ].value.s = d;
+  vs[ 2 ].name = "task_ptr"; vs[ 2 ].kind = 7; vs[ 2 ].value.p = task;
+  vs[ 3 ].name = "ctx_ptr";  vs[ 3 ].kind = 7; vs[ 3 ].value.p = context;
+  vs[ 4 ].name = "step";     vs[ 4 ].kind = 0; vs[ 4 ].value.s = step;
+  printJsonObject( 5, 0, vs );
   if (debugger_)
     debugger_->AsyncTaskStarted(task_);
 }
 
 AsyncTask::~AsyncTask() {
-  // FILE * f = file_hack();
-  fprintf( stdout,
-           "{ \"micro\": 0, \"phase\": 3, \"task_ptr\": %p, \"recurring\": %s }\n",
-           task_, recurring_ ? "1" : "0" );
-  if( !recurring_ )
-      fprintf( stdout, "{ \"micro\": 0, \"phase\": 3, \"task_ptr\": %p }\n", task_ );
   if (debugger_) {
     debugger_->AsyncTaskFinished(task_);
     if (!recurring_)
@@ -142,9 +166,6 @@ void AsyncTaskScheduled(ExecutionContext* context,
   TRACE_EVENT_FLOW_BEGIN1("devtools.timeline.async", "AsyncTask",
                           TRACE_ID_LOCAL(reinterpret_cast<uintptr_t>(task)),
                           "data", InspectorAsyncTask::Data(name));
-  fprintf( stdout,
-           "{ \"micro\": 0, \"phase\": 1, \"task_ptr\": %p, \"ctx_ptr\": %p }\n",
-           task, context );
   if (ThreadDebugger* debugger = ThreadDebugger::From(ToIsolate(context)))
     debugger->AsyncTaskScheduled(name, task, true);
 }
@@ -157,9 +178,6 @@ void AsyncTaskScheduledBreakable(ExecutionContext* context,
 }
 
 void AsyncTaskCanceled(ExecutionContext* context, void* task) {
-  fprintf( stdout,
-           "{ \"micro\": 0, \"phase\": 3, \"task_ptr\": %p }\n", task );
-
   if (ThreadDebugger* debugger = ThreadDebugger::From(ToIsolate(context)))
     debugger->AsyncTaskCanceled(task);
   TRACE_EVENT_FLOW_END0("devtools.timeline.async", "AsyncTask",
@@ -174,8 +192,6 @@ void AsyncTaskCanceledBreakable(ExecutionContext* context,
 }
 
 void AllAsyncTasksCanceled(ExecutionContext* context) {
-  fprintf( stdout,
-           "{ \"micro\": 0, \"phase\": 3, \"tasks\": \"all\" }\n" );
   if (ThreadDebugger* debugger = ThreadDebugger::From(ToIsolate(context)))
     debugger->AllAsyncTasksCanceled();
 }
