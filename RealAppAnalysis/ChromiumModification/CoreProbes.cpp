@@ -78,18 +78,23 @@ void ctxDesc( ExecutionContext *c, char *b )
 // chrome extension for start/stop
 // timestamp
 
+#if 0
 FILE * file_hack( void )
 {
     static FILE * f = NULL;
-    static pid_t pid = 0;
-    if( !f || pid != getpid() )
+    static pid_t old_pid = 0, pid = getpid();
+    printf( "file_hack  \t%d  \t%d  \t%p\n", old_pid, pid, f );
+    if( !f || old_pid != pid )
     {
-        pid = getpid();
+        char buffer[ 1000 ];
         /* include pid in file name */
-        f = fopen( "/tmp/blah.txt", "w" );
+        snprintf( buffer, 999, "./tmp/blah_%d.txt", pid );
+        f = fopen( buffer, "w" );
     }
+    old_pid = pid;
     return f;
 }
+#endif
 
 AsyncTask::AsyncTask(ExecutionContext* context,
                      void* task,
@@ -108,18 +113,22 @@ AsyncTask::AsyncTask(ExecutionContext* context,
   }
   char d[ 16 ];
   ctxDesc( context, d );
-  printf( "{ \"micro\": 0, \"phase\": 2, \"ctx\": \"%s\", \"task_ptr\": %p, \"ctx_ptr\": %p, "
-          "\"step\": \"%s\" }\n",
-          d, task, context, step ? step : "" );
+  // FILE * f = file_hack();
+  fprintf( stdout,
+           "{ \"micro\": 0, \"phase\": 2, \"ctx\": \"%s\", \"task_ptr\": %p, \"ctx_ptr\": %p, "
+           "\"step\": \"%s\" }\n",
+           d, task, context, step ? step : "" );
   if (debugger_)
     debugger_->AsyncTaskStarted(task_);
 }
 
 AsyncTask::~AsyncTask() {
-  printf( "{ \"micro\": 0, \"phase\": 3, \"task_ptr\": %p, \"recurring\": %s }\n",
-          task_, recurring_ ? "yes" : "no" );
+  // FILE * f = file_hack();
+  fprintf( stdout,
+           "{ \"micro\": 0, \"phase\": 3, \"task_ptr\": %p, \"recurring\": %s }\n",
+           task_, recurring_ ? "1" : "0" );
   if( !recurring_ )
-      printf( "{ \"micro\": 0, \"phase\": 3, \"task_ptr\": %p }\n", task_ );
+      fprintf( stdout, "{ \"micro\": 0, \"phase\": 3, \"task_ptr\": %p }\n", task_ );
   if (debugger_) {
     debugger_->AsyncTaskFinished(task_);
     if (!recurring_)
@@ -133,6 +142,9 @@ void AsyncTaskScheduled(ExecutionContext* context,
   TRACE_EVENT_FLOW_BEGIN1("devtools.timeline.async", "AsyncTask",
                           TRACE_ID_LOCAL(reinterpret_cast<uintptr_t>(task)),
                           "data", InspectorAsyncTask::Data(name));
+  fprintf( stdout,
+           "{ \"micro\": 0, \"phase\": 1, \"task_ptr\": %p, \"ctx_ptr\": %p }\n",
+           task, context );
   if (ThreadDebugger* debugger = ThreadDebugger::From(ToIsolate(context)))
     debugger->AsyncTaskScheduled(name, task, true);
 }
@@ -145,6 +157,9 @@ void AsyncTaskScheduledBreakable(ExecutionContext* context,
 }
 
 void AsyncTaskCanceled(ExecutionContext* context, void* task) {
+  fprintf( stdout,
+           "{ \"micro\": 0, \"phase\": 3, \"task_ptr\": %p }\n", task );
+
   if (ThreadDebugger* debugger = ThreadDebugger::From(ToIsolate(context)))
     debugger->AsyncTaskCanceled(task);
   TRACE_EVENT_FLOW_END0("devtools.timeline.async", "AsyncTask",
@@ -159,6 +174,8 @@ void AsyncTaskCanceledBreakable(ExecutionContext* context,
 }
 
 void AllAsyncTasksCanceled(ExecutionContext* context) {
+  fprintf( stdout,
+           "{ \"micro\": 0, \"phase\": 3, \"tasks\": \"all\" }\n" );
   if (ThreadDebugger* debugger = ThreadDebugger::From(ToIsolate(context)))
     debugger->AllAsyncTasksCanceled();
 }

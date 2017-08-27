@@ -3519,7 +3519,7 @@ void Isolate::RunMicrotasksInternal() {
 
     Isolate* isolate = this;
     FOR_WITH_HANDLE_SCOPE(isolate, int, i = 0, i, i < num_tasks, i++, {
-      printf( "{ \"micro\": 2, \"phase\": 2 }\n" );
+      printf( "{ \"micro\": 1, \"phase\": 2 }\n" );
       Handle<Object> microtask(queue->get(i), this);
 
       if (microtask->IsCallHandlerInfo()) {
@@ -3570,11 +3570,11 @@ void Isolate::RunMicrotasksInternal() {
           // Clear out any remaining callbacks in the queue.
           heap()->set_microtask_queue(heap()->empty_fixed_array());
           set_pending_microtask_count(0);
-          printf( "{ \"micro\": 2, \"phase\": 3 }\n" );
+          printf( "{ \"micro\": 1, \"phase\": 3 }\n" );
           return;
         }
       }
-      printf( "{ \"micro\": 2, \"phase\": 3 }\n" );
+      printf( "{ \"micro\": 1, \"phase\": 3 }\n" );
     });
   }
 }
