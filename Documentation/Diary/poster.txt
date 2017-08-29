@@ -1,0 +1,73 @@
+1) abstract/summary
+
+The use of multitasking in software has increased in recent years. A very common model utilized for
+achieving multitasking is that based on an event-loop and callbacks. The event-based model defines
+multitasking functionality in a, compared to other existing frameworks, intuitive and effective way.
+  However, we believe that the use of existing event-based frameworks is not without problems.
+In particular, we believe that the callback abstraction tends to be overused, introducing the
+possibility for interruption in places where a regular, atomic procedure would be preferred.
+We speculate that this behavior has made applications susceptible to atomicity violations, a form of concurrency bug.
+  In our project we searched for patterns constituting the necessary preconditions for atomicity violations
+in event-based runtime environments. Functionality for recording the data required was generally not provided.
+In order to obtain the data, we had to dig into and modify the core of the environments,
+including Chromium and Node.js.
+
+2) background & central concepts
+
+2.1) What is multitasking?
+Multitasking is the concept of performing multiple tasks over a certain period of time. That is,
+instead of executing the tasks sequentially so that each started task runs to completion before
+a new one can start, new tasks start and interrupt already started ones before these have completed. 
+As a result, a computer executes segments of multiple tasks in an interleaved manner, while the
+tasks share common resources such as CPU and memory.
+
+Multitasking is useful in various contexts. For heavily interactive contexts, that is, applications
+with rich user interaction and network communication such as browsers, multitasking is essential to
+good performance. Without multitasking, your favorite Internet browser would start hanging (that is,
+become unresponsive to your input) very frequently.
+
+2.2) Atomic versus Interruptible tasks
+A task is interruptible if control can transfer to a different task during its execution.
+A task  is atomic if multitasking is not possible while the task is running. That is,
+the procedure has to complete before any other task can run.
+
+2.3) The event model
+In event frameworks, all regular procedure calls are atomic. Interruptibility is introduced via a
+type of statement that takes the form of a first-order function. The function argument is referred
+to as a callback and is run [added to the event loop] in response to the completion of an operation,
+an event, as defined by the caller function. The event could be, among other things, a mouse click (1),
+the receiving of a network request (2), or the complete elapse of a given time (3).
+
+          (1) document.getElementById("myButton").addEventListener("click", <some callback function>);
+
+          (2) navigator.geolocation.getCurrentPosition(<some callback function>);
+
+          (3) setTimeout(<some callback function>, <some amount of time>)
+
+The caller function is decoupled from the callback. That is, the runtime can go on and execute
+other code while waiting for the caller operation (whether it’s a network request or the elapse
+of some time) to complete, hence introducing the possibility of interruption.
+
+2.4) Atomicity violation TODO: explain atomicity violation
+Interruptibility is often preferred for the sake of performance, but it also introduces the risk
+for an atomicity violation. [explain atomicity violation]
+In general, when the function to be applied is fast, atomicity is
+preferred since the risk of starvation is low. On the other hand, when the function will take a
+long time we probably want it to be interruptible, in order to avoid unresponsiveness
+
+2.5) Continuation Tree TODO: ...
+A continuation tree is the callback hierarchy of an application.
+
+2.6) JavaScript runtime environments
+JavaScript is a widely used scripting language that uses the event-based framework. JavaScript
+runtime environments, environments that run applications written in JavaScript, include browsers
+(Chrome, Firefox, Safari, etc.), Node.js and Electron.
+
+3) Results TODO: include illustrative graph
+i)	instrumenting Chrome (using event-tracer)
+ii)	instrumenting Chromium
+
+4) Discussion
+-	Many applications are composed of tons of extremely short callbacks.
+-	Sometimes there are chains of callbacks that typically execute in short succession.
+-	If some other action happened in the middle of such a chain, it could cause a concurrency bug.
