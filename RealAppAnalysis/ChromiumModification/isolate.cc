@@ -3469,22 +3469,130 @@ void Isolate::PromiseResolveThenableJob(
   }
 }
 
+union uawful {
+    double d;
+    const char *s;
+    void *p;
+    int i;
+};
+
 struct json_hack {
     const char * name;
     /* 0 = string, 1 = number, 2 = object, 3 = array, 4 = true, 5 = false, 6 = null, 7 = ptr */
     char kind;
-    union {
-        double d;
-        const char *s;
-        void *p;
-    } value;
+    union uawful value;
 };
+
+struct json_hack json_hack_cons( const char * name, char kind, union uawful value )
+{
+    struct json_hack x;
+    x.name = name;
+    x.kind = kind;
+    x.value = value;
+    return x;
+}
 
 #include <unistd.h>
 
+#define HACK_BUF_SZ 10000
+
+void printJsonObject( int n, struct json_hack *entries, void f( void * ), void *d )
+{
+    char buf[ HACK_BUF_SZ ];
+    int total_printed = 0;
+    int printed = snprintf( &buf[ total_printed ], HACK_BUF_SZ - total_printed,
+                            "{ \"pid\": %u, ", getpid() );
+    total_printed += printed;
+
+    printed = snprintf( &buf[ total_printed ], HACK_BUF_SZ - total_printed,
+                        "\"tid\": %u, ", base::OS::GetCurrentThreadId() );
+    total_printed += printed;
+
+#if 0
+    if( __builtin_available( macos 10.12, * ) )
+    {
+        struct timespec ts;
+        int rc = clock_gettime( CLOCK_MONOTONIC, &ts );
+        if( rc )
+        {
+            fprintf( stderr, "WHAT2????\n" );
+            exit( 1 );
+        }
+        long t = ts.tv_sec;
+        t *= 1000000;
+        t += ts.tv_nsec / 1000;
+        printed = snprintf( &buf[ total_printed ], HACK_BUF_SZ - total_printed,
+                            "\"ts\": %ld, ", t );
+        total_printed += printed;
+    }
+#else
+    base::TimeTicks *zero = new base::TimeTicks();
+    printed = snprintf( &buf[ total_printed ], HACK_BUF_SZ - total_printed,
+                        "\"ts\": %lld, ", ( base::TimeTicks::Now() - *zero ).InMicroseconds() );
+    total_printed += printed;
+#endif
+
+    printed = snprintf( &buf[ total_printed ], HACK_BUF_SZ - total_printed,
+                        "\"micro\": true" );
+    total_printed += printed;
+    int i;
+    for( i = 0; i < n; ++i )
+    {
+        printed = snprintf( &buf[ total_printed ], HACK_BUF_SZ - total_printed,
+                            ", \"%s\": ", entries[ i ].name );
+        total_printed += printed;
+        switch( entries[ i ].kind )
+        {
+        case 0:
+            printed = snprintf( &buf[ total_printed ], HACK_BUF_SZ - total_printed,
+                                "\"%s\"", entries[ i ].value.s ? entries[ i ].value.s : "" );
+            break;
+        case 1:
+            printed = snprintf( &buf[ total_printed ], HACK_BUF_SZ - total_printed,
+                                "%f",     entries[ i ].value.d );
+            break;
+        case 4:
+            if( entries[ i ].value.i )
+                printed = snprintf( &buf[ total_printed ], HACK_BUF_SZ - total_printed, "true" );
+            else
+                printed = snprintf( &buf[ total_printed ], HACK_BUF_SZ - total_printed, "false" );
+            break;
+        case 5:
+            if( entries[ i ].value.p )
+                printed = snprintf( &buf[ total_printed ], HACK_BUF_SZ - total_printed,
+                                    "\"%p\"", entries[ i ].value.p );
+            else
+                printed = snprintf( &buf[ total_printed ], HACK_BUF_SZ - total_printed, "null" );
+            break;
+        default:
+            fprintf( stderr, "WHAT????\n" );
+            exit( 1 );
+        }
+        total_printed += printed;
+    }
+    if( f )
+    {
+        fprintf( stderr, "%s, \"fname\": \"", buf );
+        f( d );
+        fprintf( stderr, "\" }\n" );
+    }
+    else
+    {
+        printed = snprintf( &buf[ total_printed ], HACK_BUF_SZ - total_printed, "}\n" );
+        fprintf( stderr, "%s", buf );
+    }
+}
+
+void name_printer( void *d )
+{
+    Handle<JSFunction> microtask_function = *((Handle<JSFunction> *)d);
+    microtask_function->PrintName( stderr );
+}
+
+#if 0
 void printJsonObject( int n, int micro, struct json_hack *entries )
 {
-    printf( "{ \"pid\": %d, ", getpid() );
+    fprintf( stderr, "{ \"pid\": %d, ", getpid() );
 
     if( __builtin_available( macos 10.12, * ) )
     {
@@ -3498,38 +3606,34 @@ void printJsonObject( int n, int micro, struct json_hack *entries )
         long t = ts.tv_sec;
         t *= 1000000;
         t += ts.tv_nsec / 1000;
-        printf( "\"ts\": %ld, ", t );
+        fprintf( stderr, "\"ts\": %ld, ", t );
     }
 
-    printf( "\"micro\": %s", micro ? "true" : "false" );
+    fprintf( stderr, "\"micro\": %s", micro ? "true" : "false" );
     int i;
     for( i = 0; i < n; ++i )
     {
-        printf( ", \"%s\": ", entries[ i ].name );
+        fprintf( stderr, ", \"%s\": ", entries[ i ].name );
         switch( entries[ i ].kind )
         {
-        case 0: printf( "\"%s\"", entries[ i ].value.s ? entries[ i ].value.s : "" ); break;
-        case 1: printf( "%f",     entries[ i ].value.d ); break;
-        case 4: printf( "true" ); break;
-        case 5: printf( "false" ); break;
-        case 6: printf( "null" ); break;
-        case 7: printf( "\"%p\"", entries[ i ].value.p ); break;
-        default: fprintf( stderr, "WHAT????\n" ); exit( 1 );
+        case 0: fprintf( stderr, "\"%s\"", entries[ i ].value.s ? entries[ i ].value.s : "" ); break;
+        case 1: fprintf( stderr, "%f",     entries[ i ].value.d ); break;
+        case 4: fprintf( stderr, "true" ); break;
+        case 5: fprintf( stderr, "false" ); break;
+        case 6: fprintf( stderr, "null" ); break;
+        case 7: fprintf( stderr, "\"%p\"", entries[ i ].value.p ); break;
+        default: fprintf( stderr, "WRONG KIND WHAT????\n" ); exit( 1 );
         }
     }
-    printf( "}\n" );
+    fprintf( stderr, "}\n" );
 }
+#endif
 
 void microTaskDesc( Handle<Object> m, char *b )
 {
-    if( !m )
-    {
-        b[ 0 ] = 0;
-        return;
-    }
-    b[ 0 ] = microtask->IsCallHandlerInfo()               ? 'A' : 'a';
-    b[ 1 ] = microtask->IsJSFunction()                    ? 'B' : 'b';
-    b[ 2 ] = microtask->IsPromiseResolveThenableJobInfo() ? 'C' : 'c';
+    b[ 0 ] = m->IsCallHandlerInfo()               ? 'A' : 'a';
+    b[ 1 ] = m->IsJSFunction()                    ? 'B' : 'b';
+    b[ 2 ] = m->IsPromiseResolveThenableJobInfo() ? 'C' : 'c';
     b[ 3 ] = 0;
 }
 
@@ -3551,9 +3655,13 @@ void Isolate::EnqueueMicrotask(Handle<Object> microtask) {
   queue->set(num_tasks, *microtask);
   set_pending_microtask_count(num_tasks + 1);
 
+  char d[ 16 ];
+  microTaskDesc( microtask, d );
   json_hack vs[ 10 ];
-  vs[ 0 ].name = "phase"; vs[ 0 ].kind = 0; vs[ 0 ].value.s = "enq";
-  printJsonObject( 1, 1, vs );
+  vs[ 0 ] = json_hack_cons( "phase",     0, { .s = "enq" } );
+  vs[ 1 ] = json_hack_cons( "props",     0, { .s = d } );
+  vs[ 2 ] = json_hack_cons( "num_tasks", 1, { .d = num_tasks } );
+  printJsonObject( 3, vs, 0, 0 );
 }
 
 
@@ -3585,17 +3693,19 @@ void Isolate::RunMicrotasksInternal() {
     FOR_WITH_HANDLE_SCOPE(isolate, int, i = 0, i, i < num_tasks, i++, {
       Handle<Object> microtask(queue->get(i), this);
 
-      json_hack vs[ 10 ];
-      vs[ 0 ].name = "phase"; vs[ 0 ].kind = 0; vs[ 0 ].value.s = "start";
-      vs[ 0 ].name = "phase"; vs[ 0 ].kind = 0; vs[ 0 ].value.s = "start";
-      printJsonObject( 1, 1, vs );
-
       if (microtask->IsCallHandlerInfo()) {
         Handle<CallHandlerInfo> callback_info =
             Handle<CallHandlerInfo>::cast(microtask);
         v8::MicrotaskCallback callback =
             v8::ToCData<v8::MicrotaskCallback>(callback_info->callback());
         void* data = v8::ToCData<void*>(callback_info->data());
+
+        json_hack vs[ 10 ];
+        vs[ 0 ] = json_hack_cons( "phase"    , 0, { .s = "start" } );
+        vs[ 1 ] = json_hack_cons( "callback" , 4, { .i = 1 } );
+        vs[ 2 ] = json_hack_cons( "num_tasks", 1, { .d = num_tasks } );
+        printJsonObject( 3, vs, 0, 0 );
+
         callback(data);
       } else {
         SaveContext save(this);
@@ -3619,14 +3729,35 @@ void Isolate::RunMicrotasksInternal() {
         if (microtask->IsJSFunction()) {
           Handle<JSFunction> microtask_function =
               Handle<JSFunction>::cast(microtask);
+
+          json_hack vs[ 10 ];
+          vs[ 0 ] = json_hack_cons( "phase",     0, { .s = "start" } );
+          vs[ 1 ] = json_hack_cons( "jsfun",     4, { .i = 1 } );
+          vs[ 2 ] = json_hack_cons( "num_tasks", 1, { .d = num_tasks } );
+          printJsonObject( 3, vs, name_printer, &microtask_function );
+
           result = Execution::TryCall(
               this, microtask_function, factory()->undefined_value(), 0,
               nullptr, Execution::MessageHandling::kReport, &maybe_exception);
         } else if (microtask->IsPromiseResolveThenableJobInfo()) {
+
+          json_hack vs[ 10 ];
+          vs[ 0 ] = json_hack_cons( "phase",           0, { .s = "start" } );
+          vs[ 1 ] = json_hack_cons( "promise_resolve", 4, { .i = 1 } );
+          vs[ 2 ] = json_hack_cons( "num_tasks",       1, { .d = num_tasks } );
+          printJsonObject( 3, vs, 0, 0 );
+
           PromiseResolveThenableJob(
               Handle<PromiseResolveThenableJobInfo>::cast(microtask), &result,
               &maybe_exception);
         } else {
+
+          json_hack vs[ 10 ];
+          vs[ 0 ] = json_hack_cons( "phase",         0, { .s = "start" } );
+          vs[ 1 ] = json_hack_cons( "promise_react", 4, { .i = 1 } );
+          vs[ 2 ] = json_hack_cons( "num_tasks",     1, { .d = num_tasks } );
+          printJsonObject( 3, vs, 0, 0 );
+
           PromiseReactionJob(Handle<PromiseReactionJobInfo>::cast(microtask),
                              &result, &maybe_exception);
         }
@@ -3639,13 +3770,18 @@ void Isolate::RunMicrotasksInternal() {
           heap()->set_microtask_queue(heap()->empty_fixed_array());
           set_pending_microtask_count(0);
 
-          vs[ 0 ].name = "phase";    vs[ 0 ].kind = 1; vs[ 0 ].value.d = 3;
-          printJsonObject( 1, 1, vs );
+          json_hack vs[ 10 ];
+          vs[ 0 ] = json_hack_cons( "phase",     0, { .s = "stop" } );
+          vs[ 1 ] = json_hack_cons( "num_tasks", 1, { .d = num_tasks } );
+          printJsonObject( 2, vs, 0, 0 );
           return;
         }
       }
-      vs[ 0 ].name = "phase";    vs[ 0 ].kind = 1; vs[ 0 ].value.d = 3;
-      printJsonObject( 1, 1, vs );
+
+      json_hack vs[ 10 ];
+      vs[ 0 ] = json_hack_cons( "phase",     0, { .s = "stop" } );
+      vs[ 1 ] = json_hack_cons( "num_tasks", 1, { .d = num_tasks } );
+      printJsonObject( 2, vs, 0, 0 );
     });
   }
 }

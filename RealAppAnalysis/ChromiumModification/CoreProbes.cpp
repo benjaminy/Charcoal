@@ -52,19 +52,36 @@ namespace probe {
 
 struct json_hack {
     const char * name;
-    /* 0 = string, 1 = number, 2 = object, 3 = array, 4 = true, 5 = false, 6 = null, 7 = ptr */
+    /* 0 = string
+       1 = number
+       2 = object
+       3 = array
+       4 = bool
+       5 = ptr */
     char kind;
     union {
         double d;
         const char *s;
         void *p;
+        int i;
     } value;
 };
 
-void printJsonObject( int n, int micro, struct json_hack *entries )
-{
-    printf( "{ \"pid\": %d, ", getpid() );
+#define HACK_BUF_SZ 10000
 
+void printJsonObject( int n, struct json_hack *entries )
+{
+    char buf[ HACK_BUF_SZ ];
+    int total_printed = 0;
+    int printed = snprintf( &buf[ total_printed ], HACK_BUF_SZ - total_printed,
+                            "{ \"pid\": %u, ", getpid() );
+    total_printed += printed;
+
+    printed = snprintf( &buf[ total_printed ], HACK_BUF_SZ - total_printed,
+                            "\"tid\": %u, ", base::PlatformThread::CurrentId() );
+    total_printed += printed;
+
+#if 0
     if( __builtin_available( macos 10.12, * ) )
     {
         struct timespec ts;
@@ -77,26 +94,57 @@ void printJsonObject( int n, int micro, struct json_hack *entries )
         long t = ts.tv_sec;
         t *= 1000000;
         t += ts.tv_nsec / 1000;
-        printf( "\"ts\": %ld, ", t );
+        printed = snprintf( &buf[ total_printed ], HACK_BUF_SZ - total_printed,
+                            "\"ts\": %ld, ", t );
+        total_printed += printed;
     }
+#else
+    TimeTicks *zero = new TimeTicks();
+    printed = snprintf( &buf[ total_printed ], HACK_BUF_SZ - total_printed,
+                        "\"ts\": %lld, ", ( TimeTicks::Now() - *zero ).InMicroseconds() );
+    total_printed += printed;
+#endif
 
-    printf( "\"micro\": %s", micro ? "true" : "false" );
+    printed = snprintf( &buf[ total_printed ], HACK_BUF_SZ - total_printed,
+                        "\"micro\": false" );
+    total_printed += printed;
     int i;
     for( i = 0; i < n; ++i )
     {
-        printf( ", \"%s\": ", entries[ i ].name );
+        printed = snprintf( &buf[ total_printed ], HACK_BUF_SZ - total_printed,
+                            ", \"%s\": ", entries[ i ].name );
+        total_printed += printed;
         switch( entries[ i ].kind )
         {
-        case 0: printf( "\"%s\"", entries[ i ].value.s ? entries[ i ].value.s : "" ); break;
-        case 1: printf( "%f",     entries[ i ].value.d ); break;
-        case 4: printf( "true" ); break;
-        case 5: printf( "false" ); break;
-        case 6: printf( "null" ); break;
-        case 7: printf( "\"%p\"", entries[ i ].value.p ); break;
-        default: fprintf( stderr, "WHAT????\n" ); exit( 1 );
+        case 0:
+            printed = snprintf( &buf[ total_printed ], HACK_BUF_SZ - total_printed,
+                                "\"%s\"", entries[ i ].value.s ? entries[ i ].value.s : "" );
+            break;
+        case 1:
+            printed = snprintf( &buf[ total_printed ], HACK_BUF_SZ - total_printed,
+                                "%f",     entries[ i ].value.d );
+            break;
+        case 4:
+            if( entries[ i ].value.i )
+                printed = snprintf( &buf[ total_printed ], HACK_BUF_SZ - total_printed, "true" );
+            else
+                printed = snprintf( &buf[ total_printed ], HACK_BUF_SZ - total_printed, "false" );
+            break;
+        case 5:
+            if( entries[ i ].value.p )
+                printed = snprintf( &buf[ total_printed ], HACK_BUF_SZ - total_printed,
+                                    "\"%p\"", entries[ i ].value.p );
+            else
+                printed = snprintf( &buf[ total_printed ], HACK_BUF_SZ - total_printed, "null" );
+            break;
+        default:
+            fprintf( stderr, "WHAT????\n" );
+            exit( 1 );
         }
+        total_printed += printed;
     }
-    printf( "}\n" );
+    printed = snprintf( &buf[ total_printed ], HACK_BUF_SZ - total_printed, "}\n" );
+    fprintf( stderr, "%s", buf );
 }
 
 void ctxDesc( ExecutionContext *c, char *b )
@@ -142,17 +190,31 @@ AsyncTask::AsyncTask(ExecutionContext* context,
   char d[ 16 ];
   ctxDesc( context, d );
   json_hack vs[ 10 ];
-  vs[ 0 ].name = "phase";    vs[ 0 ].kind = 1; vs[ 0 ].value.d = 2;
-  vs[ 1 ].name = "ctx";      vs[ 1 ].kind = 0; vs[ 1 ].value.s = d;
-  vs[ 2 ].name = "task_ptr"; vs[ 2 ].kind = 7; vs[ 2 ].value.p = task;
-  vs[ 3 ].name = "ctx_ptr";  vs[ 3 ].kind = 7; vs[ 3 ].value.p = context;
-  vs[ 4 ].name = "step";     vs[ 4 ].kind = 0; vs[ 4 ].value.s = step;
-  printJsonObject( 5, 0, vs );
+  vs[ 0 ] = { "phase",    0, { .s = "started" } };
+  vs[ 1 ] = { "ctx",      0, { .s = d } };
+  vs[ 2 ] = { "task_ptr", 5, { .p = task } };
+  vs[ 3 ] = { "ctx_ptr",  5, { .p = context } };
+  vs[ 4 ] = { "step",     0, { .s = step } };
+  printJsonObject( 5, vs );
   if (debugger_)
     debugger_->AsyncTaskStarted(task_);
 }
 
 AsyncTask::~AsyncTask() {
+
+  json_hack vs[ 10 ];
+  vs[ 0 ] = { "phase",     0, { .s = "finished" } };
+  vs[ 1 ] = { "task_ptr",  5, { .p = task_ } };
+  vs[ 2 ] = { "recurring", 4, { .i = !!recurring_ } };
+  printJsonObject( 3, vs );
+  if (!recurring_)
+  {
+      vs[ 0 ] = { "phase",     0, { .s = "canceled" } };
+      vs[ 1 ] = { "task_ptr",  5, { .p = task_ } };
+      vs[ 2 ] = { "recurring", 4, { .i = !!recurring_ } };
+      printJsonObject( 3, vs );
+  }
+
   if (debugger_) {
     debugger_->AsyncTaskFinished(task_);
     if (!recurring_)
@@ -166,6 +228,19 @@ void AsyncTaskScheduled(ExecutionContext* context,
   TRACE_EVENT_FLOW_BEGIN1("devtools.timeline.async", "AsyncTask",
                           TRACE_ID_LOCAL(reinterpret_cast<uintptr_t>(task)),
                           "data", InspectorAsyncTask::Data(name));
+
+  char d[ 16 ];
+  ctxDesc( context, d );
+  char dumb[ 1000 ];
+  strlcpy( dumb, name.Utf8().data(), 1000 );
+  json_hack vs[ 10 ];
+  vs[ 0 ] = { "phase",    0, { .s = "scheduled" } };
+  vs[ 1 ] = { "ctx",      0, { .s = d } };
+  vs[ 2 ] = { "task_ptr", 5, { .p = task } };
+  vs[ 3 ] = { "ctx_ptr",  5, { .p = context } };
+  vs[ 4 ] = { "name",     0, { .s = dumb } };
+  printJsonObject( 5, vs );
+
   if (ThreadDebugger* debugger = ThreadDebugger::From(ToIsolate(context)))
     debugger->AsyncTaskScheduled(name, task, true);
 }
@@ -178,6 +253,16 @@ void AsyncTaskScheduledBreakable(ExecutionContext* context,
 }
 
 void AsyncTaskCanceled(ExecutionContext* context, void* task) {
+
+  char d[ 16 ];
+  ctxDesc( context, d );
+  json_hack vs[ 10 ];
+  vs[ 0 ] = { "phase",    0, { .s = "canceled" } };
+  vs[ 1 ] = { "ctx",      0, { .s = d } };
+  vs[ 2 ] = { "task_ptr", 5, { .p = task } };
+  vs[ 3 ] = { "ctx_ptr",  5, { .p = context } };
+  printJsonObject( 4, vs );
+
   if (ThreadDebugger* debugger = ThreadDebugger::From(ToIsolate(context)))
     debugger->AsyncTaskCanceled(task);
   TRACE_EVENT_FLOW_END0("devtools.timeline.async", "AsyncTask",
@@ -192,6 +277,13 @@ void AsyncTaskCanceledBreakable(ExecutionContext* context,
 }
 
 void AllAsyncTasksCanceled(ExecutionContext* context) {
+  char d[ 16 ];
+  ctxDesc( context, d );
+  json_hack vs[ 10 ];
+  vs[ 0 ] = { "phase",    0, { .s = "all_canceled" } };
+  vs[ 1 ] = { "ctx",      0, { .s = d } };
+  vs[ 2 ] = { "ctx_ptr",  5, { .p = context } };
+  printJsonObject( 3, vs );
   if (ThreadDebugger* debugger = ThreadDebugger::From(ToIsolate(context)))
     debugger->AllAsyncTasksCanceled();
 }
