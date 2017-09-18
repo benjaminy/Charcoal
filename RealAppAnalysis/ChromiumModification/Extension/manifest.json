@@ -1,0 +1,16 @@
+{
+    "manifest_version": 2,
+
+    "name": "Begin/End Marker",
+    "description": "This extension puts calls to weird function names in the event trace.",
+    "version": "1.0",
+
+    "browser_action": {
+        "default_icon": "icon.png",
+        "default_popup": "popup.html"
+    },
+    "permissions": [
+        "activeTab",
+        "storage"
+    ]
+}
