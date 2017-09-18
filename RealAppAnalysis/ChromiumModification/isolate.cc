@@ -56,6 +56,133 @@
 #include "src/wasm/wasm-objects.h"
 #include "src/zone/accounting-allocator.h"
 
+/* BEGIN CHARCOAL */
+
+// extern const char *CHARCOAL_BLAH = "Hello";
+
+union uawful {
+    double d;
+    const char *s;
+    void *p;
+    int i;
+};
+
+struct json_hack {
+    const char * name;
+    /* 0 = string, 1 = number, 2 = object, 3 = array, 4 = Boolean, 5 = ptr */
+    char kind;
+    union uawful value;
+};
+
+struct json_hack json_hack_cons( const char * name, char kind, union uawful value )
+{
+    struct json_hack x;
+    x.name = name;
+    x.kind = kind;
+    x.value = value;
+    return x;
+}
+
+#include <unistd.h>
+
+#define HACK_BUF_SZ 10000
+
+#define P(...) \
+    do { \
+        printed = snprintf( &buf[ total_printed ], HACK_BUF_SZ - total_printed, __VA_ARGS__ ); \
+        total_printed += printed; \
+    } while( 0 )
+
+void printJsonObjectI( const char *source, const char *phase,
+                       int n, struct json_hack *entries, void p( FILE *, void * ), void *d )
+{
+    static FILE *f = NULL;
+    static pid_t old_pid = 0;
+    pid_t pid = getpid();
+    if( old_pid != pid )
+    {
+        char fname[ 100 ];
+        sprintf( fname, "./Traces/pi_%u.XXXXXX", pid );
+        if( !mktemp( fname ) )
+        {
+            fprintf( stderr, "mktemp FAILED!!!!" );
+            exit( 1 );
+        }
+        f = fopen( fname, "w" );
+        fprintf( stderr, "isolate.cc %p %s\n", f, fname );
+        if( !f )
+            f = stderr;
+    }
+    old_pid = pid;
+
+    char buf[ HACK_BUF_SZ ];
+    int total_printed = 0;
+    int printed;
+
+    P( "[ " );
+    P( "%lld, ", ( v8::base::TimeTicks::Now() - *( new v8::base::TimeTicks() ) ).InMicroseconds() );
+    P( "%u, ", pid );
+    P( "%u, ", v8::base::OS::GetCurrentThreadId() );
+    P( "\"%s\", ", source );
+    P( "\"%s\", { ", phase );
+
+    int i;
+    for( i = 0; i < n; ++i )
+    {
+        if( i > 0 )
+            P( ", " );
+
+        P( "\"%s\": ", entries[ i ].name );
+        switch( entries[ i ].kind )
+        {
+        case 0:
+            P( "\"%s\"", entries[ i ].value.s ? entries[ i ].value.s : "" );
+            break;
+        case 1:
+            P( "%f", entries[ i ].value.d );
+            break;
+        case 4:
+            P( entries[ i ].value.i ? "true" : "false" );
+            break;
+        case 5:
+            if( entries[ i ].value.p )
+                P( "\"%p\"", entries[ i ].value.p );
+            else
+                P( "null" );
+            break;
+        default:
+            fprintf( stderr, "WHAT????\n" );
+            exit( 1 );
+        }
+    }
+    if( p )
+    {
+        fprintf( f, "%s, \"fname\": \"", buf );
+        p( f, d );
+        fprintf( f, "\" } ]\n" );
+    }
+    else
+    {
+        P( " } ]\n" );
+        fprintf( f, "%s", buf );
+    }
+}
+
+void name_printer( FILE *f, void *d )
+{
+    v8::internal::Handle<v8::internal::JSFunction> microtask_function = *((v8::internal::Handle<v8::internal::JSFunction> *)d);
+    microtask_function->PrintName( f );
+}
+
+void microTaskDesc( v8::internal::Handle<v8::internal::Object> m, char *b )
+{
+    b[ 0 ] = m->IsCallHandlerInfo()               ? 'A' : 'a';
+    b[ 1 ] = m->IsJSFunction()                    ? 'B' : 'b';
+    b[ 2 ] = m->IsPromiseResolveThenableJobInfo() ? 'C' : 'c';
+    b[ 3 ] = 0;
+}
+/* END CHARCOAL */
+
 namespace v8 {
 namespace internal {
 
@@ -3469,174 +3596,6 @@ void Isolate::PromiseResolveThenableJob(
   }
 }
 
-union uawful {
-    double d;
-    const char *s;
-    void *p;
-    int i;
-};
-
-struct json_hack {
-    const char * name;
-    /* 0 = string, 1 = number, 2 = object, 3 = array, 4 = true, 5 = false, 6 = null, 7 = ptr */
-    char kind;
-    union uawful value;
-};
-
-struct json_hack json_hack_cons( const char * name, char kind, union uawful value )
-{
-    struct json_hack x;
-    x.name = name;
-    x.kind = kind;
-    x.value = value;
-    return x;
-}
-
-#include <unistd.h>
-
-#define HACK_BUF_SZ 10000
-
-void printJsonObject( int n, struct json_hack *entries, void f( void * ), void *d )
-{
-    char buf[ HACK_BUF_SZ ];
-    int total_printed = 0;
-    int printed = snprintf( &buf[ total_printed ], HACK_BUF_SZ - total_printed,
-                            "{ \"pid\": %u, ", getpid() );
-    total_printed += printed;
-
-    printed = snprintf( &buf[ total_printed ], HACK_BUF_SZ - total_printed,
-                        "\"tid\": %u, ", base::OS::GetCurrentThreadId() );
-    total_printed += printed;
-
-#if 0
-    if( __builtin_available( macos 10.12, * ) )
-    {
-        struct timespec ts;
-        int rc = clock_gettime( CLOCK_MONOTONIC, &ts );
-        if( rc )
-        {
-            fprintf( stderr, "WHAT2????\n" );
-            exit( 1 );
-        }
-        long t = ts.tv_sec;
-        t *= 1000000;
-        t += ts.tv_nsec / 1000;
-        printed = snprintf( &buf[ total_printed ], HACK_BUF_SZ - total_printed,
-                            "\"ts\": %ld, ", t );
-        total_printed += printed;
-    }
-#else
-    base::TimeTicks *zero = new base::TimeTicks();
-    printed = snprintf( &buf[ total_printed ], HACK_BUF_SZ - total_printed,
-                        "\"ts\": %lld, ", ( base::TimeTicks::Now() - *zero ).InMicroseconds() );
-    total_printed += printed;
-#endif
-
-    printed = snprintf( &buf[ total_printed ], HACK_BUF_SZ - total_printed,
-                        "\"micro\": true" );
-    total_printed += printed;
-    int i;
-    for( i = 0; i < n; ++i )
-    {
-        printed = snprintf( &buf[ total_printed ], HACK_BUF_SZ - total_printed,
-                            ", \"%s\": ", entries[ i ].name );
-        total_printed += printed;
-        switch( entries[ i ].kind )
-        {
-        case 0:
-            printed = snprintf( &buf[ total_printed ], HACK_BUF_SZ - total_printed,
-                                "\"%s\"", entries[ i ].value.s ? entries[ i ].value.s : "" );
-            break;
-        case 1:
-            printed = snprintf( &buf[ total_printed ], HACK_BUF_SZ - total_printed,
-                                "%f",     entries[ i ].value.d );
-            break;
-        case 4:
-            if( entries[ i ].value.i )
-                printed = snprintf( &buf[ total_printed ], HACK_BUF_SZ - total_printed, "true" );
-            else
-                printed = snprintf( &buf[ total_printed ], HACK_BUF_SZ - total_printed, "false" );
-            break;
-        case 5:
-            if( entries[ i ].value.p )
-                printed = snprintf( &buf[ total_printed ], HACK_BUF_SZ - total_printed,
-                                    "\"%p\"", entries[ i ].value.p );
-            else
-                printed = snprintf( &buf[ total_printed ], HACK_BUF_SZ - total_printed, "null" );
-            break;
-        default:
-            fprintf( stderr, "WHAT????\n" );
-            exit( 1 );
-        }
-        total_printed += printed;
-    }
-    if( f )
-    {
-        fprintf( stderr, "%s, \"fname\": \"", buf );
-        f( d );
-        fprintf( stderr, "\" }\n" );
-    }
-    else
-    {
-        printed = snprintf( &buf[ total_printed ], HACK_BUF_SZ - total_printed, "}\n" );
-        fprintf( stderr, "%s", buf );
-    }
-}
-
-void name_printer( void *d )
-{
-    Handle<JSFunction> microtask_function = *((Handle<JSFunction> *)d);
-    microtask_function->PrintName( stderr );
-}
-
-#if 0
-void printJsonObject( int n, int micro, struct json_hack *entries )
-{
-    fprintf( stderr, "{ \"pid\": %d, ", getpid() );
-
-    if( __builtin_available( macos 10.12, * ) )
-    {
-        struct timespec ts;
-        int rc = clock_gettime( CLOCK_MONOTONIC, &ts );
-        if( rc )
-        {
-            fprintf( stderr, "WHAT2????\n" );
-            exit( 1 );
-        }
-        long t = ts.tv_sec;
-        t *= 1000000;
-        t += ts.tv_nsec / 1000;
-        fprintf( stderr, "\"ts\": %ld, ", t );
-    }
-
-    fprintf( stderr, "\"micro\": %s", micro ? "true" : "false" );
-    int i;
-    for( i = 0; i < n; ++i )
-    {
-        fprintf( stderr, ", \"%s\": ", entries[ i ].name );
-        switch( entries[ i ].kind )
-        {
-        case 0: fprintf( stderr, "\"%s\"", entries[ i ].value.s ? entries[ i ].value.s : "" ); break;
-        case 1: fprintf( stderr, "%f",     entries[ i ].value.d ); break;
-        case 4: fprintf( stderr, "true" ); break;
-        case 5: fprintf( stderr, "false" ); break;
-        case 6: fprintf( stderr, "null" ); break;
-        case 7: fprintf( stderr, "\"%p\"", entries[ i ].value.p ); break;
-        default: fprintf( stderr, "WRONG KIND WHAT????\n" ); exit( 1 );
-        }
-    }
-    fprintf( stderr, "}\n" );
-}
-#endif
-
-void microTaskDesc( Handle<Object> m, char *b )
-{
-    b[ 0 ] = m->IsCallHandlerInfo()               ? 'A' : 'a';
-    b[ 1 ] = m->IsJSFunction()                    ? 'B' : 'b';
-    b[ 2 ] = m->IsPromiseResolveThenableJobInfo() ? 'C' : 'c';
-    b[ 3 ] = 0;
-}
-
 void Isolate::EnqueueMicrotask(Handle<Object> microtask) {
   DCHECK(microtask->IsJSFunction() || microtask->IsCallHandlerInfo() ||
          microtask->IsPromiseResolveThenableJobInfo() ||
@@ -3655,13 +3614,14 @@ void Isolate::EnqueueMicrotask(Handle<Object> microtask) {
   queue->set(num_tasks, *microtask);
   set_pending_microtask_count(num_tasks + 1);
 
+  /* BEGIN CHARCOAL */
   char d[ 16 ];
   microTaskDesc( microtask, d );
   json_hack vs[ 10 ];
-  vs[ 0 ] = json_hack_cons( "phase",     0, { .s = "enq" } );
-  vs[ 1 ] = json_hack_cons( "props",     0, { .s = d } );
-  vs[ 2 ] = json_hack_cons( "num_tasks", 1, { .d = num_tasks } );
-  printJsonObject( 3, vs, 0, 0 );
+  vs[ 0 ] = json_hack_cons( "props",     0, { .s = d } );
+  vs[ 1 ] = json_hack_cons( "num_tasks", 1, { .d = num_tasks } );
+  printJsonObjectI( "micro", "enq", 2, vs, 0, 0 );
+  /* END CHARCOAL */
 }
 
 
@@ -3700,11 +3660,12 @@ void Isolate::RunMicrotasksInternal() {
             v8::ToCData<v8::MicrotaskCallback>(callback_info->callback());
         void* data = v8::ToCData<void*>(callback_info->data());
 
+        /* BEGIN CHARCOAL */
         json_hack vs[ 10 ];
-        vs[ 0 ] = json_hack_cons( "phase"    , 0, { .s = "start" } );
-        vs[ 1 ] = json_hack_cons( "callback" , 4, { .i = 1 } );
-        vs[ 2 ] = json_hack_cons( "num_tasks", 1, { .d = num_tasks } );
-        printJsonObject( 3, vs, 0, 0 );
+        vs[ 0 ] = json_hack_cons( "callback" , 4, { .i = 1 } );
+        vs[ 1 ] = json_hack_cons( "num_tasks", 1, { .d = num_tasks } );
+        printJsonObjectI( "micro", "start", 2, vs, 0, 0 );
+        /* END CHARCOAL */
 
         callback(data);
       } else {
@@ -3730,33 +3691,36 @@ void Isolate::RunMicrotasksInternal() {
           Handle<JSFunction> microtask_function =
               Handle<JSFunction>::cast(microtask);
 
+          /* BEGIN CHARCOAL */
           json_hack vs[ 10 ];
-          vs[ 0 ] = json_hack_cons( "phase",     0, { .s = "start" } );
-          vs[ 1 ] = json_hack_cons( "jsfun",     4, { .i = 1 } );
-          vs[ 2 ] = json_hack_cons( "num_tasks", 1, { .d = num_tasks } );
-          printJsonObject( 3, vs, name_printer, &microtask_function );
+          vs[ 0 ] = json_hack_cons( "jsfun",     4, { .i = 1 } );
+          vs[ 1 ] = json_hack_cons( "num_tasks", 1, { .d = num_tasks } );
+          printJsonObjectI( "micro", "start", 2, vs, name_printer, &microtask_function );
+          /* END CHARCOAL */
 
           result = Execution::TryCall(
               this, microtask_function, factory()->undefined_value(), 0,
               nullptr, Execution::MessageHandling::kReport, &maybe_exception);
         } else if (microtask->IsPromiseResolveThenableJobInfo()) {
 
+          /* BEGIN CHARCOAL */
           json_hack vs[ 10 ];
-          vs[ 0 ] = json_hack_cons( "phase",           0, { .s = "start" } );
-          vs[ 1 ] = json_hack_cons( "promise_resolve", 4, { .i = 1 } );
-          vs[ 2 ] = json_hack_cons( "num_tasks",       1, { .d = num_tasks } );
-          printJsonObject( 3, vs, 0, 0 );
+          vs[ 0 ] = json_hack_cons( "promise_resolve", 4, { .i = 1 } );
+          vs[ 1 ] = json_hack_cons( "num_tasks",       1, { .d = num_tasks } );
+          printJsonObjectI( "micro", "start", 2, vs, 0, 0 );
+          /* END CHARCOAL */
 
           PromiseResolveThenableJob(
               Handle<PromiseResolveThenableJobInfo>::cast(microtask), &result,
               &maybe_exception);
         } else {
 
+          /* BEGIN CHARCOAL */
           json_hack vs[ 10 ];
-          vs[ 0 ] = json_hack_cons( "phase",         0, { .s = "start" } );
-          vs[ 1 ] = json_hack_cons( "promise_react", 4, { .i = 1 } );
-          vs[ 2 ] = json_hack_cons( "num_tasks",     1, { .d = num_tasks } );
-          printJsonObject( 3, vs, 0, 0 );
+          vs[ 0 ] = json_hack_cons( "promise_react", 4, { .i = 1 } );
+          vs[ 1 ] = json_hack_cons( "num_tasks",     1, { .d = num_tasks } );
+          printJsonObjectI( "micro", "start", 2, vs, 0, 0 );
+          /* END CHARCOAL */
 
           PromiseReactionJob(Handle<PromiseReactionJobInfo>::cast(microtask),
                              &result, &maybe_exception);
@@ -3770,18 +3734,21 @@ void Isolate::RunMicrotasksInternal() {
           heap()->set_microtask_queue(heap()->empty_fixed_array());
           set_pending_microtask_count(0);
 
+          /* BEGIN CHARCOAL */
           json_hack vs[ 10 ];
-          vs[ 0 ] = json_hack_cons( "phase",     0, { .s = "stop" } );
-          vs[ 1 ] = json_hack_cons( "num_tasks", 1, { .d = num_tasks } );
-          printJsonObject( 2, vs, 0, 0 );
+          vs[ 0 ] = json_hack_cons( "num_tasks", 1, { .d = num_tasks } );
+          printJsonObjectI( "micro", "done", 1, vs, 0, 0 );
+          /* END CHARCOAL */
+
           return;
         }
       }
 
+      /* BEGIN CHARCOAL */
       json_hack vs[ 10 ];
-      vs[ 0 ] = json_hack_cons( "phase",     0, { .s = "stop" } );
-      vs[ 1 ] = json_hack_cons( "num_tasks", 1, { .d = num_tasks } );
-      printJsonObject( 2, vs, 0, 0 );
+      vs[ 0 ] = json_hack_cons( "num_tasks", 1, { .d = num_tasks } );
+      printJsonObjectI( "micro", "done", 1, vs, 0, 0 );
+      /* END CHARCOAL */
     });
   }
 }

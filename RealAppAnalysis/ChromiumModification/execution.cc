@@ -13,10 +13,7 @@
 #include "src/runtime-profiler.h"
 #include "src/vm-state-inl.h"
 
-namespace v8 {
-namespace internal {
-
-
+/* BEGIN CHARCOAL */
 union uawful {
     double d;
     const char *s;
@@ -40,9 +37,13 @@ struct json_hack json_hack_cons( const char * name, char kind, union uawful valu
     return x;
 }
 
-void printJsonObject( int n, struct json_hack *entries, void f( void * ), void *d );
-void name_printer( void *d );
+void printJsonObjectI( const char *source, const char *phase,
+                       int n, struct json_hack *entries, void f( FILE *, void * ), void *d );
+void name_printer( FILE *f, void *d );
+/* END CHARCOAL */
 
+namespace v8 {
+namespace internal {
 
 StackGuard::StackGuard()
     : isolate_(NULL) {
@@ -100,6 +101,13 @@ MUST_USE_RESULT MaybeHandle<Object> Invoke(
     if (message_handling == Execution::MessageHandling::kReport) {
       isolate->ReportPendingMessages();
     }
+
+    /* BEGIN CHARCOAL */
+    json_hack vs[ 10 ];
+    // vs[ 0 ] = json_hack_cons( "phase", 0, { .s = "overflow" } );
+    printJsonObjectI( "exec", "overflow", 0, vs, 0, 0 );
+    /* END CHARCOAL */
+
     return MaybeHandle<Object>();
   }
 #endif
@@ -108,10 +116,12 @@ MUST_USE_RESULT MaybeHandle<Object> Invoke(
   if (target->IsJSFunction()) {
     Handle<JSFunction> function = Handle<JSFunction>::cast(target);
 
-
+    /* BEGIN CHARCOAL */
     json_hack vs[ 10 ];
-    vs[ 0 ] = json_hack_cons( "invoke", 4, { .i = 1 } );
-    printJsonObject( 1, vs, name_printer, &function );
+    vs[ 0 ] = json_hack_cons( "jsfun", 4, { .i = 1 } );
+    vs[ 1 ] = json_hack_cons( "ctx",   5, { .p = function->context() } );
+    printJsonObjectI( "exec", "enter", 2, vs, name_printer, &function );
+    /* END CHARCOAL */
 
     if ((!is_construct || function->IsConstructor()) &&
         function->shared()->IsApiFunction()) {
@@ -128,15 +138,28 @@ MUST_USE_RESULT MaybeHandle<Object> Invoke(
         if (message_handling == Execution::MessageHandling::kReport) {
           isolate->ReportPendingMessages();
         }
+
+        /* BEGIN CHARCOAL */
+        json_hack vs[ 10 ];
+        vs[ 0 ] = json_hack_cons( "ctor", 4, { .i = 1 } );
+        vs[ 1 ] = json_hack_cons( "has_exn", 4, { .i = 1 } );
+        printJsonObjectI( "exec", "exit", 2, vs, name_printer, &function );
+        /* END CHARCOAL */
+
         return MaybeHandle<Object>();
       } else {
         isolate->clear_pending_message();
       }
+
+      /* BEGIN CHARCOAL */
+      json_hack vs[ 10 ];
+      vs[ 0 ] = json_hack_cons( "ctor", 4, { .i = 1 } );
+      vs[ 1 ] = json_hack_cons( "has_exn", 4, { .i = 0 } );
+      printJsonObjectI( "exec", "exit", 2, vs, name_printer, &function );
+      /* END CHARCOAL */
+
       return value;
     }
-  }
-  else {
-    fprintf( stderr, "InvokeNotFunction\n" );
   }
 
   // Entering JavaScript.
@@ -147,6 +170,13 @@ MUST_USE_RESULT MaybeHandle<Object> Invoke(
     if (message_handling == Execution::MessageHandling::kReport) {
       isolate->ReportPendingMessages();
     }
+
+    /* BEGIN CHARCOAL */
+    json_hack vs[ 10 ];
+    vs[ 0 ] = json_hack_cons( "throwOnAllowed", 4, { .i = 1 } );
+    printJsonObjectI( "exec", "exit", 1, vs, 0, 0 );
+    /* END CHARCOAL */
+
     return MaybeHandle<Object>();
   }
 
@@ -196,10 +226,23 @@ MUST_USE_RESULT MaybeHandle<Object> Invoke(
     if (message_handling == Execution::MessageHandling::kReport) {
       isolate->ReportPendingMessages();
     }
+
+    /* BEGIN CHARCOAL */
+    json_hack vs[ 10 ];
+    vs[ 0 ] = json_hack_cons( "has_exn", 4, { .i = 1 } );
+    printJsonObjectI( "exec", "exit", 1, vs, 0, 0 );
+    /* END CHARCOAL */
+
     return MaybeHandle<Object>();
   } else {
     isolate->clear_pending_message();
   }
+
+  /* BEGIN CHARCOAL */
+  json_hack vs[ 10 ];
+  vs[ 0 ] = json_hack_cons( "has_exn", 4, { .i = 0 } );
+  printJsonObjectI( "exec", "exit", 1, vs, 0, 0 );
+  /* END CHARCOAL */
 
   return Handle<Object>(value, isolate);
 }
@@ -211,7 +254,6 @@ MaybeHandle<Object> CallInternal(Isolate* isolate, Handle<Object> callable,
   // Convert calls on global objects to be calls on the global
   // receiver instead to avoid having a 'this' pointer which refers
   // directly to a global object.
-  fprintf( stderr, "CallInternal!!!!!\n" );
   if (receiver->IsJSGlobalObject()) {
     receiver =
         handle(Handle<JSGlobalObject>::cast(receiver)->global_proxy(), isolate);
@@ -256,7 +298,6 @@ MaybeHandle<Object> Execution::TryCall(Isolate* isolate,
   bool is_termination = false;
   MaybeHandle<Object> maybe_result;
   if (exception_out != NULL) *exception_out = MaybeHandle<Object>();
-  fprintf( stderr, "TryCall!!!!!\n" );
   DCHECK_IMPLIES(message_handling == MessageHandling::kKeepPending,
                  exception_out == nullptr);
   // Enter a try-block while executing the JavaScript code. To avoid

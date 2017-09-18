@@ -47,8 +47,9 @@
 #include "platform/instrumentation/tracing/TraceEvent.h"
 #include "platform/loader/fetch/FetchInitiatorInfo.h"
 
-namespace blink {
-namespace probe {
+/* BEGIN CHARCOAL */
+
+// extern const char *CHARCOAL_BLAH;
 
 struct json_hack {
     const char * name;
@@ -69,85 +70,83 @@ struct json_hack {
 
 #define HACK_BUF_SZ 10000
 
-void printJsonObject( int n, struct json_hack *entries )
+#define P(...) \
+    do { \
+        printed = snprintf( &buf[ total_printed ], HACK_BUF_SZ - total_printed, __VA_ARGS__ ); \
+        total_printed += printed; \
+    } while( 0 )
+
+void printJsonObject( const char *phase, const void *task, int n, struct json_hack *entries )
 {
-    char buf[ HACK_BUF_SZ ];
-    int total_printed = 0;
-    int printed = snprintf( &buf[ total_printed ], HACK_BUF_SZ - total_printed,
-                            "{ \"pid\": %u, ", getpid() );
-    total_printed += printed;
-
-    printed = snprintf( &buf[ total_printed ], HACK_BUF_SZ - total_printed,
-                            "\"tid\": %u, ", base::PlatformThread::CurrentId() );
-    total_printed += printed;
-
-#if 0
-    if( __builtin_available( macos 10.12, * ) )
+    static FILE *f = NULL;
+    static pid_t old_pid = 0;
+    pid_t pid = getpid();
+    if( old_pid != pid )
     {
-        struct timespec ts;
-        int rc = clock_gettime( CLOCK_MONOTONIC, &ts );
-        if( rc )
+        char fname[ 100 ];
+        sprintf( fname, "./Traces/pc_%u.XXXXXX", pid );
+        if( !mktemp( fname ) )
         {
-            fprintf( stderr, "WHAT2????\n" );
+            fprintf( stderr, "mktemp FAILED!!!!" );
             exit( 1 );
         }
-        long t = ts.tv_sec;
-        t *= 1000000;
-        t += ts.tv_nsec / 1000;
-        printed = snprintf( &buf[ total_printed ], HACK_BUF_SZ - total_printed,
-                            "\"ts\": %ld, ", t );
-        total_printed += printed;
+        f = fopen( fname, "w" );
+        fprintf( stderr, "CoreProbes.cpp %p %s\n", f, fname );
+        if( !f )
+            f = stderr;
     }
-#else
-    TimeTicks *zero = new TimeTicks();
-    printed = snprintf( &buf[ total_printed ], HACK_BUF_SZ - total_printed,
-                        "\"ts\": %lld, ", ( TimeTicks::Now() - *zero ).InMicroseconds() );
-    total_printed += printed;
-#endif
+    old_pid = pid;
 
-    printed = snprintf( &buf[ total_printed ], HACK_BUF_SZ - total_printed,
-                        "\"micro\": false" );
-    total_printed += printed;
+    char buf[ HACK_BUF_SZ ];
+    int total_printed = 0;
+    int printed;
+
+    // P( "%s", CHARCOAL_BLAH );
+    P( "[ " );
+    P( "%lld, ", ( TimeTicks::Now() - *( new TimeTicks() ) ).InMicroseconds() );
+    P( "%u, ", pid );
+    P( "%u, ", base::PlatformThread::CurrentId() );
+    P( "\"macro\", " );
+    if( task )
+        P( "\"%p\", ", task );
+    else
+        P( "null, " );
+    P( "\"%s\", { ", phase );
+
     int i;
     for( i = 0; i < n; ++i )
     {
-        printed = snprintf( &buf[ total_printed ], HACK_BUF_SZ - total_printed,
-                            ", \"%s\": ", entries[ i ].name );
-        total_printed += printed;
+        if( i > 0 )
+            P( ", " );
+
+        P( "\"%s\": ", entries[ i ].name );
         switch( entries[ i ].kind )
         {
         case 0:
-            printed = snprintf( &buf[ total_printed ], HACK_BUF_SZ - total_printed,
-                                "\"%s\"", entries[ i ].value.s ? entries[ i ].value.s : "" );
+            P( "\"%s\"", entries[ i ].value.s ? entries[ i ].value.s : "" );
             break;
         case 1:
-            printed = snprintf( &buf[ total_printed ], HACK_BUF_SZ - total_printed,
-                                "%f",     entries[ i ].value.d );
+            P( "%f",     entries[ i ].value.d );
             break;
         case 4:
-            if( entries[ i ].value.i )
-                printed = snprintf( &buf[ total_printed ], HACK_BUF_SZ - total_printed, "true" );
-            else
-                printed = snprintf( &buf[ total_printed ], HACK_BUF_SZ - total_printed, "false" );
+            P( entries[ i ].value.i ? "true" : "false" );
             break;
         case 5:
             if( entries[ i ].value.p )
-                printed = snprintf( &buf[ total_printed ], HACK_BUF_SZ - total_printed,
-                                    "\"%p\"", entries[ i ].value.p );
+                P( "\"%p\"", entries[ i ].value.p );
             else
-                printed = snprintf( &buf[ total_printed ], HACK_BUF_SZ - total_printed, "null" );
+                P( "null" );
             break;
         default:
             fprintf( stderr, "WHAT????\n" );
             exit( 1 );
         }
-        total_printed += printed;
     }
-    printed = snprintf( &buf[ total_printed ], HACK_BUF_SZ - total_printed, "}\n" );
-    fprintf( stderr, "%s", buf );
+    P( " } ]\n" );
+    fprintf( f, "%s", buf );
 }
 
-void ctxDesc( ExecutionContext *c, char *b )
+void ctxDesc( blink::ExecutionContext *c, char *b )
 {
     if( !c )
     {
@@ -171,6 +170,10 @@ void ctxDesc( ExecutionContext *c, char *b )
     b[ 14 ] = c->IsContextThread()                ? 'O' : 'o';
     b[ 15 ] = 0;
 }
+/* END CHARCOAL */
+
+namespace blink {
+namespace probe {
 
 AsyncTask::AsyncTask(ExecutionContext* context,
                      void* task,
@@ -187,33 +190,29 @@ AsyncTask::AsyncTask(ExecutionContext* context,
     TRACE_EVENT_FLOW_END0("devtools.timeline.async", "AsyncTask",
                           TRACE_ID_LOCAL(reinterpret_cast<uintptr_t>(task)));
   }
+
+  /* BEGIN CHARCOAL */
   char d[ 16 ];
   ctxDesc( context, d );
+  // d[ 0 ] = 0;
   json_hack vs[ 10 ];
-  vs[ 0 ] = { "phase",    0, { .s = "started" } };
-  vs[ 1 ] = { "ctx",      0, { .s = d } };
-  vs[ 2 ] = { "task_ptr", 5, { .p = task } };
-  vs[ 3 ] = { "ctx_ptr",  5, { .p = context } };
-  vs[ 4 ] = { "step",     0, { .s = step } };
-  printJsonObject( 5, vs );
+  vs[ 0 ] = { "ctx",      0, { .s = d } };
+  vs[ 1 ] = { "ctx_ptr",  5, { .p = context } };
+  vs[ 2 ] = { "step",     0, { .s = step } };
+  printJsonObject( "ctor", task, 3, vs );
+  /* END CHARCOAL */
+
   if (debugger_)
     debugger_->AsyncTaskStarted(task_);
 }
 
 AsyncTask::~AsyncTask() {
 
+  /* BEGIN CHARCOAL */
   json_hack vs[ 10 ];
-  vs[ 0 ] = { "phase",     0, { .s = "finished" } };
-  vs[ 1 ] = { "task_ptr",  5, { .p = task_ } };
-  vs[ 2 ] = { "recurring", 4, { .i = !!recurring_ } };
-  printJsonObject( 3, vs );
-  if (!recurring_)
-  {
-      vs[ 0 ] = { "phase",     0, { .s = "canceled" } };
-      vs[ 1 ] = { "task_ptr",  5, { .p = task_ } };
-      vs[ 2 ] = { "recurring", 4, { .i = !!recurring_ } };
-      printJsonObject( 3, vs );
-  }
+  vs[ 0 ] = { "recurring", 4, { .i = !!recurring_ } };
+  printJsonObject( "dtor", task_, 1, vs );
+  /* END CHARCOAL */
 
   if (debugger_) {
     debugger_->AsyncTaskFinished(task_);
@@ -229,17 +228,17 @@ void AsyncTaskScheduled(ExecutionContext* context,
                           TRACE_ID_LOCAL(reinterpret_cast<uintptr_t>(task)),
                           "data", InspectorAsyncTask::Data(name));
 
+  /* BEGIN CHARCOAL */
   char d[ 16 ];
   ctxDesc( context, d );
   char dumb[ 1000 ];
   strlcpy( dumb, name.Utf8().data(), 1000 );
   json_hack vs[ 10 ];
-  vs[ 0 ] = { "phase",    0, { .s = "scheduled" } };
-  vs[ 1 ] = { "ctx",      0, { .s = d } };
-  vs[ 2 ] = { "task_ptr", 5, { .p = task } };
-  vs[ 3 ] = { "ctx_ptr",  5, { .p = context } };
-  vs[ 4 ] = { "name",     0, { .s = dumb } };
-  printJsonObject( 5, vs );
+  vs[ 0 ] = { "ctx",      0, { .s = d } };
+  vs[ 1 ] = { "ctx_ptr",  5, { .p = context } };
+  vs[ 2 ] = { "name",     0, { .s = dumb } };
+  printJsonObject( "scheduled", task, 3, vs );
+  /* END CHARCOAL */
 
   if (ThreadDebugger* debugger = ThreadDebugger::From(ToIsolate(context)))
     debugger->AsyncTaskScheduled(name, task, true);
@@ -254,14 +253,14 @@ void AsyncTaskScheduledBreakable(ExecutionContext* context,
 
 void AsyncTaskCanceled(ExecutionContext* context, void* task) {
 
+  /* BEGIN CHARCOAL */
   char d[ 16 ];
   ctxDesc( context, d );
   json_hack vs[ 10 ];
-  vs[ 0 ] = { "phase",    0, { .s = "canceled" } };
-  vs[ 1 ] = { "ctx",      0, { .s = d } };
-  vs[ 2 ] = { "task_ptr", 5, { .p = task } };
-  vs[ 3 ] = { "ctx_ptr",  5, { .p = context } };
-  printJsonObject( 4, vs );
+  vs[ 0 ] = { "ctx",      0, { .s = d } };
+  vs[ 1 ] = { "ctx_ptr",  5, { .p = context } };
+  printJsonObject( "canceled", task, 2, vs );
+  /* END CHARCOAL */
 
   if (ThreadDebugger* debugger = ThreadDebugger::From(ToIsolate(context)))
     debugger->AsyncTaskCanceled(task);
@@ -277,13 +276,16 @@ void AsyncTaskCanceledBreakable(ExecutionContext* context,
 }
 
 void AllAsyncTasksCanceled(ExecutionContext* context) {
+
+  /* BEGIN CHARCOAL */
   char d[ 16 ];
   ctxDesc( context, d );
   json_hack vs[ 10 ];
-  vs[ 0 ] = { "phase",    0, { .s = "all_canceled" } };
-  vs[ 1 ] = { "ctx",      0, { .s = d } };
-  vs[ 2 ] = { "ctx_ptr",  5, { .p = context } };
-  printJsonObject( 3, vs );
+  vs[ 0 ] = { "ctx",      0, { .s = d } };
+  vs[ 1 ] = { "ctx_ptr",  5, { .p = context } };
+  printJsonObject( "all_canceled", NULL, 2, vs );
+  /* END CHARCOAL */
+
   if (ThreadDebugger* debugger = ThreadDebugger::From(ToIsolate(context)))
     debugger->AllAsyncTasksCanceled();
 }
