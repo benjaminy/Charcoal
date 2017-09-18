@@ -31,4 +31,4 @@ fi
 
 cd ${CHROMIUM_REPO}
 pwd
-ninja -C out/Default chrome
+time ninja -C out/Default chrome
