@@ -9,26 +9,36 @@ var e;
 
 var CHARCOAL_BEGIN_RECORDING_TRACE = function ()
 {
-    console.log( "begin" );
+    console.log( "Event Recorder Begin" );
     // alert( "begin" );
     b.className = "hidden";
     e.className = "visible";
+    chrome.storage.sync.set( { on: true } );
 };
 
 var CHARCOAL_END_RECORDING_TRACE = function ()
 {
-    console.log( "end" );
+    console.log( "Event Recorder End" );
     // alert( "end" );
     e.className = "hidden";
     b.className = "visible";
+    chrome.storage.sync.set( { on: false } );
 };
 
 document.addEventListener( "DOMContentLoaded", () => {
-    console.log( "yay" );
-    // alert( "yay" );
+    chrome.storage.sync.get( "on", ( items ) => {
+        console.log( "Event Recorder Loaded" );
+        // alert( "yay" );
 
-    b = document.getElementById( "recording_off" );
-    e = document.getElementById( "recording_on" );
-    b.addEventListener( "click", CHARCOAL_BEGIN_RECORDING_TRACE );
-    e.addEventListener( "click", CHARCOAL_END_RECORDING_TRACE );
+        b = document.getElementById( "recording_off" );
+        e = document.getElementById( "recording_on" );
+        b.addEventListener( "click", CHARCOAL_BEGIN_RECORDING_TRACE );
+        e.addEventListener( "click", CHARCOAL_END_RECORDING_TRACE );
+
+        if( ( !chrome.runtime.lastError ) && items.on )
+        {
+            b.className = "hidden";
+            e.className = "visible";
+        }
+    } );
 } );
