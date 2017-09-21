@@ -19,7 +19,8 @@ def merge( basepath ):
                     trace.append( j )
                 except:
                     pass
-        traces.append( trace )
+        if len( trace ) > 0:
+            traces.append( trace )
 
     merged = []
 
