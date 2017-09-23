@@ -7,29 +7,23 @@
 var b;
 var e;
 
-var CHARCOAL_BEGIN_RECORDING_TRACE = function ()
+var CHARCOAL_BEGIN_RECORDING_TRACE = function()
 {
     console.log( "Event Recorder Begin" );
-    // alert( "begin" );
     b.className = "hidden";
     e.className = "visible";
     chrome.storage.sync.set( { on: true } );
 };
 
-var CHARCOAL_END_RECORDING_TRACE = function ()
+var CHARCOAL_END_RECORDING_TRACE = function()
 {
     console.log( "Event Recorder End" );
-    // alert( "end" );
     e.className = "hidden";
     b.className = "visible";
     chrome.storage.sync.set( { on: false } );
 };
 
 document.addEventListener( "DOMContentLoaded", () => {
-    console.log( "WOOOO" );
-    console.log( Object.keys( chrome ) );
-    console.log( Object.keys( chrome.processes ) );
-
     chrome.storage.sync.get( "on", ( items ) => {
         console.log( "Event Recorder Loaded" );
         // alert( "yay" );
