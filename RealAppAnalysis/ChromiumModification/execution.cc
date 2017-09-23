@@ -38,7 +38,8 @@ struct json_hack json_hack_cons( const char * name, char kind, union uawful valu
 }
 
 void printJsonObjectI( const char *source, const char *phase,
-                       int n, struct json_hack *entries, void f( FILE *, void * ), void *d );
+                       struct json_hack *entries, void f( FILE *, void * ), void *d );
+void ctxDesc( v8::internal::Context *c, char *b );
 void name_printer( FILE *f, void *d );
 /* END CHARCOAL */
 
@@ -103,9 +104,11 @@ MUST_USE_RESULT MaybeHandle<Object> Invoke(
     }
 
     /* BEGIN CHARCOAL */
-    json_hack vs[ 10 ];
+    json_hack vs[] = {
+        json_hack_cons( 0, 0, { .i = 0 } );
+    };
     // vs[ 0 ] = json_hack_cons( "phase", 0, { .s = "overflow" } );
-    printJsonObjectI( "exec", "overflow", 0, vs, 0, 0 );
+    printJsonObjectI( "exec", "overflow", vs, 0, 0 );
     /* END CHARCOAL */
 
     return MaybeHandle<Object>();
@@ -117,10 +120,14 @@ MUST_USE_RESULT MaybeHandle<Object> Invoke(
     Handle<JSFunction> function = Handle<JSFunction>::cast(target);
 
     /* BEGIN CHARCOAL */
-    json_hack vs[ 10 ];
-    vs[ 0 ] = json_hack_cons( "jsfun", 4, { .i = 1 } );
-    vs[ 1 ] = json_hack_cons( "ctx",   5, { .p = function->context() } );
-    printJsonObjectI( "exec", "enter", 2, vs, name_printer, &function );
+    char d[ 10 ];
+    ctxDesc( function->context(), d );
+    json_hack vs[] = {
+        json_hack_cons( "ctxdesc", 0, { .s = d } ),
+        json_hack_cons( "ctx",     5, { .p = function->context() } ),
+        json_hack_cons( 0, 0, { .i = 0 } )
+    };
+    printJsonObjectI( "exec", "enter_jsfun", vs, name_printer, &function );
     /* END CHARCOAL */
 
     if ((!is_construct || function->IsConstructor()) &&
@@ -140,10 +147,12 @@ MUST_USE_RESULT MaybeHandle<Object> Invoke(
         }
 
         /* BEGIN CHARCOAL */
-        json_hack vs[ 10 ];
-        vs[ 0 ] = json_hack_cons( "ctor", 4, { .i = 1 } );
-        vs[ 1 ] = json_hack_cons( "has_exn", 4, { .i = 1 } );
-        printJsonObjectI( "exec", "exit", 2, vs, name_printer, &function );
+        json_hack vs[] = {
+            json_hack_cons( "ctor", 4, { .i = 1 } ),
+            json_hack_cons( "has_exn", 4, { .i = 1 } ),
+            json_hack_cons( 0, 0, { .i = 0 } )
+        };
+        printJsonObjectI( "exec", "exit", vs, name_printer, &function );
         /* END CHARCOAL */
 
         return MaybeHandle<Object>();
@@ -152,15 +161,26 @@ MUST_USE_RESULT MaybeHandle<Object> Invoke(
       }
 
       /* BEGIN CHARCOAL */
-      json_hack vs[ 10 ];
-      vs[ 0 ] = json_hack_cons( "ctor", 4, { .i = 1 } );
-      vs[ 1 ] = json_hack_cons( "has_exn", 4, { .i = 0 } );
-      printJsonObjectI( "exec", "exit", 2, vs, name_printer, &function );
+      json_hack vs[] = {
+          json_hack_cons( "ctor", 4, { .i = 1 } ),
+          json_hack_cons( "has_exn", 4, { .i = 0 } ),
+          json_hack_cons( 0, 0, { .i = 0 } )
+      };
+      printJsonObjectI( "exec", "exit", vs, name_printer, &function );
       /* END CHARCOAL */
 
       return value;
     }
   }
+  /* BEGIN CHARCOAL */
+  else
+  {
+    json_hack vs[] = {
+        json_hack_cons( 0, 0, { .i = 0 } )
+    };
+    printJsonObjectI( "exec", "enter_non_fun", vs, 0, 0 );
+  }
+  /* END CHARCOAL */
 
   // Entering JavaScript.
   VMState<JS> state(isolate);
@@ -172,9 +192,11 @@ MUST_USE_RESULT MaybeHandle<Object> Invoke(
     }
 
     /* BEGIN CHARCOAL */
-    json_hack vs[ 10 ];
-    vs[ 0 ] = json_hack_cons( "throwOnAllowed", 4, { .i = 1 } );
-    printJsonObjectI( "exec", "exit", 1, vs, 0, 0 );
+    json_hack vs[] = {
+        json_hack_cons( "throwOnAllowed", 4, { .i = 1 } ),
+        json_hack_cons( 0, 0, { .i = 0 } )
+    };
+    printJsonObjectI( "exec", "exit", vs, 0, 0 );
     /* END CHARCOAL */
 
     return MaybeHandle<Object>();
@@ -228,9 +250,11 @@ MUST_USE_RESULT MaybeHandle<Object> Invoke(
     }
 
     /* BEGIN CHARCOAL */
-    json_hack vs[ 10 ];
-    vs[ 0 ] = json_hack_cons( "has_exn", 4, { .i = 1 } );
-    printJsonObjectI( "exec", "exit", 1, vs, 0, 0 );
+    json_hack vs[] = {
+        json_hack_cons( "has_exn", 4, { .i = 1 } ),
+        json_hack_cons( 0, 0, { .i = 0 } )
+    };
+    printJsonObjectI( "exec", "exit", vs, 0, 0 );
     /* END CHARCOAL */
 
     return MaybeHandle<Object>();
@@ -239,9 +263,11 @@ MUST_USE_RESULT MaybeHandle<Object> Invoke(
   }
 
   /* BEGIN CHARCOAL */
-  json_hack vs[ 10 ];
-  vs[ 0 ] = json_hack_cons( "has_exn", 4, { .i = 0 } );
-  printJsonObjectI( "exec", "exit", 1, vs, 0, 0 );
+  json_hack vs[] = {
+      json_hack_cons( "has_exn", 4, { .i = 0 } ),
+      json_hack_cons( 0, 0, { .i = 0 } )
+  };
+  printJsonObjectI( "exec", "exit", vs, 0, 0 );
   /* END CHARCOAL */
 
   return Handle<Object>(value, isolate);

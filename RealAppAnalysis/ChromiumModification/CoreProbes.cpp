@@ -58,15 +58,18 @@ struct json_hack {
        2 = object
        3 = array
        4 = bool
-       5 = ptr */
+       5 = ptr
+       6 = int */
     char kind;
     union {
         double d;
         const char *s;
-        void *p;
+        const void *p;
         int i;
     } value;
 };
+
+static FILE *dumb_file = NULL;
 
 #define HACK_BUF_SZ 10000
 
@@ -76,9 +79,17 @@ struct json_hack {
         total_printed += printed; \
     } while( 0 )
 
-void printJsonObject( const char *phase, const void *task, int n, struct json_hack *entries )
+void closeDumbFile()
 {
-    static FILE *f = NULL;
+    fprintf( stderr, "closeDumbFileC %p\n", dumb_file );
+    if( dumb_file && dumb_file != stderr )
+    {
+        fclose( dumb_file );
+    }
+}
+
+void printJsonObject( const char *phase, const void *task, struct json_hack *entries )
+{
     static pid_t old_pid = 0;
     pid_t pid = getpid();
     if( old_pid != pid )
@@ -90,10 +101,17 @@ void printJsonObject( const char *phase, const void *task, int n, struct json_ha
             fprintf( stderr, "mktemp FAILED!!!!" );
             exit( 1 );
         }
-        f = fopen( fname, "w" );
-        fprintf( stderr, "CoreProbes.cpp %p %s\n", f, fname );
-        if( !f )
-            f = stderr;
+        dumb_file = fopen( fname, "w" );
+        fprintf( stderr, "CoreProbes.cpp %p %s\n", dumb_file, fname );
+        if( dumb_file )
+        {
+            if( atexit( closeDumbFile ) )
+            {
+                fprintf( stderr, "atexit FAILED!!!!!\n" );
+            }
+        }
+        else
+            dumb_file = stderr;
     }
     old_pid = pid;
 
@@ -101,7 +119,6 @@ void printJsonObject( const char *phase, const void *task, int n, struct json_ha
     int total_printed = 0;
     int printed;
 
-    // P( "%s", CHARCOAL_BLAH );
     P( "[ " );
     P( "%lld, ", ( TimeTicks::Now() - *( new TimeTicks() ) ).InMicroseconds() );
     P( "%u, ", pid );
@@ -113,8 +130,8 @@ void printJsonObject( const char *phase, const void *task, int n, struct json_ha
         P( "null, " );
     P( "\"%s\", { ", phase );
 
-    int i;
-    for( i = 0; i < n; ++i )
+    int i = 0;
+    while( entries[ i ].name )
     {
         if( i > 0 )
             P( ", " );
@@ -126,10 +143,10 @@ void printJsonObject( const char *phase, const void *task, int n, struct json_ha
             P( "\"%s\"", entries[ i ].value.s ? entries[ i ].value.s : "" );
             break;
         case 1:
-            P( "%f",     entries[ i ].value.d );
+            P( "%f", entries[ i ].value.d );
             break;
         case 4:
-            P( entries[ i ].value.i ? "true" : "false" );
+            P( "%s", entries[ i ].value.i ? "true" : "false" );
             break;
         case 5:
             if( entries[ i ].value.p )
@@ -137,13 +154,18 @@ void printJsonObject( const char *phase, const void *task, int n, struct json_ha
             else
                 P( "null" );
             break;
+        case 6:
+            P( "%i", entries[ i ].value.i );
+            break;
         default:
-            fprintf( stderr, "WHAT????\n" );
+            fprintf( stderr, "CoreProbes.cpp BAD KIND: %i (%i)\n", entries[ i ].kind, i );
             exit( 1 );
         }
+        ++i;
     }
     P( " } ]\n" );
-    fprintf( f, "%s", buf );
+    fprintf( dumb_file, "%s", buf );
+    fflush( dumb_file );
 }
 
 void ctxDesc( blink::ExecutionContext *c, char *b )
@@ -195,11 +217,13 @@ AsyncTask::AsyncTask(ExecutionContext* context,
   char d[ 16 ];
   ctxDesc( context, d );
   // d[ 0 ] = 0;
-  json_hack vs[ 10 ];
-  vs[ 0 ] = { "ctx",      0, { .s = d } };
-  vs[ 1 ] = { "ctx_ptr",  5, { .p = context } };
-  vs[ 2 ] = { "step",     0, { .s = step } };
-  printJsonObject( "ctor", task, 3, vs );
+  json_hack vs[] = {
+      { "ctx",      0, { .s = d } },
+      { "ctx_ptr",  5, { .p = context } },
+      { "step",     0, { .s = step } },
+      { 0, 0, { .i = 0 } }
+  };
+  printJsonObject( "ctor", task, vs );
   /* END CHARCOAL */
 
   if (debugger_)
@@ -209,9 +233,11 @@ AsyncTask::AsyncTask(ExecutionContext* context,
 AsyncTask::~AsyncTask() {
 
   /* BEGIN CHARCOAL */
-  json_hack vs[ 10 ];
-  vs[ 0 ] = { "recurring", 4, { .i = !!recurring_ } };
-  printJsonObject( "dtor", task_, 1, vs );
+  json_hack vs[] = {
+      { "recurring", 4, { .i = !!recurring_ } },
+      { 0, 0, { .i = 0 } }
+  };
+  printJsonObject( "dtor", task_, vs );
   /* END CHARCOAL */
 
   if (debugger_) {
@@ -233,11 +259,13 @@ void AsyncTaskScheduled(ExecutionContext* context,
   ctxDesc( context, d );
   char dumb[ 1000 ];
   strlcpy( dumb, name.Utf8().data(), 1000 );
-  json_hack vs[ 10 ];
-  vs[ 0 ] = { "ctx",      0, { .s = d } };
-  vs[ 1 ] = { "ctx_ptr",  5, { .p = context } };
-  vs[ 2 ] = { "name",     0, { .s = dumb } };
-  printJsonObject( "scheduled", task, 3, vs );
+  json_hack vs[] = {
+      { "ctx",      0, { .s = d } },
+      { "ctx_ptr",  5, { .p = context } },
+      { "name",     0, { .s = dumb } },
+      { 0, 0, { .i = 0 } }
+  };
+  printJsonObject( "scheduled", task, vs );
   /* END CHARCOAL */
 
   if (ThreadDebugger* debugger = ThreadDebugger::From(ToIsolate(context)))
@@ -256,10 +284,12 @@ void AsyncTaskCanceled(ExecutionContext* context, void* task) {
   /* BEGIN CHARCOAL */
   char d[ 16 ];
   ctxDesc( context, d );
-  json_hack vs[ 10 ];
-  vs[ 0 ] = { "ctx",      0, { .s = d } };
-  vs[ 1 ] = { "ctx_ptr",  5, { .p = context } };
-  printJsonObject( "canceled", task, 2, vs );
+  json_hack vs[] = {
+      { "ctx",      0, { .s = d } },
+      { "ctx_ptr",  5, { .p = context } },
+      { 0, 0, { .i = 0 } }
+  };
+  printJsonObject( "canceled", task, vs );
   /* END CHARCOAL */
 
   if (ThreadDebugger* debugger = ThreadDebugger::From(ToIsolate(context)))
@@ -280,10 +310,12 @@ void AllAsyncTasksCanceled(ExecutionContext* context) {
   /* BEGIN CHARCOAL */
   char d[ 16 ];
   ctxDesc( context, d );
-  json_hack vs[ 10 ];
-  vs[ 0 ] = { "ctx",      0, { .s = d } };
-  vs[ 1 ] = { "ctx_ptr",  5, { .p = context } };
-  printJsonObject( "all_canceled", NULL, 2, vs );
+  json_hack vs[] = {
+      { "ctx",      0, { .s = d } },
+      { "ctx_ptr",  5, { .p = context } },
+      { 0, 0, { .i = 0 } }
+  };
+  printJsonObject( "all_canceled", NULL, vs );
   /* END CHARCOAL */
 
   if (ThreadDebugger* debugger = ThreadDebugger::From(ToIsolate(context)))
