@@ -26,6 +26,10 @@ var CHARCOAL_END_RECORDING_TRACE = function ()
 };
 
 document.addEventListener( "DOMContentLoaded", () => {
+    console.log( "WOOOO" );
+    console.log( Object.keys( chrome ) );
+    console.log( Object.keys( chrome.processes ) );
+
     chrome.storage.sync.get( "on", ( items ) => {
         console.log( "Event Recorder Loaded" );
         // alert( "yay" );
