@@ -9,5 +9,5 @@ CHROMIUM_REPO=$ROOT/chromium/src
 
 rm Traces/*
 
-${CHROMIUM_REPO}/out/Default/Chromium.app/Contents/MacOS/Chromium --no-sandbox
+${CHROMIUM_REPO}/out/Default/Chromium.app/Contents/MacOS/Chromium --no-sandbox 2> stderr.txt
 # ${CHROMIUM_REPO}/out/Default/Chromium.app/Contents/MacOS/Chromium
