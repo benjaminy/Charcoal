@@ -38,5 +38,9 @@ document.addEventListener( "DOMContentLoaded", () => {
             b.className = "hidden";
             e.className = "visible";
         }
+
+        chrome.tabs.getCurrent( ( current_tab ) => {
+            console.log( "!!!!!!!! "+ typeof( current_tab ) );
+        } );
     } );
 } );

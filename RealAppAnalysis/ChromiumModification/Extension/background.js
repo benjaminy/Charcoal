@@ -4,10 +4,10 @@
 
 var printProcess = function printProcess( process, prefix )
 {
-    console.log( prefix + " " + process.osProcessId + " " + process.type );
+    console.log( "CHARCOAL_PROCESS_INFO " + prefix + " " + process.osProcessId + " " + process.type );
 };
 
-var doIt = function()
+var main = function()
 {
     chrome.processes.getProcessInfo( [], false, ( processes ) => {
         console.log( "PROCESSES" );
@@ -21,4 +21,4 @@ var doIt = function()
     } );
 };
 
-doIt();
+main();
