@@ -11,12 +11,16 @@ def timestamp( trace_entry ):
     # print( "%s  --  %s --  %s" % ( trace_entry, rv, type( rv ) ) )
     return rv
 
-def merge( basepath ):
+def allFiles( basepath ):
+    paths = set()
+    for fname in os.listdir( basepath ):
+        paths.add( os.path.join( basepath, fname ) )
+    return paths
 
+def parseTraces( paths ):
     traces = []
 
-    for fname in os.listdir( basepath ):
-        path = os.path.join( basepath, fname )
+    for path in paths:
         trace = []
         with open( path ) as f:
             try:
@@ -46,6 +50,9 @@ def merge( basepath ):
         if len( trace ) > 0:
             traces.append( trace )
 
+    return traces
+
+def mergeTraces( traces ):
     merged = []
     print( "%d Traces" % ( len( traces ) ) )
     while len( traces ) > 0:
@@ -64,10 +71,15 @@ def merge( basepath ):
 
     return merged
 
+def mergeFiles( paths ):
+    return mergeTraces( parseTraces( paths ) )
+
 def test():
-    merged = merge( "Traces" )
+    merged = mergeTraces( parseTraces( allFiles( "Traces" ) ) )
     print( len( merged ) )
     for te in merged:
         print( te )
 
-test()
+if __name__ == "__main__":
+    # execute only if run as a script
+    test()
