@@ -3755,7 +3755,7 @@ void Isolate::RunMicrotasksInternal() {
           json_hack vs[ 2 ];
           vs[ 0 ] = json_hack_cons( "num_tasks", 6, { .i = num_tasks - i } );
           vs[ 1 ] = json_hack_cons( 0, 0, { .i = 0 } );
-          printJsonObjectI( "micro", "startpromise_resolve", vs, 0, 0 );
+          printJsonObjectI( "micro", "start_promise_resolve", vs, 0, 0 );
           /* END CHARCOAL */
 
           PromiseResolveThenableJob(
