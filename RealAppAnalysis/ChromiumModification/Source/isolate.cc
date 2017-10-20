@@ -3683,6 +3683,15 @@ void Isolate::RunMicrotasksInternal() {
   if (!pending_microtask_count()) return;
   TRACE_EVENT0("v8.execute", "RunMicrotasks");
   TRACE_EVENT_CALL_STATS_SCOPED(this, "v8", "V8.RunMicrotasks");
+
+  /* BEGIN CHARCOAL */
+  json_hack vs[] = {
+      vs[ 0 ] = json_hack_cons( "num_tasks", 6, { .i = pending_microtask_count() } ),
+      vs[ 1 ] = json_hack_cons( 0, 0, { .i = 0 } )
+  };
+  printJsonObjectI( "micro", "before_loop", vs, 0, 0 );
+  /* END CHARCOAL */
+
   while (pending_microtask_count() > 0) {
     HandleScope scope(this);
     int num_tasks = pending_microtask_count();
@@ -3787,6 +3796,9 @@ void Isolate::RunMicrotasksInternal() {
           vs[ 0 ] = json_hack_cons( "num_tasks", 6, { .i = num_tasks - i } );
           vs[ 1 ] = json_hack_cons( 0, 0, { .i = 0 } );
           printJsonObjectI( "micro", "done_bail", vs, 0, 0 );
+
+          vs[ 0 ] = json_hack_cons( 0, 0, { .i = 0 } );
+          printJsonObjectI( "micro", "after_loop", vs, 0, 0 );
           /* END CHARCOAL */
 
           return;
@@ -3801,6 +3813,12 @@ void Isolate::RunMicrotasksInternal() {
       /* END CHARCOAL */
     });
   }
+
+  /* BEGIN CHARCOAL */
+  vs[ 0 ] = json_hack_cons( 0, 0, { .i = 0 } );
+  printJsonObjectI( "micro", "after_loop", vs, 0, 0 );
+  /* END CHARCOAL */
+
 }
 
 
