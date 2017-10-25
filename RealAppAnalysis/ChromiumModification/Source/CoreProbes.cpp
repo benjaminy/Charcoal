@@ -90,6 +90,8 @@ void closeDumbFile()
 
 void printJsonObject( const char *phase, const void *task, struct json_hack *entries )
 {
+    if( 1 )
+        return;
     static pid_t old_pid = 0;
     pid_t pid = getpid();
     if( old_pid != pid )
@@ -108,6 +110,10 @@ void printJsonObject( const char *phase, const void *task, struct json_hack *ent
             if( atexit( closeDumbFile ) )
             {
                 fprintf( stderr, "atexit FAILED!!!!!\n" );
+            }
+            else
+            {
+                fprintf( stderr, "atexit SUCCESS!!!!!\n" );
             }
         }
         else
@@ -165,7 +171,7 @@ void printJsonObject( const char *phase, const void *task, struct json_hack *ent
     }
     P( " } ]\n" );
     fprintf( dumb_file, "%s", buf );
-    fflush( dumb_file );
+    // fflush( dumb_file );
 }
 
 void ctxDesc( blink::ExecutionContext *c, char *b )
