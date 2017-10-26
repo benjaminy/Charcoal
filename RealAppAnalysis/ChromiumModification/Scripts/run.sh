@@ -5,7 +5,7 @@
 #
 
 ROOT=/Volumes/WrongConnector/Chromium
-CHROMIUM_REPO=$ROOT/chromium/src
+CHROMIUM_REPO=$ROOT/chromium_release/src
 
 rm Traces/*
 

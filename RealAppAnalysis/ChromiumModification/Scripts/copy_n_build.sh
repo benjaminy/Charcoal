@@ -7,7 +7,7 @@
 # Change ROOT to be the directory/folder where the Chromium repo is installed
 
 ROOT=/Volumes/WrongConnector/Chromium
-CHROMIUM_REPO=$ROOT/chromium/src
+CHROMIUM_REPO=$ROOT/chromium_release/src
 V8_SRC=${CHROMIUM_REPO}/v8/src
 
 PATH=$PATH:$ROOT/depot_tools
@@ -16,7 +16,7 @@ echo $PATH
 diff Source/CoreProbes.cpp ${CHROMIUM_REPO}/third_party/WebKit/Source/core/probe/CoreProbes.cpp
 if [ $? -ne 0 ]; then
     echo "CoreProbes.cpp different!";
-    cp Sourse/CoreProbes.cpp ${CHROMIUM_REPO}/third_party/WebKit/Source/core/probe/
+    cp Source/CoreProbes.cpp ${CHROMIUM_REPO}/third_party/WebKit/Source/core/probe/
 fi
 
 diff Source/isolate.cc ${V8_SRC}/isolate.cc

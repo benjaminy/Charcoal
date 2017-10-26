@@ -98,10 +98,6 @@ MUST_USE_RESULT MaybeHandle<Object> Invoke(
   // there. Add a check here to make that less likely.
   StackLimitCheck check(isolate);
   if (check.HasOverflowed()) {
-    isolate->StackOverflow();
-    if (message_handling == Execution::MessageHandling::kReport) {
-      isolate->ReportPendingMessages();
-    }
 
     /* BEGIN CHARCOAL */
     json_hack vs[] = {
@@ -111,6 +107,10 @@ MUST_USE_RESULT MaybeHandle<Object> Invoke(
     printJsonObjectI( "exec", "overflow", vs, 0, 0 );
     /* END CHARCOAL */
 
+    isolate->StackOverflow();
+    if (message_handling == Execution::MessageHandling::kReport) {
+      isolate->ReportPendingMessages();
+    }
     return MaybeHandle<Object>();
   }
 #endif
@@ -142,9 +142,6 @@ MUST_USE_RESULT MaybeHandle<Object> Invoke(
       bool has_exception = value.is_null();
       DCHECK(has_exception == isolate->has_pending_exception());
       if (has_exception) {
-        if (message_handling == Execution::MessageHandling::kReport) {
-          isolate->ReportPendingMessages();
-        }
 
         /* BEGIN CHARCOAL */
         json_hack vs[] = {
@@ -155,6 +152,9 @@ MUST_USE_RESULT MaybeHandle<Object> Invoke(
         printJsonObjectI( "exec", "exit", vs, name_printer, &function );
         /* END CHARCOAL */
 
+        if (message_handling == Execution::MessageHandling::kReport) {
+          isolate->ReportPendingMessages();
+        }
         return MaybeHandle<Object>();
       } else {
         isolate->clear_pending_message();
@@ -186,10 +186,6 @@ MUST_USE_RESULT MaybeHandle<Object> Invoke(
   VMState<JS> state(isolate);
   CHECK(AllowJavascriptExecution::IsAllowed(isolate));
   if (!ThrowOnJavascriptExecution::IsAllowed(isolate)) {
-    isolate->ThrowIllegalOperation();
-    if (message_handling == Execution::MessageHandling::kReport) {
-      isolate->ReportPendingMessages();
-    }
 
     /* BEGIN CHARCOAL */
     json_hack vs[] = {
@@ -199,6 +195,10 @@ MUST_USE_RESULT MaybeHandle<Object> Invoke(
     printJsonObjectI( "exec", "exit", vs, 0, 0 );
     /* END CHARCOAL */
 
+    isolate->ThrowIllegalOperation();
+    if (message_handling == Execution::MessageHandling::kReport) {
+      isolate->ReportPendingMessages();
+    }
     return MaybeHandle<Object>();
   }
 

@@ -8,6 +8,99 @@ import merger
 import numpy
 import matplotlib.pyplot as plt
 
+class Object:
+    pass
+
+def lineToEvent( line ):
+    ev        = Object()
+    ev.ts     = line[ 0 ]
+    ev.pid    = line[ 1 ]
+    ev.tid    = line[ 2 ]
+    ev.source = line[ 3 ]
+    if ev.source == "macro":
+        ev.tkid = line[ 4 ]
+        ev.kind = line[ 5 ]
+        misc = line[ 6 ]
+        try:
+            ev.ctx = misc[ "ctx" ]
+        except:
+            pass
+        try:
+            ev.ctx_ptr = misc[ "ctx_ptr" ]
+        except:
+            pass
+        try:
+            ev.step = misc[ "step" ]
+        except:
+            pass
+        try:
+            ev.recurring = misc[ "recurring" ]
+        except:
+            pass
+        try:
+            ev.name = misc[ "name" ]
+        except:
+            pass
+    elif ev.source == "micro":
+        ev.tkid = "micro"
+        ev.kind = line[ 4 ]
+        misc = line[ 5 ]
+        try:
+            ev.props = misc[ "props" ]
+        except:
+            pass
+        try:
+            ev.num_tasks = misc[ "num_tasks" ]
+        except:
+            pass
+        try:
+            ev.callback = misc[ "callback" ]
+        except:
+            pass
+        try:
+            ev.ctx = misc[ "ctx" ]
+        except:
+            pass
+        try:
+            ev.ctxdesc = misc[ "ctxdesc" ]
+        except:
+            pass
+        try:
+            ev.count = misc[ "count" ]
+        except:
+            pass
+    elif ev.source == "exec":
+        ev.kind = line[ 4 ]
+        misc = line[ 5 ]
+        try:
+            ev.ctx = misc[ "ctx" ]
+        except:
+            pass
+        try:
+            ev.ctxdesc = misc[ "ctxdesc" ]
+        except:
+            pass
+        try:
+            ev.ctor = misc[ "ctor" ]
+        except:
+            pass
+        try:
+            ev.has_exn = misc[ "has_exn" ]
+        except:
+            pass
+        try:
+            ev.throwOnAllowed = misc[ "throwOnAllowed" ]
+        except:
+            pass
+        try:
+            ev.ctx = misc[ "ctx" ]
+        except:
+            pass
+    else:
+        print( "UNKNOWN TASK SOURCE: %s" % ev.source )
+        exit()
+    return ev
+
 def timestamp( trace_entry ):
     try:
         rv = trace_entry[ "ts" ]
@@ -15,6 +108,22 @@ def timestamp( trace_entry ):
         rv = trace_entry[ 0 ]
     # print( "%s  --  %s --  %s" % ( trace_entry, rv, type( rv ) ) )
     return rv
+
+def fancyPlot( ns1, ns2 ):
+    n1 = len( ns1 )
+    ys1 = list( range( n1 ) )
+    # for i in range( n1 ):
+    #     ys1[ i ] = ys1[ i ] / n1
+    plt.plot( ns1, ys1 )
+    if ns2 is not None:
+        n2 = len( ns2 )
+        ys2 = list( range( n2 ) )
+        # for i in range( n2 ):
+        #     ys2[ i ] = ys2[ i ] / n2
+        plt.plot( ns2, ys2 )
+    # plt.ylabel('some numbers')
+    plt.xscale( "log" )
+    plt.show()
 
 def parseBeginsAndEnds( basepath ):
     begins_ends = []
@@ -72,8 +181,8 @@ def printIles( name, items, iles ):
     if L < 1:
         print( "EMPTY" )
         return
-    for ( N, D ) in iles:
-        print( "%8.0f " % items[ N * L // D ], end="" )
+    for p in iles:
+        print( "%8.0f " % items[ int( L * p ) ], end="" )
     print( "" )
 
 def parseProcessInfo( path ):
@@ -100,29 +209,38 @@ def parseProcessInfo( path ):
     print( render_processes )
     return render_processes
 
+def increment( table, key ):
+    try:
+        table[ key ] = table[ key ] + 1
+    except:
+        table[ key ] = 1
+
 def stacker( trace ):
-    global_container = {
-        "task"   : None,
-        "events" : []
-    }
-    container_stack = [ global_container ]
-    mi_loop_stack = []
+    all_continuations = []
+    most_recent_task = None
+    global_continuation = Object()
+    global_continuation.tkid = None
+    global_continuation.events = []
+    continuation_stack = [ global_continuation ]
     max_depth = 1
-    call_depths = [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ]
-    micro_depths = [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ]
+    call_depths = {}
+    micro_depths = {}
     macro_lengths = []
     micro_lengths = []
     before_counts = []
     after_counts = []
+    interrupted_gaps = []
     gaps = []
     pc_good = 0
-    pc_bad = 0
+    missing_parent = 0
+    missing_end = 0
 
-    task_reg_map = {}
+    parent_of = {}
+    parent_of[ "micro" ] = None
 
     def printStack():
         print( "STACK ", end=" " )
-        for x in container_stack:
+        for x in continuation_stack:
             print( x[ "task" ], end=" - " )
         print( "" )
 
@@ -130,131 +248,159 @@ def stacker( trace ):
 
     for line in trace:
         line_count += 1
-        container = container_stack[ -1 ]
-        max_depth = max( max_depth, len( container_stack ) )
-        source = line[ 3 ]
+        max_depth = max( max_depth, len( continuation_stack ) )
 
-        if source == "macro":
-            task = line[ 4 ]
-            kind = line[ 5 ]
-            misc = line[ 6 ]
+        ev = lineToEvent( line )
+        curr_cont = continuation_stack[ -1 ]
+        curr_cont.events.append( ev )
 
-            if kind == "scheduled":
-                call_depths[ len( container_stack ) ] += 1
-                if container != global_container:
-                    task_reg_map[ task ] = ( container, line )
-                container[ "events" ].append( line )
-            elif kind == "ctor":
-                container = {
-                    "task"   : task,
-                    "begin"  : line,
-                    "events" : []
-                }
-                container[ "events" ].append( container )
-                container_stack.append( container )
-                try:
-                    ( reg, reg_line ) = task_reg_map[ task ]
-                    gap = line[ 0 ] - reg[ "end" ][ 0 ]
-                    gaps.append( gap )
-                    pc_good += 1
+        if ev.source == "macro":
+            if ev.kind == "scheduled":
+                increment( call_depths, len( continuation_stack ) )
+                if curr_cont != global_continuation:
+                    parent_of[ ev.tkid ] = ( curr_cont, ev )
+
+            elif ev.kind == "ctor":
+                next_cont = Object()
+                next_cont.begin    = ev
+                next_cont.events   = []
+                next_cont.children = []
+
+                all_continuations.append( next_cont )
+                curr_cont.events.append( next_cont )
+                continuation_stack.append( next_cont )
+                if ev.tkid in parent_of:
+                    ( parent_cont, parent_ev ) = parent_of[ ev.tkid ]
+                    parent_cont.children.append( next_cont )
                     try:
-                        recurring = reg_line[ 6 ][ "recurring" ]
+                        gap = ev.ts - parent_cont.end.ts
+                        gaps.append( gap )
+                        if most_recent_task != parent_cont.begin.tkid:
+                            interrupted_gaps.append( gap )
+                        pc_good += 1
                     except:
-                        recurring = False
-                    if gap < 400:
-                        if recurring:
-                            pass # print( "R - %s" % reg[ "begin" ] )
-                        else:
-                            pass # print( "I - %s" % reg_line )
-                except:
-                    pc_bad += 1
-                if len( container_stack ) > 3:
+                        missing_end += 1
+                else:
+                    missing_parent += 1
+                if len( continuation_stack ) > 3:
                     pass # printStack()
-            elif kind == "dtor":
-                container = container_stack.pop()
-                if task != container[ "task" ]:
-                    print( "TASK MISMATCH '%s' '%s'" % ( task, container[ "task" ] ) )
+
+            elif ev.kind == "dtor":
+                most_recent_task = ev.tkid
+                continuation_stack.pop()
+                if ev.tkid != curr_cont.begin.tkid:
+                    print( "TASK MISMATCH '%s' '%s'" % ( ev.tkid, curr_cont.begin.tkid ) )
                     exit()
-                macro_lengths.append( line[ 0 ] - container[ "begin" ][ 0 ] )
-                container[ "end" ] = line
-                if misc[ "recurring" ]:
-                    task_reg_map[ task ] = ( container, line )
-            elif kind == "canceled" or kind == "all_canceled":
-                container[ "events" ].append( line )
+                macro_lengths.append( ev.ts - curr_cont.begin.ts )
+                curr_cont.end = ev
+                if ev.recurring:
+                    parent_of[ ev.tkid ] = ( curr_cont, ev )
+
+            elif ev.kind == "canceled" or ev.kind == "all_canceled":
+                pass
+
             else:
-                print( "WEIRD MACRO TASK KIND %s" % kind )
+                print( "WEIRD MACRO TASK KIND %s" % ev.kind )
                 exit()
 
-        elif source == "micro":
-            kind = line[ 4 ]
+        elif ev.source == "micro":
+            if ev.kind == "enq":
+                increment( call_depths, len( continuation_stack ) )
+                if curr_cont != global_continuation and parent_of[ "micro" ] == None:
+                    parent_of[ "micro" ] = ( curr_cont, ev )
 
-            if kind.startswith( "start" ):
-                container = {
-                    "task"   : "@ micro",
-                    "begin"  : line,
-                    "events" : []
-                }
-                container[ "events" ].append( container )
-                container_stack.append( container )
-                if len( container_stack ) > 3:
+            elif ev.kind == "before_loop":
+                before_counts.append( ev.num_tasks )
+                next_cont = Object()
+                next_cont.begin    = ev
+                next_cont.events   = []
+                next_cont.children = []
+
+                all_continuations.append( next_cont )
+                curr_cont.events.append( next_cont )
+                continuation_stack.append( next_cont )
+                if parent_of[ "micro" ] != None:
+                    ( parent_cont, parent_ev ) = parent_of[ "micro" ]
+                    parent_cont.children.append( next_cont )
+                    try:
+                        gap = ev.ts - parent_cont.end.ts
+                        gaps.append( gap )
+                        if most_recent_task != parent_cont.begin.tkid:
+                            interrupted_gaps.append( gap )
+                        pc_good += 1
+                    except:
+                        missing_end += 1
+                else:
+                    missing_parent += 1
+                if len( continuation_stack ) > 3:
+                    pass # printStack()
+
+            elif ev.kind.startswith( "start" ):
+                if len( continuation_stack ) > 3:
                     pass #printStack()
-                micro_depths[ line[ 5 ][ "num_tasks" ] ] += 1
-            elif kind.startswith( "done" ):
-                container = container_stack.pop()
-                if "@ micro" != container[ "task" ]:
-                    print( "MICROTASK MISMATCH %s %s" % ( container[ "task" ], line ) )
+                increment( micro_depths, ev.num_tasks )
+
+            elif ev.kind.startswith( "done" ):
+                pass
+
+            elif ev.kind == "after_loop":
+                continuation_stack.pop()
+                if curr_cont.begin.tkid != "micro":
+                    print( "MICROTASK MISMATCH %s %s" % ( curr_cont[ "task" ], ev ) )
                     exit()
-                container[ "end" ] = line
-            elif kind == "enq":
-                container[ "events" ].append( line )
-            elif kind == "before_loop":
-                mi_loop_stack.append( line )
-                before_counts.append( line[ 5 ][ "num_tasks" ] )
-            elif kind == "after_loop":
-                try:
-                    begin = mi_loop_stack.pop()
-                    micro_lengths.append( line[ 0 ] - begin[ 0 ] )
-                except:
-                    print( "WEIRD DANGLING END OF MICRO LOOP" )
-                after_counts.append( line[ 5 ][ "count" ] )
+                curr_cont.end = ev
+                micro_lengths.append( ev.ts - curr_cont.begin.ts )
+                after_counts.append( ev.count )
+                parent_of[ "micro" ] = None
+                most_recent_task = ev.tkid
+
             else:
-                print( "WEIRD MICRO TASK KIND %s" % kind )
+                print( "WEIRD MICRO TASK KIND %s" % ev.kind )
                 exit()
 
-        elif source == "exec":
-            container[ "events" ].append( line )
+        elif ev.source == "exec":
+            curr_cont.events.append( ev )
 
         else:
             print( "WEIRD SOURCE %s" %source )
             exit()
 
-    print( "w00t? %d %d %d" % ( max_depth, len( global_container[ "events" ] ), len( container_stack ) ) )
+    num_children = []
+    num_pchildren = []
+    for continuation in all_continuations:
+        n = len( continuation.children )
+        num_children.append( n )
+        for i in range( n ):
+            num_pchildren.append( n )
+
+    print( "w00t? %d %d %d" % ( max_depth, len( global_continuation.events ), len( continuation_stack ) ) )
     print( "CALL %s" % call_depths )
     print( "MICRO %s" % micro_depths )
+    num_children.sort()
+    num_pchildren.sort()
     macro_lengths.sort()
     micro_lengths.sort()
     before_counts.sort()
     after_counts.sort()
     gaps.sort()
-    printIles( "AL", macro_lengths, [ (1,10),  (1,2),   (9,10), (95,100), (99,100) ] )
-    printIles( "IL", micro_lengths, [ (1,10),  (1,2),   (9,10), (95,100), (99,100) ] )
-    printIles( "GA", gaps,          [ (1,100), (5,100), (1,10),  (1,2),    (9,10) ] )
-    printIles( "BC", before_counts, [ (1,10),  (1,2),   (9,10), (95,100), (99,100) ] )
-    printIles( "CC", after_counts,  [ (1,10),  (1,2),   (9,10), (95,100), (99,100) ] )
+    interrupted_gaps.sort()
+    printIles( "AL", macro_lengths, [ 0.1,  0.5,   0.9, 0.95, 0.99 ] )
+    printIles( "IL", micro_lengths, [ 0.1,  0.5,   0.9, 0.95, 0.99 ] )
+    printIles( "GA", gaps,          [ 0.01, 0.05,  0.1,  0.5, 0.9 ] )
+    printIles( "BC", before_counts, [ 0.5,  0.9,   0.95, 0.99, 0.999 ] )
+    printIles( "CC", after_counts,  [ 0.5,  0.9,   0.95, 0.99, 0.999 ] )
 
-    print( "Good: %d - Bad: %d" % ( pc_good, pc_bad ) )
+    print( "Good: %d - Missing Parent: %d - Missing End: %d" %
+           ( pc_good, missing_parent, missing_end ) )
 
-    ys = list( range( len( micro_lengths ) ) )
-    for i in range( len( ys ) ):
-        ys[ i ] = ys[ i ] / len( micro_lengths )
-    plt.plot( micro_lengths, ys )
-    # plt.ylabel('some numbers')
-    plt.xscale( "log" )
-    plt.show()
+    # fancyPlot( gaps, interrupted_gaps )
+    fancyPlot( num_children, num_pchildren )
+    # fancyPlot( macro_lengths, micro_lengths )
+    # fancyPlot( micro_lengths, after_counts )
 
     print( "." )
 
-    return global_container
+    return global_continuation
 
 def tracer( trace ):
     uid_internal = { "value" : 0 }
@@ -406,6 +552,7 @@ def analyze( basepath, ranges, render_processes ):
     r = re.compile( "p(c|i)_(\d+)\." )
     for fname in os.listdir( basepath ):
         result = r.search( fname )
+        print( "File: %s %s" % ( fname, result ) )
         if result is None:
             continue
         id = int( result.group( 2 ) )
@@ -431,6 +578,8 @@ def main():
     recording_dir = sys.argv[ 1 ] if len( sys.argv ) > 1 else "."
     recording_ranges = parseBeginsAndEnds(
         os.path.join( recording_dir, "Traces" ) )
+    recording_ranges = [ ( 0, 9999999999999 ) ]
+    print( "parsed begins and ends" )
     render_processes = parseProcessInfo( os.path.join( recording_dir, "stderr.txt" ) )
     analyze( os.path.join( recording_dir, "Traces" ), recording_ranges, render_processes )
 

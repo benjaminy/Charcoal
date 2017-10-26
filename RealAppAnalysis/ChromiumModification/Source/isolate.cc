@@ -109,8 +109,6 @@ void closeDumbFile()
 void printJsonObjectI( const char *source, const char *phase,
                        struct json_hack *entries, void p( FILE *, void * ), void *d )
 {
-    if( 1 )
-        return;
     static pid_t old_pid = 0;
     pid_t pid = getpid();
     if( old_pid != pid )
@@ -195,7 +193,7 @@ void printJsonObjectI( const char *source, const char *phase,
         P( " } ]\n" );
         fprintf( dumb_file, "%s", buf );
     }
-    // fflush( dumb_file );
+    fflush( dumb_file );
 }
 
 void ctxDesc( v8::internal::Context *c, char *b )
@@ -231,6 +229,7 @@ void microTaskDesc( v8::internal::Handle<v8::internal::Object> m, char *b )
     b[ 3 ] = 0;
 }
 /* END CHARCOAL */
+
 
 namespace v8 {
 namespace internal {
@@ -680,21 +679,23 @@ Handle<Object> Isolate::CaptureSimpleStackTrace(Handle<JSReceiver> error_object,
         JavaScriptFrame* js_frame = JavaScriptFrame::cast(frame);
         // Set initial size to the maximum inlining level + 1 for the outermost
         // function.
-        List<FrameSummary> frames(FLAG_max_inlining_levels + 1);
+        std::vector<FrameSummary> frames;
+        frames.reserve(FLAG_max_inlining_levels + 1);
         js_frame->Summarize(&frames);
-        for (int i = frames.length() - 1;
-             i >= 0 && elements->FrameCount() < limit; i--) {
-          const auto& summ = frames[i].AsJavaScript();
+        for (size_t i = frames.size(); i != 0 && elements->FrameCount() < limit;
+             i--) {
+          const FrameSummary& summary = frames[i - 1];
+          const auto& summ = summary.AsJavaScript();
           Handle<JSFunction> fun = summ.function();
 
           // Filter out internal frames that we do not want to show.
           if (!helper.IsVisibleInStackTrace(*fun)) continue;
 
-          Handle<Object> recv = frames[i].receiver();
+          Handle<Object> recv = summary.receiver();
           Handle<AbstractCode> abstract_code = summ.abstract_code();
-          const int offset = frames[i].code_offset();
+          const int offset = summary.code_offset();
 
-          bool is_constructor = frames[i].is_constructor();
+          bool is_constructor = summary.is_constructor();
           if (frame->type() == StackFrame::BUILTIN) {
             // Help CallSite::IsConstructor correctly detect hand-written
             // construct stubs.
@@ -942,10 +943,11 @@ Handle<FixedArray> Isolate::CaptureCurrentStackTrace(
     StandardFrame* frame = it.frame();
     // Set initial size to the maximum inlining level + 1 for the outermost
     // function.
-    List<FrameSummary> frames(FLAG_max_inlining_levels + 1);
+    std::vector<FrameSummary> frames;
+    frames.reserve(FLAG_max_inlining_levels + 1);
     frame->Summarize(&frames);
-    for (int i = frames.length() - 1; i >= 0 && frames_seen < limit; i--) {
-      FrameSummary& frame = frames[i];
+    for (size_t i = frames.size(); i != 0 && frames_seen < limit; i--) {
+      FrameSummary& frame = frames[i - 1];
       if (!frame.is_subject_to_debugging()) continue;
       // Filter frames from other security contexts.
       if (!(options & StackTrace::kExposeFramesAcrossSecurityOrigins) &&
@@ -1401,7 +1403,6 @@ Object* Isolate::UnwindAndFindHandler() {
         }
 
         if (!FLAG_experimental_wasm_eh || !is_catchable_by_wasm(exception)) {
-          counters()->wasm_execution_time()->Stop();
           break;
         }
         int stack_slots = 0;  // Will contain stack slot count of frame.
@@ -1553,10 +1554,10 @@ HandlerTable::CatchPrediction PredictException(JavaScriptFrame* frame) {
       // This optimized frame will catch. It's handler table does not include
       // exception prediction, and we need to use the corresponding handler
       // tables on the unoptimized code objects.
-      List<FrameSummary> summaries;
+      std::vector<FrameSummary> summaries;
       frame->Summarize(&summaries);
-      for (int i = summaries.length() - 1; i >= 0; i--) {
-        const FrameSummary& summary = summaries[i];
+      for (size_t i = summaries.size(); i != 0; i--) {
+        const FrameSummary& summary = summaries[i - 1];
         Handle<AbstractCode> code = summary.AsJavaScript().abstract_code();
         if (code->IsCode() && code->kind() == AbstractCode::BUILTIN) {
           prediction = code->GetCode()->GetBuiltinCatchPrediction();
@@ -1564,11 +1565,6 @@ HandlerTable::CatchPrediction PredictException(JavaScriptFrame* frame) {
           return prediction;
         }
 
-        if (code->kind() == AbstractCode::OPTIMIZED_FUNCTION) {
-          DCHECK(summary.AsJavaScript().function()->shared()->asm_function());
-          // asm code cannot contain try-catch.
-          continue;
-        }
         // Must have been constructed from a bytecode array.
         CHECK_EQ(AbstractCode::INTERPRETED_FUNCTION, code->kind());
         int code_offset = summary.code_offset();
@@ -1736,9 +1732,10 @@ bool Isolate::ComputeLocation(MessageLocation* target) {
   // Compute the location from the function and the relocation info of the
   // baseline code. For optimized code this will use the deoptimization
   // information to get canonical location information.
-  List<FrameSummary> frames(FLAG_max_inlining_levels + 1);
+  std::vector<FrameSummary> frames;
+  frames.reserve(FLAG_max_inlining_levels + 1);
   frame->Summarize(&frames);
-  FrameSummary& summary = frames.last();
+  FrameSummary& summary = frames.back();
   int pos = summary.SourcePosition();
   Handle<SharedFunctionInfo> shared;
   Handle<Object> script = summary.script();
@@ -2487,7 +2484,6 @@ Isolate::Isolate(bool enable_serializer)
       logger_(NULL),
       load_stub_cache_(NULL),
       store_stub_cache_(NULL),
-      code_aging_helper_(NULL),
       deoptimizer_data_(NULL),
       deoptimizer_lazy_throw_(false),
       materialized_object_store_(NULL),
@@ -2740,8 +2736,6 @@ Isolate::~Isolate() {
   load_stub_cache_ = NULL;
   delete store_stub_cache_;
   store_stub_cache_ = NULL;
-  delete code_aging_helper_;
-  code_aging_helper_ = NULL;
 
   delete materialized_object_store_;
   materialized_object_store_ = NULL;
@@ -2935,8 +2929,6 @@ bool Isolate::Init(StartupDeserializer* des) {
     return false;
   }
 
-  code_aging_helper_ = new CodeAgingHelper(this);
-
 // Initialize the interface descriptors ahead of time.
 #define INTERFACE_DESCRIPTOR(Name, ...) \
   { Name##Descriptor(this); }
@@ -2953,7 +2945,7 @@ bool Isolate::Init(StartupDeserializer* des) {
 
   if (create_heap_objects) {
     // Terminate the partial snapshot cache so we can iterate.
-    partial_snapshot_cache_.Add(heap_.undefined_value());
+    partial_snapshot_cache_.push_back(heap_.undefined_value());
   }
 
   InitializeThreadLocal();
@@ -3334,9 +3326,8 @@ void Isolate::InvalidateArraySpeciesProtector() {
 void Isolate::InvalidateStringLengthOverflowProtector() {
   DCHECK(factory()->string_length_protector()->value()->IsSmi());
   DCHECK(IsStringLengthOverflowIntact());
-  PropertyCell::SetValueWithInvalidation(
-      factory()->string_length_protector(),
-      handle(Smi::FromInt(kProtectorInvalid), this));
+  factory()->string_length_protector()->set_value(
+      Smi::FromInt(kProtectorInvalid));
   DCHECK(!IsStringLengthOverflowIntact());
 }
 
@@ -3652,16 +3643,6 @@ void Isolate::EnqueueMicrotask(Handle<Object> microtask) {
   Handle<FixedArray> queue(heap()->microtask_queue(), this);
   int num_tasks = pending_microtask_count();
   DCHECK(num_tasks <= queue->length());
-  if (num_tasks == 0) {
-    queue = factory()->NewFixedArray(8);
-    heap()->set_microtask_queue(*queue);
-  } else if (num_tasks == queue->length()) {
-    queue = factory()->CopyFixedArrayAndGrow(queue, num_tasks);
-    heap()->set_microtask_queue(*queue);
-  }
-  DCHECK(queue->get(num_tasks)->IsUndefined(this));
-  queue->set(num_tasks, *microtask);
-  set_pending_microtask_count(num_tasks + 1);
 
   /* BEGIN CHARCOAL */
   char d[ 16 ];
@@ -3673,6 +3654,17 @@ void Isolate::EnqueueMicrotask(Handle<Object> microtask) {
   };
   printJsonObjectI( "micro", "enq", vs, 0, 0 );
   /* END CHARCOAL */
+
+  if (num_tasks == 0) {
+    queue = factory()->NewFixedArray(8);
+    heap()->set_microtask_queue(*queue);
+  } else if (num_tasks == queue->length()) {
+    queue = factory()->CopyFixedArrayAndGrow(queue, num_tasks);
+    heap()->set_microtask_queue(*queue);
+  }
+  DCHECK(queue->get(num_tasks)->IsUndefined(this));
+  queue->set(num_tasks, *microtask);
+  set_pending_microtask_count(num_tasks + 1);
 }
 
 
@@ -3713,6 +3705,7 @@ void Isolate::RunMicrotasksInternal() {
     Isolate* isolate = this;
     FOR_WITH_HANDLE_SCOPE(isolate, int, i = 0, i, i < num_tasks, i++, {
       Handle<Object> microtask(queue->get(i), this);
+
       /* BEGIN CHARCOAL */
       ++micro_counter;
       /* END CHARCOAL */
@@ -3722,7 +3715,6 @@ void Isolate::RunMicrotasksInternal() {
             Handle<CallHandlerInfo>::cast(microtask);
         v8::MicrotaskCallback callback =
             v8::ToCData<v8::MicrotaskCallback>(callback_info->callback());
-        void* data = v8::ToCData<void*>(callback_info->data());
 
         /* BEGIN CHARCOAL */
         json_hack vs[ 3 ];
@@ -3732,6 +3724,7 @@ void Isolate::RunMicrotasksInternal() {
         printJsonObjectI( "micro", "start_callback", vs, 0, 0 );
         /* END CHARCOAL */
 
+        void* data = v8::ToCData<void*>(callback_info->data());
         callback(data);
       } else {
         SaveContext save(this);
@@ -3799,9 +3792,6 @@ void Isolate::RunMicrotasksInternal() {
 
         // If execution is terminating, just bail out.
         if (result.is_null() && maybe_exception.is_null()) {
-          // Clear out any remaining callbacks in the queue.
-          heap()->set_microtask_queue(heap()->empty_fixed_array());
-          set_pending_microtask_count(0);
 
           /* BEGIN CHARCOAL */
           json_hack vs[ 2 ];
@@ -3814,6 +3804,9 @@ void Isolate::RunMicrotasksInternal() {
           printJsonObjectI( "micro", "after_loop", vs, 0, 0 );
           /* END CHARCOAL */
 
+          // Clear out any remaining callbacks in the queue.
+          heap()->set_microtask_queue(heap()->empty_fixed_array());
+          set_pending_microtask_count(0);
           return;
         }
       }

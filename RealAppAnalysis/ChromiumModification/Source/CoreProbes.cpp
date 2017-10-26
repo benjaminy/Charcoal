@@ -32,8 +32,8 @@
 
 #include "bindings/core/v8/V8BindingForCore.h"
 #include "core/CoreProbeSink.h"
-#include "core/events/Event.h"
-#include "core/events/EventTarget.h"
+#include "core/dom/events/Event.h"
+#include "core/dom/events/EventTarget.h"
 #include "core/inspector/InspectorCSSAgent.h"
 #include "core/inspector/InspectorDOMDebuggerAgent.h"
 #include "core/inspector/InspectorNetworkAgent.h"
@@ -90,8 +90,6 @@ void closeDumbFile()
 
 void printJsonObject( const char *phase, const void *task, struct json_hack *entries )
 {
-    if( 1 )
-        return;
     static pid_t old_pid = 0;
     pid_t pid = getpid();
     if( old_pid != pid )
@@ -171,7 +169,7 @@ void printJsonObject( const char *phase, const void *task, struct json_hack *ent
     }
     P( " } ]\n" );
     fprintf( dumb_file, "%s", buf );
-    // fflush( dumb_file );
+    fflush( dumb_file );
 }
 
 void ctxDesc( blink::ExecutionContext *c, char *b )
@@ -218,6 +216,8 @@ AsyncTask::AsyncTask(ExecutionContext* context,
     TRACE_EVENT_FLOW_END0("devtools.timeline.async", "AsyncTask",
                           TRACE_ID_LOCAL(reinterpret_cast<uintptr_t>(task)));
   }
+  if (debugger_)
+    debugger_->AsyncTaskStarted(task_);
 
   /* BEGIN CHARCOAL */
   char d[ 16 ];
@@ -232,11 +232,14 @@ AsyncTask::AsyncTask(ExecutionContext* context,
   printJsonObject( "ctor", task, vs );
   /* END CHARCOAL */
 
-  if (debugger_)
-    debugger_->AsyncTaskStarted(task_);
 }
 
 AsyncTask::~AsyncTask() {
+  if (debugger_) {
+    debugger_->AsyncTaskFinished(task_);
+    if (!recurring_)
+      debugger_->AsyncTaskCanceled(task_);
+  }
 
   /* BEGIN CHARCOAL */
   json_hack vs[] = {
@@ -246,11 +249,6 @@ AsyncTask::~AsyncTask() {
   printJsonObject( "dtor", task_, vs );
   /* END CHARCOAL */
 
-  if (debugger_) {
-    debugger_->AsyncTaskFinished(task_);
-    if (!recurring_)
-      debugger_->AsyncTaskCanceled(task_);
-  }
 }
 
 void AsyncTaskScheduled(ExecutionContext* context,
@@ -259,6 +257,8 @@ void AsyncTaskScheduled(ExecutionContext* context,
   TRACE_EVENT_FLOW_BEGIN1("devtools.timeline.async", "AsyncTask",
                           TRACE_ID_LOCAL(reinterpret_cast<uintptr_t>(task)),
                           "data", InspectorAsyncTask::Data(name));
+  if (ThreadDebugger* debugger = ThreadDebugger::From(ToIsolate(context)))
+    debugger->AsyncTaskScheduled(name, task, true);
 
   /* BEGIN CHARCOAL */
   char d[ 16 ];
@@ -274,8 +274,6 @@ void AsyncTaskScheduled(ExecutionContext* context,
   printJsonObject( "scheduled", task, vs );
   /* END CHARCOAL */
 
-  if (ThreadDebugger* debugger = ThreadDebugger::From(ToIsolate(context)))
-    debugger->AsyncTaskScheduled(name, task, true);
 }
 
 void AsyncTaskScheduledBreakable(ExecutionContext* context,
@@ -286,6 +284,10 @@ void AsyncTaskScheduledBreakable(ExecutionContext* context,
 }
 
 void AsyncTaskCanceled(ExecutionContext* context, void* task) {
+  if (ThreadDebugger* debugger = ThreadDebugger::From(ToIsolate(context)))
+    debugger->AsyncTaskCanceled(task);
+  TRACE_EVENT_FLOW_END0("devtools.timeline.async", "AsyncTask",
+                        TRACE_ID_LOCAL(reinterpret_cast<uintptr_t>(task)));
 
   /* BEGIN CHARCOAL */
   char d[ 16 ];
@@ -298,10 +300,6 @@ void AsyncTaskCanceled(ExecutionContext* context, void* task) {
   printJsonObject( "canceled", task, vs );
   /* END CHARCOAL */
 
-  if (ThreadDebugger* debugger = ThreadDebugger::From(ToIsolate(context)))
-    debugger->AsyncTaskCanceled(task);
-  TRACE_EVENT_FLOW_END0("devtools.timeline.async", "AsyncTask",
-                        TRACE_ID_LOCAL(reinterpret_cast<uintptr_t>(task)));
 }
 
 void AsyncTaskCanceledBreakable(ExecutionContext* context,
@@ -312,6 +310,8 @@ void AsyncTaskCanceledBreakable(ExecutionContext* context,
 }
 
 void AllAsyncTasksCanceled(ExecutionContext* context) {
+  if (ThreadDebugger* debugger = ThreadDebugger::From(ToIsolate(context)))
+    debugger->AllAsyncTasksCanceled();
 
   /* BEGIN CHARCOAL */
   char d[ 16 ];
@@ -324,8 +324,6 @@ void AllAsyncTasksCanceled(ExecutionContext* context) {
   printJsonObject( "all_canceled", NULL, vs );
   /* END CHARCOAL */
 
-  if (ThreadDebugger* debugger = ThreadDebugger::From(ToIsolate(context)))
-    debugger->AllAsyncTasksCanceled();
 }
 
 void DidReceiveResourceResponseButCanceled(LocalFrame* frame,
