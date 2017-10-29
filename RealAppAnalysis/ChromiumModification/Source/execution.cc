@@ -37,8 +37,7 @@ struct json_hack json_hack_cons( const char * name, char kind, union uawful valu
     return x;
 }
 
-void printJsonObjectI( const char *source, const char *phase,
-                       struct json_hack *entries, void f( FILE *, void * ), void *d );
+void printJsonObjectI( const char *source, const char *phase, struct json_hack *entries );
 void ctxDesc( v8::internal::Context *c, char *b );
 void name_printer( FILE *f, void *d );
 /* END CHARCOAL */
@@ -104,7 +103,7 @@ MUST_USE_RESULT MaybeHandle<Object> Invoke(
         json_hack_cons( 0, 0, { .i = 0 } );
     };
     // vs[ 0 ] = json_hack_cons( "phase", 0, { .s = "overflow" } );
-    printJsonObjectI( "exec", "overflow", vs, 0, 0 );
+    printJsonObjectI( "exec", "overflow", vs );
     /* END CHARCOAL */
 
     isolate->StackOverflow();
@@ -120,14 +119,24 @@ MUST_USE_RESULT MaybeHandle<Object> Invoke(
     Handle<JSFunction> function = Handle<JSFunction>::cast(target);
 
     /* BEGIN CHARCOAL */
+    char dumb_buf[ 1000 ];
+    FILE *dumb_stream = NULL;
+    if( __builtin_available(macOS 10.13, *) ) {
+      dumb_stream = fmemopen( dumb_buf, 999, "w" );
+    }
+    else {
+      DCHECK(false);
+      return MaybeHandle<Object>();
+    }
     char d[ 10 ];
     ctxDesc( function->context(), d );
     json_hack vs[] = {
         json_hack_cons( "ctxdesc", 0, { .s = d } ),
         json_hack_cons( "ctx",     5, { .p = function->context() } ),
+        json_hack_cons( "name",    0, { .s = dumb_buf } ),
         json_hack_cons( 0, 0, { .i = 0 } )
     };
-    printJsonObjectI( "exec", "enter_jsfun", vs, name_printer, &function );
+    printJsonObjectI( "exec", "enter_jsfun", vs );
     /* END CHARCOAL */
 
     if ((!is_construct || function->IsConstructor()) &&
@@ -147,9 +156,10 @@ MUST_USE_RESULT MaybeHandle<Object> Invoke(
         json_hack vs[] = {
             json_hack_cons( "ctor", 4, { .i = 1 } ),
             json_hack_cons( "has_exn", 4, { .i = 1 } ),
+            json_hack_cons( "name",    0, { .s = dumb_buf } ),
             json_hack_cons( 0, 0, { .i = 0 } )
         };
-        printJsonObjectI( "exec", "exit", vs, name_printer, &function );
+        printJsonObjectI( "exec", "exit", vs );
         /* END CHARCOAL */
 
         if (message_handling == Execution::MessageHandling::kReport) {
@@ -164,13 +174,15 @@ MUST_USE_RESULT MaybeHandle<Object> Invoke(
       json_hack vs[] = {
           json_hack_cons( "ctor", 4, { .i = 1 } ),
           json_hack_cons( "has_exn", 4, { .i = 0 } ),
+          json_hack_cons( "name",    0, { .s = dumb_buf } ),
           json_hack_cons( 0, 0, { .i = 0 } )
       };
-      printJsonObjectI( "exec", "exit", vs, name_printer, &function );
+      printJsonObjectI( "exec", "exit", vs );
       /* END CHARCOAL */
 
       return value;
     }
+    fclose( dumb_stream );
   }
   /* BEGIN CHARCOAL */
   else
@@ -178,7 +190,7 @@ MUST_USE_RESULT MaybeHandle<Object> Invoke(
     json_hack vs[] = {
         json_hack_cons( 0, 0, { .i = 0 } )
     };
-    printJsonObjectI( "exec", "enter_non_fun", vs, 0, 0 );
+    printJsonObjectI( "exec", "enter_non_fun", vs );
   }
   /* END CHARCOAL */
 
@@ -192,7 +204,7 @@ MUST_USE_RESULT MaybeHandle<Object> Invoke(
         json_hack_cons( "throwOnAllowed", 4, { .i = 1 } ),
         json_hack_cons( 0, 0, { .i = 0 } )
     };
-    printJsonObjectI( "exec", "exit", vs, 0, 0 );
+    printJsonObjectI( "exec", "exit", vs );
     /* END CHARCOAL */
 
     isolate->ThrowIllegalOperation();
@@ -254,7 +266,7 @@ MUST_USE_RESULT MaybeHandle<Object> Invoke(
         json_hack_cons( "has_exn", 4, { .i = 1 } ),
         json_hack_cons( 0, 0, { .i = 0 } )
     };
-    printJsonObjectI( "exec", "exit", vs, 0, 0 );
+    printJsonObjectI( "exec", "exit", vs );
     /* END CHARCOAL */
 
     return MaybeHandle<Object>();
@@ -267,7 +279,7 @@ MUST_USE_RESULT MaybeHandle<Object> Invoke(
       json_hack_cons( "has_exn", 4, { .i = 0 } ),
       json_hack_cons( 0, 0, { .i = 0 } )
   };
-  printJsonObjectI( "exec", "exit", vs, 0, 0 );
+  printJsonObjectI( "exec", "exit", vs );
   /* END CHARCOAL */
 
   return Handle<Object>(value, isolate);

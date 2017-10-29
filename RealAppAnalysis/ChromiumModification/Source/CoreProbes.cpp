@@ -95,7 +95,7 @@ void printJsonObject( const char *phase, const void *task, struct json_hack *ent
     if( old_pid != pid )
     {
         char fname[ 100 ];
-        sprintf( fname, "./Traces/pc_%u.XXXXXX", pid );
+        sprintf( fname, "./tmp/pc_%u.XXXXXX", pid );
         if( !mktemp( fname ) )
         {
             fprintf( stderr, "mktemp FAILED!!!!" );

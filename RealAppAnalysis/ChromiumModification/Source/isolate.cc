@@ -106,15 +106,14 @@ void closeDumbFile()
     }
 }
 
-void printJsonObjectI( const char *source, const char *phase,
-                       struct json_hack *entries, void p( FILE *, void * ), void *d )
+void printJsonObjectI( const char *source, const char *phase, struct json_hack *entries )
 {
     static pid_t old_pid = 0;
     pid_t pid = getpid();
     if( old_pid != pid )
     {
         char fname[ 100 ];
-        sprintf( fname, "./Traces/pi_%u.XXXXXX", pid );
+        sprintf( fname, "./tmp/pi_%u.XXXXXX", pid );
         if( !mktemp( fname ) )
         {
             fprintf( stderr, "mktemp FAILED!!!!" );
@@ -182,17 +181,8 @@ void printJsonObjectI( const char *source, const char *phase,
         }
         ++i;
     }
-    if( p )
-    {
-        fprintf( dumb_file, "%s, \"fname\": \"", buf );
-        p( dumb_file, d );
-        fprintf( dumb_file, "\" } ]\n" );
-    }
-    else
-    {
-        P( " } ]\n" );
-        fprintf( dumb_file, "%s", buf );
-    }
+    P( " } ]\n" );
+    fprintf( dumb_file, "%s", buf );
     fflush( dumb_file );
 }
 
@@ -3652,7 +3642,7 @@ void Isolate::EnqueueMicrotask(Handle<Object> microtask) {
       json_hack_cons( "num_tasks", 6, { .i = num_tasks } ),
       json_hack_null
   };
-  printJsonObjectI( "micro", "enq", vs, 0, 0 );
+  printJsonObjectI( "micro", "enq", vs );
   /* END CHARCOAL */
 
   if (num_tasks == 0) {
@@ -3685,12 +3675,21 @@ void Isolate::RunMicrotasksInternal() {
   TRACE_EVENT_CALL_STATS_SCOPED(this, "v8", "V8.RunMicrotasks");
 
   /* BEGIN CHARCOAL */
+  char dumb_buf[ 1000 ];
+  FILE *dumb_stream = NULL;
+  if( __builtin_available(macOS 10.13, *) ) {
+    dumb_stream = fmemopen( dumb_buf, 999, "w" );
+  }
+  else {
+    DCHECK(false);
+    return;
+  }
   int micro_counter = 0;
   json_hack vs[] = {
       json_hack_cons( "num_tasks", 6, { .i = pending_microtask_count() } ),
       json_hack_null
   };
-  printJsonObjectI( "micro", "before_loop", vs, 0, 0 );
+  printJsonObjectI( "micro", "before_loop", vs );
   /* END CHARCOAL */
 
   while (pending_microtask_count() > 0) {
@@ -3721,7 +3720,7 @@ void Isolate::RunMicrotasksInternal() {
         vs[ 0 ] = json_hack_cons( "callback" , 5, { .p = NULL } );
         vs[ 1 ] = json_hack_cons( "num_tasks", 6, { .i = num_tasks - i } );
         vs[ 2 ] = json_hack_null;
-        printJsonObjectI( "micro", "start_callback", vs, 0, 0 );
+        printJsonObjectI( "micro", "start_callback", vs );
         /* END CHARCOAL */
 
         void* data = v8::ToCData<void*>(callback_info->data());
@@ -3750,14 +3749,16 @@ void Isolate::RunMicrotasksInternal() {
               Handle<JSFunction>::cast(microtask);
 
           /* BEGIN CHARCOAL */
+          microtask_function->PrintName( dumb_stream );
           char d[ 10 ];
           ctxDesc( microtask_function->context(), d );
-          json_hack vs[ 4 ];
+          json_hack vs[ 5 ];
           vs[ 0 ] = json_hack_cons( "num_tasks", 6, { .i = num_tasks - i } );
           vs[ 1 ] = json_hack_cons( "ctxdesc",   0, { .s = d } );
           vs[ 2 ] = json_hack_cons( "ctx",       5, { .p = microtask_function->context() } );
-          vs[ 3 ] = json_hack_null;
-          printJsonObjectI( "micro", "start_jsfun", vs, name_printer, &microtask_function );
+          vs[ 3 ] = json_hack_cons( "name",      0, { .s = dumb_buf } );
+          vs[ 4 ] = json_hack_null;
+          printJsonObjectI( "micro", "start_jsfun", vs );
           /* END CHARCOAL */
 
           result = Execution::TryCall(
@@ -3769,7 +3770,7 @@ void Isolate::RunMicrotasksInternal() {
           json_hack vs[ 2 ];
           vs[ 0 ] = json_hack_cons( "num_tasks", 6, { .i = num_tasks - i } );
           vs[ 1 ] = json_hack_null;
-          printJsonObjectI( "micro", "start_promise_resolve", vs, 0, 0 );
+          printJsonObjectI( "micro", "start_promise_resolve", vs );
           /* END CHARCOAL */
 
           PromiseResolveThenableJob(
@@ -3781,7 +3782,7 @@ void Isolate::RunMicrotasksInternal() {
           json_hack vs[ 2 ];
           vs[ 0 ] = json_hack_cons( "num_tasks", 6, { .i = num_tasks - i } );
           vs[ 1 ] = json_hack_null;
-          printJsonObjectI( "micro", "start_promise_react", vs, 0, 0 );
+          printJsonObjectI( "micro", "start_promise_react", vs );
           /* END CHARCOAL */
 
           PromiseReactionJob(Handle<PromiseReactionJobInfo>::cast(microtask),
@@ -3797,11 +3798,12 @@ void Isolate::RunMicrotasksInternal() {
           json_hack vs[ 2 ];
           vs[ 0 ] = json_hack_cons( "num_tasks", 6, { .i = num_tasks - i } );
           vs[ 1 ] = json_hack_null;
-          printJsonObjectI( "micro", "done_bail", vs, 0, 0 );
+          printJsonObjectI( "micro", "done_bail", vs );
 
           vs[ 0 ] = json_hack_cons( "count", 6, { .i = micro_counter } );
           vs[ 1 ] = json_hack_null;
-          printJsonObjectI( "micro", "after_loop", vs, 0, 0 );
+          printJsonObjectI( "micro", "after_loop", vs );
+          fclose( dumb_stream );
           /* END CHARCOAL */
 
           // Clear out any remaining callbacks in the queue.
@@ -3815,7 +3817,7 @@ void Isolate::RunMicrotasksInternal() {
       json_hack vs[ 2 ];
       vs[ 0 ] = json_hack_cons( "num_tasks", 6, { .i = num_tasks - i } );
       vs[ 1 ] = json_hack_null;
-      printJsonObjectI( "micro", "done", vs, 0, 0 );
+      printJsonObjectI( "micro", "done", vs );
       /* END CHARCOAL */
     });
   }
@@ -3823,7 +3825,8 @@ void Isolate::RunMicrotasksInternal() {
   /* BEGIN CHARCOAL */
   vs[ 0 ] = json_hack_cons( "count", 6, { .i = micro_counter } );
   vs[ 1 ] = json_hack_null;
-  printJsonObjectI( "micro", "after_loop", vs, 0, 0 );
+  printJsonObjectI( "micro", "after_loop", vs );
+  fclose( dumb_stream );
   /* END CHARCOAL */
 
 }
