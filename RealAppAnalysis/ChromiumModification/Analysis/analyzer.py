@@ -7,9 +7,21 @@ import json
 import merger
 import numpy
 import matplotlib.pyplot as plt
+import datetime
 
 class Object:
     pass
+
+class GrowingList( list ):
+    def __getitem__( self, index ):
+        if index >= len(self):
+            self.extend( [0] * ( index + 1 - len( self ) ) )
+        return list.__getitem__( self, index )
+
+    def __setitem__( self, index, value ):
+        if index >= len( self ):
+            self.extend( [0] * ( index + 1 - len( self ) ) )
+        list.__setitem__( self, index, value )
 
 def lineToEvent( line ):
     ev        = Object()
@@ -69,6 +81,10 @@ def lineToEvent( line ):
             ev.count = misc[ "count" ]
         except:
             pass
+        try:
+            ev.name = misc[ "name" ]
+        except:
+            pass
     elif ev.source == "exec":
         ev.kind = line[ 4 ]
         misc = line[ 5 ]
@@ -93,7 +109,7 @@ def lineToEvent( line ):
         except:
             pass
         try:
-            ev.ctx = misc[ "ctx" ]
+            ev.name = misc[ "name" ]
         except:
             pass
     else:
@@ -109,20 +125,27 @@ def timestamp( trace_entry ):
     # print( "%s  --  %s --  %s" % ( trace_entry, rv, type( rv ) ) )
     return rv
 
-def fancyPlot( ns1, ns2 ):
+def fancyPlot( name, ns1, ns2, splitx, splity ):
+    fig = plt.figure()
+    plt.title( name )
+    plt.xscale( "log" )
+    host = fig.add_subplot(111)
+
     n1 = len( ns1 )
     ys1 = list( range( n1 ) )
     # for i in range( n1 ):
     #     ys1[ i ] = ys1[ i ] / n1
-    plt.plot( ns1, ys1 )
+    host.plot( ns1, ys1 )
     if ns2 is not None:
         n2 = len( ns2 )
         ys2 = list( range( n2 ) )
         # for i in range( n2 ):
         #     ys2[ i ] = ys2[ i ] / n2
-        plt.plot( ns2, ys2 )
+        plotable = host.twinx() if splitx else host
+        plotable = plotable.twiny() if splity else plotable
+        plotable.set_xscale( "log" )
+        plotable.plot( ns2, ys2 )
     # plt.ylabel('some numbers')
-    plt.xscale( "log" )
     plt.show()
 
 def parseBeginsAndEnds( basepath ):
@@ -209,11 +232,36 @@ def parseProcessInfo( path ):
     print( render_processes )
     return render_processes
 
-def increment( table, key ):
-    try:
-        table[ key ] = table[ key ] + 1
-    except:
-        table[ key ] = 1
+def combineStats( s1, s2 ):
+    s1.children_per_cont.extend ( s2.children_per_cont )
+    s1.pchildren_per_edge.extend( s2.pchildren_per_edge )
+    s1.macro_lengths.extend     ( s2.macro_lengths )
+    s1.micro_lengths.extend     ( s2.micro_lengths )
+    s1.before_counts.extend     ( s2.before_counts )
+    s1.after_counts.extend      ( s2.after_counts )
+    s1.uninterrupted_gaps.extend( s2.uninterrupted_gaps )
+    s1.interrupted_gaps.extend  ( s2.interrupted_gaps )
+
+def showStats( s ):
+    s.children_per_cont.sort()
+    s.pchildren_per_edge.sort()
+    s.macro_lengths.sort()
+    s.micro_lengths.sort()
+    s.before_counts.sort()
+    s.after_counts.sort()
+    s.uninterrupted_gaps.sort()
+    s.interrupted_gaps.sort()
+
+    printIles( "AL", s.macro_lengths, [ 0.1,  0.5,   0.9, 0.95, 0.99 ] )
+    printIles( "IL", s.micro_lengths, [ 0.1,  0.5,   0.9, 0.95, 0.99 ] )
+    printIles( "GA", s.uninterrupted_gaps, [ 0.01, 0.05,  0.1,  0.5, 0.9 ] )
+    printIles( "BC", s.before_counts, [ 0.5,  0.9,   0.95, 0.99, 0.999 ] )
+    printIles( "CC", s.after_counts,  [ 0.5,  0.9,   0.95, 0.99, 0.999 ] )
+
+    fancyPlot( "gaps", s.uninterrupted_gaps, s.interrupted_gaps, False, False )
+    fancyPlot( "children", s.children_per_cont, s.pchildren_per_edge, False, False )
+    fancyPlot( "lengths", s.macro_lengths, s.micro_lengths, True, False )
+    fancyPlot( "micros", s.micro_lengths, s.after_counts, False, True )
 
 def stacker( trace ):
     all_continuations = []
@@ -223,14 +271,14 @@ def stacker( trace ):
     global_continuation.events = []
     continuation_stack = [ global_continuation ]
     max_depth = 1
-    call_depths = {}
-    micro_depths = {}
+    call_depths = GrowingList()
+    micro_depths = GrowingList()
     macro_lengths = []
     micro_lengths = []
     before_counts = []
     after_counts = []
     interrupted_gaps = []
-    gaps = []
+    uninterrupted_gaps = []
     pc_good = 0
     missing_parent = 0
     missing_end = 0
@@ -256,7 +304,7 @@ def stacker( trace ):
 
         if ev.source == "macro":
             if ev.kind == "scheduled":
-                increment( call_depths, len( continuation_stack ) )
+                call_depths[ len( continuation_stack ) ] += 1
                 if curr_cont != global_continuation:
                     parent_of[ ev.tkid ] = ( curr_cont, ev )
 
@@ -274,9 +322,10 @@ def stacker( trace ):
                     parent_cont.children.append( next_cont )
                     try:
                         gap = ev.ts - parent_cont.end.ts
-                        gaps.append( gap )
                         if most_recent_task != parent_cont.begin.tkid:
                             interrupted_gaps.append( gap )
+                        else:
+                            uninterrupted_gaps.append( gap )
                         pc_good += 1
                     except:
                         missing_end += 1
@@ -287,7 +336,8 @@ def stacker( trace ):
 
             elif ev.kind == "dtor":
                 most_recent_task = ev.tkid
-                continuation_stack.pop()
+                blah = continuation_stack.pop()
+                # print( "BLAH %s" % vars( blah ) )
                 if ev.tkid != curr_cont.begin.tkid:
                     print( "TASK MISMATCH '%s' '%s'" % ( ev.tkid, curr_cont.begin.tkid ) )
                     exit()
@@ -305,7 +355,7 @@ def stacker( trace ):
 
         elif ev.source == "micro":
             if ev.kind == "enq":
-                increment( call_depths, len( continuation_stack ) )
+                call_depths[ len( continuation_stack ) ] += 1
                 if curr_cont != global_continuation and parent_of[ "micro" ] == None:
                     parent_of[ "micro" ] = ( curr_cont, ev )
 
@@ -324,9 +374,10 @@ def stacker( trace ):
                     parent_cont.children.append( next_cont )
                     try:
                         gap = ev.ts - parent_cont.end.ts
-                        gaps.append( gap )
                         if most_recent_task != parent_cont.begin.tkid:
                             interrupted_gaps.append( gap )
+                        else:
+                            uninterrupted_gaps.append( gap )
                         pc_good += 1
                     except:
                         missing_end += 1
@@ -338,7 +389,7 @@ def stacker( trace ):
             elif ev.kind.startswith( "start" ):
                 if len( continuation_stack ) > 3:
                     pass #printStack()
-                increment( micro_depths, ev.num_tasks )
+                micro_depths[ ev.num_tasks ] += 1
 
             elif ev.kind.startswith( "done" ):
                 pass
@@ -346,7 +397,7 @@ def stacker( trace ):
             elif ev.kind == "after_loop":
                 continuation_stack.pop()
                 if curr_cont.begin.tkid != "micro":
-                    print( "MICROTASK MISMATCH %s %s" % ( curr_cont[ "task" ], ev ) )
+                    print( "MICROTASK MISMATCH %s\n%s" % ( vars( curr_cont.begin ), vars( ev ) ) )
                     exit()
                 curr_cont.end = ev
                 micro_lengths.append( ev.ts - curr_cont.begin.ts )
@@ -365,164 +416,34 @@ def stacker( trace ):
             print( "WEIRD SOURCE %s" %source )
             exit()
 
-    num_children = []
-    num_pchildren = []
+    children_per_cont = []
+    pchildren_per_edge = []
     for continuation in all_continuations:
         n = len( continuation.children )
-        num_children.append( n )
+        children_per_cont.append( n )
         for i in range( n ):
-            num_pchildren.append( n )
+            pchildren_per_edge.append( n )
 
-    print( "w00t? %d %d %d" % ( max_depth, len( global_continuation.events ), len( continuation_stack ) ) )
+    print( "w00t? %d %d" % ( max_depth, len( global_continuation.events ) ) )
     print( "CALL %s" % call_depths )
     print( "MICRO %s" % micro_depths )
-    num_children.sort()
-    num_pchildren.sort()
-    macro_lengths.sort()
-    micro_lengths.sort()
-    before_counts.sort()
-    after_counts.sort()
-    gaps.sort()
-    interrupted_gaps.sort()
-    printIles( "AL", macro_lengths, [ 0.1,  0.5,   0.9, 0.95, 0.99 ] )
-    printIles( "IL", micro_lengths, [ 0.1,  0.5,   0.9, 0.95, 0.99 ] )
-    printIles( "GA", gaps,          [ 0.01, 0.05,  0.1,  0.5, 0.9 ] )
-    printIles( "BC", before_counts, [ 0.5,  0.9,   0.95, 0.99, 0.999 ] )
-    printIles( "CC", after_counts,  [ 0.5,  0.9,   0.95, 0.99, 0.999 ] )
 
     print( "Good: %d - Missing Parent: %d - Missing End: %d" %
            ( pc_good, missing_parent, missing_end ) )
 
-    # fancyPlot( gaps, interrupted_gaps )
-    fancyPlot( num_children, num_pchildren )
-    # fancyPlot( macro_lengths, micro_lengths )
-    # fancyPlot( micro_lengths, after_counts )
-
     print( "." )
 
-    return global_continuation
+    stats = Object()
+    stats.children_per_cont = children_per_cont
+    stats.pchildren_per_edge = pchildren_per_edge
+    stats.macro_lengths = macro_lengths
+    stats.micro_lengths = micro_lengths
+    stats.before_counts = before_counts
+    stats.after_counts = after_counts
+    stats.uninterrupted_gaps = uninterrupted_gaps
+    stats.interrupted_gaps = interrupted_gaps
 
-def tracer( trace ):
-    uid_internal = { "value" : 0 }
-    def uidGen():
-        uid_internal[ "value" ] = uid_internal[ "value" ] + 1
-        return uid_internal[ "value" ]
-
-    macro_stack = []
-    task_uid_map = {}
-    parent_of = {}
-
-    for line in trace:
-        ts     = line[ 0 ]
-        source = line[ 3 ]
-
-        if source == "macro":
-            task   = line[ 4 ]
-            kind   = line[ 5 ]
-            misc   = line[ 6 ]
-            try:
-                ( uid, def_line ) = task_uid_map[ task ]
-            except:
-                uid = None
-                def_line = None
-            # print( "U D %s %s" % ( uid, def_line ) );
-
-            if kind == "scheduled":
-                if uid is not None:
-                    print( "SCHEDULED WHEN ALREADY IN MAP %s %s" % ( ts - def_line[ 0 ], line ) )
-                    continue
-                uid = uidGen()
-                task_uid_map[ task ] = ( uid, line )
-                if len( macro_stack ) > 0:
-                    # print( "PARENT A %s %s" %( uid, macro_stack[ -1 ] ) )
-                    parent_of[ uid ] = macro_stack[ -1 ]
-                else:
-                    print( "WEIRD floating scheduled %s" % line )
-            elif kind == "ctor":
-                if len( macro_stack ) > 0:
-                    print( "WEIRD NESTED tasks %s   %s" % ( line, macro_stack ) )
-                    if uid != macro_stack[ -1 ]:
-                        print( "NESTED TASKS DIFFERENT" )
-                        exit()
-                if uid is None:
-                    print( "MISSED THE SCHEDULED %s" % line )
-                    uid = uidGen()
-                    task_uid_map[ task ]( uid, line )
-                macro_stack.append( uid )
-            elif kind == "dtor":
-                if len( macro_stack ) < 1:
-                    print( "EMPTY STACK %s" % line )
-                    exit()
-                if( uid != macro_stack.pop() ):
-                    print( "WRONG TASK ON STACK %s" % line )
-                    exit()
-                if( len( macro_stack ) > 0 ):
-                    continue
-                del task_uid_map[ task ]
-                if misc[ "recurring" ]:
-                    new_uid = uidGen()
-                    task_uid_map[ task ] = ( new_uid, line )
-                    # print( "PARENT B %s %s" %( new_uid, uid ) )
-                    parent_of[ new_uid ] = uid
-            elif kind == "canceled":
-                if uid is None:
-                    print( "CANCELED AFTER D'TOR? %s" % line )
-                else:
-                    print( "canceled %s" % uid )
-            elif kind == "all_canceled":
-                print( "ALL CANCELED" )
-            else:
-                print( "WEIRD MACRO TASK KIND %s" % kind )
-                exit()
-
-        elif source == "micro":
-            kind   = line[ 4 ]
-            misc   = line[ 5 ]
-            if len( macro_stack ) > 0 and kind != "enq":
-                print( "MICRO INSIDE MACRO %s" % line )
-                # "enq" "start_callback" "start_jsfun" "startpromise_resolve" "start_promise_react" "done_bail" "done"
-
-        elif source == "exec":
-            kind   = line[ 4 ]
-            misc   = line[ 5 ]
-            pass
-
-        else:
-            print( "WEIRD SOURCE %s" %source )
-            exit()
-
-def bloop( trace ):
-    macro_tasks = {}
-
-    def append( task, kind ):
-        try:
-            macro_tasks[ task ].append( kind )
-        except:
-            kinds = [ kind ]
-            macro_tasks[ task ] = kinds
-
-    for line in trace:
-        ts     = line[ 0 ]
-        source = line[ 3 ]
-        if source != "macro":
-            continue
-        task   = line[ 4 ]
-        kind   = line[ 5 ]
-        misc   = line[ 6 ]
-        if kind == "dtor":
-            kind = "dtor " + ( "R" if misc[ "recurring" ] else "N" )
-        append( task, kind )
-
-    print( "YAY" )
-    for task, kinds in macro_tasks.items():
-        # if kinds[ -1 ] == "dtor N":
-        #     continue
-        # if kinds[ -1 ] != "canceled":
-        #     continue
-        print( "%s - %s" % ( task, kinds ) )
-#        print( "%s - %s" % ( task, kinds[ -1 ] ) )
-#        if len( kinds ) > 7:
-#            print( "%s - %s" % ( task, kinds ) )
+    return stats
 
 def splitByThread( trace ):
     traces = {}
@@ -539,7 +460,7 @@ def splitByThread( trace ):
 
     return traces
 
-def analyze( basepath, ranges, render_processes ):
+def analyze( basepath, ranges, render_processes, stats ):
     id_path_map = {}
     def add( id, fname ):
         path = os.path.join( basepath, fname )
@@ -559,7 +480,8 @@ def analyze( basepath, ranges, render_processes ):
         add( id, fname )
 
     for id in render_processes:
-        print( id )
+        ts1 = datetime.datetime.now()
+        print( "Starting process: %s" % id )
         try:
             paths = id_path_map[ id ]
         except:
@@ -571,18 +493,83 @@ def analyze( basepath, ranges, render_processes ):
 
         for tid, trace in splitByThread( merged ).items():
             print( "THREAD %s" % tid )
-            stacker( trace )
+            s = stacker( trace )
+            combineStats( stats, s )
             # tracer( trace )
+        ts2 = datetime.datetime.now()
+        print( "[TS] Done with process %s: %s" % ( id, ( ts2 - ts1 ) ) )
+
+
+def analyzeDir( base_dir, stats ):
+    ts1 = datetime.datetime.now()
+    recording_ranges = parseBeginsAndEnds( os.path.join( base_dir, "Traces" ) )
+    recording_ranges = [ ( 0, 9999999999999 ) ] # HACK
+    ts2 = datetime.datetime.now()
+    print( "[TS] begin-end ranges: %s" % ( ts2 - ts1 ) )
+    render_processes = parseProcessInfo( os.path.join( base_dir, "stderr.txt" ) )
+    ts3 = datetime.datetime.now()
+    print( "[TS] process info: %s" % ( ts3 - ts2 ) )
+    analyze( os.path.join( base_dir, "Traces" ), recording_ranges, render_processes, stats )
+    ts4 = datetime.datetime.now()
+    print( "[TS] kit and caboodle: %s" % ( ts4 - ts3 ) )
 
 def main():
-    recording_dir = sys.argv[ 1 ] if len( sys.argv ) > 1 else "."
-    recording_ranges = parseBeginsAndEnds(
-        os.path.join( recording_dir, "Traces" ) )
-    recording_ranges = [ ( 0, 9999999999999 ) ]
-    print( "parsed begins and ends" )
-    render_processes = parseProcessInfo( os.path.join( recording_dir, "stderr.txt" ) )
-    analyze( os.path.join( recording_dir, "Traces" ), recording_ranges, render_processes )
+    traces_dir = sys.argv[ 1 ] if len( sys.argv ) > 1 else "./Traces"
+    stats = Object()
+    stats.children_per_cont = []
+    stats.pchildren_per_edge = []
+    stats.macro_lengths = []
+    stats.micro_lengths = []
+    stats.before_counts = []
+    stats.after_counts = []
+    stats.uninterrupted_gaps = []
+    stats.interrupted_gaps = []
+
+    for fname in os.listdir( traces_dir ):
+        path = os.path.join( traces_dir, fname )
+        analyzeDir( path, stats )
+
+    showStats( stats )
 
 if __name__ == "__main__":
     # execute only if run as a script
     main()
+
+
+
+# par1 = host.twinx()
+# par2 = host.twinx()
+
+# host.set_xlim(0, 2)
+# host.set_ylim(0, 2)
+# par1.set_ylim(0, 4)
+# par2.set_ylim(1, 65)
+
+# host.set_xlabel("Distance")
+# host.set_ylabel("Density")
+# par1.set_ylabel("Temperature")
+# par2.set_ylabel("Velocity")
+
+# # color1 = plt.cm.viridis(0)
+# # color2 = plt.cm.viridis(0.5)
+# # color3 = plt.cm.viridis(.9)
+
+# p1, = host.plot([0, 1, 2], [0, 1, 2], color=color1,label="Density")
+# p2, = par1.plot([0, 1, 2], [0, 3, 2], color=color2, label="Temperature")
+# p3, = par2.plot([0, 1, 2], [50, 30, 15], color=color3, label="Velocity")
+
+# lns = [p1, p2, p3]
+# host.legend(handles=lns, loc='best')
+
+# # right, left, top, bottom
+# par2.spines['right'].set_position(('outward', 60))
+# # no x-ticks
+# # par2.xaxis.set_ticks([])
+# # Sometimes handy, same for xaxis
+# #par2.yaxis.set_ticks_position('right')
+
+# host.yaxis.label.set_color(p1.get_color())
+# par1.yaxis.label.set_color(p2.get_color())
+# par2.yaxis.label.set_color(p3.get_color())
+
+# plt.savefig("pyplot_multiple_y-axis.png", bbox_inches='tight')
