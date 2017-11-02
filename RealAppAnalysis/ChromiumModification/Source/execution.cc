@@ -123,6 +123,7 @@ MUST_USE_RESULT MaybeHandle<Object> Invoke(
     FILE *dumb_stream = NULL;
     if( __builtin_available(macOS 10.13, *) ) {
       dumb_stream = fmemopen( dumb_buf, 999, "w" );
+      function->PrintName( dumb_stream );
     }
     else {
       DCHECK(false);
