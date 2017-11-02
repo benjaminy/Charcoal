@@ -34,4 +34,6 @@ fi
 cd ${CHROMIUM_REPO}
 pwd
 time ninja -C out/Default chrome
+
 osascript -e "beep"
+say -v Alex "Beep"
