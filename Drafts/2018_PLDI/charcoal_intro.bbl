@@ -1,0 +1,394 @@
+%%% -*-BibTeX-*-
+%%% Do NOT edit. File created by BibTeX with style
+%%% ACM-Reference-Format-Journals [18-Jan-2012].
+
+\begin{thebibliography}{26}
+
+%%% ====================================================================
+%%% NOTE TO THE USER: you can override these defaults by providing
+%%% customized versions of any of these macros before the \bibliography
+%%% command.  Each of them MUST provide its own final punctuation,
+%%% except for \shownote{}, \showDOI{}, and \showURL{}.  The latter two
+%%% do not use final punctuation, in order to avoid confusing it with
+%%% the Web address.
+%%%
+%%% To suppress output of a particular field, define its macro to expand
+%%% to an empty string, or better, \unskip, like this:
+%%%
+%%% \newcommand{\showDOI}[1]{\unskip}   % LaTeX syntax
+%%%
+%%% \def \showDOI #1{\unskip}           % plain TeX syntax
+%%%
+%%% ====================================================================
+
+\ifx \showCODEN    \undefined \def \showCODEN     #1{\unskip}     \fi
+\ifx \showDOI      \undefined \def \showDOI       #1{#1}\fi
+\ifx \showISBNx    \undefined \def \showISBNx     #1{\unskip}     \fi
+\ifx \showISBNxiii \undefined \def \showISBNxiii  #1{\unskip}     \fi
+\ifx \showISSN     \undefined \def \showISSN      #1{\unskip}     \fi
+\ifx \showLCCN     \undefined \def \showLCCN      #1{\unskip}     \fi
+\ifx \shownote     \undefined \def \shownote      #1{#1}          \fi
+\ifx \showarticletitle \undefined \def \showarticletitle #1{#1}   \fi
+\ifx \showURL      \undefined \def \showURL       {\relax}        \fi
+% The following commands are used for tagged output and should be
+% invisible to TeX
+\providecommand\bibfield[2]{#2}
+\providecommand\bibinfo[2]{#2}
+\providecommand\natexlab[1]{#1}
+\providecommand\showeprint[2][]{arXiv:#2}
+
+\bibitem[\protect\citeauthoryear{Abadi and Plotkin}{Abadi and Plotkin}{2009}]%
+        {Abadi2009}
+\bibfield{author}{\bibinfo{person}{Martin Abadi} {and} \bibinfo{person}{Gordon
+  Plotkin}.} \bibinfo{year}{2009}\natexlab{}.
+\newblock \showarticletitle{A Model of Cooperative Threads}. In
+  \bibinfo{booktitle}{{\em Proceedings of the 36th Annual ACM SIGPLAN-SIGACT
+  Symposium on Principles of Programming Languages}} {\em
+  (\bibinfo{series}{POPL '09})}. \bibinfo{publisher}{ACM},
+  \bibinfo{address}{New York, NY, USA}, \bibinfo{pages}{29--40}.
+\newblock
+\showISBNx{978-1-60558-379-2}
+
+
+
+\bibitem[\protect\citeauthoryear{Adya, Howell, Theimer, Bolosky, and
+  Douceur}{Adya et~al\mbox{.}}{2002}]%
+        {Adya2002}
+\bibfield{author}{\bibinfo{person}{Atul Adya}, \bibinfo{person}{Jon Howell},
+  \bibinfo{person}{Marvin Theimer}, \bibinfo{person}{William~J. Bolosky}, {and}
+  \bibinfo{person}{John~R. Douceur}.} \bibinfo{year}{2002}\natexlab{}.
+\newblock \showarticletitle{Cooperative Task Management Without Manual Stack
+  Management}. In \bibinfo{booktitle}{{\em Proceedings of the General Track of
+  the annual conference on USENIX Annual Technical Conference}} {\em
+  (\bibinfo{series}{ATEC '02})}. \bibinfo{publisher}{USENIX Association},
+  \bibinfo{address}{Berkeley, CA, USA}, \bibinfo{pages}{289--302}.
+\newblock
+\showISBNx{1-880446-00-6}
+
+
+\bibitem[\protect\citeauthoryear{Anderson}{Anderson}{2013}]%
+        {Anderson2013}
+\bibfield{author}{\bibinfo{person}{Brian Anderson}.}
+  \bibinfo{year}{2013}\natexlab{}.
+\newblock \bibinfo{title}{Abandoning segmented stacks in Rust}.
+\newblock \bibinfo{howpublished}{rust-dev mailing list}.
+  (\bibinfo{date}{November} \bibinfo{year}{2013}).
+\newblock
+
+
+\bibitem[\protect\citeauthoryear{Boehm}{Boehm}{2011}]%
+        {Boehm2011}
+\bibfield{author}{\bibinfo{person}{Hans-J. Boehm}.}
+  \bibinfo{year}{2011}\natexlab{}.
+\newblock \showarticletitle{How to Miscompile Programs with "Benign" Data
+  Races}. In \bibinfo{booktitle}{{\em Proceedings of the 3rd USENIX Conference
+  on Hot Topic in Parallelism}} {\em (\bibinfo{series}{HotPar'11})}.
+  \bibinfo{publisher}{USENIX Association}, \bibinfo{address}{Berkeley, CA,
+  USA}, \bibinfo{pages}{3--3}.
+\newblock
+
+
+\bibitem[\protect\citeauthoryear{Boudol}{Boudol}{2007}]%
+        {Boudol2007}
+\bibfield{author}{\bibinfo{person}{G{\'e}rard Boudol}.}
+  \bibinfo{year}{2007}\natexlab{}.
+\newblock \showarticletitle{Fair Cooperative Multithreading: Typing Termination
+  in a Higher-order Concurrent Imperative Language}. In
+  \bibinfo{booktitle}{{\em Proceedings of the 18th International Conference on
+  Concurrency Theory}} {\em (\bibinfo{series}{CONCUR'07})}.
+  \bibinfo{publisher}{Springer-Verlag}, \bibinfo{address}{Berlin, Heidelberg},
+  \bibinfo{pages}{272--286}.
+\newblock
+\showISBNx{3-540-74406-1, 978-3-540-74406-1}
+
+
+\bibitem[\protect\citeauthoryear{Boussinot}{Boussinot}{2006}]%
+        {Boussinot2006}
+\bibfield{author}{\bibinfo{person}{Fr{\'e}d{\'e}ric Boussinot}.}
+  \bibinfo{year}{2006}\natexlab{}.
+\newblock \showarticletitle{FairThreads: Mixing Cooperative and Preemptive
+  Threads in C: Research Articles}.
+\newblock \bibinfo{journal}{{\em Concurr. Comput. : Pract. Exper.\/}}
+  \bibinfo{volume}{18}, \bibinfo{number}{5} (\bibinfo{date}{April}
+  \bibinfo{year}{2006}), \bibinfo{pages}{445--469}.
+\newblock
+\showISSN{1532-0626}
+
+
+\bibitem[\protect\citeauthoryear{Dabrowski and Boussinot}{Dabrowski and
+  Boussinot}{2006}]%
+        {Dabrowski2006}
+\bibfield{author}{\bibinfo{person}{Frédéric Dabrowski} {and}
+  \bibinfo{person}{Frédéric Boussinot}.} \bibinfo{year}{2006}\natexlab{}.
+\newblock \showarticletitle{Cooperative Threads and Preemptive Computations}.
+  In \bibinfo{booktitle}{{\em in \&quot;Proceedings of TV’06, Multithreading
+  in Hardware and Software: Formal Approaches to Design and Verification}}.
+\newblock
+
+
+\bibitem[\protect\citeauthoryear{Davis, Thekumparampil, and Lee}{Davis
+  et~al\mbox{.}}{2017}]%
+        {Davis2017}
+\bibfield{author}{\bibinfo{person}{James Davis}, \bibinfo{person}{Arun
+  Thekumparampil}, {and} \bibinfo{person}{Dongyoon Lee}.}
+  \bibinfo{year}{2017}\natexlab{}.
+\newblock \showarticletitle{Node.Fz: Fuzzing the Server-Side Event-Driven
+  Architecture}. In \bibinfo{booktitle}{{\em Proceedings of the Twelfth
+  European Conference on Computer Systems}} {\em (\bibinfo{series}{EuroSys
+  '17})}. \bibinfo{publisher}{ACM}, \bibinfo{address}{New York, NY, USA},
+  \bibinfo{pages}{145--160}.
+\newblock
+\showISBNx{978-1-4503-4938-3}
+
+
+\bibitem[\protect\citeauthoryear{Dean, Grove, and Chambers}{Dean
+  et~al\mbox{.}}{1995}]%
+        {Dean1995}
+\bibfield{author}{\bibinfo{person}{Jeffrey Dean}, \bibinfo{person}{David
+  Grove}, {and} \bibinfo{person}{Craig Chambers}.}
+  \bibinfo{year}{1995}\natexlab{}.
+\newblock \showarticletitle{Optimization of Object-Oriented Programs Using
+  Static Class Hierarchy Analysis}. In \bibinfo{booktitle}{{\em Proceedings of
+  the 9th European Conference on Object-Oriented Programming}} {\em
+  (\bibinfo{series}{ECOOP '95})}. \bibinfo{publisher}{Springer-Verlag},
+  \bibinfo{address}{London, UK, UK}, \bibinfo{pages}{77--101}.
+\newblock
+\showISBNx{3-540-60160-0}
+
+
+\bibitem[\protect\citeauthoryear{Grossman}{Grossman}{2007}]%
+        {Grossman2007}
+\bibfield{author}{\bibinfo{person}{Dan Grossman}.}
+  \bibinfo{year}{2007}\natexlab{}.
+\newblock \showarticletitle{The Transactional Memory / Garbage Collection
+  Analogy}. In \bibinfo{booktitle}{{\em Proceedings of the 22Nd Annual ACM
+  SIGPLAN Conference on Object-oriented Programming Systems and Applications}}
+  {\em (\bibinfo{series}{OOPSLA '07})}. \bibinfo{publisher}{ACM},
+  \bibinfo{address}{New York, NY, USA}, \bibinfo{pages}{695--706}.
+\newblock
+\showISBNx{978-1-59593-786-5}
+
+
+\bibitem[\protect\citeauthoryear{Harris, Marlow, Peyton-Jones, and
+  Herlihy}{Harris et~al\mbox{.}}{2005}]%
+        {Harris2005}
+\bibfield{author}{\bibinfo{person}{Tim Harris}, \bibinfo{person}{Simon Marlow},
+  \bibinfo{person}{Simon Peyton-Jones}, {and} \bibinfo{person}{Maurice
+  Herlihy}.} \bibinfo{year}{2005}\natexlab{}.
+\newblock \showarticletitle{Composable Memory Transactions}. In
+  \bibinfo{booktitle}{{\em Proceedings of the Tenth ACM SIGPLAN Symposium on
+  Principles and Practice of Parallel Programming}} {\em
+  (\bibinfo{series}{PPoPP '05})}. \bibinfo{publisher}{ACM},
+  \bibinfo{address}{New York, NY, USA}, \bibinfo{pages}{48--60}.
+\newblock
+\showISBNx{1-59593-080-9}
+
+
+\bibitem[\protect\citeauthoryear{Hsiao, Yu, Narayanasamy, Kong, Pereira, Pokam,
+  Chen, and Flinn}{Hsiao et~al\mbox{.}}{2014}]%
+        {Hsiao2014}
+\bibfield{author}{\bibinfo{person}{Chun-Hung Hsiao}, \bibinfo{person}{Jie Yu},
+  \bibinfo{person}{Satish Narayanasamy}, \bibinfo{person}{Ziyun Kong},
+  \bibinfo{person}{Cristiano~L. Pereira}, \bibinfo{person}{Gilles~A. Pokam},
+  \bibinfo{person}{Peter~M. Chen}, {and} \bibinfo{person}{Jason Flinn}.}
+  \bibinfo{year}{2014}\natexlab{}.
+\newblock \showarticletitle{Race Detection for Event-driven Mobile
+  Applications}. In \bibinfo{booktitle}{{\em Proceedings of the 35th ACM
+  SIGPLAN Conference on Programming Language Design and Implementation}} {\em
+  (\bibinfo{series}{PLDI '14})}. \bibinfo{publisher}{ACM},
+  \bibinfo{address}{New York, NY, USA}, \bibinfo{pages}{326--336}.
+\newblock
+\showISBNx{978-1-4503-2784-8}
+
+
+\bibitem[\protect\citeauthoryear{Kerneis}{Kerneis}{2013}]%
+        {Kerneis2013}
+\bibfield{author}{\bibinfo{person}{Gabriel Kerneis}.}
+  \bibinfo{year}{2013}\natexlab{}.
+\newblock {\em \bibinfo{title}{Continuation-Passing C: Program Transformations
+  for Compiling Concurrency in an Imperative Language}}.
+\newblock \bibinfo{thesistype}{Ph.D. Dissertation}.
+  \bibinfo{school}{Universit\'e Paris Diderot - Paris 7}.
+\newblock
+
+
+\bibitem[\protect\citeauthoryear{Krohn, Kohler, and Kaashoek}{Krohn
+  et~al\mbox{.}}{2007}]%
+        {Krohn2007}
+\bibfield{author}{\bibinfo{person}{Maxwell Krohn}, \bibinfo{person}{Eddie
+  Kohler}, {and} \bibinfo{person}{M.~Frans Kaashoek}.}
+  \bibinfo{year}{2007}\natexlab{}.
+\newblock \showarticletitle{Events can make sense}. In \bibinfo{booktitle}{{\em
+  2007 USENIX Annual Technical Conference on Proceedings of the USENIX Annual
+  Technical Conference}} {\em (\bibinfo{series}{ATC'07})}.
+  \bibinfo{publisher}{USENIX Association}, \bibinfo{address}{Berkeley, CA,
+  USA}, Article \bibinfo{articleno}{7}, \bibinfo{numpages}{14}~pages.
+\newblock
+\showISBNx{999-8888-77-6}
+
+
+\bibitem[\protect\citeauthoryear{Lu, Park, Seo, and Zhou}{Lu
+  et~al\mbox{.}}{2008}]%
+        {Lu2008}
+\bibfield{author}{\bibinfo{person}{Shan Lu}, \bibinfo{person}{Soyeon Park},
+  \bibinfo{person}{Eunsoo Seo}, {and} \bibinfo{person}{Yuanyuan Zhou}.}
+  \bibinfo{year}{2008}\natexlab{}.
+\newblock \showarticletitle{Learning from mistakes: a comprehensive study on
+  real world concurrency bug characteristics}. In \bibinfo{booktitle}{{\em
+  Proceedings of the 13th international conference on Architectural support for
+  programming languages and operating systems}} {\em (\bibinfo{series}{ASPLOS
+  XIII})}. \bibinfo{publisher}{ACM}, \bibinfo{address}{New York, NY, USA},
+  \bibinfo{pages}{329--339}.
+\newblock
+\showISBNx{978-1-59593-958-6}
+
+
+\bibitem[\protect\citeauthoryear{Moore and Grossman}{Moore and
+  Grossman}{2008}]%
+        {Moore2008}
+\bibfield{author}{\bibinfo{person}{Katherine~F. Moore} {and}
+  \bibinfo{person}{Dan Grossman}.} \bibinfo{year}{2008}\natexlab{}.
+\newblock \showarticletitle{High-level Small-step Operational Semantics for
+  Transactions}. In \bibinfo{booktitle}{{\em Proceedings of the 35th Annual ACM
+  SIGPLAN-SIGACT Symposium on Principles of Programming Languages}} {\em
+  (\bibinfo{series}{POPL '08})}. \bibinfo{publisher}{ACM},
+  \bibinfo{address}{New York, NY, USA}, \bibinfo{pages}{51--62}.
+\newblock
+\showISBNx{978-1-59593-689-9}
+
+
+\bibitem[\protect\citeauthoryear{Mutlu, Tasiran, and Livshits}{Mutlu
+  et~al\mbox{.}}{2015}]%
+        {Mutlu2015}
+\bibfield{author}{\bibinfo{person}{Erdal Mutlu}, \bibinfo{person}{Serdar
+  Tasiran}, {and} \bibinfo{person}{Benjamin Livshits}.}
+  \bibinfo{year}{2015}\natexlab{}.
+\newblock \showarticletitle{Detecting JavaScript Races That Matter}. In
+  \bibinfo{booktitle}{{\em Proceedings of the 2015 10th Joint Meeting on
+  Foundations of Software Engineering}} {\em (\bibinfo{series}{ESEC/FSE
+  2015})}. \bibinfo{publisher}{ACM}, \bibinfo{address}{New York, NY, USA},
+  \bibinfo{pages}{381--392}.
+\newblock
+\showISBNx{978-1-4503-3675-8}
+
+
+\bibitem[\protect\citeauthoryear{Necula, McPeak, Rahul, and Weimer}{Necula
+  et~al\mbox{.}}{2002}]%
+        {Necula2002}
+\bibfield{author}{\bibinfo{person}{George~C. Necula}, \bibinfo{person}{Scott
+  McPeak}, \bibinfo{person}{Shree~Prakash Rahul}, {and}
+  \bibinfo{person}{Westley Weimer}.} \bibinfo{year}{2002}\natexlab{}.
+\newblock \showarticletitle{CIL: Intermediate Language and Tools for Analysis
+  and Transformation of C Programs}. In \bibinfo{booktitle}{{\em Proceedings of
+  the 11th International Conference on Compiler Construction}} {\em
+  (\bibinfo{series}{CC '02})}. \bibinfo{publisher}{Springer-Verlag},
+  \bibinfo{address}{London, UK, UK}, \bibinfo{pages}{213--228}.
+\newblock
+\showISBNx{3-540-43369-4}
+
+
+\bibitem[\protect\citeauthoryear{Ousterhout}{Ousterhout}{1996}]%
+        {Ousterhout1996}
+\bibfield{author}{\bibinfo{person}{John Ousterhout}.}
+  \bibinfo{year}{1996}\natexlab{}.
+\newblock \showarticletitle{Why Threads Are A Bad Idea (for most purposes)}. In
+  \bibinfo{booktitle}{{\em USENIX Technical Conference}}.
+\newblock
+
+
+\bibitem[\protect\citeauthoryear{O’Neill and Stone}{O’Neill and
+  Stone}{2015}]%
+        {ONeill2015}
+\bibfield{author}{\bibinfo{person}{Melissa~E. O'Neill} {and}
+  \bibinfo{person}{Christopher~A. Stone}.} \bibinfo{year}{2015}\natexlab{}.
+\newblock \showarticletitle{Making Impractical Implementations Practical:
+  Observationally Cooperative Multithreading Using HLE}. In
+  \bibinfo{booktitle}{{\em Proceedings of the 10th ACM SIGPLAN Workshop on
+  Transactional Computing}}.
+\newblock
+
+
+\bibitem[\protect\citeauthoryear{Pankratius and Adl-Tabatabai}{Pankratius and
+  Adl-Tabatabai}{2014}]%
+        {Pankratius2014}
+\bibfield{author}{\bibinfo{person}{Victor Pankratius} {and}
+  \bibinfo{person}{Ali-Reza Adl-Tabatabai}.} \bibinfo{year}{2014}\natexlab{}.
+\newblock \showarticletitle{Software Engineering with Transactional Memory
+  Versus Locks in Practice}.
+\newblock \bibinfo{journal}{{\em Theor. Comp. Sys.\/}} \bibinfo{volume}{55},
+  \bibinfo{number}{3} (\bibinfo{date}{Oct.} \bibinfo{year}{2014}),
+  \bibinfo{pages}{555--590}.
+\newblock
+\showISSN{1432-4350}
+
+
+\bibitem[\protect\citeauthoryear{Petrov, Vechev, Sridharan, and Dolby}{Petrov
+  et~al\mbox{.}}{2012}]%
+        {Petrov2012}
+\bibfield{author}{\bibinfo{person}{Boris Petrov}, \bibinfo{person}{Martin
+  Vechev}, \bibinfo{person}{Manu Sridharan}, {and} \bibinfo{person}{Julian
+  Dolby}.} \bibinfo{year}{2012}\natexlab{}.
+\newblock \showarticletitle{Race Detection for Web Applications}. In
+  \bibinfo{booktitle}{{\em Proceedings of the 33rd ACM SIGPLAN Conference on
+  Programming Language Design and Implementation}} {\em (\bibinfo{series}{PLDI
+  '12})}. \bibinfo{publisher}{ACM}, \bibinfo{address}{New York, NY, USA},
+  \bibinfo{pages}{251--262}.
+\newblock
+\showISBNx{978-1-4503-1205-9}
+
+
+\bibitem[\protect\citeauthoryear{Shao and Appel}{Shao and Appel}{2000}]%
+        {Shao2000}
+\bibfield{author}{\bibinfo{person}{Zhong Shao} {and} \bibinfo{person}{Andrew~W.
+  Appel}.} \bibinfo{year}{2000}\natexlab{}.
+\newblock \showarticletitle{Efficient and Safe-for-space Closure Conversion}.
+\newblock \bibinfo{journal}{{\em ACM Trans. Program. Lang. Syst.\/}}
+  \bibinfo{volume}{22}, \bibinfo{number}{1} (\bibinfo{date}{Jan.}
+  \bibinfo{year}{2000}), \bibinfo{pages}{129--161}.
+\newblock
+\showISSN{0164-0925}
+
+
+\bibitem[\protect\citeauthoryear{Singh, Narayanasamy, Marino, Millstein, and
+  Musuvathi}{Singh et~al\mbox{.}}{2012}]%
+        {Singh2012}
+\bibfield{author}{\bibinfo{person}{Abhayendra Singh}, \bibinfo{person}{Satish
+  Narayanasamy}, \bibinfo{person}{Daniel Marino}, \bibinfo{person}{Todd
+  Millstein}, {and} \bibinfo{person}{Madanlal Musuvathi}.}
+  \bibinfo{year}{2012}\natexlab{}.
+\newblock \showarticletitle{End-to-end sequential consistency}. In
+  \bibinfo{booktitle}{{\em Proceedings of the 39th Annual International
+  Symposium on Computer Architecture}} {\em (\bibinfo{series}{ISCA '12})}.
+  \bibinfo{publisher}{IEEE Computer Society}, \bibinfo{address}{Washington, DC,
+  USA}, \bibinfo{pages}{524--535}.
+\newblock
+\showISBNx{978-1-4503-1642-2}
+
+
+\bibitem[\protect\citeauthoryear{Team}{Team}{2012}]%
+        {Windows8Team2012}
+\bibfield{author}{\bibinfo{person}{Windows~8 Team}.}
+  \bibinfo{year}{2012}\natexlab{}.
+\newblock \bibinfo{title}{Keeping apps fast and fluid with asynchrony in the
+  Windows Runtime}.
+\newblock   (\bibinfo{year}{2012}).
+\newblock
+\showURL{%
+\url{https://blogs.msdn.microsoft.com/windowsappdev/2012/03/20/keeping-apps-fast-and-fluid-with-asynchrony-in-the-windows-runtime/}}
+
+
+\bibitem[\protect\citeauthoryear{von Behren, Condit, and Brewer}{von Behren
+  et~al\mbox{.}}{2003}]%
+        {Behren2003a}
+\bibfield{author}{\bibinfo{person}{Rob von Behren}, \bibinfo{person}{Jeremy
+  Condit}, {and} \bibinfo{person}{Eric Brewer}.}
+  \bibinfo{year}{2003}\natexlab{}.
+\newblock \showarticletitle{Why Events Are a Bad Idea (for High-concurrency
+  Servers)}. In \bibinfo{booktitle}{{\em Proceedings of the 9th Conference on
+  Hot Topics in Operating Systems - Volume 9}} {\em
+  (\bibinfo{series}{HOTOS'03})}. \bibinfo{publisher}{USENIX Association},
+  \bibinfo{address}{Berkeley, CA, USA}, \bibinfo{pages}{4--4}.
+\newblock
+
+
+\end{thebibliography}

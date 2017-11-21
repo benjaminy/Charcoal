@@ -1,0 +1,1078 @@
+%% For double-blind review submission, w/o CCS and ACM Reference (max submission space)
+\documentclass[sigplan,10pt,review,anonymous]{acmart}\settopmatter{printfolios=true,printccs=false,printacmref=false}
+%% For double-blind review submission, w/ CCS and ACM Reference
+%\documentclass[sigplan,10pt,review,anonymous]{acmart}\settopmatter{printfolios=true}
+%% For single-blind review submission, w/o CCS and ACM Reference (max submission space)
+%\documentclass[sigplan,10pt,review]{acmart}\settopmatter{printfolios=true,printccs=false,printacmref=false}
+%% For single-blind review submission, w/ CCS and ACM Reference
+%\documentclass[sigplan,10pt,review]{acmart}\settopmatter{printfolios=true}
+%% For final camera-ready submission, w/ required CCS and ACM Reference
+%\documentclass[sigplan,10pt]{acmart}\settopmatter{}
+
+
+%% Conference information
+%% Supplied to authors by publisher for camera-ready submission;
+%% use defaults for review submission.
+\acmConference[PL'18]{ACM SIGPLAN Conference on Programming Languages}{January 01--03, 2018}{New York, NY, USA}
+\acmYear{2018}
+\acmISBN{} % \acmISBN{978-x-xxxx-xxxx-x/YY/MM}
+\acmDOI{} % \acmDOI{10.1145/nnnnnnn.nnnnnnn}
+\startPage{1}
+
+%% Copyright information
+%% Supplied to authors (based on authors' rights management selection;
+%% see authors.acm.org) by publisher for camera-ready submission;
+%% use 'none' for review submission.
+\setcopyright{none}
+%\setcopyright{acmcopyright}
+%\setcopyright{acmlicensed}
+%\setcopyright{rightsretained}
+%\copyrightyear{2017}           %% If different from \acmYear
+
+%% Bibliography style
+\bibliographystyle{ACM-Reference-Format}
+%% Citation style
+%\citestyle{acmauthoryear}  %% For author/year citations
+%\citestyle{acmnumeric}     %% For numeric citations
+%\setcitestyle{nosort}      %% With 'acmnumeric', to disable automatic
+                            %% sorting of references within a single citation;
+                            %% e.g., \cite{Smith99,Carpenter05,Baker12}
+                            %% rendered as [14,5,2] rather than [2,5,14].
+%\setcitesyle{nocompress}   %% With 'acmnumeric', to disable automatic
+                            %% compression of sequential references within a
+                            %% single citation;
+                            %% e.g., \cite{Baker12,Baker14,Baker16}
+                            %% rendered as [2,3,4] rather than [2-4].
+
+
+\usepackage{graphicx}
+\usepackage{subfig}
+\usepackage{caption}
+%\usepackage{subcaption}
+\usepackage[export]{adjustbox}
+
+\begin{document}
+
+% \newcommand{\charcoal}{Charcoal}
+\newcommand{\charcoal}{DblBlind}
+\newcommand{\atomic}{\texttt{atomic}}
+
+\special{papersize=8.5in,11in}
+\setlength{\pdfpageheight}{\paperheight}
+\setlength{\pdfpagewidth}{\paperwidth}
+
+% \titlebanner{Preprint.  Please do not redistribute}        % These are ignored unless
+% \preprintfooter{Preprint.  Please do not redistribute}   % 'preprint' option specified.
+
+\title{Cooperative Concurrency Needs \texttt{atomic}}
+\subtitle{\ldots and It Can Be Implemented Efficiently}
+
+%% Author information
+%% Contents and number of authors suppressed with 'anonymous'.
+%% Each author should be introduced by \author, followed by
+%% \authornote (optional), \orcid (optional), \affiliation, and
+%% \email.
+%% An author may have multiple affiliations and/or emails; repeat the
+%% appropriate command.
+%% Many elements are not rendered, but should be provided for metadata
+%% extraction tools.
+
+%% Author with single affiliation.
+\author{Benjamin Ylvisaker}
+% \authornote{with author1 note}          %% \authornote is optional;
+                                        %% can be repeated if necessary
+% \orcid{nnnn-nnnn-nnnn-nnnn}             %% \orcid is optional
+\affiliation{
+  \position{Assistant Professor}
+  \department{Department of Math and Computer Science}
+  \institution{Colorado College}
+  \streetaddress{14 E Cache La Poudre St}
+  \city{Colorado Springs}
+  \state{CO}
+  \postcode{80903}
+  \country{USA}
+}
+\email{bylvisaker@coloradocollege.edu}
+
+
+\begin{abstract}
+
+The sophistication of multitasking in mainstream software has increased in recent years, thanks to the increasing richness of network communication, physical world interaction and multi-process software architectures.
+These trends have pushed programming languages to offer better ways of writing such code.
+As just one example of this trend, in recent years some flavor of coroutine has been standardized (or is heading towards standardization) in JavaScript, Swift, and C++.
+
+This paper makes two primary contributions.
+The first is an empirical study of multitasking in modern web applications.
+Our primary finding is that in current practice, web JavaScript code tends to exhibit risky patterns, from the perspective of atomicity.
+We argue that an \texttt{atomic} block primitive should be added to languages to help programmers avoid atomicity bugs.
+
+We also experiment with two implementations of cooperative threads plus atomic: a JavaScript library and a dialect of C.
+This investigation shows that this language design can be implemented in a flexible and efficient way.
+
+\end{abstract}
+
+
+%% 2012 ACM Computing Classification System (CSS) concepts
+%% Generate at 'http://dl.acm.org/ccs/ccs.cfm'.
+\begin{CCSXML}
+<ccs2012>
+<concept>
+<concept_id>10011007.10011006.10011008</concept_id>
+<concept_desc>Software and its engineering~General programming languages</concept_desc>
+<concept_significance>500</concept_significance>
+</concept>
+<concept>
+<concept_id>10003456.10003457.10003521.10003525</concept_id>
+<concept_desc>Social and professional topics~History of programming languages</concept_desc>
+<concept_significance>300</concept_significance>
+</concept>
+</ccs2012>
+\end{CCSXML}
+
+\ccsdesc[500]{Software and its engineering~General programming languages}
+\ccsdesc[300]{Social and professional topics~History of programming languages}
+%% End of generated code
+
+
+%% Keywords
+%% comma separated list
+\keywords{keyword1, keyword2, keyword3}  %% \keywords are mandatory in final camera-ready submission
+
+\maketitle
+
+% Outline:
+% Introduction
+%   Contributions
+% Atomic or Interruptible?
+%   On Atoms and Interrupts
+%   Events
+%   Cooperative Threads
+%   Coroutines and Async Procedures}
+%   What's Wrong with Threads?
+% Activities
+%   Shared Variables
+%   Yield Insertion
+%   Atomic
+%   System Calls
+%   Activities, Compared
+% Implementation
+%   Call Frame Allocation
+%     Contiguous Allocation
+%     Individual Heap Allocation
+%     Split/Segmented Stacks
+%     Dynamic Contiguous Stacks
+%     Hot Stacking
+%   Yield Implementation
+%     Yield in Atomic Mode
+%     Function Pointers
+%     Yields
+%   Asynchronous System Calls
+%   Translation
+%   Activities in JavaScript
+% Evaluation
+%   Building an App with Activities
+%   Task Memory Overhead
+%   Task Spawn and Switching Speed
+%   Just Calling
+%   Yielding
+%   Microbenchmark Summary
+% Related Work
+%   Other Multitasking Abstractions
+% Summary and Discussion
+
+
+
+\section{Introduction}
+
+Many modern applications are highly multitasked.
+They have lots of balls in the air at the same time: communications over the internet, queries to databases, multiple I/O modalities to monitor and manage.
+Applications use a wide range of language and core library features to implement this multitasking: threads, event loops, coroutines, async functions, functional reactive programming, etc.
+We briefly note that some of these features are also relevant to \emph{parallelism}, but that is \emph{not} the subject of this paper or the project it describes.
+
+Many popular application programming frameworks have elected to use some form of cooperative multitasking, because of the fear that preemption carries too much risk of concurrency bugs.
+While the authors of this paper support that line of reasoning, it does not mean that applications built on a cooperative multitasking framework are automatically free of concurrency defects.
+In fact there has been a great deal of research in the last decade on cataloging, exposing, diagnosing and fixing concurrency bugs in web and mobile applications that use a cooperative concurrency model (for example, \cite{Hsiao2014, Petrov2012, Mutlu2015}).
+
+This paper starts with a measurement study of widely used web applications\footnotemark{}.
+We observe that patterns that seem risky from an atomicity perspective are common on the web.
+In particular, there are many chains of short callbacks with short gaps between them.
+We believe it would be easy for a developer to test such code and effectively assume atomicity for the chain, even though it is possible with a small perturbation in timing for a conflicting task to execute in one of the gaps.
+
+\footnotetext{We chose to focus on web applications for the simple reason that a large amount of deployed production code is easily available for the studying.}
+
+To reduce the risk of atomicity violations, we argue that languages designed for multitasking should have an atomic block primitive.
+We identify a conflict between atomic blocks and the anonymous concurrency that arises from event loop, coroutine or async function based systems.
+We conclude that languages with atomic blocks should have an explicit notion of task/thread naming.
+
+This line of reasoning leads to a language design closely related to cooperative threads, with the addition of atomic blocks and two classes of functions: async/interruptible and atomic.
+We explore what such a design could look like in the context of two implementations: a JavaScript library and a C dialect.
+We address one interesting semantic issue, which is the nesting of atomic regions and task spawning.
+We also explore efficiency in the context of the C implementation, in particular the allocation of call frames and the implementation of yield/context switching.
+
+All code and data described in this paper is available publicly on GitHub [URL removed for blind review].
+
+\section{Multitasking on the Web Today}
+
+\begin{figure*}
+\includegraphics[width=0.9\textwidth]{continuation_tree}
+\caption{The features of JavaScript event execution that our modified Chromium browser measures.
+  The gray boxes are continuations.
+  The continuations are arranged in rows to suggest that they belong to the same task/thread.
+  However, JavaScript does not have this concept, so this is purely a human interpretation.
+  For example, a2 and b1 are both children of a1, and there is no way for the system to know what logical task either belongs to.}
+\label{fig:continuation_tree}
+\end{figure*}
+
+We begin with some brief remarks on the history of JavaScript.
+At the beginning, the designers of JavaScript decided that preemptive threads are unacceptably concurrency-bug-prone.
+One good entry into the vast literature on how hard it is to diagnose and fix multithreading defects is \cite{Lu2008}.
+These challenges have been understood for a long time; two decades ago Ousterhout wrote a popular critique of threads \cite{Ousterhout1996}.
+
+Early versions of JavaScript supported only event loop based concurrency.
+The simple picture of the implementation of JavaScript is that there is a single event queue that stores a collection of functions waiting for some enabling condition.
+These functions can be registered by builtin callback APIs, like \texttt{setTimeout}.
+In all cases we refer to these functions as \emph{continuations}.
+We refer to a continuation plus its enabling condition as an \emph{event}.
+When an event becomes ready, the queue may execute its continuation whenever it chooses (generally as soon as possible).
+
+Simple event loop programming has some serious drawbacks.
+It can make management of resources whose lifetime spans multiple callbacks quite tricky.
+This leads to a style of programming referred to as \emph{stack ripping} \cite{Adya2002}, or more colloquially \emph{callback hell}.
+These and more subtle problems are well analyzed and criticized by von Behren et al. in \cite{Behren2003a}.
+
+The increasingly sophisticated multitasking in modern applications and the well-known problems with events and threads have forced language designers to explore alternatives in recent years.
+The most widely used alternatives are \emph{coroutines} and \emph{async procedures}.
+Examples include async/await, which was added to C\#/.Net in 2012; function generators (\texttt{function*}), which were added to JavaScript with ECMAScript 6 (standard published in 2015); even the C++ community is considering adding support for coroutines (currently on the short list for inclusion in the C++20 standard).
+Coroutine implementations are not \emph{new}; for example, Modula-2 had coroutines in the 1980s.
+However, relatively few of the most widely used languages natively supported coroutines until recently.
+
+The most recent versions of JavaScript support both coroutines and async functions.
+
+\subsection{Measurements}
+
+We modified a version of Chromium to gather data on JavaScript behavior from web applications.
+Figure \ref{fig:continuation_tree} illustrates the features of JavaScript execution that our modified browser measures:
+
+\begin{itemize}
+\item Continuation duration is the time from the beginning of the execution of a continuation to the time it returns control to the event loop.
+\item Parent-child relationships are inferred by recording which continuation (the parent) is running when potential child continuations are registered/scheduled.
+\item A \emph{gap} is the difference between the start of a continuation and the end of its parent.
+  A gap is \emph{interrupted} if \emph{any} other continuation runs between parent and child.
+\item We measure both the duration and number of microtasks in microtask batches.
+  More on microtasks below.
+  (The vertical lines in continuation b4 in the Figure are meant to suggest individual microtasks within a batch.)
+\item Figure \ref{fig:continuation_tree} suggests with the horizontal rows of continuations that we can determine whether a continuation should be intuitively understood as continuing its parent's task or spawning a concurrent task.
+  As far as we know it is \emph{not} possible to automatically and precisely infer this.
+\end{itemize}
+
+\begin{figure}
+\hspace*{-0.2cm}\includegraphics[width=0.5\textwidth]{duration_graph_bw}
+\caption{Most continuations are short.
+  Many are very short.}
+\label{fig:graph_duration}
+\end{figure}
+
+\begin{figure}
+\hspace*{-0.2cm}\includegraphics[width=0.5\textwidth]{children_graph_bw}
+\caption{Most continuations have one child.
+A few have many, many children.}
+\label{fig:graph_branching}
+\end{figure}
+
+\subsubsection{Duration and Branching}
+
+Figures \ref{fig:graph_duration} and \ref{fig:graph_branching} start to give a sense of the shapes of the continuation trees in widely used JavaScript code.
+The first important observation is that most continuations are quite short.
+A large majority take less than one millisecond, and many are much shorter than that.
+Figure \ref{fig:graph_duration} shows both microtask batches and normal continuations combined into a single data set.
+
+Short continuations are \emph{not} direct evidence of an atomicity problem.
+However, it is interesting to see that JavaScript programmers seem to have taken very seriously the rule that in order to keep applications responsive, all function executions must complete quickly.
+This ecosystem norm will be important when we discuss library function design later.
+
+The difference between the solid and dashed lines in Figure \ref{fig:graph_duration} highlights the importance of recurring events.
+In JavaScript, certain primitive APIs, like \texttt{setInterval} and \texttt{XMLHttpRequest} can register continuations that are called multiple times.
+As you can see, these recurring continuations (especially network request updates) account for a majority of the shortest.
+
+Next, notice in Figure \ref{fig:graph_branching} that a majority of continuations have exactly one child.
+This suggests that JavaScript programmers are in many cases breaking linear sequences of logic up into multiple continuations.
+Presumably they are doing this either consciously to avoid responsiveness problems, or because the libraries they are using do not offer any other choice.
+
+A large majority of continuations have at most one child, but a very few have a much higher branching factor.
+To visualize this long tail more clearly, the dashed line in Figure \ref{fig:graph_branching} shows not each continuation's branching factor, but each continuation's parent's branching factor.
+In principle this is not different information, but it emphasizes high-branching factor continuations more.
+This view of the data makes it clearer that there is a substantial amount of concurrency, in the sense that a substantial minority of continuations have a parent with more than one child.
+
+\begin{figure}
+\hspace*{-0.2cm}\includegraphics[width=0.5\textwidth]{gaps_graph_bw}
+\caption{Most gaps are of reasonable length, but a nontrivial percentage are quite short (under one millisecond, or even 100 microseconds).
+  This graph is truncated at half a second, because we are not interested in long gaps.
+  There is only a small number of longer gaps, anyway.}
+\label{fig:graph_gaps}
+\end{figure}
+
+\subsubsection{Gaps}
+
+Figure \ref{fig:graph_gaps} further clarifies the risk of atomicity violations.
+You can see that many of the time gaps between continuations are quite short.
+If it was always the case that there was a substantial time gap between parent and child, it would be more reasonable to believe that programmers are consistently being careful about the possibility of interruptions.
+There is no hard cut-off between long and short gaps, but it is interesting to note that roughly half of the measured gaps are shorter than one millisecond.
+The distribution tails off fairly quickly, but there are still many gaps shorter than 100 microseconds, and a few shorter than 10 microseconds.
+
+It is especially interesting to observe that there are many uninterrupted gaps shorter than 100 microseconds and only a very few interrupted gaps in the same range.
+This means that while it is possible for such short gaps to be interrupted, actual interruptions are rare.
+We can further infer that even if applications are heavily tested, following common good practices, that some of these gaps will have never been interrupted during a test.
+However, all it takes is an unluckily timed network or UI event to interrupt a short gap, potentially triggering an atomicity bug.
+
+We can see, by looking at the dotted line, that a large majority of the shortest gaps arise from recurring events.
+It is perhaps the case that these continuations tend to have simpler logic that represents a smaller risk of atomicity bugs.
+However, note that even though the relative number of short non-recurring gaps is small, there are still thousands of such gaps shorter than 1 millisecond across our data set.
+
+\begin{figure}
+\hspace*{-0.2cm}\includegraphics[width=0.5\textwidth]{micros_graph_bw}
+\caption{Most microtask batches are short, but a nontrivial number are long enough to possibly exceed the time and/or microtask count limits of some reasonable implementations.}
+\label{fig:graph_microtasks}
+\end{figure}
+
+\subsubsection{Microtasks}
+
+Microtasks are a special subset of events in JavaScript.
+Unlike regular events, as soon as at least one microtask is placed in the microtask queue, the application switches to running microtasks until the queue is empty.
+In principle it is possible for an application to become unresponsive because microtasks keep enqueuing more microtasks.
+
+Figure \ref{fig:graph_microtasks} shows information about the durations and microtask counts of microtask batches.
+Most batches are fairly short/small by both metrics, which is good from a concurrency bug perspective.
+However, a nontrivial minority of microtask batches get into the 10s and even 100s of milliseconds and/or dozens or hundred of microtasks.
+At that size, these microtasks start to be potential unresponsiveness problems.
+When batches of microtasks get too long, programmers may make ad hoc decisions about where to break them up, thus potentially creating more opportunities for atomicity problems.
+
+\subsection{Is This Actually a Problem?}
+
+In this paper we do not present any direct evidence of actual atomicity violations, only that patterns that seem risky are common.
+There has been a great deal of research on atomicity violations in general (for example, \cite{Lu2008}).
+More importantly, Davis, et al. studied real world concurrency bugs in JavaScript projects by looking at bug databases \cite{Davis2017}.
+They found several atomicity violations.
+
+Given that the risk of atomicity violations is real, it is natural to wonder if there is anything about current languages and libraries that encourages these risky patterns.
+We believe there is.
+
+There is a dilemma that library authors face in existing cooperative concurrency frameworks:
+When designing an API, should it be a regular atomic function or async in some way (callback, Promise, whatever)?
+If it is certain to complete in a small amount of time, an atomic function is preferable, because avoids the possibility of atomicity violations.
+However, if it might run for a long time, then the possibility of unresponsiveness comes in to play, and the library author is strongly incentivized to make the API async.
+
+A similar line of reasoning led the developer's of Microsoft Windows' core Windows Runtime (WinRT) library to replace many atomic procedures with interruptible ones in Windows 8.
+In a post on the Microsoft Developer Blog \cite{Windows8Team2012}, the team explains that they did this for procedures that ``could likely take longer than 50 milliseconds to execute''.
+
+The dilemma gets especially interesting when you consider that many library functions can be fast or slow, depending parameters and/or some environmental factor.
+Consider, for example, any of the classic collection processing functions like map, filter, fold or reduce.
+If the size of the collection is small and the function being applied is reasonably fast, then the whole aggregate operation should also be fairly fast.
+On the other hand, if the collection is large or the function being applied is slow, then the whole thing will be slow.
+Because there is a real possibility of these aggregate operations being slow, the only good choice for a library author forced to choose between atomic and async is async.
+But this means we have introduced an undesirable interruption point when applying such a library function in a context where it will be fast.
+The same line of reasoning applies to any data transformation API (encrypt/decrypt, serialize/deserialize, compress/expand, etc).
+
+In some recently defined JavaScript APIs, even some procedures that are very likely to execute quite quickly are defined in an interruptible style.
+As one example among many, the PBKDF2 function in the cryptography API returns a promise, which means that it is interruptible.
+PBKDF2 is a function that takes a number of iterations as a parameter.
+The iterations parameter must be set over a million to cause the PBKDF2 function to take more than a second on a newish computer.
+If the iterations parameter is closer to one thousand (which is appropriate for some applications), the time is in the millisecond range.
+In such contexts, the caller would almost certainly prefer that the call be atomic.
+
+Consider a more extreme example: sending a network request.
+Sending a message over a wide area network will inevitably be slow, and network operations are generally defined to be asynchronous to accommodate this.
+However, in a microservices software architecture, applications use network protocols to communicate with other processes running on the same computer.
+Depending on the details of a specific request to a peer process, it may actually be fast enough that the requester would prefer to block other internal tasks while waiting for the response.
+
+Our conclusion from this analysis is that whether an API is defined to be atomic or async is often a dilemma.
+Many APIs need to be async in some calling contexts, but should be atomic in others.
+It seems that current design practice leans towards defining APIs in an async way to avoid responsiveness problems.
+But this has lead to what seems to be quite a lot of exposure to atomicity problems.
+Therefore, we believe that the language should accommodate flexible definitions that leave the async/atomic decision up to each individual caller.
+
+\section{An Atomic Block for JavaScript}
+
+\begin{figure}
+\includegraphics[width=0.3\textwidth,left]{async_atomic_js}
+\caption{A simple example of code that could lead to the risky gaps, and a version with an atomic block to eliminate the risk of an atomicity violation.}
+\label{fig:async_atomic_js}
+\end{figure}
+
+We believe that the gaps described in the previous section represent a risk of atomicity violations, because of the low, but non-zero, probability that such gaps will be interrupted in any given execution.
+Figure \ref{fig:async_atomic_js} shows a very simple example of how atomicity violations can arise, and our proposed solution: an atomic block primitive.
+Previous research has shown that atomic blocks can be an effective and bug-resistant concurrency control mechanism in the mutlithreading context (for example, \cite{Harris2005, Grossman2007, Pankratius2014}).
+Unfortunately, implementing atomic blocks efficiently for preemptive threads is extremely hard.
+Perhaps more importantly, there are semantic questions that are unclear how to resolve satisfactorily for mainstream programming languages (for example how do actions performed within an atomic block relate to actions performed outside of any atomic block?).
+In this section we discuss ways that atomic could be added to JavaScript and similar languages that use cooperative concurrency.
+
+\subsection{A Simple Strategy and Its Fatal Flaw}
+
+One way atomic could be implement in event queue systems is as follows:
+
+\begin{itemize}
+\item When some code enters an atomic block, all currently registered continuations are removed from the queue and saved elsewhere.
+\item The code of the atomic block runs as usual, perhaps registering new continuations.
+\item When the code reaches the end of the atomic block it pauses and waits until the event queue is completely empty (note that continuations can themselves register more continuations).
+\item Once the event queue is empty, the code continues executing whatever comes after the atomic block and the saved continuations from the first step are restored to the event queue.
+\end{itemize}
+
+We believe that this strategy would work in many cases, but it has a fatal flaw related to nesting of atomic blocks and task spawning.
+
+\subsection{Background on Nested Atomics and Spawns}
+
+In this subsection we give a brief review of research on atomic blocks in the context of multithreading and transactional memory.
+We will relate this back to JavaScript and event queue concurrency below.
+The tricky semantic issue is how to define thread spawns nested within atomic blocks (and potential further nesting of both).
+One good treatment of the formal semantics of this issue is \cite{Moore2008}.
+It seems there is no simple definition that works well in all cases.
+Some of the possibilities that have been explored are:
+\begin{itemize}
+  \item Thread spawn within an atomic block is an error.
+  \item Threads spawned within an atomic block are delayed until just after the block has completed. (\emph{delay-spawn})
+  \item Threads spawned within a block are allowed to run concurrently, and the block is not complete until such threads are finished. (\emph{spawn-contained})
+\end{itemize}
+
+In the research on this subject there are good examples where each of these options is appropriate, and suggestions of more complex hybrid options.
+
+\subsection{Atomic and Event Queues}
+
+An issue with event queue concurrency is that there is no explicit notion of a task or thread that defines the identity of specific chains of continuations.
+In other words, when a continuation is registered, the system cannot be sure whether it is logically continuing the execution of its parent or spawning a concurrent task.
+
+The simple strategy sketched above effectively assumes that all continuations spawned during an atomic block belong to their parent's task.
+Therefore, the dynamic scope of the atomic block must include all children, grandchildren, etc until all newly registered continuations have completed.
+This corresponds closely to the \emph{spawn-contained} policy.
+
+A quick example of when the \emph{spawn-contained} policy is problematic:
+Consider a function that performs a few quick database queries and then sends a potentially slow network request based on the results of the queries.
+A caller may want to enforce atomicity among the database queries, but wrapping a call to this function in atomic would cause the application to become unresponsive until the network request completed.
+
+We conclude that adding an atomic block directly to an event queue system is possible, but problematic.
+We believe that a much better option is to introduce an explicit notion of tasks/threads, which is what the next section explores.
+
+We briefly note that there are other options for defining an atomic block in an event queue system.
+For example, the system could assume that the last child registered by a continuation is part of its parent's task and any other children are concurrent tasks.
+We do not investigate these options further, because they seem too ad hoc.
+
+\subsection{Adding Explicit Tasks to Event Queue Systems}
+
+In this section we discuss a library implementation of explicit tasks in JavaScript, built on top of async functions.
+Async functions were standardized in ECMAScript 2017.
+It is also possible to define async functions as a library, built on top of JavaScript's function generators (\texttt{function*}) and Promises.
+In fact, there are many examples of such libraries added to JavaScript frameworks for convenience.
+
+\begin{figure}
+\includegraphics[scale=0.65]{trivial_js}
+\caption{A sketch of how the JavaScript library implementation of activities is used.
+The syntactic clutter is fairly high because we are using JavaScript function generators (\texttt{function*}) to simulate regular functions in an activities framework.}
+\label{fig:trivial_js}
+\end{figure}
+
+Our library has two essential functions: spawn and atomic.
+Spawn takes an async function as a parameter and returns a handle to a concurrent task.
+In our library we call these concurrent tasks \emph{activities}.
+Atomic takes a function generator as a parameter and ensures that it runs atomically (i.e., it is not interrupted by an concurrent activities).
+
+Figure \ref{fig:trivial_js} gives a tiny example of what our library actually looks like.
+Notice that each asynchronous function needs an additional context parameter so that it can know what activity it belongs to.
+If this were implemented natively in a language, this parameter would be unnecessary.
+
+Without atomic and spawn nesting, the implementation of this library would be relatively simple.
+There would be a single global variable that contained either null or the identity of the activity in atomic mode.
+Each async function would need to know the identity of the activity it belongs to, and would check the global variable before resuming.
+If the variable contains the identity of some other activity, the async function would need to wait.
+Upon exiting an atomic block, any waiting async functions would be released.
+
+Because we want it to be legal to spawn inside of an atomic block, the single global variable indicating \emph{the} activity that is in atomic mode is no longer sufficient.
+Instead we need a stack of sets of activity identifiers, which is initially empty.
+When an activity enters atomic mode, it pushes a singleton set on the stack with its own identifier.
+When an async function attempts to resume it now needs to check whether the stack is empty (i.e. no activity is in atomic mode) or if it is in the set on top of the stack; if neither is the case, then it must wait.
+
+As mentioned previously, there are several reasonable strategies for handling spawns inside atomic.
+By default, activities spawned while the program is in atomic mode will be put on hold until the program has exited atomic mode.
+This strategy is the default because it is relatively simple, and as long as the atomic block executes relatively quickly (which is how the feature is supposed to be used), the newly spawned activities will experience relatively little delay.
+Unlike the multithreading and transactional memory context, where there might be a performance benefit to letting multiple threads simultaneously execute in atomic mode, we are dealing with single-threaded multitasking here.
+
+The only situation in which the \emph{delay-spawn} strategy is problematic is when the code executing the atomic block waits (directly or indirectly) for the newly spawned activity to do something before leaving the atomic block.
+In this situation, forcing the new activity to wait could cause the program to deadlock.
+For this reason, the spawn function accepts an optional parameter to override the default nesting strategy.
+Newly spawned activities can be spawned with the \emph{spawn-contained} strategy.
+This allows the newly spawned activity to run, and forces the program to wait at the end of the atomic block for any such activities to complete.
+
+We briefly note an efficiency opportunity that atomic blocks create.
+In addition to being an atomicity hazard, chains of short continuations create event queue overhead.
+In a version of JavaScript with an atomic block, it would be possible for a just-in-time compiler to fuse continuations run atomically into a single function, reducing this overhead.
+
+The \emph{activities} design we ended up with is essentially cooperative threads plus automatic yield insertion around async functions and atomic blocks.
+In this paper we do not present a formal semantics for activities.
+Rather, we refer to existing work on the semantics of cooperative threads \cite{Abadi2009} and atomic blocks \cite{Moore2008}.
+The semantics of activities are a combination of these two ideas.
+
+\subsection{Integration with Legacy Code}
+
+Our activities library integrates relatively cleanly with legacy JavaScript code.
+Any JavaScript Promise can be yielded, just as one would with regular async function implementations.
+One small awkwardness is that our library cannot prevent continuations registered by legacy code from running whenever the event queue chooses.
+So if one activity is in an atomic mode, a continuation previously registered by legacy code run in another activity may still run.
+
+\subsection{Building an App with Activities}
+
+Our experience with the JavaScript Activities library consists primarily of building a simple single-page web app that lets users share information.
+It makes heavy use of the cryptography API to implement an end-to-end encryption protocol.
+We wrapped the Promise-returning API functions with simple \texttt{asyncFn}s.
+There is a high density of calls to such functions in the code.
+
+We make a couple observations about this experience.
+First, compared to an earlier version of this app that used explicit callbacks, the direct style is dramatically easier to read and reason about.
+Of course, using async functions would also give this benefit.
+
+More than half of the calls we expect to be short-lived.
+These we can execute in atomic mode to ensure that there are no atomicity violations around them.
+Using standard async functions, it would not be possible to do that.
+
+\section{An Atomic Block for C (Design)}
+
+In the previous section we did not discuss the efficiency of the JavaScript implementation of activities in any detail.
+However, we are interested in whether activities can be implemented in a highly efficient way, so we added them to a dialect of C that we call \charcoal{}.
+In this section, we discuss the design of \charcoal{}.
+In the next section we discuss the implementation of \charcoal{}.
+
+Like the JavaScript version, the primary additions are spawn and atomic primitives.
+We also needed to add a yield primitive, since this does not exist in plain C.
+The main differences with the JavaScript version are related to the manual memory management of C.
+
+To illustrate our design, we use an example stolen from \cite{Krohn2007}; a plain C version is in Figure \ref{fig:charcoal_multidns_seq}.
+This example performs \texttt{N} DNS lookups using the standard \texttt{getaddrinfo} procedure.
+
+The \charcoal{} version performs in Figure \ref{fig:charcoal_multidns_sem} performs these lookups concurrently.
+It has a parameter (\texttt{max\_conc}) to limit the number of DNS requests that will be sent concurrently to avoid flooding the network with too many requests.
+
+In \charcoal{} we add some syntactic convenience to the plain spawn to get the \emph{activate} statement, an example of which is on line 10 of the example.
+The body of the activate statement runs concurrently (but \emph{not} in parallel) with the statement's continuation.
+Only one activity can be running at a time and the system can only context switch between activities on a yield.
+
+\begin{figure}
+\includegraphics{multi_getaddrinfo_seq}
+\caption{This is a plain C version of the DNS fetcher running example.
+  This version is entirely \emph{sequential}.}
+\label{fig:charcoal_multidns_seq}
+\end{figure}
+
+Each \charcoal{} program has a scheduler that chooses when a yield should lead to a context switch, and which activity to switch to.
+The current \charcoal{} implementation uses a simple FIFO scheduler; clearly this is something that could be looked at for further refinement in terms of performance, fairness guarantees and/or greater application control.
+
+The activate statement takes as a parameter a pointer to application-allocated memory for storing metadata about the new activity.
+In the example, the memory for storing activity information is allocated locally.
+Because of this the example procedure must wait for all the activities it spawns to finish.
+(Returning before they finish could cause the program to access deallocated memory).
+It would be possible to change the interface so that the caller passes in the backing memory, or to use dynamic allocation and leave the deallocation to the caller.
+In either of these cases, the procedure could return while the activities were still fetching DNS information, allowing the application to go on with other work.
+
+\subsection{Shared Variables}
+
+The parentheses after the \texttt{activate} keyword are for controlling whether local variables are accessed by-value or by-reference.
+The default is by-reference, which is how most of the variables are used in this example.
+This means that all the activities read and write a shared instance of that variable.
+The exception is \texttt{i} which is used as a name of sorts in the \texttt{printf} call.
+Each activity gets its own copy of \texttt{i}, whose initial value is whatever the variable's value was at activity creation time.
+If there were a modification to \texttt{i} inside \texttt{activate}, each activity would be modifying its own copy.
+
+\subsection{Yield Insertion}
+
+One of the two primary features that distinguish activities from conventional cooperative threads is that there is a translation step that automatically inserts yield statements before and after every procedure call.
+This rule helps ensure responsiveness by default.
+
+There are two ways a program can still become unresponsive.
+The first is by wrapping a long-running part of the program in atomic.
+The second is long-running loops with no calls (or explicit yields) in their body.
+Both of these should be considered concurrency bugs to be managed with the usual software reliability tools (testing, code review, verification, etc).
+
+\begin{figure}
+\includegraphics{multi_getaddrinfo_sem}
+\caption{This version of the DNS fetcher limits the number of concurrent requests to \texttt{max\_conc}.}
+\label{fig:charcoal_multidns_sem}
+\end{figure}
+
+In the example code above, the system will automatically insert four yields: one each before and after the two calls.
+Without further information, it should be assumed that the called functions themselves have more yields in their implementations.
+
+Automatic yield insertion makes activities more like preemptive threads than conventional cooperative threads.
+However, activities are still more resistant to concurrency bugs than threads by default, because the granularity of scheduling is coarser.
+Between calls and explicit yield invocations, code is guaranteed to execute atomically.
+For example, classic data races are impossible with activities.
+
+\subsection{Atomic}
+\label{sec:atomic}
+
+Any statement, expression or procedure declaration in \charcoal{} can be ``wrapped'' with atomic.
+In the dynamic scope of a atomic block, the current activity cannot be interrupted.
+In other words, any yields that would have happened are overridden/suppressed by atomic.
+This is a simple and powerful tool for enforcing atomicity.
+Most locking in current multithreading practice can be either removed entirely, thanks to the coarser scheduling granularity, or directly replaced by the simpler and safer atomic.
+
+In the example, the compiler will insert yields before and after the calls to \texttt{printf} and \texttt{getaddrinfo}.
+If the programmer wanted to suppress some of these yields, they could use \atomic{}.
+For example, it would be reasonable to wrap the \texttt{printf} call in \atomic{}, since it will complete quickly (relative to \texttt{getaddrinfo}), and there is little to be gained by switching to another task at that point.
+Wrapping the \texttt{getaddrinfo} call in atomic would be a performance bug, because that would force the DNS lookups to be executed sequentially.
+
+As with the JavaScript implementation, spawns inside atomics are a challenge.
+Our solution here is the same: a stack of sets of activities running inside the atomic.
+There is an additional challenge here with stack management that we address in the next section.
+
+\subsection{System Calls}
+
+System calls present a challenge, because clearly a language cannot force the operating system to yield in the middle of kernel code execution.
+To implement activities correctly, the system must ensure that system calls are performed asynchronously.
+That is, during a system call the system may switch to another activity.
+If a system call completes while some other activity is running, the calling activity must wait for a yield before it can resume execution.
+There are more details on this in the implementation section.
+Legacy code can call blocking system calls, which will cause the whole application to block.
+
+\section{An Atomic Block for C (Implementation)}
+
+There are a few interesting features of our implementation of activities in the context of \charcoal{}, which we describe in this section: the allocation of call frames, the implementation the yield primitive, and compiling a version of each procedure for yielding and atomic mode.
+
+\subsection{Call Frame Allocation}
+
+One of the tricky issues in the implementation of any thread-like abstraction is the allocation of procedure call frames.
+The first few sections below describe existing strategies for frame allocation in multithreaded code.
+Then we describe a new approach that we call \emph{hot stacking}.
+
+\subsubsection{Contiguous Allocation}
+
+The most common strategy for multithreading is to pre-allocate a moderately large area of memory in the heap for each thread's frames.
+Individual frames are allocated contiguously within this area.
+This strategy is fast and simple, but is memory inefficient.
+
+\subsubsection{Individual Heap Allocation}
+
+At the other extreme of the time/memory efficiency spectrum, systems can individually allocate each frame in the heap, linking them together with pointers.
+This avoids the memory concerns associated with contiguous allocation.
+However, heap allocation of frames comes at a time cost for calls and returns.
+
+Simple implementations of heap allocation can be more than an order of magnitude slower than contiguous allocation.
+More sophisticated implementations can be substantially more efficient (e.g. \cite{Shao2000}).
+However, even the most efficient implementations that we are aware of are still slower than contiguous allocation for call-heavy code.
+
+\subsubsection{Split/Segmented Stacks}
+
+Some languages have experimented with a hybrid strategy called \emph{split}, \emph{segmented}, or \emph{linked} stacks.
+The idea is that stack space is allocated in small segments or chunks.
+The common case call/return execution looks like traditional contiguous allocation.
+When a thread reaches the end of its segment it allocates a new one and links them together with pointers.
+This idea is appealing; as fairly recent examples, early implementations of Rust and Go both used it.
+Unfortunately it has unpleasant \emph{uncommon} case behavior called \emph{stack thrashing} or the \emph{hot split} problem.
+When there are frequent calls/returns right at the boundary of a segment, the overhead can be quite high.
+The implementers of Rust \cite{Anderson2013} and Go (search ``contiguous stacks in go'') both abandoned split stacks in later versions.
+
+% Also \cite{Middha2008}
+
+\subsubsection{Growable Contiguous Stacks}
+
+Since version 1.3, the Go language has used a novel stack allocation strategy, where each thread's stack memory is initially small and is resized on-demand.
+This is only possible because the Go language implementation knows about all pointers to stack memory and can update them if necessary (i.e., if it is necessary to relocate the whole stack).
+Clearly this would not work for C/C++ and close cousins.
+This strategy still has an unpredictable slowness problem when the stack has to be copied.
+
+\subsubsection{Hot Stacking}
+
+The call frame allocation strategy introduced in this paper is a hybrid of contiguous and individual heap allocation.
+The key observation is that the speed of individual allocation is only important for short-lived calls.
+For long-lived calls, the overhead of the call and return operations can be amortized over the long running time of the call.
+So the main idea of hot stacking is that long-lived frames are individually allocated and (most) short-lived frames are contiguously allocated in memory that is shared by all activities.
+
+For this strategy to work correctly, the frames allocated in the shared area must all be deallocated before context switching to another task.
+For regular threads it is not clear how this deallocation could be enforced easily.
+The use of atomic blocks in programs makes it practical to implement hot stacking, because the implementation can use atomic blocks as an indicator of when it should use contiguous allocation.
+
+In the microbenchmarking section below we provide evidence that this strategy captures the benefits of heap allocation (per-activity memory overhead is small) and contiguous allocation (fast calls and returns when it matters).
+It is certainly possible for short-lived calls to happen in yielding mode, which means that the frames will be individually allocated.
+This should be considered a performance bug, but its worst-case overhead is not terrible and it should be a relatively easy pattern to identify with a profiler.
+
+Nested spawns present a challenge for hot stacking, because multiple activities can execute concurrently in an atomic block.
+The implementation accommodates this by allocating additional regions for stack allocation on demand.
+Note that this is not an issue for activities that use the default strategy of blocking until the end of the atomic block.
+We expect that in practice multiple concurrent activities in an atomic block would be quite rare.
+As mentioned earlier, since activities do not run in parallel, there is little to be gained.
+
+Other than the nesting issue, we are not aware of any uncommon case performance problems like the hot split problem with segmented stacks.
+
+The name \emph{hot stacking} is a reference to a practice used in some organizations called \emph{hot racking} or \emph{hot desking}.
+Some limited resource (e.g. a bunk or desk) is used in shifts by multiple people.
+In our case, the resource is the memory area for contiguous frame allocation, and it is shared in shifts by multiple activities.
+The word \emph{hot} is also a reference to the fact that this top of stack area should remain hot in the memory hierarchy/cache sense as long as any code is running, because all activities use the same block of memory for the frames for their short-lived calls.
+
+\subsection{Yield Implementation}
+\label{sec:yield_imp}
+
+Automatic yield insertion makes frequent yielding common.
+So we need to ensure that yields are as efficient as possible.
+In particular, we implemented three ideas:
+
+\begin{itemize}
+\item Zero overhead yields in atomic mode
+\item Infrequent context switching
+\item Very fast non-switching yield
+\end{itemize}
+
+\subsubsection{Yield in Atomic Mode}
+
+There are important differences at the implementation level between how code executes in yielding versus atomic mode, not least among them the call frame allocation strategy.
+To implement this dual mode concept in a reasonably simple and efficient way, the current \charcoal{} implementation generates two versions of each procedure: one for each mode.
+The yielding mode implementation includes inserted yields and assumes its own frame was individually allocated.
+The atomic mode implementation does not include yields; for most intents and purposes it is a simple translation to plain C.
+
+This implementation strategy could lead to a substantial increase in code size (more than 2$\times$).
+We believe this problem can be managed, based on the assumption that most procedures in real-world programs would be called only in either yielding or atomic mode, not both.
+This means that we could either rely on a smart linker to perform a dead code analysis and delete the unused versions, or use runtime optimizations to generate the appropriate version on-demand.
+
+%% This is kinda related to ideas from the Cilk-5 implementation
+%% \cite{Frigo1998}.
+
+\subsubsection{Function Pointers}
+
+One challenge with a dual implementation strategy is how to handle function pointers.
+When the address of a function is taken it is not easy to know which mode the function will eventually be called in.
+The current implementation generates a small piece of code for every function that can be called in either yielding or atomic mode.
+It accepts an additional implicit mode parameter, which controls which actual version gets called.
+This makes indirect calls somewhat more expensive than in plain C.
+However, indirect calls are already expensive enough that there is an extensive body of research on how to convert them to direct calls (e.g. \cite{Dean1995}), so adding a modest amount of overhead to indirect calls should not have a large performance impact on most applications.
+
+\subsubsection{Actual Yields}
+
+The most important factor in the implementation of the yield primitive is that most yield invocations should not result in context switching, even if other activities are ready to run.
+In well designed activity code, the time between yield invocations should be in the range of microseconds to milliseconds.
+Context switching has the moderate direct cost of manipulating a handful of data structures in the runtime system, and the potentially higher indirect cost of cache thrashing.
+Therefore in normal operation yields should lead to context switches at a relatively low frequency, perhaps every few milliseconds.
+
+The speed of the yield primitive itself is somewhat important.
+As described in the previous section, code that is compiled in atomic mode does not have yields at all, so yield performance is not an issue for the most performance critical loops.
+However, we expect that moderately frequent yielding (perhaps as frequently as many per microsecond) would be common in real-world code.
+Therefore, the performance of the yield primitive does matter to some degree.
+
+The simplest implementation of yield would check a counter or clock of some sort.
+Reasonably efficient implementations of this strategy would certainly be non-portable (e.g. using processor-specific counter registers) and probably still be somewhat expensive.
+Instead the current \charcoal{} implementation uses periodic system timers/alarms that deliver a signal to the program.
+The handler for these signals atomically modifies a global variable.
+The yield primitive atomically reads this global variable; as long as it has not changed the program continues execution immediately.
+Therefore, in the common case the cost of a yield is only an atomic read and a (highly predictable) branch, plus a fast call and return to get to the yield code itself.
+(Of course the yield code can be inlined, but that is \emph{not} obviously a good idea because branch predictors work better if all yields share a single branch instruction.)
+
+\subsection{System Calls}
+
+An important part of making activities work properly is asynchronous system calls.
+The current \charcoal{} implementation uses libuv for this.
+At startup, the runtime system spawns a thread that runs a libuv event loop.
+When an activity wants to make a system call, it sends an asynchronous message to the event loop thread, which makes the appropriate libuv API call.
+When the event completes, the activity is notified and the system puts it back in the runnable queue.
+
+This architecture works, but it adds a non-trivial amount of overhead, especially for fast system calls.
+We speculate that integrating the event processing with application code in the same thread could remove some performance overhead.
+The libuv maintainers have discussed this as a ``pull'', versus the current ``push'' architecture, which they may implement in a future version.
+
+\subsection{Translation}
+
+We use a modified version of Cil \cite{Necula2002} to translate \charcoal{} to plain C with calls to our runtime system, which is written in C.
+
+\section{An Atomic Block for C (Measurement)}
+
+To investigate the performance of activities, we wrote microbenchmarks with the \charcoal{} implementation.
+All tests were run on a machine with the specs listed in Table \ref{table:specs}.
+Depending on the benchmark, we compare the \charcoal{} implementation against plain C, C compiled with gcc's split stack implementation, Go or C plus the default Linux threads implementation.
+All speed-related tests were compiled at optimization level \texttt{-O2}.
+For speed-related tests we ran the benchmark 5 times and report the fastest result.
+
+\begin{table}
+  \centering
+  \begin{tabular}{|l|l|}
+    \hline
+    OS & Ubuntu Linux 14.04 \\
+    \hline
+    Kernel & 3.13.0-68-generic \\
+    \hline
+    Processor & 4 GHz Intel Core i7 \\
+    \hline
+    Memory & 8 GB 1600 MHz DDR3 \\
+    \hline
+    Compiler & gcc 4.8.4 \\
+    \hline
+    Go & 1.5.3 \\
+    \hline
+  \end{tabular}
+  \caption{Specs of the test system}
+  \label{table:specs}
+\end{table}
+
+\subsection{Memory Overhead}
+
+Like coroutines (e.g. in their modern C++ incarnation), activities have very low memory overhead; approximately whatever is needed to store a dozen pointers.
+It is interesting to compare this with goroutines.
+The Go implementation (as of version 1.3) uses a sophisticated stack growing process to avoid pre-allocating a large amount of memory for call frames.
+However, the minimum size is still relatively large (in the neighborhood of a kilobyte), more than a factor of 6 greater than activities in \charcoal{}.
+
+\subsection{Task Spawn and Switching Speed}
+
+Unsurprisingly, activities are dramatically faster than system threads when it comes to spawning and switching between tasks.
+The speed difference is over an order of magnitude, as measured by microbenchmarks.
+The primary difference here is that threads must make system calls to do these things, whereas with activities they can be done entirely in user mode.
+
+In these benchmarks, Go was slightly faster than \charcoal{}.
+We expect this is because the Go team has put a lot of engineering effort into optimizing these concurrency primitives.
+It seems likely that \charcoal{} could be optimized to be at least as fast.
+
+The speed of these primitives have a big impact on the practical minimum granularity of tasks.
+In both \charcoal{} and Go that overhead is closer to that of a method call than the equivalent thread operations.
+That means that concurrency can be used in interesting ways in those languages that they cannot with threads.
+
+\subsection{Just Calling}
+
+Our next microbenchmark measures the overhead of hot stacking.
+This test is a simple recursive function that calls itself twice and performs a very small computation at the ``leaves''; the code is in Figure \ref{fig:micro_calling}.
+
+\vspace{1em}
+\begin{tabular}{|l|r|r|r|}
+  \hline
+   & user & sys & wall \\
+  \hline
+  \hline
+  Plain C & 0.77 & 0.00 & 0.77 \\
+  \hline
+  Individual Allocation & 42.4 & 0.04 & 42.6 \\
+  \hline
+\end{tabular}
+\vspace{1em}
+
+These numbers are in nanoseconds per call/return.
+This difference is nearly two orders of magnitude, which is painful for \charcoal{}.
+However, there are three caveats to keep in mind.
+First, the \charcoal{} implementation is not highly optimized; the allocator used in this test was the default system malloc.
+Surely a more tuned implementation would close the gap to some extent.
+Second, this is a microbenchmark; no application spends all of its time just calling and returning, so these numbers are a fairly high upper bound on the real application performance impact of calling overhead.
+
+\begin{figure}
+\includegraphics{just_calling_benchmark}
+\caption{The microbenchmark for measuring call frame allocation overhead.}
+\label{fig:micro_calling}
+\end{figure}
+
+Most importantly, all the calls in the first version of this test were performed in yielding mode.
+In atomic mode, calls and returns in \charcoal{} are just as efficient as plain C.
+In well-tuned \charcoal{} code, most of the leaf and near-leaf calls should be performed in atomic mode.
+To simulate this effect, we modified the benchmark to the version in Figure \ref{fig:micro_calling_n}.
+The parameter \texttt{N} controls how deep in the call tree the benchmark uses yielding mode, before switching to atomic.
+
+\vspace{1em}
+\begin{tabular}{|l|r|r|r|}
+  \hline
+   & user & sys & wall \\
+  \hline
+  \hline
+  Plain C & 0.77 & 0.00 & 0.77 \\
+  \hline
+  gcc split stacks\footnotemark{} & 1.00 & 0.15 & 1.15 \\
+  \hline
+  Go & 2.80 & 0.20 & 3.00 \\
+  \hline
+  Hot Stacking, \texttt{N} = 4 & 11.00 & 0.01 & 11.00 \\
+  \hline
+  Hot Stacking, \texttt{N} = 8 & 1.54 & 0.00 & 1.55 \\
+  \hline
+\end{tabular}
+\vspace{1em}
+
+\footnotetext{This benchmark does not create stacks deep enough to exceed the default size of a single segment of gcc's split stack.
+So we modified the benchmark for the split stack case to make a linear chain of calls instead of a binary tree.}
+
+This shows that with a modest fraction of the (static) calls performed in atomic mode, the calling overhead gets down to less than a factor of 2.
+Combined with the observations above about tuning the language implementation, we believe this overhead would be barely noticeable for most applications.
+Also it is worth noting that this is the price to be paid for the extremely low memory overhead of activities.
+
+Hot stacking with \texttt{N} = 8 outperforms Go on this benchmark by a modest margin.
+It is interesting that the gap between plain C and Go is as large as it is, given the Go implementation team's famous focus on low-level performance details.
+
+gcc's split stack implementation outperforms hot stacking by a small margin on this benchmark.
+However, as noted previously split stacks have bad performance in the pathological case where calls are made at high frequency right at the edge of a segment.
+
+\begin{figure}
+\includegraphics{just_calling_n_benchmark}
+\caption{The call/return microbenchmark modified to make some calls in atomic mode.}
+\label{fig:micro_calling_n}
+\end{figure}
+
+\subsection{Yielding}
+
+As described in section \ref{sec:yield_imp}, yield frequency can be managed fairly easily and the yield primitive is designed to have a very fast common path.
+Nevertheless, it is important to minimize yielding in hot inner loops.
+
+To quantify yielding overhead, we benchmarked a simple but problematic function from the C standard library: \texttt{strcmp}.
+\texttt{strcmp} is tricky for a few reasons:
+First, the input strings can be arbitrarily long, so never yielding could cause unresponsiveness.
+Second, the body of the loop is extremely simple; good implementations are just a few assembly instructions.
+This means that yielding every iteration causes significant performance overhead.
+Third, the continued execution of the loop depends on the data read in each iteration, so simple loop tiling/blocking tricks do not work.
+The best-performing implementation we have found so far appears in Figure \ref{fig:strcmp}.
+
+\begin{figure}[htp]
+\includegraphics[left]{plain_strcmp}%
+  \\
+\includegraphics[left]{strcmp_benchmark}%
+\caption{Two implementations of \texttt{strcmp}.
+  Top is a plain C version.
+  Bottom is a \charcoal{} implementation aimed at minimizing yield overhead.}
+
+\label{fig:strcmp}
+
+\end{figure}
+
+
+%% \begin{figure}
+%%     \centering
+%%     \begin{subfigure}[b]{0.3\textwidth}
+%%         \hspace{-1.5cm}
+%%         \includegraphics{plain_strcmp}
+%%         \caption{}
+%%     \end{subfigure}
+%%     ~ %add desired spacing between images, e. g. ~, \quad, \qquad, \hfill etc. 
+%%       %(or a blank line to force the subfigure onto a new line)
+%%     \begin{subfigure}[b]{0.3\textwidth}
+%%         \hspace{-1.5cm}
+%%         \includegraphics{strcmp_benchmark}
+%%         \caption{}
+%%     \end{subfigure}
+%%     \caption{Two implementations of \texttt{strcmp}.
+%%       (a) is a plain C version.
+%%       (b) is a \charcoal{} implementation aimed at minimizing yield overhead. }
+%%     \label{fig:strcmp}
+%% \end{figure}
+
+In the code \texttt{YIELD\_FREQ} controls how frequently the loop yields.
+The effect is that once every $2^{\mathtt{YF}}$ iterations there is a yield.
+
+\vspace{1em}
+\begin{tabular}{|l|r|}
+  \hline
+  Plain C & 430 \\
+  \hline
+  \charcoal, \texttt{YIELD\_FREQ = 4} & 1070 \\
+  \hline
+  \charcoal, \texttt{YIELD\_FREQ = 8} & 519 \\
+  \hline
+  \charcoal, \texttt{YIELD\_FREQ = 12} & 446 \\
+  \hline
+\end{tabular}
+\vspace{1em}
+
+These numbers are in microseconds per \texttt{strcmp} of two identical strings of 1MB length.
+These data show that yielding is not free, but with a little careful tuning the yield overhead can be brought quite low.
+
+When the inputs to \texttt{strcmp} are known to be short, the caller can wrap the call in atomic.
+The atomic version should perform identically to the plain C implementation.
+
+% \subsection{Code Size}
+
+\subsection{Microbenchmark Summary}
+
+Like all well implemented coroutines, the \charcoal{} implementation has extremely low memory and time overhead for basic concurrency primitives.
+Hot stacking and frequent yielding are potential performance issues, but our tests indicate that at these overheads can be managed.
+
+Though we do not have experience with writing large programs in \charcoal{} yet, we expect that relatively little code will require the kinds of contortions shown in the \texttt{strcmp} example.
+Moreover, almost all such code will be in tight inner loops in library code.
+This is exactly where writing somewhat weird code for performance reasons is acceptable.
+
+%% \section{Foreign Code}
+
+%% Foreign code (including legacy code) will never yield.  This could lead
+%% to starvation pretty easily.  Here are three strategies:
+
+%% \begin{itemize}
+%% \item Do nothing.
+%%   Just run the foreign code.
+%%   This is a perfectly reasonable strategy as long as the foreign code does not run for a long time.
+%% \item Run the foreign code in its own thread.
+%%   If it has not returned by the end of some time slice, pause it to allow other activities to run.
+%%   This runs the risk of creating atomicity violations galore.
+%%   It also reintroduces the possibility of data races.
+%%   However, it might be a reasonable strategy in situations where there is very little sharing between the foreign code and the rest of the application.
+%% \item Run the foreign code in its own thread, but only interrupt it at special ``safe-ish'' points, like system calls.
+%%   This is a compromise between the previous two strategies in the sense that it opens the door to both starvation and atomicity violations, but provides some (imperfect) protection against both.
+%% \end{itemize}
+
+%% We have not thought at all about what the best default is or what syntactic sugar would be nice.
+
+%% Another important implementation issue to consider is foreign code that calls back in to activity-aware code.
+%% There will definitely be some fancy footwork necessary there, no matter which strategy is used.
+
+\section{Related Work}
+
+Our activities are clearly closely related to many flavors of cooperative threads.
+Most commonly, cooperative threads rely on programs explicitly invoking yield to permit task switching.
+We believe that automatically inserting yields before and after calls by default creates a more predictable environment for programmers.
+Boudol proposes a slightly different approach to automatic yield insertion in cooperative threads \cite{Boudol2007}.
+
+The other major difference is the atomic block, which this paper shows is not a trivial addition to a language.
+We are not aware of any other research on the combination of cooperative threads and atomic blocks.
+
+One weakness that activities share with most multitasking frameworks is that activities cannot easily be run in parallel.
+The authors are not optimistic about running cooperative threads in parallel, but there are researchers pursuing this idea \cite{ONeill2015, Boussinot2006, Dabrowski2006}.
+
+
+%% Threads are the only multitasking abstractions discussed in this paper that naturally allow the parallel execution of tasks.
+%% The authors view this as closer to a bug than a feature.
+%% Serial multitasking abstractions like events and coroutines (and activities) can be used in combination with parallelism frameworks like processes and threads.
+%% The authors consider providing both parallelism and multitasking in a single language features (like threads) mostly a bad idea.
+%% Nevertheless, in the discussion section at the end of this paper we speculate about the feasibility of running activities in parallel.
+
+
+% Threads without the Pain
+
+%% \textbf{Hybrids}.
+%% Researchers have long understood the weaknesses of existing multitasking abstractions.
+%% Many proposals have been made for event/thread hybrids; for example: \cite{Boudol2007, Boussinot2006, Cunningham2005, Dabrowski2006, Fischer2007, Kerneis2014, Krohn2007, Li2007, Behren2003}.
+%% A detailed comparison with all of these proposals is beyond the scope of this paper.
+%% In the related work section we highlight the differences with the ones that are most similar to ours.
+
+
+\section{Summary and Discussion}
+
+In this paper we presented evidence that web applications seem to be highly exposed to atomicity violations.
+We note that adding an atomic block would help programmers avoid these problems, and discussed how that addition can be achieved.
+Perhaps the most important slogan to take from this paper is that the atomic versus async decision should be made by callers, not implementers of APIs.
+We showed that our design can be implemented efficiently in a dialect of C.
+We believe that our design combines the benefits of existing cooperative concurrency frameworks in a new and interesting way.
+
+
+%% Acknowledgments
+%% \begin{acks}                            %% acks environment is optional
+%%                                         %% contents suppressed with 'anonymous'
+%%   %% Commands \grantsponsor{<sponsorID>}{<name>}{<url>} and
+%%   %% \grantnum[<url>]{<sponsorID>}{<number>} should be used to
+%%   %% acknowledge financial support and will be used by metadata
+%%   %% extraction tools.
+%%   This material is based upon work supported by the
+%%   \grantsponsor{GS100000001}{National Science
+%%     Foundation}{http://dx.doi.org/10.13039/100000001} under Grant
+%%   No.~\grantnum{GS100000001}{nnnnnnn} and Grant
+%%   No.~\grantnum{GS100000001}{mmmmmmm}.  Any opinions, findings, and
+%%   conclusions or recommendations expressed in this material are those
+%%   of the author and do not necessarily reflect the views of the
+%%   National Science Foundation.
+%% \end{acks}
+
+
+
+
+% We recommend abbrvnat bibliography style.
+
+% \bibliographystyle{abbrvnat}
+% \bibliographystyle{abbrv}
+
+% The bibliography should be embedded for final submission.
+
+\bibliography{../../../../Documents/PapersForReferencing/biy_all_research.bib}
+
+%% \begin{thebibliography}{../../../../Documents/PapersForReferencing/biy_all_research.bib}
+%% \softraggedright
+
+%% \end{thebibliography}
+
+\end{document}

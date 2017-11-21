@@ -37,7 +37,7 @@ let FINISHED             = Object.freeze( { t: ACT_STATE_TAG } );
  * The latter is primarily for internal use (with "atomic"), but can be used by client
  * code.
  */
-export function actFn( ...actFn_params )
+/*export*/ function actFn( ...actFn_params )
 {
     // console.log( "actFn", actFn_params )
 
@@ -347,7 +347,7 @@ class Context
     }
 }
 
-export function makeScheduler( options )
+/*export*/ function makeScheduler( options )
 {
     return new Schduler();
 }
