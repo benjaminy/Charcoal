@@ -1,0 +1,19 @@
+{
+  "name": "activities",
+  "version": "1.0.0",
+  "description": "Not threads",
+  "main": "index.js",
+  "scripts": {
+    "test": "test"
+  },
+  "keywords": [
+    "k"
+  ],
+  "author": "b",
+  "license": "ISC",
+  "devDependencies": {
+    "babel-preset-es2015": "^6.24.1",
+    "gulp": "^3.9.1",
+    "gulp-babel": "^7.0.0"
+  }
+}
