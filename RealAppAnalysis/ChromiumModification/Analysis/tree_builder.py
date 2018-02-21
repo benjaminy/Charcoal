@@ -164,6 +164,9 @@ def stacker( trace ):
                     parent_of[ ev.tkid ] = ( curr_cont, ev )
 
             elif ev.kind == "ctor":
+                if len( continuation_stack ) >= 4:
+                    print( "DEEP STACK %s", ev.ts )
+
                 exec_depths[ len( continuation_stack ) ] += 1
                 next_cont = Object()
                 next_cont.begin    = ev
