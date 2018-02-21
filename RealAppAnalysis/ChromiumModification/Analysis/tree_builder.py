@@ -339,9 +339,25 @@ def analyzeDir( base_dir ):
     print( "[TS] kit and caboodle: %s" % ( ts4 - ts3 ) )
     return trees
 
+def normalizeEv( ev ):
+    if ev == None:
+        return None
+    misc = {}
+    for attr_name in [ "recurring", "num_tasks", "count", "name" ]:
+        if hasattr( ev, attr_name ):
+            misc[ attr_name ] = getattr( ev, attr_name )
+    return [ ev.ts, ev.source, ev.kind, misc ]
+
 def dumpTree( f, tree ):
     for cont in tree:
-        f.write( "%s" % cont.__dict__ )
+        begin    = normalizeEv( cont.begin )
+        end      = normalizeEv( cont.end )
+        sched_ev = normalizeEv( cont.sched_ev )
+        parent   = None if cont.parent == None else cont.parent.begin.ts
+        children = list( map( lambda c: c.begin.ts, cont.children ) )
+        # dropping "events"
+        f.write( "%s\n" % json.dumps( [ begin, end, sched_ev, parent, children ] ) )
+
 
 def dumpTrees( tree_path, trees ):
     for ( ( pid, tid ), tree ) in trees.items():
@@ -363,7 +379,6 @@ def main():
         dumpTrees( tree_path, trees )
 
     print( "Global exec depths: %s" % global_exec_depths )
-
 
 # execute only if run as a script
 if __name__ == "__main__":

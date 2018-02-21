@@ -8,122 +8,132 @@ import merger
 import numpy
 import matplotlib.pyplot as plt
 import datetime
+from bisect import bisect_left
+
+from functools import partial
+
+class Infix(object):
+    def __init__(self, func):
+        self.func = func
+    def __or__(self, other):
+        return self.func(other)
+    def __ror__(self, other):
+        return Infix(partial(self.func, other))
+    def __call__(self, v1, v2):
+        return self.func(v1, v2)
+
+@Infix
+def o( f, g ):
+    return lambda x: g( f( x ) )
 
 class Object:
     pass
 
-class GrowingList( list ):
-    def __getitem__( self, index ):
-        if index >= len(self):
-            self.extend( [0] * ( index + 1 - len( self ) ) )
-        return list.__getitem__( self, index )
-
-    def __setitem__( self, index, value ):
-        if index >= len( self ):
-            self.extend( [0] * ( index + 1 - len( self ) ) )
-        list.__setitem__( self, index, value )
-
-def lineToEvent( line ):
-    ev        = Object()
-    ev.ts     = line[ 0 ]
-    ev.pid    = line[ 1 ]
-    ev.tid    = line[ 2 ]
-    ev.source = line[ 3 ]
-    if ev.source == "macro":
-        ev.tkid = line[ 4 ]
-        ev.kind = line[ 5 ]
-        misc = line[ 6 ]
-        try:
-            ev.ctx = misc[ "ctx" ]
-        except:
-            pass
-        try:
-            ev.ctx_ptr = misc[ "ctx_ptr" ]
-        except:
-            pass
-        try:
-            ev.step = misc[ "step" ]
-        except:
-            pass
-        try:
-            ev.recurring = misc[ "recurring" ]
-        except:
-            pass
-        try:
-            ev.name = misc[ "name" ]
-        except:
-            pass
-    elif ev.source == "micro":
-        ev.tkid = "micro"
-        ev.kind = line[ 4 ]
-        misc = line[ 5 ]
-        try:
-            ev.props = misc[ "props" ]
-        except:
-            pass
-        try:
-            ev.num_tasks = misc[ "num_tasks" ]
-        except:
-            pass
-        try:
-            ev.callback = misc[ "callback" ]
-        except:
-            pass
-        try:
-            ev.ctx = misc[ "ctx" ]
-        except:
-            pass
-        try:
-            ev.ctxdesc = misc[ "ctxdesc" ]
-        except:
-            pass
-        try:
-            ev.count = misc[ "count" ]
-        except:
-            pass
-        try:
-            ev.name = misc[ "name" ]
-        except:
-            pass
-    elif ev.source == "exec":
-        ev.kind = line[ 4 ]
-        misc = line[ 5 ]
-        try:
-            ev.ctx = misc[ "ctx" ]
-        except:
-            pass
-        try:
-            ev.ctxdesc = misc[ "ctxdesc" ]
-        except:
-            pass
-        try:
-            ev.ctor = misc[ "ctor" ]
-        except:
-            pass
-        try:
-            ev.has_exn = misc[ "has_exn" ]
-        except:
-            pass
-        try:
-            ev.throwOnAllowed = misc[ "throwOnAllowed" ]
-        except:
-            pass
-        try:
-            ev.name = misc[ "name" ]
-        except:
-            pass
-    else:
-        print( "UNKNOWN TASK SOURCE: %s" % ev.source )
-        exit()
+def dictToEv( d ):
+    if d == None:
+        return None
+    ev = Object()
+    ev.ts     = d[ 0 ]
+    ev.source = d[ 1 ]
+    ev.kind   = d[ 2 ]
+    for k, v in d[ 3 ].items():
+        setattr( ev, k, v )
     return ev
 
-def timestamp( trace_entry ):
-    try:
-        rv = trace_entry[ "ts" ]
-    except:
-        rv = trace_entry[ 0 ]
-    # print( "%s  --  %s --  %s" % ( trace_entry, rv, type( rv ) ) )
-    return rv
+def lineToCont( j ):
+    cont = Object()
+    cont.begin        = dictToEv( j[ 0 ] )
+    cont.end          = dictToEv( j[ 1 ] )
+    cont.sched_ev     = dictToEv( j[ 2 ] )
+    cont.parent_ts    = j[ 3 ]
+    cont.children_tss = j[ 4 ]
+    return cont
+
+def eatTreeFile( f ):
+    conts = []
+    for line in f:
+        ( json.loads |o| lineToCont |o| conts.append )( line )
+    conts.sort( key=lambda c: c.begin.ts )
+    keys = [ c.begin.ts for c in conts ]
+    def lookup( ts ):
+        i = bisect_left( keys, ts )
+        if keys[ i ] != ts:
+            print( "ERROR: Timestamp indexing thing" )
+            sys.exit()
+        return conts[ i ]
+    position = 0
+    for cont in conts:
+        cont.pos = position
+        position += 1
+        cont.parent = None if cont.parent_ts is None else lookup( cont.parent_ts )
+        del cont.parent_ts
+        cont.children = []
+        for child_ts in cont.children_tss:
+            cont.children.append( lookup( child_ts ) )
+        del cont.children_tss
+    return conts
+
+def analyzeDurs( cont, stats ):
+    dur = cont.end.ts - cont.begin.ts
+    recur = ( cont.sched_ev is not None ) and hasattr( cont.sched_ev, "recurring" ) and cont.sched_ev.recurring
+    if recur:
+        stats.durs_recur.append( dur )
+    else:
+        stats.durs_nrecur.append( dur )
+
+def analyzeGaps( cont, stats ):
+    if cont.parent is None:
+        return
+    gap = cont.begin.ts - cont.parent.end.ts
+    if cont.sched_ev is None:
+        stats.gaps_weird.append( gap )
+    elif hasattr( cont.sched_ev.recurring ) and cont.sched_ev.recurring:
+        stats.gaps_recur.append( gap )
+    else:
+        if cont.pos == parent.pos + 1:
+            stats.gaps_uninterrupted.append( gap )
+        else:
+            stats.gaps_interrupted.append( gap )
+        stats.gaps[ cont.sched_ev.name ].append( gap )
+
+def analyzeChains( cont, stats ):
+    ancestor = cont
+    for depth in range( 2, 5 ):
+        if ( ancestor.parent is None ) or ( ancestor.sched_ev is None ):
+            return
+        if hasattr( ancestor.sched_ev, "recurring" ) and ancestor.sched_ev.recurring:
+            return
+        stats.chains[ depth ].append( cont.end.ts - ancestor.parent.begin.ts )
+        ancestor = ancestor.parent
+
+def analyzeBranching( cont, stats ):
+    stats.branching.append( len( cont.children ) )
+    if cont.parent is not None:
+        stats.pbranching.append( len( cont.parent.children ) )
+
+def analuzeConcurrency( tree, stats ):
+    liveConts = {}
+    for cont in tree:
+
+def analyzeSubtrees( cont, stats ):
+    limits = [ 100, 1000, 10000 ]
+    for limit in limits:
+        def helper( descendant ):
+            if descendant.end.ts > cont.begin.ts + limit:
+                return None
+            cont = Object()
+
+            concat = lambda x, y: x + y
+            subs = reduce( concat, map( helper, descendant.children ), [] )
+            if non-empty ...
+
+def analyzeTree( tree, stats ):
+    for cont in tree:
+        analyzeDurs( cont, stats )
+        analyzeGaps( cont, stats )
+        analyzeChains( cont, stats )
+        analyzeBranching( cont, stats )
+        analyzeSubtrees( cont, stats )
 
 def fancyPlot( name, data ):
     if len( data ) < 1:
@@ -187,56 +197,6 @@ def fancyPlot( name, data ):
         plt.show()
     else:
         plt.savefig( "%s.pdf" % name, bbox_inches='tight' )
-
-def parseBeginsAndEnds( basepath ):
-    begins_ends = []
-    for fname in os.listdir( basepath ):
-        path = os.path.join( basepath, fname )
-        trace = []
-        with open( path ) as f:
-            for line in f:
-                if "CHARCOAL_BEGIN_RECORDING_TRACE" in line:
-                    try:
-                        j = json.loads( line )
-                        print( j )
-                        begins_ends.append( ( "B", j[ 0 ] ) )
-                    except:
-                        print( "json parse failed!!! %s" % line )
-                        sys.exit()
-                if "CHARCOAL_END_RECORDING_TRACE" in line:
-                    try:
-                        j = json.loads( line )
-                        print( j )
-                        begins_ends.append( ( "E", j[ 0 ] ) )
-                    except:
-                        print( "json parse failed!!! %s" % line )
-                        sys.exit()
-
-    recording_ranges = []
-    def k( be ):
-        return be[ 1 ]
-    begins_ends.sort( key=k )
-    last_begin = None
-    for b_or_e in begins_ends:
-        if last_begin is None:
-            if b_or_e[ 0 ] is "B":
-                last_begin = b_or_e[ 1 ]
-            elif b_or_e[ 0 ] is "E":
-                print( "Weird end without begin" )
-            else:
-                print( "WHOA! %s" % b_or_e[ 0 ] )
-                exit()
-        else:
-            if b_or_e[ 0 ] is "B":
-                print( "Weird double begin" )
-            elif b_or_e[ 0 ] is "E":
-                recording_ranges.append( ( last_begin, b_or_e[ 1 ] ) )
-                last_begin = None
-            else:
-                print( "WHOA! %s" % b_or_e[ 0 ] )
-                exit()
-    print( recording_ranges )
-    return recording_ranges
 
 def printIles( name, items, iles ):
     L = len( items )
@@ -658,21 +618,6 @@ def stacker( trace ):
 
     return stats
 
-def splitByThread( trace ):
-    traces = {}
-
-    def append( tid, line ):
-        try:
-            traces[ tid ].append( line )
-        except:
-            trace = [ line ]
-            traces[ tid ] = trace
-
-    for line in trace:
-        append( line[ 2 ], line )
-
-    return traces
-
 def analyze( basepath, ranges, render_processes, stats ):
     print( "======================== analyze %s ======================== %s" % ( basepath, render_processes ) )
     id_path_map = {}
@@ -714,22 +659,18 @@ def analyze( basepath, ranges, render_processes, stats ):
         print( "[TS] Done with process %s: %s" % ( id, ( ts2 - ts1 ) ) )
 
 
-def analyzeDir( base_dir, stats ):
-    print( "======================== analyzeDir %s ========================" % base_dir )
-    ts1 = datetime.datetime.now()
-    recording_ranges = parseBeginsAndEnds( os.path.join( base_dir, "Traces" ) )
-    recording_ranges = [ ( 0, 9999999999999 ) ] # HACK
-    ts2 = datetime.datetime.now()
-    print( "[TS] begin-end ranges: %s" % ( ts2 - ts1 ) )
-    render_processes = parseProcessInfo( os.path.join( base_dir, "stderr.txt" ) )
-    ts3 = datetime.datetime.now()
-    print( "[TS] process info: %s" % ( ts3 - ts2 ) )
-    analyze( os.path.join( base_dir, "Traces" ), recording_ranges, render_processes, stats )
-    ts4 = datetime.datetime.now()
-    print( "[TS] kit and caboodle: %s" % ( ts4 - ts3 ) )
+def analyzeDir( dir, stats ):
+    for fname in os.listdir( dir ):
+        if fname == ".DS_Store":
+            continue
+        path = os.path.join( dir, fname )
+        with open( path ) as f:
+            eatTreeFile( f )
+
+        # analyzeDir( path, stats )
 
 def main():
-    traces_dir = sys.argv[ 1 ] if len( sys.argv ) > 1 else "./Traces"
+    trees_dir = sys.argv[ 1 ] if len( sys.argv ) > 1 else "./Trees"
     stats = Object()
     stats.children_per_cont = []
     stats.pchildren_per_edge = []
@@ -746,13 +687,14 @@ def main():
     stats.chain4_lengths = []
     stats.api_kind = {}
 
-    for fname in os.listdir( traces_dir ):
+    for fname in os.listdir( trees_dir ):
         if fname == ".DS_Store":
             continue
-        path = os.path.join( traces_dir, fname )
+        print( "======================== eat %s ========================" % fname )
+        path = os.path.join( trees_dir, fname )
         analyzeDir( path, stats )
 
-    showStats( stats )
+    # showStats( stats )
 
 if __name__ == "__main__":
     # execute only if run as a script
