@@ -205,7 +205,7 @@ We observe a conflict with this combination, which is:
 \begin{enumerate}
 \item The nesting of atomic blocks and thread spawns is tricky, with no interpretation that works well in all contexts.
 \item Most cooperative concurrency frameworks lack an explicit notion of thread/task identity, making it impossible to easily distinguish between the various cases of nested atomic and spawn.
-\begin{enumerate}
+\end{enumerate}
 To the best of our knowledge, this is a novel observation.
 We conclude from this that \emph{if} a cooperative multitasking framework is to include atomic blocks, it should have explicit thread/task identities (i.e. some flavor of cooperative threading).
 
@@ -258,9 +258,12 @@ The increasingly sophisticated multitasking in modern applications and the well-
 The most widely used alternatives are \emph{coroutines} and \emph{async procedures}.
 Examples include async/await, which was added to C\#/.Net in 2012; function generators (\texttt{function*}), which were added to JavaScript with ECMAScript 6 (standard published in 2015); even the C++ community is considering adding support for coroutines (currently on the short list for inclusion in the C++20 standard).
 Coroutine implementations are not \emph{new}; for example, Modula-2 had coroutines in the 1980s.
-However, relatively few of the most widely used languages natively supported coroutines until recently.
+However, few of the most widely used languages natively supported coroutines until recently.
 
 The most recent versions of JavaScript support both coroutines and async functions.
+A style of programming that combines async functions and Promise chaining has become popular in JavaScript communities.
+This style of programming makes multitasking much more convenient than programming with explicit callbacks.
+This evolution in style has made it feasible for more developers to write more highly mutltitasked applications.
 
 \subsection{Measurements}
 
@@ -293,7 +296,7 @@ A few have many, many children.}
 \label{fig:graph_branching}
 \end{figure}
 
-\subsubsection{Duration and Branching}
+\subsubsection{Duration}
 
 Figures \ref{fig:graph_duration} and \ref{fig:graph_branching} start to give a sense of the shapes of the continuation trees in widely used JavaScript code.
 The first important observation is that most continuations are quite short.
@@ -306,11 +309,18 @@ This ecosystem norm will be important when we discuss library function design la
 
 The difference between the solid and dashed lines in Figure \ref{fig:graph_duration} highlights the importance of recurring events.
 In JavaScript, certain primitive APIs, like \texttt{setInterval} and \texttt{XMLHttpRequest} can register continuations that are called multiple times.
-As you can see, these recurring continuations (especially network request updates) account for a majority of the shortest.
+As you can see, these recurring continuations account for a majority of the shortest.
+(A majority are accounted for by updates on the status of downloading files.)
+We mostly ignore these recurring callbacks in the following measurements and analyses, because they are less relevant to our focus on chains of continuations that we suspect programmers might think are atomic.
+
+\subsubsection{Branching and Concurrency}
 
 Next, notice in Figure \ref{fig:graph_branching} that a majority of continuations have exactly one child.
 This suggests that JavaScript programmers are in many cases breaking linear sequences of logic up into multiple continuations.
 Presumably they are doing this either consciously to avoid responsiveness problems, or because the libraries they are using do not offer any other choice.
+
+Figure \ref{fig:graph_branching} also shows degree of concurrency, another important feature of typical continuation trees.
+We measure degree of concurrency by measuring for each continuation, how many of the continuations that will run after it were registered before it looking at how many ...
 
 A large majority of continuations have at most one child, but a very few have a much higher branching factor.
 To visualize this long tail more clearly, the dashed line in Figure \ref{fig:graph_branching} shows not each continuation's branching factor, but each continuation's parent's branching factor.
