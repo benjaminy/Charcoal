@@ -22,7 +22,21 @@ class GrowingList( list ):
             self.extend( [0] * ( index + 1 - len( self ) ) )
         list.__setitem__( self, index, value )
 
-global_exec_depths = GrowingList()
+def printDictValSorted( d ):
+    vk = []
+    for k, v in d.items():
+        vk.append( ( v, k ) )
+    vk.sort( key=( lambda x: x[ 0 ] ) )
+    print( vk )
+
+all_children = 0
+nested_children = 0
+dangling_returns = 0
+def incrDict( d, key ):
+    try:
+        d[ key ] += 1
+    except:
+        d[ key ] = 1
 
 def lineToEvent( line ):
     ev        = Object()
@@ -50,7 +64,7 @@ def lineToEvent( line ):
         extractFields( line[ 5 ], [ "ctx", "ctxdesc", "ctor", "has_exn", "throwOnAllowed", "name" ] )
     else:
         print( "UNKNOWN TASK SOURCE: %s" % ev.source )
-        exit()
+        sys.exit()
     return ev
 
 def timestamp( trace_entry ):
@@ -95,7 +109,7 @@ def parseBeginsAndEnds( dir ):
                 print( "Weird end without begin" )
             else:
                 print( "WHOA! %s" % b_or_e[ 0 ] )
-                exit()
+                sys.exit()
         else:
             if b_or_e[ 0 ] is "B":
                 print( "Weird double begin" )
@@ -104,7 +118,7 @@ def parseBeginsAndEnds( dir ):
                 last_begin = None
             else:
                 print( "WHOA! %s" % b_or_e[ 0 ] )
-                exit()
+                sys.exit()
     print( recording_ranges )
     return recording_ranges
 
@@ -121,7 +135,7 @@ def parseProcessInfo( path ):
             try:
                 if processes[ id ] != kind:
                     print( "WRONG PROCESS KIND %s %s" % ( kind, processes[ id ] ) )
-                    exit()
+                    sys.exit()
             except:
                 processes[ id ] = kind
     print( processes )
@@ -134,40 +148,62 @@ def parseProcessInfo( path ):
 
 
 def stacker( trace ):
+    global all_children
+    global nested_children
+    global dangling_returns
     all_continuations = []
     global_continuation = Object()
     global_continuation.tkid = None
     global_continuation.events = []
-    continuation_stack = [ global_continuation ]
-    exec_depths = GrowingList()
+    task_call_stack = [ global_continuation ]
+    cd = 0
 
     parent_of = {}
     parent_of[ "micro" ] = None
 
     def printStack():
         print( "STACK ", end=" " )
-        for x in continuation_stack:
-            print( x[ "task" ], end=" - " )
+        for x in task_call_stack:
+            if x == global_continuation:
+                print( "> ", end="" )
+            elif hasattr( x, "fkind" ):
+                print( "%s" % x.fkind, end=" - " )
+            elif hasattr( x, "begin" ):
+                print( "%d" % x.begin.ts, end=" - " )
+            else:
+                raise "JUNK"
         print( "" )
 
     line_count = 0
 
+    def findTopContAndCall():
+        call = None
+        for i in range( len( task_call_stack ) - 1, -1, -1 ):
+            if hasattr( task_call_stack[ i ], "fkind" ):
+                if call is None and task_call_stack[ i ].fkind == "J":
+                    call = task_call_stack[ i ]
+            else:
+                return ( task_call_stack[ i ], call )
+        print( "SAD STACK %s" % task_call_stack )
+        sys.exit()
+
     for line in trace:
         line_count += 1
+        # printStack()
         ev = lineToEvent( line )
-        curr_cont = continuation_stack[ -1 ]
-        curr_cont.events.append( ev )
+        ( top_cont, top_call ) = findTopContAndCall()
+        try:
+            top_cont.events.append( ev )
+        except:
+            print( "%s" % top_cont )
+            sys.exit()
 
         if ev.source == "macro":
             if ev.kind == "scheduled":
-                if curr_cont != global_continuation:
-                    parent_of[ ev.tkid ] = ( curr_cont, ev )
+                if ( top_cont != global_continuation ) and ( top_call is not None ):
+                    parent_of[ ev.tkid ] = ( top_cont, ev, top_call )
 
             elif ev.kind == "ctor":
-                if len( continuation_stack ) >= 4:
-                    print( "DEEP STACK %s", ev.ts )
-
-                exec_depths[ len( continuation_stack ) ] += 1
                 next_cont = Object()
                 next_cont.begin    = ev
                 next_cont.end      = None
@@ -177,31 +213,35 @@ def stacker( trace ):
                 next_cont.children = []
 
                 all_continuations.append( next_cont )
-                continuation_stack.append( next_cont )
-                curr_cont.events.append( next_cont )
+                task_call_stack.append( next_cont )
+                top_cont.events.append( next_cont )
                 if ev.tkid in parent_of:
-                    ( parent_cont, sched_ev ) = parent_of[ ev.tkid ]
-                    parent_cont.children.append( next_cont )
-                    next_cont.parent = parent_cont
-                    next_cont.sched_ev = sched_ev
+                    ( parent_cont, sched_ev, parent_call ) = parent_of[ ev.tkid ]
+                    all_children += 1
+                    if parent_cont.end is None:
+                        nested_children += 1
+                    else:
+                        parent_cont.children.append( next_cont )
+                        next_cont.parent = parent_cont
+                        next_cont.sched_ev = sched_ev
 
             elif ev.kind == "dtor":
-                continuation_stack.pop()
-                if ev.tkid != curr_cont.begin.tkid:
-                    print( "TASK MISMATCH '%s' '%s'" % ( ev.tkid, curr_cont.begin.tkid ) )
-                    exit()
-                curr_cont.end = ev
+                task_call_stack.pop()
+                if ( ev.tkid != top_cont.begin.tkid ) or ( top_call is not None ):
+                    print( "TASK MISMATCH '%s' '%s'" % ( ev.tkid, top_cont.begin.tkid ) )
+                    sys.exit()
+                top_cont.end = ev
 
                 if hasattr( ev, "recurring" ):
                     if ev.recurring:
-                        if curr_cont.sched_ev is None:
+                        if top_cont.sched_ev is None:
                             ev.name = "RECURRING"
                         else:
-                            if curr_cont.sched_ev.name.startswith( "RECURRING" ):
-                                ev.name = curr_cont.sched_ev.name
+                            if top_cont.sched_ev.name.startswith( "RECURRING" ):
+                                ev.name = top_cont.sched_ev.name
                             else:
-                                ev.name = "RECURRING - %s" % curr_cont.sched_ev.name
-                        parent_of[ ev.tkid ] = ( curr_cont, ev )
+                                ev.name = "RECURRING - %s" % top_cont.sched_ev.name
+                        parent_of[ ev.tkid ] = ( top_cont, ev, top_call )
                 else:
                     pass
 
@@ -210,16 +250,15 @@ def stacker( trace ):
 
             else:
                 print( "WEIRD MACRO TASK KIND %s" % ev.kind )
-                exit()
+                sys.exit()
 
         elif ev.source == "micro":
             if ev.kind == "enq":
-                if curr_cont != global_continuation and parent_of[ "micro" ] == None:
+                if top_cont != global_continuation and ( parent_of[ "micro" ] == None ) and ( top_call is not None ):
                     ev.name = "MICRO"
-                    parent_of[ "micro" ] = ( curr_cont, ev )
+                    parent_of[ "micro" ] = ( top_cont, ev, top_call )
 
             elif ev.kind == "before_loop":
-                exec_depths[ len( continuation_stack ) ] += 1
                 next_cont = Object()
                 next_cont.begin    = ev
                 next_cont.end      = None
@@ -229,13 +268,17 @@ def stacker( trace ):
                 next_cont.children = []
 
                 all_continuations.append( next_cont )
-                continuation_stack.append( next_cont )
-                curr_cont.events.append( next_cont )
+                task_call_stack.append( next_cont )
+                top_cont.events.append( next_cont )
                 if parent_of[ "micro" ] != None:
-                    ( parent_cont, sched_ev ) = parent_of[ "micro" ]
-                    parent_cont.children.append( next_cont )
-                    curr_cont.parent = parent_cont
-                    curr_cont.sched_ev = sched_ev
+                    ( parent_cont, sched_ev, parent_call ) = parent_of[ "micro" ]
+                    all_children += 1
+                    if parent_cont.end is None:
+                        nested_children += 1
+                    else:
+                        parent_cont.children.append( next_cont )
+                        top_cont.parent = parent_cont
+                        top_cont.sched_ev = sched_ev
 
             elif ev.kind.startswith( "start" ):
                 pass
@@ -244,28 +287,47 @@ def stacker( trace ):
                 pass
 
             elif ev.kind == "after_loop":
-                continuation_stack.pop()
-                if curr_cont.begin.tkid != "micro":
-                    print( "MICRO MISMATCH %s\n%s" % ( vars( curr_cont.begin ), vars( ev ) ) )
-                    exit()
-                curr_cont.end = ev
+                task_call_stack.pop()
+                if ( top_cont.begin.tkid != "micro" ) or ( top_call is not None ):
+                    print( "MICRO MISMATCH %s\n%s" % ( vars( top_cont.begin ), vars( ev ) ) )
+                    sys.exit()
+                top_cont.end = ev
                 parent_of[ "micro" ] = None
 
             else:
                 print( "WEIRD MICRO TASK KIND %s" % ev.kind )
-                exit()
+                sys.exit()
 
         elif ev.source == "exec":
-            curr_cont.events.append( ev )
+            top_cont.events.append( ev )
+            if ev.kind == "overflow":
+                print( "OH SHIT. OVERFLOW" )
+                sys.exit()
+            elif ev.kind == "enter_jsfun":
+                next_call = Object()
+                next_call.fkind = "J"
+                task_call_stack.append( next_call )
+            elif ev.kind == "enter_non_fun":
+                next_call = Object()
+                next_call.fkind = "N"
+                task_call_stack.append( next_call )
+            elif ev.kind == "exit":
+                if hasattr( task_call_stack[ -1 ], "fkind" ):
+                    task_call_stack.pop()
+                elif task_call_stack[ -1 ] == global_continuation:
+                    dangling_returns += 1
+                else:
+                    print( "EXEC MISMATCH %s\n%s" % ( vars( top_cont.begin ), vars( ev ) ) )
+                    sys.exit()
+            else:
+                print( "WEIRD EXEC KIND %s" % ev.kind )
+                sys.exit()
 
         else:
             print( "WEIRD SOURCE %s" %source )
-            exit()
+            sys.exit()
 
-    print( "Exec Depths %s" % exec_depths )
-    for i in range( len( exec_depths ) ):
-        global_exec_depths[ i ] += exec_depths[ i ]
-
+    print( "AC %d -:- NC %d -:- DR %d" %( all_children, nested_children, dangling_returns ) )
     return all_continuations
 
 def splitByThread( trace ):
@@ -380,8 +442,6 @@ def main():
         tree_path = os.path.join( trees_dir, fname )
         pathlib.Path( tree_path ).mkdir( parents=True, exist_ok=True )
         dumpTrees( tree_path, trees )
-
-    print( "Global exec depths: %s" % global_exec_depths )
 
 # execute only if run as a script
 if __name__ == "__main__":

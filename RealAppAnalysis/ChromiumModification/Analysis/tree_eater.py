@@ -140,19 +140,22 @@ def analyzeGaps( cont, stats ):
             stats.gaps[ name ] = [ gap ]
 
 def analyzeChains( cont, stats ):
+    if cont.end is None:
+        return
     ancestor = cont
+    end = cont.end.ts
     for depth in range( 2, 5 ):
         if ( ancestor.parent is None ) or ( ancestor.sched_ev is None ):
             return
         if hasattr( ancestor.sched_ev, "recurring" ) and ancestor.sched_ev.recurring:
             return
-        stats.chains[ depth ].append( cont.end.ts - ancestor.parent.begin.ts )
+        stats.chains[ depth ].append( end - ancestor.parent.begin.ts )
         ancestor = ancestor.parent
 
 def analyzeBranching( cont, stats ):
     stats.branching.append( len( cont.children ) )
-    if cont.parent is not None:
-        stats.pbranching.append( len( cont.parent.children ) )
+    # if cont.parent is not None:
+    #     stats.pbranching.append( len( cont.parent.children ) )
 
 def analyzeConcurrency( tree, stats ):
     liveConts = set()
@@ -182,9 +185,9 @@ def analyzeTree( tree, stats ):
     for cont in tree:
         analyzeDurations( cont, stats )
         analyzeGaps( cont, stats )
-    #     analyzeChains( cont, stats )
-    #     analyzeBranching( cont, stats )
-    #     analyzeSubtrees( cont, stats )
+        analyzeChains( cont, stats )
+        analyzeBranching( cont, stats )
+        # analyzeSubtrees( cont, stats )
 
 # End code for Analyzing trees
 
@@ -246,6 +249,10 @@ def fancyPlot( name, data ):
         x1, x2, y1, y2 = plt.axis()
         plt.axis( ( x1, 1000000, y1, y2 ) )
 
+    if name is "chains":
+        x1, x2, y1, y2 = plt.axis()
+        plt.axis( ( x1, 1000000, y1, y2 ) )
+
     if False:
         plt.show()
     else:
@@ -283,16 +290,13 @@ def showStats( s ):
                                s.gaps_interrupted[0], s.gaps_interrupted[1] ) )
 
     s.concurrency.sort()
+    s.branching.sort()
+    s.chains[ 2 ].sort()
+    s.chains[ 3 ].sort()
+    s.chains[ 4 ].sort()
 
-    # all_lengths.sort()
-    # allnr_lengths.sort()
-    # s.children_per_cont.sort()
-    # s.pchildren_per_edge.sort()
     # s.before_counts.sort()
     # s.after_counts.sort()
-    # s.chain2_lengths.sort()
-    # s.chain3_lengths.sort()
-    # s.chain4_lengths.sort()
     # s.spans.sort()
     # shorties1m = {}
     # shorties100u = {}
@@ -349,10 +353,11 @@ def showStats( s ):
 
     # print( s.api_kind )
 
-    # fancyPlot( "concurrency", [ [ s.concurrency ] ] )
-
+    fancyPlot( "concurrency", [ [ s.concurrency ], [ s.branching, False, True ] ] )
+    fancyPlot( "branching", [ [ s.branching ] ] )
+    fancyPlot( "chains", [ [ s.chains[ 2 ] ], [ s.chains[ 3 ] ], [ s.chains[ 4 ] ] ] )
     fancyPlot( "gaps", [ [ s.gaps_recur ], [ s.gaps_interrupted ], [ s.gaps_uninterrupted ] ] )
-    # fancyPlot( "durations", [ [ s.durs_recur ], [ s.durs_nrecur ], [ s.durs_macro ], [ s.durs_micro ] ] )
+    fancyPlot( "durations", [ [ s.durs_recur ], [ s.durs_nrecur ], [ s.durs_macro ], [ s.durs_micro ] ] )
     # short_gaps  = list( filter( lambda g: g < 1000, aggregate_gaps ) )
     # short_spans = list( filter( lambda s: s < 1000, s.spans ) )
     # fancyPlot( "gap-span", [ [ short_gaps ], [ short_spans ] ] )
@@ -621,22 +626,6 @@ def stacker( trace ):
 
     print( "." )
 
-    stats = Object()
-    stats.children_per_cont = children_per_cont
-    stats.pchildren_per_edge = pchildren_per_edge
-    stats.macro_lengths = macro_lengths
-    stats.recur_lengths = recur_lengths
-    stats.not_recur_lengths = not_recur_lengths
-    stats.micro_lengths = micro_lengths
-    stats.before_counts = before_counts
-    stats.after_counts = after_counts
-    stats.gaps = gaps
-    stats.spans = spans
-    stats.chain2_lengths = chain2_lengths
-    stats.chain3_lengths = chain3_lengths
-    stats.chain4_lengths = chain4_lengths
-    stats.api_kind = api_kind
-
     return stats
 
 def main():
@@ -654,15 +643,14 @@ def main():
     stats.gaps_recur = []
     stats.gaps_interrupted = []
     stats.gaps_uninterrupted = []
+    stats.branching = []
+    stats.chains = [ [], [], [], [], [], [] ]
 
     # stats.children_per_cont = []
     # stats.pchildren_per_edge = []
     # stats.before_counts = []
     # stats.after_counts = []
     # stats.spans = []
-    # stats.chain2_lengths = []
-    # stats.chain3_lengths = []
-    # stats.chain4_lengths = []
     # stats.api_kind = {}
 
     for fname in os.listdir( trees_dir ):
