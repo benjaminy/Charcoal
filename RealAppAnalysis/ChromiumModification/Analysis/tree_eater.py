@@ -154,19 +154,35 @@ def analyzeChains( cont, stats ):
 
 def analyzeBranching( cont, stats ):
     stats.branching.append( len( cont.children ) )
+    recur = ( cont.sched_ev is not None ) and hasattr( cont.sched_ev, "recurring" ) and cont.sched_ev.recurring
+    if recur:
+        nr = 0
+        for c in cont.children:
+            if not ( hasattr( c.sched_ev, "recurring" ) and c.sched_ev.recurring ):
+                nr += 1
+        stats.branchingNR.append( len( cont.children ) )
     # if cont.parent is not None:
     #     stats.pbranching.append( len( cont.parent.children ) )
 
 def analyzeConcurrency( tree, stats ):
     liveConts = set()
+    liveContsNR = set()
     for cont in tree:
         if cont.begin.ts in liveConts:
             liveConts.remove( cont.begin.ts )
+        if cont.begin.ts in liveContsNR:
+            liveContsNR.remove( cont.begin.ts )
         stats.concurrency.append( len( liveConts ) )
+        if not( hasattr( cont.sched_ev, "recurring" ) and cont.sched_ev.recurring ):
+            stats.concurrencyNR.append( len( liveContsNR ) )
         for c in cont.children:
             liveConts.add( c.begin.ts )
+            if not( hasattr( c.sched_ev, "recurring" ) and c.sched_ev.recurring ):
+                liveContsNR.add( c.begin.ts )
     if len( liveConts ) != 0:
         print( "!!!!! analyzeConcurrency %d" % ( len( liveConts ) ) )
+    if len( liveContsNR ) != 0:
+        print( "!!!!! analyzeConcurrencyNR %d" % ( len( liveContsNR ) ) )
 
 def analyzeSubtrees( cont, stats ):
     limits = [ 100, 1000, 10000 ]
@@ -256,7 +272,7 @@ def fancyPlot( name, data ):
     if False:
         plt.show()
     else:
-        plt.savefig( "%s.pdf" % name, bbox_inches='tight' )
+        plt.savefig( "%s.pdf" % os.path.join( "Graphs", name ), bbox_inches='tight' )
 
 def printIles( name, items, iles ):
     L = len( items )
@@ -290,7 +306,11 @@ def showStats( s ):
                                s.gaps_interrupted[0], s.gaps_interrupted[1] ) )
 
     s.concurrency.sort()
+    s.concurrencyNR.sort()
     s.branching.sort()
+    s.branchingNR.sort()
+    # print( s.branching )
+    # print( s.branchingNR )
     s.chains[ 2 ].sort()
     s.chains[ 3 ].sort()
     s.chains[ 4 ].sort()
@@ -354,7 +374,8 @@ def showStats( s ):
     # print( s.api_kind )
 
     fancyPlot( "concurrency", [ [ s.concurrency ], [ s.branching, False, True ] ] )
-    fancyPlot( "branching", [ [ s.branching ] ] )
+    fancyPlot( "concurrency2", [ [ s.concurrency ], [ s.concurrencyNR ] ] )
+    fancyPlot( "branching", [ [ s.branching ], [ s.branchingNR ] ] )
     fancyPlot( "chains", [ [ s.chains[ 2 ] ], [ s.chains[ 3 ] ], [ s.chains[ 4 ] ] ] )
     fancyPlot( "gaps", [ [ s.gaps_recur ], [ s.gaps_interrupted ], [ s.gaps_uninterrupted ] ] )
     fancyPlot( "durations", [ [ s.durs_recur ], [ s.durs_nrecur ], [ s.durs_macro ], [ s.durs_micro ] ] )
@@ -634,6 +655,7 @@ def main():
     stats.neg_gaps = 0
     stats.pos_gaps = 0
     stats.concurrency = []
+    stats.concurrencyNR = []
     stats.durs_recur = []
     stats.durs_nrecur = []
     stats.durs_macro = []
@@ -644,6 +666,7 @@ def main():
     stats.gaps_interrupted = []
     stats.gaps_uninterrupted = []
     stats.branching = []
+    stats.branchingNR = []
     stats.chains = [ [], [], [], [], [], [] ]
 
     # stats.children_per_cont = []
