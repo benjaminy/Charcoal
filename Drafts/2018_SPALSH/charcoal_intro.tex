@@ -215,6 +215,16 @@ We observe that such a library can be used with modest complexity overhead in ap
 Finally, we consider the question of whether cooperative threading with atomic blocks can be implemented efficiently in a ``native'' language.
 We implement a dialect of C to investigate this question, and discover a new call frame allocation strategy -- enabled by atomic blocks -- that combines the speed benefits of contiguous frame allocation with the memory benefits of individual linked frame allocation.
 
+\begin{figure*}
+\includegraphics[width=0.9\textwidth]{continuation_tree}
+\caption{The features of JavaScript event execution that our modified Chromium browser measures.
+  The gray boxes are continuations.
+  The continuations are arranged in rows to suggest that they belong to the same task/thread.
+  However, JavaScript does not have this concept, so this is purely a human interpretation.
+  For example, a2 and b1 are both children of a1, and there is no way for the system to know what logical task either belongs to.}
+\label{fig:continuation_tree}
+\end{figure*}
+
 In summary, the contributions of this paper are:
 \begin{itemize}
 \item A measurement study of multitasking in web applications.
@@ -226,16 +236,6 @@ In summary, the contributions of this paper are:
 All code and data described in this paper is available publicly on GitHub [URL removed for blind review].
 
 \section{Multitasking on the Web Today}
-
-\begin{figure*}
-\includegraphics[width=0.9\textwidth]{continuation_tree}
-\caption{The features of JavaScript event execution that our modified Chromium browser measures.
-  The gray boxes are continuations.
-  The continuations are arranged in rows to suggest that they belong to the same task/thread.
-  However, JavaScript does not have this concept, so this is purely a human interpretation.
-  For example, a2 and b1 are both children of a1, and there is no way for the system to know what logical task either belongs to.}
-\label{fig:continuation_tree}
-\end{figure*}
 
 We begin with some brief remarks on the history of JavaScript.
 At the beginning, the designers of JavaScript decided that preemptive threads are unacceptably concurrency-bug-prone.
@@ -320,7 +320,7 @@ This suggests that JavaScript programmers are in many cases breaking linear sequ
 Presumably they are doing this either consciously to avoid responsiveness problems, or because the libraries they are using do not offer any other choice.
 
 Figure \ref{fig:graph_branching} also shows degree of concurrency, another important feature of typical continuation trees.
-We measure degree of concurrency by measuring for each continuation, how many of the continuations that will run after it were registered before it looking at how many ...
+We measure degree of concurrency by measuring for each continuation, how many of the continuations that will run after it are already registered when it runs.
 
 A large majority of continuations have at most one child, but a very few have a much higher branching factor.
 To visualize this long tail more clearly, the dashed line in Figure \ref{fig:graph_branching} shows not each continuation's branching factor, but each continuation's parent's branching factor.
