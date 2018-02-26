@@ -29,6 +29,8 @@ class Object:
 
 subtree_limits = [ 100, 1000, 10000, 100000 ]
 
+def printCont( c ):
+    print( "[ %d, %s ]" % ( c.begin.ts, "?" if c.sched_ev is None else c.sched_ev.name ), end="" )
 
 # Begin code for input reading
 
@@ -193,6 +195,20 @@ def analyzeConcurrency( tree, stats ):
         print( "!!!!! analyzeConcurrencyNR %d" % ( len( liveContsNR ) ) )
 
 def analyzeSubtrees( cont, stats ):
+    def printSubtree( tree, depth ):
+        print( " " * depth, end="" )
+        if tree is None:
+            print( "_", end="" )
+            return
+        printCont( tree.orig )
+        if len( tree.children ) < 1:
+            print( "[]" )
+            return
+        print( "[" )
+        for c in tree.children:
+            printSubtree( c, depth + 4 )
+        print( ( " " * depth ) + "]" )
+
     for limit in subtree_limits:
         def helper( parent ):
             if isRecur( parent ):
@@ -232,17 +248,32 @@ def analyzeSubtrees( cont, stats ):
                 return False
             return all( isLinear( c ) for c in node.children )
 
-        def anyDeadEnd( node ):
-            if node is None:
-                return False
-            if len( node.orig.children ) < 1:
-                return True
-            return any( anyDeadEnd( c ) for c in node.children )
+        def binaryNone( f ):
+            def g( a, b ):
+                if a is None:
+                    return b
+                if b is None:
+                    return a
+                return f( a, b )
+            return g
 
-        def anyBeyondLimit( node ):
+        minNone = binaryNone( min )
+        maxNone = binaryNone( max )
+
+        def earliestDeadEnd( node ):
             if node is None:
-                return True
-            return any( anyBeyondLimit( c ) for c in node.children )
+                return None
+            if len( node.orig.children ) < 1:
+                return node.orig.end.ts
+            return reduce( minNone, map( earliestDeadEnd, node.children ), None )
+
+        def latestWithOutsideChild( node ):
+            if ( node is None ) or len( node.children ) < 1:
+                return None
+            latest = None
+            if any( c is None for c in node.children ):
+                latest = node.orig.begin.ts
+            return reduce( maxNone, map( latestWithOutsideChild, node.children ), latest )
 
         def escapeCount( node ):
             if node is None:
@@ -260,13 +291,56 @@ def analyzeSubtrees( cont, stats ):
             stats.trees[ limit ][ "linear" ] += 1
         else:
             stats.trees[ limit ][ "nonlinear" ] += 1
-        if anyDeadEnd( tree ) and anyBeyondLimit( tree ):
+        earliestDE = earliestDeadEnd( tree )
+        latestWOCh = latestWithOutsideChild( tree )
+        if ( earliestDE is not None ) and ( latestWOCh is not None ):
             stats.trees[ limit ][ "internalBranching" ] += 1
+            if earliestDE < latestWOCh:
+                stats.trees[ limit ][ "maybeWaiting" ] += 1
+                if limit == 10:
+                    printSubtree( tree, 4 )
         if anyBranching( tree ):
             stats.trees[ limit ][ "anyBranching" ] += 1
         if escapeCount( tree ) > 1:
             stats.trees[ limit ][ "multipleEscapes" ] += 1
         # print( "%s" % stats.trees[ limit ] )
+
+# def anayzeMicros( tree ):
+#                 elif ev.kind.startswith( "start" ):
+#                 if len( continuation_stack ) > 3:
+#                     pass #printStack()
+#                 micro_depths[ ev.num_tasks ] += 1
+
+#             elif ev.kind.startswith( "done" ):
+#                 pass
+
+#             elif ev.kind == "after_loop":
+#                 continuation_stack.pop()
+#                 if curr_cont.begin.tkid != "micro":
+#                     print( "MICROTASK MISMATCH %s\n%s" % ( vars( curr_cont.begin ), vars( ev ) ) )
+#                     exit()
+#                 curr_cont.end = ev
+#                 micro_lengths.append( ev.ts - curr_cont.begin.ts )
+#                 after_counts.append( ev.count )
+
+#                 try:
+#                     ( parent_cont, sched_ev ) = parent_of[ "micro" ]
+#                     curr_cont.chain2 = ev.ts - parent_cont.begin.ts
+#                     chain2_lengths.append( curr_cont.chain2 )
+#                     try:
+#                         diff = ev.ts - parent.end.ts
+#                         curr_cont.chain3 = parent_cont.chain2 + diff
+#                         chain3_lengths.append( curr_cont.chain3 )
+#                         try:
+#                             curr_cont.chain4 = parent_cont.chain3 + diff
+#                             chain4_lengths.append( curr_cont.chain4 )
+#                         except:
+#                             pass
+#                     except:
+#                         pass
+#                 except:
+#                     pass
+
 
 def analyzeTree( tree, stats ):
     analyzeConcurrency( tree, stats )
@@ -331,7 +405,7 @@ def fancyPlot( name, data ):
 
     if name is "gaps":
         x1, x2, y1, y2 = plt.axis()
-        plt.axis( ( x1, 500000, 0, 30000 ) )
+        plt.axis( ( x1, 500000, 0, 15000 ) )
 
     if name is "lengths":
         x1, x2, y1, y2 = plt.axis()
@@ -642,40 +716,6 @@ def stacker( trace ):
                 if len( continuation_stack ) > 3:
                     pass # printStack()
 
-            elif ev.kind.startswith( "start" ):
-                if len( continuation_stack ) > 3:
-                    pass #printStack()
-                micro_depths[ ev.num_tasks ] += 1
-
-            elif ev.kind.startswith( "done" ):
-                pass
-
-            elif ev.kind == "after_loop":
-                continuation_stack.pop()
-                if curr_cont.begin.tkid != "micro":
-                    print( "MICROTASK MISMATCH %s\n%s" % ( vars( curr_cont.begin ), vars( ev ) ) )
-                    exit()
-                curr_cont.end = ev
-                micro_lengths.append( ev.ts - curr_cont.begin.ts )
-                after_counts.append( ev.count )
-
-                try:
-                    ( parent_cont, sched_ev ) = parent_of[ "micro" ]
-                    curr_cont.chain2 = ev.ts - parent_cont.begin.ts
-                    chain2_lengths.append( curr_cont.chain2 )
-                    try:
-                        diff = ev.ts - parent.end.ts
-                        curr_cont.chain3 = parent_cont.chain2 + diff
-                        chain3_lengths.append( curr_cont.chain3 )
-                        try:
-                            curr_cont.chain4 = parent_cont.chain3 + diff
-                            chain4_lengths.append( curr_cont.chain4 )
-                        except:
-                            pass
-                    except:
-                        pass
-                except:
-                    pass
 
                 parent_of[ "micro" ] = None
                 most_recent_task = ev.tkid
@@ -745,7 +785,7 @@ def main():
     stats.chains = [ [], [], [], [], [], [] ]
     stats.trees = {}
     for limit in subtree_limits:
-        stats.trees[ limit ] = { "linear":0, "nonlinear":0, "internalBranching":0, "anyBranching":0, "multipleEscapes":0 }
+        stats.trees[ limit ] = { "linear":0, "nonlinear":0, "internalBranching":0, "maybeWaiting":0, "anyBranching":0, "multipleEscapes":0 }
 
     # stats.children_per_cont = []
     # stats.pchildren_per_edge = []
