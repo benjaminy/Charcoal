@@ -373,7 +373,7 @@ However, it is easy to imagine a rigorous testing regimen that never observed an
 In this subsection, we look at microtasks, which are tangential to the main plot of this paper, but still somewhat interesting.
 Microtasks are a special subset of events in JavaScript; the most common source of microtasks is Promise resolution.
 Unlike regular events, as soon as at least one microtask is registered, the application switches to running microtasks until the microtask queue is empty.
-During the execution of a microtask, more microtasks can be enqueued, and the interpreter will not run another continuation from the normal event queue until the microtask queue is empty.
+During the execution of a microtask, more microtasks can be registered, and the interpreter will not run another continuation from the normal event queue until the microtask queue is empty.
 
 Figure \ref{fig:graph_microtasks} shows information about the durations and microtask counts of microtask batches.
 Most batches are fairly short/small by both metrics, which is good from a concurrency bug perspective.
@@ -392,27 +392,27 @@ We will address the second question first.
 \subsubsection{An Explanation for the Rise of Short Chains}
 
 There is always a dilemma in cooperative concurrency models associated with the durations of whatever the atomic chunks are in that model.
-The longer the chunks are, the more risk an application runs of becoming unresponsive or at least appearing jittery.
-The shorter the chunks are, the more risk an application runs of splitting some logic that needs to be atomic into multiple chunks.
+The longer the chunks are, the more risk an application runs of becoming unresponsive or at least appearing jittery and potentially missing I/O deadlines.
+The shorter the chunks are, the more risk an application runs of splitting some logic that should be atomic into multiple chunks.
 
 This dilemma is particularly accute for library authors, because they bear the responsibility to make their code work well in multiple, potentially unknown, specific contexts.
-To be more concrete, when a library authors design APIs, they face the choice between making a call atomic or async in some way (callback, Promise, whatever).
+To be more concrete, when library authors design APIs, they face the choice between making a call atomic or async in some way (callback, Promise, whatever).
 In some cases this choice is easy.
 If the function will always complete in a small amount of time, then it should be atomic.
 If the function will usually take a long time, then it should be async.
 
-Unfortunately, many functions fall in the awkward middle territory, where sometimes they complete quickly and sometimes not.
+Unfortunately, many functions fall in the awkward middle territory, where in some contexts they complete quickly and not in others.
 For these functions, async is in some sense the easier choice, because long-running atomic calls create immediately obvious responsiveness problems that cannot be easily worked around by applications.
 On the other hand, atomicity problems are not as obvious and in principle can be worked around by application-level synchronization.
 
 A similar line of reasoning led the developer's of Microsoft Windows' core Windows Runtime (WinRT) library to replace many atomic procedures with interruptible ones in Windows 8.
 In a post on the Microsoft Developer Blog \cite{Windows8Team2012}, the team explains that they did this for procedures that ``could likely take longer than 50 milliseconds to execute''.
 
-In some recently defined JavaScript APIs, even some functions that will execute quickly in most reasonable contexts have and async interface.
+In some recently defined JavaScript APIs, even some functions that will execute quickly in most reasonable contexts have an async interface.
 As one example among many, the PBKDF2 key derivation function in the cryptography API returns a Promise.
 PBKDF2 is a function that takes a number of iterations as a parameter.
 The iterations parameter must be set over a million to cause the PBKDF2 function to take more than a second on a newish computer.
-If the iterations parameter is closer to one thousand (which is appropriate for some applications), the time is in the millisecond range.
+If the iterations parameter is closer to one thousand (which is appropriate for many applications), the time is in the millisecond range.
 In such contexts, the caller would almost certainly prefer that the call be atomic.
 
 Consider a more extreme example: sending a network request.
@@ -478,7 +478,7 @@ One way atomic could be implement in event queue systems is as follows:
 
 In many cases this definition of \texttt{atomic} would allow a sequence of continuations to run without the possibility of interference from concurrent tasks.
 Unfortunately, there are some problematic cases related to the fact that tasks are anonymous in event loop systems.
-That is, when a continuation is registered it is not possible to distinguish between logically continuiing the current task versus logically spawning a concurrent task.
+That is, when a continuation is registered it is not possible to distinguish between logically continuing the current task versus logically spawning a concurrent task.
 This becomes important in cases when a logical spawning of a concurrent task happens inside an atomic block.
 
 \subsection{Background on Nested Atomics and Spawns}
