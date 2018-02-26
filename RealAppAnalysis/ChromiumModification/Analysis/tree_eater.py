@@ -155,12 +155,12 @@ def analyzeChains( cont, stats ):
 def analyzeBranching( cont, stats ):
     stats.branching.append( len( cont.children ) )
     recur = ( cont.sched_ev is not None ) and hasattr( cont.sched_ev, "recurring" ) and cont.sched_ev.recurring
-    if recur:
+    if not recur:
         nr = 0
         for c in cont.children:
             if not ( hasattr( c.sched_ev, "recurring" ) and c.sched_ev.recurring ):
                 nr += 1
-        stats.branchingNR.append( len( cont.children ) )
+        stats.branchingNR.append( nr )
     # if cont.parent is not None:
     #     stats.pbranching.append( len( cont.parent.children ) )
 
@@ -259,7 +259,7 @@ def fancyPlot( name, data ):
 
     if name is "gaps":
         x1, x2, y1, y2 = plt.axis()
-        plt.axis( ( x1, 500000, y1, y2 ) )
+        plt.axis( ( x1, 500000, 0, 30000 ) )
 
     if name is "lengths":
         x1, x2, y1, y2 = plt.axis()
