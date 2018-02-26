@@ -1,10 +1,10 @@
-"use strict";
-
 /*
  * Top Matter
  */
 
-var P = Promise;
+"use strict";
+
+let P = Promise;
 
 /* TODO: Better assert */
 function assert( condition, message )
@@ -37,7 +37,7 @@ let FINISHED             = Object.freeze( { t: ACT_STATE_TAG } );
  * The latter is primarily for internal use (with "atomic"), but can be used by client
  * code.
  */
-/*export*/ function actFn( ...actFn_params )
+function actFn( ...actFn_params )
 {
     // console.log( "actFn", actFn_params )
 
@@ -48,13 +48,13 @@ let FINISHED             = Object.freeze( { t: ACT_STATE_TAG } );
 
     if( np === 1 )
     {
-        let generator_function = actFn_params[ 0 ];
-        let actx_maybe         = null;
+        var generator_function = actFn_params[ 0 ];
+        var actx_maybe         = null;
     }
     else
     {
-        let generator_function = actFn_params[ 1 ];
-        let actx_maybe         = actFn_params[ 0 ];
+        var generator_function = actFn_params[ 1 ];
+        var actx_maybe         = actFn_params[ 0 ];
         assert( actx_maybe.constructor === Context );
     }
     if( generator_function.hasOwnProperty( ACT_FN_TAG ) )
@@ -93,11 +93,11 @@ let FINISHED             = Object.freeze( { t: ACT_STATE_TAG } );
         try {
             if( is_err )
             {
-                let next_yielded = generator.throw( yielded_value );
+                var next_yielded = generator.throw( yielded_value );
             }
             else
             {
-                let next_yielded = generator.next( yielded_value );
+                var next_yielded = generator.next( yielded_value );
             }
             actx.state = RESOLVING;
         }
@@ -143,15 +143,15 @@ let FINISHED             = Object.freeze( { t: ACT_STATE_TAG } );
     function fnEitherMode( actx, ...params )
     {
         /* actx : activity context type */
-        let pass_actx = !actx.hasOwnProperty( DO_NOT_PASS );
+        let pass_actx = !actx.hasOwnProperty( DO_NOT_PASS_TAG );
         try {
             if( pass_actx )
             {
-                let generator = generator_function( actx, ...params );
+                var generator = generator_function( actx, ...params );
             }
             else
             {
-                let generator = generator_function( ...params );
+                var generator = generator_function( ...params );
             }
             /* generator : iterator type */
         }
@@ -170,7 +170,7 @@ let FINISHED             = Object.freeze( { t: ACT_STATE_TAG } );
     {
         var f = function( ...params )
         {
-            actx_maybe[ DO_NOT_PASS ] = 0;
+            actx_maybe[ DO_NOT_PASS_TAG ] = 0;
             return fnEitherMode( actx_maybe, ...params );
         }
     }
@@ -189,7 +189,7 @@ let FINISHED             = Object.freeze( { t: ACT_STATE_TAG } );
 
 class Scheduler
 {
-    constructor()
+    constructor( options )
     {
         this.activities           = {};
         this.num_activities       = 0;
@@ -202,9 +202,9 @@ class Scheduler
     {
         /* XXX atomic vs not? */
         // console.log( "activateInternal" );
-        var params = params_plus_f.slice( 0, params_plus_f.length - 1 );
-        var fn     = actFn( params_plus_f[ params_plus_f.length - 1 ] );
-        var child  = new Context( this, parent );
+        let params = params_plus_f.slice( 0, params_plus_f.length - 1 );
+        let fn     = actFn( params_plus_f[ params_plus_f.length - 1 ] );
+        let child  = new Context( this, parent );
 
         child.state = RUNNABLE;
         child.finished_promise =
@@ -224,7 +224,7 @@ class Scheduler
 
     activate( ...params_plus_f )
     {
-        return activateInternal( null, ...params_plus_f );
+        return this.activateInternal( null, ...params_plus_f );
     }
 }
 
@@ -252,9 +252,9 @@ class Context
 
     blockedByAtomic()
     {
-        if( !this.atomic_stack.next )
+        if( !this.scheduler.atomic_stack.next )
             return false;
-        return !this.atomic_stack.hasOwnProperty( this.id );
+        return !this.scheduler.atomic_stack.hasOwnProperty( this.id );
     }
 
     activate( ...params_plus_f )
@@ -273,7 +273,7 @@ class Context
 
     atomic( ...params_plus_fn )
     {
-        let params    = params_plus_fn.slice( 0, params_plus_fn.length - 1 );
+        var params    = params_plus_fn.slice( 0, params_plus_fn.length - 1 );
         let fn        = actFn( this, params_plus_fn[ params_plus_fn.length - 1 ] );
         let scheduler = this.scheduler;
 
@@ -299,7 +299,7 @@ class Context
              * bug. */
 
             top.waiting.sort( function( a, b ) {
-                var diff = b.waits - a.waits;
+                let diff = b.waits - a.waits;
                 if( diff == 0 )
                     return a.queue_len - b.queue_len;
                 else
@@ -316,9 +316,8 @@ class Context
         scheduler.atomic_actx = this;
         try {
             if( fn[ EXPECTS_CTX_TAG ] )
-                var p = fn( this, ...params );
-            else
-                var p = fn( ...params );
+                params.unshift( this );
+            let p = fn( ...params );
         }
         catch( err ) {
             leaveAtomic();
@@ -347,80 +346,6 @@ class Context
     }
 }
 
-/*export*/ function makeScheduler( options )
-{
-    return new Schduler();
-}
+console.log( "activities.js loaded" );
 
-/* scribbling */
-
-function sleep( ms )
-{
-    return new Promise( resolve => setTimeout( resolve, ms ) );
-}
-
-var TC = 10;
-
-var f = actFn( function*f( actx, letter ) {
-    for( var j = 0; j < 3; j++ ) {
-        yield sleep( 5 * TC );
-        actx.log( letter );
-        yield actx.atomic( function*() {
-            for( var i = 0; i < 5; i++ ) {
-                yield sleep( 2 * TC );
-                actx.log( letter, "*" );
-            }
-        } );
-    }
-} );
-
-/*
-function^ f( letter ) {
-    for( i = 0; i < 3; i++ ) {
-        sleep( 500 );
-        log( letter );
-        atomic {
-            for( var j = 0; j < 5; j++ ) {
-                sleep( 200 );
-                log( letter + "*" );
-            }
-        }
-    }
-}
-*/
-
-var ctx = new ActivityContext()
-
-ctx.activate( "A", f );
-ctx.activate( "B", f );
-ctx.activate( "C", f );
-ctx.activate( "D", f );
-
-Error.stackTraceLimit = Infinity;
-
-var throwTest1 = actFn( function*throwTest1( actx ) {
-    console.log( "TT1" );
-    throw new Error( "Yay" );
-} );
-
-var throwTest2 = actFn( function*throwTest2( actx ) {
-    console.log( "TT2" );
-    return yield throwTest1( actx );
-} );
-
-var throwTest3 = actFn( function*throwTest3( actx ) {
-    console.log( "TT3" );
-    return yield throwTest2( actx );
-} );
-
-var throwTest4 = actFn( function*throwTest4( actx ) {
-    try {
-        var x = yield throwTest3( actx );
-    }
-    catch( err ) {
-        console.log( "CAUGHT2", err );
-        console.log( "STACK", err.stack );
-    }
-} );
-
-ctx.activate( throwTest4 );
+export { actFn, Scheduler };
