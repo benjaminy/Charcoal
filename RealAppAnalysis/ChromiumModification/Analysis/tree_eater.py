@@ -6,6 +6,7 @@ import json
 import numpy
 import matplotlib.pyplot as plt
 from bisect import bisect_left
+from functools import reduce
 
 from functools import partial
 
@@ -25,6 +26,9 @@ def o( f, g ):
 
 class Object:
     pass
+
+subtree_limits = [ 100, 1000, 10000, 100000 ]
+
 
 # Begin code for input reading
 
@@ -90,6 +94,9 @@ def analyzeDir( dir, stats ):
 # End code for input reading
 
 # Begin code for Analyzing trees
+def isRecur( c ):
+    return ( c.sched_ev is not None ) and hasattr( c.sched_ev, "recurring" ) and c.sched_ev.recurring
+
 def analyzeDurations( cont, stats ):
     if ( not hasattr( cont, "begin" ) ) or cont.begin is None:
         return
@@ -98,8 +105,7 @@ def analyzeDurations( cont, stats ):
 
 
     duration = cont.end.ts - cont.begin.ts
-    recur = ( cont.sched_ev is not None ) and hasattr( cont.sched_ev, "recurring" ) and cont.sched_ev.recurring
-    if recur:
+    if isRecur( cont ):
         stats.durs_recur.append( duration )
     else:
         stats.durs_nrecur.append( duration )
@@ -126,7 +132,7 @@ def analyzeGaps( cont, stats ):
 
     if cont.sched_ev is None:
         stats.gaps_weird.append( gap )
-    elif hasattr( cont.sched_ev, "recurring" ) and cont.sched_ev.recurring:
+    elif isRecur( cont ):
         stats.gaps_recur.append( gap )
     else:
         if cont.pos == cont.parent.pos + 1:
@@ -147,18 +153,20 @@ def analyzeChains( cont, stats ):
     for depth in range( 2, 5 ):
         if ( ancestor.parent is None ) or ( ancestor.sched_ev is None ):
             return
-        if hasattr( ancestor.sched_ev, "recurring" ) and ancestor.sched_ev.recurring:
+        if isRecur( ancestor ):
             return
-        stats.chains[ depth ].append( end - ancestor.parent.begin.ts )
+        duration = end - ancestor.parent.begin.ts
+        if ( depth == 2 ) and ( duration <= 100 ):
+            print( "CHAIN %d %d" % ( ancestor.parent.begin.ts, ancestor.begin.ts ) )
+        stats.chains[ depth ].append( duration )
         ancestor = ancestor.parent
 
 def analyzeBranching( cont, stats ):
     stats.branching.append( len( cont.children ) )
-    recur = ( cont.sched_ev is not None ) and hasattr( cont.sched_ev, "recurring" ) and cont.sched_ev.recurring
-    if not recur:
+    if not( isRecur( cont ) ):
         nr = 0
         for c in cont.children:
-            if not ( hasattr( c.sched_ev, "recurring" ) and c.sched_ev.recurring ):
+            if not isRecur( c ):
                 nr += 1
         stats.branchingNR.append( nr )
     # if cont.parent is not None:
@@ -173,11 +181,11 @@ def analyzeConcurrency( tree, stats ):
         if cont.begin.ts in liveContsNR:
             liveContsNR.remove( cont.begin.ts )
         stats.concurrency.append( len( liveConts ) )
-        if not( hasattr( cont.sched_ev, "recurring" ) and cont.sched_ev.recurring ):
+        if not isRecur( cont ):
             stats.concurrencyNR.append( len( liveContsNR ) )
         for c in cont.children:
             liveConts.add( c.begin.ts )
-            if not( hasattr( c.sched_ev, "recurring" ) and c.sched_ev.recurring ):
+            if not isRecur( c ):
                 liveContsNR.add( c.begin.ts )
     if len( liveConts ) != 0:
         print( "!!!!! analyzeConcurrency %d" % ( len( liveConts ) ) )
@@ -185,16 +193,80 @@ def analyzeConcurrency( tree, stats ):
         print( "!!!!! analyzeConcurrencyNR %d" % ( len( liveContsNR ) ) )
 
 def analyzeSubtrees( cont, stats ):
-    limits = [ 100, 1000, 10000 ]
-    for limit in limits:
-        def helper( descendant ):
-            if descendant.end.ts > cont.begin.ts + limit:
+    for limit in subtree_limits:
+        def helper( parent ):
+            if isRecur( parent ):
+                return False
+            if ( parent.end is None ) or ( ( parent.end.ts - cont.begin.ts ) > limit ):
                 return None
-            cont = Object()
+            node = Object()
+            node.orig = parent
+            node.children = []
+            latest = parent.end.ts
+            for child in parent.children:
+                thing = helper( child )
+                if thing == False:
+                    continue
+                if thing == None:
+                    node.children.append( None )
+                    continue
+                ( child_latest, child_tree ) = thing
+                node.children.append( child_tree )
+                latest = max( latest, child_latest )
+            return ( latest, node )
 
-            concat = lambda x, y: x + y
-            subs = reduce( concat, map( helper, descendant.children ), [] )
-            # if non-empty ...
+        thing = helper( cont )
+        if thing == False or thing == None:
+            continue
+        ( latest, tree ) = thing
+        if not any( c is not None for c in tree.children ):
+            continue
+        if ( cont.parent is not None ) and ( latest - cont.parent.begin.ts ) <= limit:
+            continue
+
+        # finally, we have a subtree to analyze!
+        def isLinear( node ):
+            if node == None:
+                return True
+            if len( node.orig.children ) > 1:
+                return False
+            return all( isLinear( c ) for c in node.children )
+
+        def anyDeadEnd( node ):
+            if node is None:
+                return False
+            if len( node.orig.children ) < 1:
+                return True
+            return any( anyDeadEnd( c ) for c in node.children )
+
+        def anyBeyondLimit( node ):
+            if node is None:
+                return True
+            return any( anyBeyondLimit( c ) for c in node.children )
+
+        def escapeCount( node ):
+            if node is None:
+                return 1
+            return reduce( lambda x, y: x + y, map( escapeCount, node.children ), 0 )
+
+        def anyBranching( node ):
+            if node is None:
+                return False
+            if 1 < len( node.children ):
+                return True
+            return any( anyBranching( c ) for c in node.children )
+
+        if isLinear( tree ):
+            stats.trees[ limit ][ "linear" ] += 1
+        else:
+            stats.trees[ limit ][ "nonlinear" ] += 1
+        if anyDeadEnd( tree ) and anyBeyondLimit( tree ):
+            stats.trees[ limit ][ "internalBranching" ] += 1
+        if anyBranching( tree ):
+            stats.trees[ limit ][ "anyBranching" ] += 1
+        if escapeCount( tree ) > 1:
+            stats.trees[ limit ][ "multipleEscapes" ] += 1
+        # print( "%s" % stats.trees[ limit ] )
 
 def analyzeTree( tree, stats ):
     analyzeConcurrency( tree, stats )
@@ -203,7 +275,7 @@ def analyzeTree( tree, stats ):
         analyzeGaps( cont, stats )
         analyzeChains( cont, stats )
         analyzeBranching( cont, stats )
-        # analyzeSubtrees( cont, stats )
+        analyzeSubtrees( cont, stats )
 
 # End code for Analyzing trees
 
@@ -304,6 +376,9 @@ def showStats( s ):
            ( s.neg_gaps, s.pos_gaps, len( s.gaps_weird ) ) )
     print( "I%d U%d %d %d" % ( len( s.gaps_interrupted ), len( s.gaps_uninterrupted ),
                                s.gaps_interrupted[0], s.gaps_interrupted[1] ) )
+    for limit, tree_stats in s.trees.items():
+        # print( "SDFSDF %d %d %d" % ( limit, tree_stats[ "linear"], tree_stats[ "nonlinear"] ) )
+        print( "SDFSDF %d %s" % ( limit, tree_stats ) )
 
     s.concurrency.sort()
     s.concurrencyNR.sort()
@@ -668,6 +743,9 @@ def main():
     stats.branching = []
     stats.branchingNR = []
     stats.chains = [ [], [], [], [], [], [] ]
+    stats.trees = {}
+    for limit in subtree_limits:
+        stats.trees[ limit ] = { "linear":0, "nonlinear":0, "internalBranching":0, "anyBranching":0, "multipleEscapes":0 }
 
     # stats.children_per_cont = []
     # stats.pchildren_per_edge = []

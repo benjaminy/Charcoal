@@ -200,8 +200,8 @@ We believe it would be easy for a developer to test such code and effectively as
 
 \footnotetext{We focus on web applications for the simple reason that a large amount of deployed production code is easily available for the studying.}
 
-To reduce the risk of atomicity violations related to these chains, we investigate importing the atomic block (widely studied in the context of multithreading) into the cooperative concurrency context.
-We observe a conflict with this combination, which is:
+To reduce the risk of atomicity violations related to these chains, we investigate importing the idea of atomic blocks (widely studied in the context of multithreading) into the cooperative concurrency context.
+We observe a conflict with this combination:
 \begin{enumerate}
 \item The nesting of atomic blocks and thread spawns is tricky, with no interpretation that works well in all contexts.
 \item Most cooperative concurrency frameworks lack an explicit notion of thread/task identity, making it impossible to easily distinguish between the various cases of nested atomic and spawn.
@@ -238,14 +238,14 @@ All code and data described in this paper is available publicly on GitHub [URL r
 \section{Multitasking on the Web Today}
 
 We begin with some brief remarks on the history of JavaScript.
-At the beginning, the designers of JavaScript decided that preemptive threads are unacceptably concurrency-bug-prone.
+In the beginning, the designers of JavaScript decided that preemptive threads caused an unacceptably high risk of concurrency bugs.
 One good entry into the vast literature on how hard it is to diagnose and fix multithreading defects is \cite{Lu2008}.
 These challenges have been understood for a long time; two decades ago Ousterhout wrote a popular critique of threads \cite{Ousterhout1996}.
 
 Early versions of JavaScript supported only event loop based concurrency.
 The simple picture of the implementation of JavaScript is that there is a single event queue that stores a collection of functions waiting for some enabling condition.
 These functions can be registered by builtin callback APIs, like \texttt{setTimeout}.
-In all cases we refer to these functions as \emph{continuations}.
+In all cases we refer to the registered functions as \emph{continuations}.
 We refer to a continuation plus its enabling condition as an \emph{event}.
 When an event becomes ready, the queue may execute its continuation whenever it chooses (generally as soon as possible).
 
@@ -308,10 +308,10 @@ However, it is interesting to see that JavaScript programmers seem to have taken
 This ecosystem norm will be important when we discuss library function design later.
 
 The difference between the solid and dashed lines in Figure \ref{fig:graph_duration} highlights the importance of recurring events.
-In JavaScript, certain primitive APIs, like \texttt{setInterval} and \texttt{XMLHttpRequest} can register continuations that are called multiple times.
+In JavaScript, certain APIs, like \texttt{setInterval} and \texttt{XMLHttpRequest} register continuations that can be called multiple times.
 As you can see, these recurring continuations account for a majority of the shortest.
-(A majority are accounted for by updates on the status of downloading files.)
-We mostly ignore these recurring callbacks in the following measurements and analyses, because they are less relevant to our focus on chains of continuations that we suspect programmers might think are atomic.
+(A majority of those are accounted for by updates on the status of downloading files.)
+We mostly ignore these recurring callbacks in the following measurements and analyses, because they are less relevant to our focus on chains of continuations that we suspect programmers mistakenly think are atomic.
 
 \subsubsection{Branching and Concurrency}
 
@@ -335,7 +335,7 @@ This view of the data makes it clearer that there is a substantial amount of con
 \label{fig:graph_gaps}
 \end{figure}
 
-\subsubsection{Gaps}
+\subsubsection{Gaps and Chains}
 
 Figure \ref{fig:graph_gaps} further clarifies the risk of atomicity violations.
 You can see that many of the time gaps between continuations are quite short.
@@ -367,12 +367,12 @@ In principle it is possible for an application to become unresponsive because mi
 Figure \ref{fig:graph_microtasks} shows information about the durations and microtask counts of microtask batches.
 Most batches are fairly short/small by both metrics, which is good from a concurrency bug perspective.
 However, a nontrivial minority of microtask batches get into the 10s and even 100s of milliseconds and/or dozens or hundred of microtasks.
-At that size, these microtasks start to be potential unresponsiveness problems.
+At that size, these microtasks start to be potential responsiveness problems.
 When batches of microtasks get too long, programmers may make ad hoc decisions about where to break them up, thus potentially creating more opportunities for atomicity problems.
 
 \subsection{Is This Actually a Problem?}
 
-In this paper we do not present any direct evidence of actual atomicity violations, only that patterns that seem risky are common.
+In this paper we do not present any direct evidence of specific atomicity violations, only that patterns that seem risky are common.
 There has been a great deal of research on atomicity violations in general (for example, \cite{Lu2008}).
 More importantly, Davis, et al. studied real world concurrency bugs in JavaScript projects by looking at bug databases \cite{Davis2017}.
 They found several atomicity violations.
@@ -422,25 +422,34 @@ Therefore, we believe that the language should accommodate flexible definitions 
 \label{fig:async_atomic_js}
 \end{figure}
 
-We believe that the gaps described in the previous section represent a risk of atomicity violations, because of the low, but non-zero, probability that such gaps will be interrupted in any given execution.
-Figure \ref{fig:async_atomic_js} shows a very simple example of how atomicity violations can arise, and our proposed solution: an atomic block primitive.
-Previous research has shown that atomic blocks can be an effective and bug-resistant concurrency control mechanism in the mutlithreading context (for example, \cite{Harris2005, Grossman2007, Pankratius2014}).
-Unfortunately, implementing atomic blocks efficiently for preemptive threads is extremely hard.
-Perhaps more importantly, there are semantic questions that are unclear how to resolve satisfactorily for mainstream programming languages (for example how do actions performed within an atomic block relate to actions performed outside of any atomic block?).
-In this section we discuss ways that atomic could be added to JavaScript and similar languages that use cooperative concurrency.
+As discussed in the previous section, there are multiple viable strategies for mitigating the risk of atomicity violations created by short-duration chains of continuations.
+In this section we explore one of those strategies: adding an atomic block to JavaScript.
+Figure \ref{fig:async_atomic_js} shows a very simple example of how atomicity violations can arise, and our proposed solution.
+Previous research has shown that atomic blocks can be an effective concurrency control mechanism in the multithreading context (for example, \cite{Harris2005, Grossman2007, Pankratius2014}).
+Most importantly for this project, atomic blocks are simpler to use than some alternatives (e.g. explicit mutex locks), and therefore are useful to developers of a wider skill range\footnotemark{}.
 
-\subsection{A Simple Strategy and Its Fatal Flaw}
+\footnotetext{Unfortunately, implementing atomic blocks efficiently for preemptive threads is extremely hard.
+Perhaps more importantly, there are semantic questions that are unclear how to resolve satisfactorily for mainstream programming languages (for example how do actions performed within an atomic block relate to actions performed outside of any atomic block?).}
+
+In this section we show that the combination of anonymous multitasking (e.g. with event loops or coroutines) and atomic blocks is problematic.
+We then explore adding a flavor of cooperative threads with atomic blocks to JavaScript.
+
+\subsection{Event Loops vs Atomic: Fight!}
 
 One way atomic could be implement in event queue systems is as follows:
 
-\begin{itemize}
-\item When some code enters an atomic block, all currently registered continuations are removed from the queue and saved elsewhere.
-\item The code of the atomic block runs as usual, perhaps registering new continuations.
-\item When the code reaches the end of the atomic block it pauses and waits until the event queue is completely empty (note that continuations can themselves register more continuations).
-\item Once the event queue is empty, the code continues executing whatever comes after the atomic block and the saved continuations from the first step are restored to the event queue.
-\end{itemize}
+\begin{enumerate}
+\item When some code enters an atomic block, all pending events are removed from the queue and saved elsewhere.
+\item The code of the atomic block runs as usual, possibly registering new events.
+\item When the code reaches the end of the atomic block it pauses to allow events from the queue to run.
+\item Events are executed as usual (with continuations potentially registering new events).
+\item Once the event queue is empty, the code that was waiting at the end of the atomic block can continue; simultaneously the events that were saved in step 1 are restored to the queue.
+\end{enumerate}
 
-We believe that this strategy would work in many cases, but it has a fatal flaw related to nesting of atomic blocks and task spawning.
+In many cases this definition of \texttt{atomic} would allow a sequence of continuations to run without the possibility of interference from concurrent tasks.
+Unfortunately, there are some problematic cases related to the fact that tasks are anonymous in event loop systems.
+That is, when a continuation is registered it is not possible to distinguish between logically continuiing the current task versus logically spawning a concurrent task.
+This becomes important in cases when a logical spawning of a concurrent task happens inside an atomic block.
 
 \subsection{Background on Nested Atomics and Spawns}
 
@@ -451,10 +460,14 @@ One good treatment of the formal semantics of this issue is \cite{Moore2008}.
 It seems there is no simple definition that works well in all cases.
 Some of the possibilities that have been explored are:
 \begin{itemize}
-  \item Thread spawn within an atomic block is an error.
-  \item Threads spawned within an atomic block are delayed until just after the block has completed. (\emph{delay-spawn})
-  \item Threads spawned within a block are allowed to run concurrently, and the block is not complete until such threads are finished. (\emph{spawn-contained})
+\item Spawning a thread within an atomic block is a dynamic error.
+\item Threads spawned within an atomic block are delayed until just after the block has completed. (\emph{delay-spawn})
+\item Threads spawned within an atomic block are allowed to run concurrently, and the block is not complete until such threads are finished. (\emph{spawn-contained})
+\item Threads spawned within an atomic block are allowed to run concurrently, and are completely disconnected from the block.
 \end{itemize}
+
+Making thread spawning an error is tempting, since it feels incompatible with the the normal use of atomic blocks (enforcing atomicity on small, simple bits of code).
+Unfortunately, this is not a good general policy since it can create errors in programs that are actually fine.
 
 In the research on this subject there are good examples where each of these options is appropriate, and suggestions of more complex hybrid options.
 
@@ -477,6 +490,10 @@ We believe that a much better option is to introduce an explicit notion of tasks
 We briefly note that there are other options for defining an atomic block in an event queue system.
 For example, the system could assume that the last child registered by a continuation is part of its parent's task and any other children are concurrent tasks.
 We do not investigate these options further, because they seem too ad hoc.
+
+\subsection{Small Trees in Existing Code}
+
+To show that JS programs exhibit...
 
 \subsection{Adding Explicit Tasks to Event Queue Systems}
 
@@ -658,19 +675,20 @@ There are a few interesting features of our implementation of activities in the 
 
 \subsection{Call Frame Allocation}
 
-One of the tricky issues in the implementation of any thread-like abstraction is the allocation of procedure call frames.
-The first few sections below describe existing strategies for frame allocation in multithreaded code.
+One of the implementation issues for any thread-like abstraction is the allocation of procedure call frames.
+The first few sections below briefly review existing strategies for frame allocation.
 Then we describe a new approach that we call \emph{hot stacking}.
 
 \subsubsection{Contiguous Allocation}
 
-The most common strategy for multithreading is to pre-allocate a moderately large area of memory in the heap for each thread's frames.
+A common and simple strategy is to pre-allocate moderately large per-thread blocks of memory for that thread's frames.
 Individual frames are allocated contiguously within this area.
-This strategy is fast and simple, but is memory inefficient.
+This strategy is leads to the fastest calling and returning.
+However, it can be quite memory inefficient, and if there is a mistake that leads to a thread's stack area being too small a variety of nasty failures can happen.
 
 \subsubsection{Individual Heap Allocation}
 
-At the other extreme of the time/memory efficiency spectrum, systems can individually allocate each frame in the heap, linking them together with pointers.
+At the other extreme of the time/memory efficiency spectrum, systems can individually allocate each frame, linking them together with pointers.
 This avoids the memory concerns associated with contiguous allocation.
 However, heap allocation of frames comes at a time cost for calls and returns.
 
@@ -682,9 +700,9 @@ However, even the most efficient implementations that we are aware of are still 
 
 Some languages have experimented with a hybrid strategy called \emph{split}, \emph{segmented}, or \emph{linked} stacks.
 The idea is that stack space is allocated in small segments or chunks.
-The common case call/return execution looks like traditional contiguous allocation.
+In the common case, frames are allocated continuously within the top segment.
 When a thread reaches the end of its segment it allocates a new one and links them together with pointers.
-This idea is appealing; as fairly recent examples, early implementations of Rust and Go both used it.
+This idea has been appealing to several language implementers; as fairly recent examples, early implementations of Rust and Go both used it.
 Unfortunately it has unpleasant \emph{uncommon} case behavior called \emph{stack thrashing} or the \emph{hot split} problem.
 When there are frequent calls/returns right at the boundary of a segment, the overhead can be quite high.
 The implementers of Rust \cite{Anderson2013} and Go (search ``contiguous stacks in go'') both abandoned split stacks in later versions.
@@ -695,15 +713,15 @@ The implementers of Rust \cite{Anderson2013} and Go (search ``contiguous stacks 
 
 Since version 1.3, the Go language has used a novel stack allocation strategy, where each thread's stack memory is initially small and is resized on-demand.
 This is only possible because the Go language implementation knows about all pointers to stack memory and can update them if necessary (i.e., if it is necessary to relocate the whole stack).
-Clearly this would not work for C/C++ and close cousins.
-This strategy still has an unpredictable slowness problem when the stack has to be copied.
+Clearly this would not work for languages like C and C++ that allow application code to use raw pointers.
+Similarly to the hot split problem, this strategy suffers from unpredictable pauses when the stack has to be relocated.
 
 \subsubsection{Hot Stacking}
 
 The call frame allocation strategy introduced in this paper is a hybrid of contiguous and individual heap allocation.
 The key observation is that the speed of individual allocation is only important for short-lived calls.
 For long-lived calls, the overhead of the call and return operations can be amortized over the long running time of the call.
-So the main idea of hot stacking is that long-lived frames are individually allocated and (most) short-lived frames are contiguously allocated in memory that is shared by all activities.
+So the main idea of hot stacking is that long-lived frames are individually allocated and (most) short-lived frames are contiguously allocated in memory that is shared among threads/activities.
 
 For this strategy to work correctly, the frames allocated in the shared area must all be deallocated before context switching to another task.
 For regular threads it is not clear how this deallocation could be enforced easily.
@@ -721,7 +739,7 @@ As mentioned earlier, since activities do not run in parallel, there is little t
 
 Other than the nesting issue, we are not aware of any uncommon case performance problems like the hot split problem with segmented stacks.
 
-The name \emph{hot stacking} is a reference to a practice used in some organizations called \emph{hot racking} or \emph{hot desking}.
+The name \emph{hot stacking} is a reference to a practice called \emph{hot racking} or \emph{hot desking}.
 Some limited resource (e.g. a bunk or desk) is used in shifts by multiple people.
 In our case, the resource is the memory area for contiguous frame allocation, and it is shared in shifts by multiple activities.
 The word \emph{hot} is also a reference to the fact that this top of stack area should remain hot in the memory hierarchy/cache sense as long as any code is running, because all activities use the same block of memory for the frames for their short-lived calls.
@@ -748,7 +766,7 @@ The atomic mode implementation does not include yields; for most intents and pur
 
 This implementation strategy could lead to a substantial increase in code size (more than 2$\times$).
 We believe this problem can be managed, based on the assumption that most procedures in real-world programs would be called only in either yielding or atomic mode, not both.
-This means that we could either rely on a smart linker to perform a dead code analysis and delete the unused versions, or use runtime optimizations to generate the appropriate version on-demand.
+This means that an implementation could either rely on a smart linker to perform dead code elimination, or use runtime optimizations to generate the appropriate version on-demand.
 
 %% This is kinda related to ideas from the Cilk-5 implementation
 %% \cite{Frigo1998}.
@@ -756,7 +774,7 @@ This means that we could either rely on a smart linker to perform a dead code an
 \subsubsection{Function Pointers}
 
 One challenge with a dual implementation strategy is how to handle function pointers.
-When the address of a function is taken it is not easy to know which mode the function will eventually be called in.
+When the address of a function is taken it is not possible, \emph{in general}, to know which mode the function will eventually be called in.
 The current implementation generates a small piece of code for every function that can be called in either yielding or atomic mode.
 It accepts an additional implicit mode parameter, which controls which actual version gets called.
 This makes indirect calls somewhat more expensive than in plain C.
@@ -767,7 +785,7 @@ However, indirect calls are already expensive enough that there is an extensive 
 The most important factor in the implementation of the yield primitive is that most yield invocations should not result in context switching, even if other activities are ready to run.
 In well designed activity code, the time between yield invocations should be in the range of microseconds to milliseconds.
 Context switching has the moderate direct cost of manipulating a handful of data structures in the runtime system, and the potentially higher indirect cost of cache thrashing.
-Therefore in normal operation yields should lead to context switches at a relatively low frequency, perhaps every few milliseconds.
+Therefore in the common case, yields should lead to context switches at a relatively low frequency, perhaps every few milliseconds.
 
 The speed of the yield primitive itself is somewhat important.
 As described in the previous section, code that is compiled in atomic mode does not have yields at all, so yield performance is not an issue for the most performance critical loops.
@@ -780,7 +798,7 @@ Instead the current \charcoal{} implementation uses periodic system timers/alarm
 The handler for these signals atomically modifies a global variable.
 The yield primitive atomically reads this global variable; as long as it has not changed the program continues execution immediately.
 Therefore, in the common case the cost of a yield is only an atomic read and a (highly predictable) branch, plus a fast call and return to get to the yield code itself.
-(Of course the yield code can be inlined, but that is \emph{not} obviously a good idea because branch predictors work better if all yields share a single branch instruction.)
+(Of course the yield code can be inlined, but that is \emph{not} obviously a good idea because inlining small functions that have many call sites can badly pollute the branch predictor.)
 
 \subsection{System Calls}
 
@@ -793,6 +811,7 @@ When the event completes, the activity is notified and the system puts it back i
 This architecture works, but it adds a non-trivial amount of overhead, especially for fast system calls.
 We speculate that integrating the event processing with application code in the same thread could remove some performance overhead.
 The libuv maintainers have discussed this as a ``pull'', versus the current ``push'' architecture, which they may implement in a future version.
+% XXX yield checks for event loop changes
 
 \subsection{Translation}
 
