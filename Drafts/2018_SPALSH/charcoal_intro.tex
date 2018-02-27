@@ -9,7 +9,6 @@
 %% For final camera-ready submission, w/ required CCS and ACM Reference
 %\documentclass[sigplan,10pt]{acmart}\settopmatter{}
 
-
 %% Conference information
 %% Supplied to authors by publisher for camera-ready submission;
 %% use defaults for review submission.
@@ -498,6 +497,12 @@ Some of the possibilities that have been explored are:
 
 Making thread spawning an error is tempting, since it feels incompatible with the the normal use of atomic blocks (enforcing atomicity on small, simple bits of code).
 Unfortunately, this is not a good general policy since it can create errors in programs that are actually fine.
+
+The \emph{delay-spawn} strategy causes deadlock for code that spawns a thread then waits for it.
+
+The \emph{spawn-contained} strategy causes starvation for code that spawns long-running tasks.
+
+
 
 In the research on this subject there are good examples where each of these options is appropriate, and suggestions of more complex hybrid options.
 
