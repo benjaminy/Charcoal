@@ -1,0 +1,217 @@
+Review #158A
+===========================================================================
+
+Overall merit
+-------------
+D. I will argue against accepting this paper.
+
+Reviewer expertise
+------------------
+X. Expert
+
+Paper summary
+-------------
+This paper argues for atomic blocks and threads in JavaScript by noting the potential for races / consistency errors in asynchronous code.  The authors evaluate on a C-based system similar to the proposed JavaScript model using microbenchmarks.
+
+Comments for author
+-------------------
+There is a kernel of an interesting idea here: a programmer should be able to group a set of asynchronous actions (common in JavaScript UI code) as a transaction where no other thread can interleave until the transaction is done.  
+
+That said, it's not entirely clear to me whether the authors have done anything beyond reinventing locks (more specifically a single global lock for atomic) and threads on top of JavaScript.  This has been done before (e.g., Doppio, PLDI 2014) - that work (or similar) is unreferenced.  
+
+While the authors note the potential for race-like violations in asynchronous JavaScript code, they do not actually show any.  JavaScript tends to asynchrony specifically to keep its UI thread responsive.  With atomic blocks, the authors seem to suggest a model that can starve the UI thread.
+
+The authors claim a "cooperative" multi-threading system.  Effectively, it's user-level threads mapped to a single OS thread with the system injecting yields.  Doppio (mentioned above) does that in the context of JavaScript.  AtomCaml does that in conjunction with atomic blocks - this work (or similar) is also unreferenced.
+
+The motivation and evaluation is weak.  There are some graphs at the beginning show event timing characteristics for "widely used JavaScript code".  There is no mention of what code they used or if different code exhibits different behavior.
+
+Although the authors appear to have implemented a system in JavaScript, there is no serious evaluation of that.  Instead, the authors shift to a C implementation that seems inspired by the proposed JavaScript. There is more evaluation of that, but only on microbenchmarks the authors wrote.
+
+Overall, this work is too immature for publication.
+
+
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
+
+Review #158B
+===========================================================================
+
+Overall merit
+-------------
+C. I would not accept this paper but will not argue strongly against
+  accepting it.
+
+Reviewer expertise
+------------------
+Y. Knowledgeable
+
+Paper summary
+-------------
+The paper conducts a study of JavaScript programs that show that
+there are several (possible) operations constructed from multiple
+asynchronous tasks interrupted by tasks belonging to other
+operations. The paper argues that this constitutes "risky
+behaviour" in the sense that such task interleaving could break
+programmer-intended atomicity.
+
+Based on this reasoning, the paper then suggests the need for an
+atomic block that could prevent such violations.
+
+The shows experimentation with two implementations of atomic
+blocks for cooperative concurrency (but not parallelism) in
+JavaScript and C.
+
+Comments for author
+-------------------
+In general, while I am not disputing the possibility of atomicity
+violations, I find the argumentation of this paper too
+speculative. The lack of direct evidence presented in the paper is
+not mitigated by a few references to studies of others, which also
+seem to not be very related (at least not related enough that the
+authors care to describe it). One way to provide more directish
+evidence would be to run something similar to a data-race detector
+and see if any interruptions actually update variables read and
+written by surrounding tasks. (This is obviously not proof of
+anything, this could be allowed by design. Better: are there
+examples of atomicity violation reported somewhere which you may
+address with your atomic blocks in a meaningful way?)
+
+There is a bit of a disconnect between the three parts of the
+paper: motivation, atomic block in JavaScript, and atomic block in
+C. I think the paper would have been stronger if it had focused
+only on showing the existence of atomicity violations and showing
+that for the programs that suffered (or could be made to suffer)
+such violations, they were addressable by the techniques put
+forward in the paper.
+
+The paper also discusses being reactive, yet proposes a design
+where atomic blocks preclude "interruptions" -- even interruptions
+that occurred before the start of the atomic block, but were
+unfortunate enough to not be scheduled before it. Unless one has a
+clear idea of the duration of an atomic block, atomic seems
+dangerous to use. In the single-threaded, concurrent setting,
+asyncronous tasks are about enabling interleaving and atomic is
+about pruning interleaving. How common is it for multiple paths
+leading to the same places in code and in one instance wanting
+atomicity (alternatively, want to enable interruptions) and not in
+another?
+
+Since the problem of the paper is not directly evidenced, it is
+difficult to evaluate the design of the solution. It is not clear
+what one should take away from §3.6. The evaluation of the C
+version is also based on micro benchmarks.
+
+I fully agree with the remark that inserting yield statements
+around call-sites makes for more programmer-understandable and
+predictable execution. In the same section as this statement (§7)
+you discuss related work. Several actor/active object systems
+support yield and suspend statements (see e.g. ABS/Creol) that
+allow an otherwise single-threaded actor to execute several
+methods concurrently but not in parallel. Also in this model, an
+actor may make self-calls either asynchronously or synchronously,
+depending on the desired semantics. In the case of a synchronous
+call, if support for interleaving is desired further down on the
+call stack, yield statements can be used to suspend the current
+activity.
+
+
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
+
+Review #158C
+===========================================================================
+
+Overall merit
+-------------
+B. I support accepting this paper but will not champion it.
+
+Reviewer expertise
+------------------
+X. Expert
+
+Paper summary
+-------------
+Compared to preemptive multithreading, cooperative concurrency is appealing for introducing less nondeterminism: fewer distinct interleavings of threads are possible.  However, typically the author of a function must decide whether it returns immediately or yields, and often that choice doesn't match what the author of calling code wants.  This paper proposes an atomic-block primitive for cooperative concurrency, where, effectively, within an atomic block, yields are no-ops, so function authors can be more liberal in including them in the first place.  Based on this idea, a JavaScript library and a C extension are presented.  They both bring in a new notion of activities to help drive the right decisions about grouping continuations into trees of execution.
+
+Comments for author
+-------------------
+The central idea here is thought-provoking, and the paper presents it well.  If the paper's key hypothesis are right, then it could have quite a lot of practical impact.  In a sense, the paper itself is already prepared for that scenario, being written in a way that should be accessible and appealing to working programmers.  It's an unusual kind of PLDI submission, and I lean toward supporting acceptance.  I can't quite justify championing the paper, though, because of doubts about the key motivating hypothesis.
+
+This paper is written more with the kind of voice and conventions associated with developer-facing blogs than with PLDI.  I feel like it's good for PLDI to pursue diversity on this dimension, in its program, so, all else being equal, it's a plus for a paper to be written this way.  I found the writing very clear, and I enjoyed following along smoothly as the story developed.
+
+The empirical study of JavaScript programs at the start is a contribution in its own right.  It demonstrates that many programs implement linear execution sequences via nested callbacks, with very short delays between registering a callback and having it called.  It makes sense that testing would rarely exercise the case where some other task gets scheduled during these short periods, so that developers might not realize related bugs in their code.  However, as the paper admits, no particular evidence is presented that these bugs show up frequently in practice.
+
+The whole motivation for the new language-design ideas is avoiding bugs, so it's a bit of a problem not to be on firmer footing about how troublesome these bugs are.  (The same ideas also happen to be useful for performance optimization, as the experiments [partly] show, but we could imagine applying related optimizations with no use of activities or other source-level modifications.)  Clearly programs get more complicated textually, and they might even become harder to think about, which is counterintuitive for a change billed as avoiding bugs.  In my own experiences with web programming, I'm not used to worrying about or being bitten by this kind of problem.  I don't think I've just been "getting lucky," as I believe the programs I write are naturally prepared for all interleavings -- it's just straightforward in the scenarios I'm used to.
+
+Cooperative concurrency is appealing for its source-level simplicity, and the ideas presented here lower that simplicity moderately.  Maybe a real worry is being addressed, but it is not clear.  Still, I did enjoy reading the paper, and I don't think it's a bad thing to promote this kind of experimentation.
+
+It may be worth pointing out explicitly that, since the study reported in Section 2 uses a browser (Chromium), you are only analyzing client-side JavaScript, not server-side, which could turn out to have quite different characteristics.
+
+More by line number:
+
+* 404: "depending" should have "on" after it.
+* 481: "mutlithreading context"
+* 711: "performs in Figure 9 performs"
+* 824: "a atomic" should use "an".
+* 864: "the implementation the" is missing "of".
+
+Questions for Authors
+---------------------
+How do you argue that adding atomic blocks to existing concurrent programs won't introduce new bugs via deadlock, where the code in an atomic block could be blocked waiting for some event that only another "thread" can trigger?  And will programmers tend to trip over this danger in writing code from scratch?
+
+
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
+
+Review #158D
+===========================================================================
+
+Overall merit
+-------------
+D. I will argue against accepting this paper.
+
+Reviewer expertise
+------------------
+Y. Knowledgeable
+
+Paper summary
+-------------
+This paper proposes an extension/modification to the cooperative concurrency model for JavaScript’s async functions that (1) implicitly inserts additional yield points around every call, but (2) counters that by also providing atomic blocks in which no yields to the event loop are performed. This model has been prototyped to some extend as a JavaScript library (with limitations) and implemented on a lower level in C.
+
+Comments for author
+-------------------
+I think this paper has issues on several levels.
+
+First of all, the motivation seems thin. The paper claims repeatedly that there are practical problems with interleavings in cooperative multi-tasking in JavaScript, but fails to include a single example. It merely points to one paper [15]. Similarly, existing alternatives are only briefly mentioned, claimed to have shortcomings, but no details are provided to back that up. That isn’t enough, the authors need to describe their motivation better and provide a sufficiently self-contained story if they want to convince the reader.
+
+The paper proposes a programming model that — in the opinion of this reviewer — undermines the async programming model as originally intended, which is (among other things), based on the property that all execution is atomic except for explicit yield points. The idea in this paper is kind of backwards when you think about it: first take away control from the programmer by inserting implicit yields where the programmer did not write them, then give control back by requiring the programmer to insert atomic blocks to undo that. The authors believe that implicit yield points “create a more predictable environment for programmers”; I find that very hard to believe, and would rather posit the opposite.
+
+A major part of the stated motivation is to allow programmers to force synchronous execution on library functions that provide an async interface. It is true that the choice between sync and async sometimes is a tough one for library designers, and that the right choice may depend on concrete arguments. But that problem can be solved with adequate library design (that e.g. provides options) instead of doctoring the symptoms by allowing client code to retroactively “fix” and override the choices a library author made (presumably for a reason), without the ability to predict the consequences.
+
+In terms of implementation, the paper is somewhat schizophrenic. While the motivation is cooperative multi-tasking in JavaScript, it only provides a library implementation with severe limitations (e.g., it won’t work correctly in conjunction with legacy code or external APIs). Then it gives a “real” implementation in a runtime system, but doesn’t do so for JavaScript but switch to C! Which is a funny choice, given that C does not have async functions or cooperative multi-tasking as a language feature, so there is an obvious impedance mismatch. It’s unclear whether results from such an implementation would be applicable to a JavaScript VM. Why did the authors not implement their ideas in one of the many open source JS VMs?
+
+For efficient implementation, the authors suggest compiling two variants of each function to deal with atomic vs non-atomic invocations efficiently. They suggest that a linker could remove unused copies. This idea would put a lot of burden on the ecosystem for a comparably small feature. (And in fact, the JavaScript ecosystem does not even have a native notion of linking.) The non-atomic version will be expensive either way, since it induces two additional atomic reads and branches for every call.
+
+The paper suggests “hot stacking” as a new implementation technique for implementing segmented stacks, where a contiguous stack is used for all calls inside an atomic block, but other calls get (more expensive) individual heap-allocated stack frames. Unfortunately, this approach has the side effect of inviting programmers to overuse a semantic feature (atomic blocks) to fix performance problems in their code, in a way that may actually break a program in subtle ways.
+
+As a final criticism, the semantics of the atomic construct for JavaScript is never properly defined. The paper merely explains it indirectly in terms of the two implementation approaches it describes, but one is incomplete, the other is for C.
+
+Questions for Authors
+---------------------
+L441: This program isn’t valid JavaScript. Did you mean “await” instead of “yield”?
+
+L510: Can you expand on this?
+
+L531: Can you expand on this?
+
+L674: It’s not just legacy code, it’s also legacy API, such as the DOM.
+
+L800: Implicit insertion of yield points around calls subtly breaks refactorings like inlining (technically, you lose beta equivalence).
+
+L813: What does before/after a call mean in terms of C’s notion of sequence points?
+
+L911: Please provide a reference instead of a search term.
+
+L952: You are suggesting to fix performance by changing the meaning of the program. Isn’t that inviting abuse?
+
+L1309: “In this paper we presented evidence..." — Actually, that evidence is not included in the paper.

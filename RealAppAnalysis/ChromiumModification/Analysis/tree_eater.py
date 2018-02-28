@@ -28,6 +28,10 @@ class Object:
     pass
 
 subtree_limits = [ 100, 1000, 10000, 100000 ]
+stupid0 = 0
+stupid1 = 0
+stupid2 = 0
+stupid3 = 0
 
 def printCont( c ):
     print( "[ %d, %s ]" % ( c.begin.ts, "?" if c.sched_ev is None else c.sched_ev.name ), end="" )
@@ -119,11 +123,7 @@ def analyzeDurations( cont, stats ):
             sys.exit()
 
 def analyzeGaps( cont, stats ):
-    if cont.parent is None:
-        return
-    if ( not hasattr( cont, "begin" ) ) or cont.begin is None:
-        return
-    if ( not hasattr( cont.parent, "end" ) ) or cont.parent.end is None:
+    if ( cont.begin is None ) or ( cont.parent is None ) or ( cont.parent.end is None ):
         return
 
     gap = cont.begin.ts - cont.parent.end.ts
@@ -164,15 +164,40 @@ def analyzeChains( cont, stats ):
         ancestor = ancestor.parent
 
 def analyzeBranching( cont, stats ):
-    stats.branching.append( len( cont.children ) )
-    if not( isRecur( cont ) ):
-        nr = 0
-        for c in cont.children:
-            if not isRecur( c ):
-                nr += 1
-        stats.branchingNR.append( nr )
-    # if cont.parent is not None:
-    #     stats.pbranching.append( len( cont.parent.children ) )
+    global stupid0
+    global stupid1
+    global stupid2
+    global stupid3
+    stupid0 += 1
+    stats.branching_A.append( len( cont.children ) )
+    rc = 0
+    nc = 0
+    for c in cont.children:
+        if isRecur( c ):
+            rc += 1
+        else:
+            nc += 1
+    if rc == 0:
+        if nc == 0:
+            if isRecur( cont ):
+                stats.branching_R.append( 0 )
+            else:
+                stats.branching_N.append( 0 )
+        else:
+            stats.branching_N.append( nc )
+            if isRecur( cont ):
+                stupid1 += 1
+    else:
+        if nc == 0:
+            stats.branching_R.append( rc )
+            if not isRecur( cont ):
+                stupid2 += 1
+        else:
+            stupid3 += 1
+            if isRecur( cont ):
+                stats.branching_R.append( nc + rc )
+            else:
+                stats.branching_N.append( nc + rc )
 
 def analyzeConcurrency( tree, stats ):
     liveConts = set()
@@ -184,7 +209,8 @@ def analyzeConcurrency( tree, stats ):
             liveContsNR.remove( cont.begin.ts )
         stats.concurrency.append( len( liveConts ) )
         if not isRecur( cont ):
-            stats.concurrencyNR.append( len( liveContsNR ) )
+            stats.concurrency_NA.append( len( liveConts ) )
+            stats.concurrency_NN.append( len( liveContsNR ) )
         for c in cont.children:
             liveConts.add( c.begin.ts )
             if not isRecur( c ):
@@ -275,7 +301,13 @@ def analyzeSubtrees( cont, stats ):
                 latest = node.orig.begin.ts
             return reduce( maxNone, map( latestWithOutsideChild, node.children ), latest )
 
-        def escapeCount( node ):
+        def escapeCountStrict( node ):
+            if node is None:
+                return 0
+            escapersHere = 1 if any( c is None for c in node.children ) else 0
+            return reduce( lambda x, y: x + y, map( escapeCount, node.children ), escapersHere )
+
+        def escapeCountLoose( node ):
             if node is None:
                 return 1
             return reduce( lambda x, y: x + y, map( escapeCount, node.children ), 0 )
@@ -403,17 +435,25 @@ def fancyPlot( name, data ):
             # plt.setp( lines, dashes=( 3, 3 ) )
         color_idx += 1
 
-    if name is "gaps":
-        x1, x2, y1, y2 = plt.axis()
-        plt.axis( ( x1, 500000, 0, 15000 ) )
-
-    if name is "lengths":
+    if name is "durations":
         x1, x2, y1, y2 = plt.axis()
         plt.axis( ( x1, 1000000, y1, y2 ) )
+
+    if name is "gaps":
+        x1, x2, y1, y2 = plt.axis()
+        plt.axis( ( x1, 400000, 0, y2 ) )
+
+    if name is "gapsZ":
+        x1, x2, y1, y2 = plt.axis()
+        plt.axis( ( x1, 400000, 0, 15000 ) )
 
     if name is "chains":
         x1, x2, y1, y2 = plt.axis()
         plt.axis( ( x1, 1000000, y1, y2 ) )
+
+    if name is "chainsZ":
+        x1, x2, y1, y2 = plt.axis()
+        plt.axis( ( 300, 60000, 0, 20000 ) )
 
     if False:
         plt.show()
@@ -431,11 +471,6 @@ def printIles( name, items, iles ):
     print( "" )
 
 def showStats( s ):
-    # all_lengths = s.macro_lengths[:]
-    # all_lengths.extend( s.micro_lengths )
-    # allnr_lengths = s.not_recur_lengths[:]
-    # allnr_lengths.extend( s.micro_lengths )
-
     s.durs_macro.sort()
     s.durs_recur.sort()
     s.durs_nrecur.sort()
@@ -455,9 +490,11 @@ def showStats( s ):
         print( "SDFSDF %d %s" % ( limit, tree_stats ) )
 
     s.concurrency.sort()
-    s.concurrencyNR.sort()
-    s.branching.sort()
-    s.branchingNR.sort()
+    s.concurrency_NA.sort()
+    s.concurrency_NN.sort()
+    s.branching_A.sort()
+    s.branching_N.sort()
+    s.branching_R.sort()
     # print( s.branching )
     # print( s.branchingNR )
     s.chains[ 2 ].sort()
@@ -522,21 +559,21 @@ def showStats( s ):
 
     # print( s.api_kind )
 
-    fancyPlot( "concurrency", [ [ s.concurrency ], [ s.branching, False, True ] ] )
-    fancyPlot( "concurrency2", [ [ s.concurrency ], [ s.concurrencyNR ] ] )
-    fancyPlot( "branching", [ [ s.branching ], [ s.branchingNR ] ] )
+    fancyPlot( "durations", [ [ s.durs_nrecur ], [ s.durs_recur ] ] )
+    fancyPlot( "branching", [ [ s.branching_N ], [ s.branching_R ] ] )
+    # fancyPlot( "concurrency", [ [ s.concurrency ], [ s.branching_A, False, True ] ] )
+    fancyPlot( "concurrency", [ [ s.concurrency_NN ], [ s.concurrency_NA ] ] )
     fancyPlot( "chains", [ [ s.chains[ 2 ] ], [ s.chains[ 3 ] ], [ s.chains[ 4 ] ] ] )
+    fancyPlot( "chainsZ", [ [ s.chains[ 2 ] ], [ s.chains[ 3 ] ], [ s.chains[ 4 ] ] ] )
     fancyPlot( "gaps", [ [ s.gaps_recur ], [ s.gaps_interrupted ], [ s.gaps_uninterrupted ] ] )
-    fancyPlot( "durations", [ [ s.durs_recur ], [ s.durs_nrecur ], [ s.durs_macro ], [ s.durs_micro ] ] )
+    fancyPlot( "gapsZ", [ [ s.gaps_recur ], [ s.gaps_interrupted ], [ s.gaps_uninterrupted ] ] )
     # short_gaps  = list( filter( lambda g: g < 1000, aggregate_gaps ) )
     # short_spans = list( filter( lambda s: s < 1000, s.spans ) )
     # fancyPlot( "gap-span", [ [ short_gaps ], [ short_spans ] ] )
     # # fancyPlot( "children", [ [ s.children_per_cont ], [ s.pchildren_per_edge ] ] )
     # # fancyPlot( "gaps", [ [ s.gaps[ "uninterrupted" ] ], [ s.gaps[ "interrupted" ] ], [ not_recur_gaps ] ] )
-    # # fancyPlot( "micros", [ [ s.micro_lengths ], [ s.after_counts, False, True ] ] )
 
     # # fancyPlot( "gaps", [ [ s.gaps[ "uninterrupted" ] ], [ s.gaps[ "interrupted" ] ], [ aggregate_gaps ] ] )
-    # # fancyPlot( "chains", [ [ s.chain2_lengths ], [ s.chain3_lengths ], [ s.chain4_lengths ] ] )
 
 def stacker( trace ):
     all_continuations = []
@@ -770,7 +807,8 @@ def main():
     stats.neg_gaps = 0
     stats.pos_gaps = 0
     stats.concurrency = []
-    stats.concurrencyNR = []
+    stats.concurrency_NA = []
+    stats.concurrency_NN = []
     stats.durs_recur = []
     stats.durs_nrecur = []
     stats.durs_macro = []
@@ -780,8 +818,9 @@ def main():
     stats.gaps_recur = []
     stats.gaps_interrupted = []
     stats.gaps_uninterrupted = []
-    stats.branching = []
-    stats.branchingNR = []
+    stats.branching_A = []
+    stats.branching_N = []
+    stats.branching_R = []
     stats.chains = [ [], [], [], [], [], [] ]
     stats.trees = {}
     for limit in subtree_limits:
@@ -801,6 +840,7 @@ def main():
         path = os.path.join( trees_dir, fname )
         analyzeDir( path, stats )
 
+    print( "stupids %d %d %d %d" % ( stupid0, stupid1, stupid2, stupid3 ) )
     showStats( stats )
 
 if __name__ == "__main__":

@@ -63,8 +63,8 @@
 % \titlebanner{Preprint.  Please do not redistribute}        % These are ignored unless
 % \preprintfooter{Preprint.  Please do not redistribute}   % 'preprint' option specified.
 
-\title{Cooperative Concurrency Needs \texttt{atomic}}
-\subtitle{\ldots and It Can Be Implemented Efficiently}
+\title{A Measurement Study of Concurrency in Web JavaScript}
+\subtitle{\ldots and How to Make Cooperative Concurrency Safer with \texttt{atomic}}
 
 %% Author information
 %% Contents and number of authors suppressed with 'anonymous'.
@@ -192,7 +192,7 @@ Many popular application programming frameworks use some form of \emph{cooperati
 While the authors of this paper support that line of reasoning, we remind the reader that cooperativeness only \emph{reduces} the risk of concurrency defects\footnotemark{}.
 There has been much research in the last decade on cataloging, exposing, diagnosing and fixing concurrency bugs in web and mobile applications that use a cooperative concurrency model (for example, \cite{Hsiao2014, Petrov2012, Mutlu2015}).
 
-\footnotetext{This is similar to how garbage collection reduces, but does not eliminate, exposure to memory bugs\cite{Dan's analogy}.}
+\footnotetext{This is similar to how garbage collection reduces, but does not eliminate, exposure to memory bugs\cite{Grossman2007}.}
 
 This paper starts with measurements from widely used web applications\footnotemark{}.
 We observe that patterns that seem risky from an atomicity perspective are common on the web.
@@ -204,8 +204,8 @@ We believe it would be easy for a developer to test such code and effectively as
 To reduce the risk of atomicity violations related to these chains, we investigate importing \emph{atomic blocks} (widely studied in the context of multithreading) into the cooperative concurrency context.
 We observe a conflict with this combination:
 \begin{enumerate}
-\item The nesting of atomic blocks and thread spawns is tricky, with no interpretation that works well in all contexts.
-\item Most cooperative concurrency frameworks lack an explicit notion of thread/task identity, making it impossible to easily distinguish between the various cases of nested atomic and spawn.
+\item There are multiple reasonable semantics for nested atomic blocks and thread spawns; no interpretation works well in all contexts.
+\item Most cooperative concurrency frameworks lack an explicit notion of task identity, making it impossible to easily distinguish between the various cases of nested atomic and spawn.
 \end{enumerate}
 To the best of our knowledge, this is a novel observation.
 This implies that \emph{if} a cooperative multitasking framework is to include atomic blocks, it should have explicit thread/task identities (i.e. some flavor of cooperative threading).
@@ -217,7 +217,7 @@ Finally, we consider the efficiency issues raised by implementing this style of 
 We implement a dialect of C to investigate this question, and discover a new call frame allocation strategy -- enabled by atomic blocks -- that combines the speed benefits of contiguous frame allocation with the memory benefits of individual linked frame allocation.
 
 \begin{figure*}
-\includegraphics[width=0.9\textwidth]{continuation_tree}
+\includegraphics[width=0.9\textwidth]{Figures/continuation_tree}
 \caption{The features of JavaScript event execution that our modified Chromium browser measures.
   The gray boxes are continuations.
   The continuations are arranged in rows to suggest that they belong to the same task/thread.
@@ -241,7 +241,7 @@ All code and data described in this paper is available publicly on GitHub [URL r
 We begin with some brief remarks on the history of JavaScript.
 In the beginning, the designers of JavaScript decided that preemptive threads caused an unacceptably high risk of concurrency bugs.
 One good entry into the vast literature on the difficulties of diagnosing and fixing multithreading defects is \cite{Lu2008}.
-These challenges have been long understood; more than two decades ago Ousterhout wrote a popular critique of threads \cite{Ousterhout1996}.
+These challenges have long been understood; more than two decades ago Ousterhout wrote a popular critique of threads \cite{Ousterhout1996}.
 
 Early versions of JavaScript supported only event loop based concurrency.
 The simple picture of the implementation of JavaScript is that there is a single event queue that stores a collection of functions waiting for some enabling condition.
@@ -258,8 +258,8 @@ These and more subtle problems are well analyzed and criticized by von Behren et
 The increasingly sophisticated multitasking in modern applications and the well-known problems with events and threads have forced application programmers to more widely adopt alternatives in recent years.
 The most widely used alternatives are \emph{coroutines} and \emph{async procedures}.
 Examples include async/await, which was added to C\#/.Net in 2012; function generators (\texttt{function*}), which were added to JavaScript with ECMAScript 6 (standard published in 2015); even the C++ community is considering adding support for coroutines (currently on the short list for inclusion in the C++20 standard).
-Coroutine implementations are not \emph{new}; for example, Modula-2 had coroutines in the 1980s.
-However, few of the most widely used languages natively supported coroutines until recently.
+Coroutine implementations are not \emph{new}; for example, Modula-2 had coroutines in the 1980s and several ``scripting'' languages (Ruby, Python, Lua) added support in the early aughts.
+However, coroutines were not widely used in application programming until relatively recently.
 
 The most recent versions of JavaScript support both coroutines and async functions.
 A style of programming that combines async functions and Promise chaining has become popular in JavaScript communities.
@@ -273,7 +273,7 @@ Figure \ref{fig:continuation_tree} illustrates the features of JavaScript execut
 
 \begin{itemize}
 \item Continuation duration is the time from the beginning of the execution of a continuation to the time it returns control to the event loop.
-\item Parent-child relationships are inferred by recording which continuation (the parent) is running when potential child continuations are registered/scheduled.
+\item Parent-child relationships are inferred by recording which continuation (the parent) is running when potential children are registered.
 \item A \emph{gap} is the difference between the start of a continuation and the end of its parent.
   A gap is \emph{interrupted} if \emph{any} other continuation runs between parent and child.
 \item We measure both the duration and number of microtasks in microtask batches.
@@ -284,30 +284,20 @@ Figure \ref{fig:continuation_tree} illustrates the features of JavaScript execut
 \end{itemize}
 
 \begin{figure}
-\hspace*{-0.2cm}\includegraphics[width=0.5\textwidth]{duration_graph_bw}
-\caption{Most continuations are short.
-  Many are very short.}
-\label{fig:graph_duration}
-\end{figure}
-
-\begin{figure}
-\hspace*{-0.2cm}\includegraphics[width=0.5\textwidth]{children_graph_bw}
-\caption{Most continuations have one child.
-A few have many, many children.}
-\label{fig:graph_branching}
-\end{figure}
-
-\begin{figure}
     \centering
-    \begin{minipage}{0.45\textwidth}
+    \begin{minipage}[t]{0.47\textwidth}
         \centering
-        \includegraphics[width=0.9\textwidth]{duration_graph_bw}
-        \caption{first figure}
+        \includegraphics[width=1.0\textwidth]{Graphs/durations_bw}
+        \caption{Most continuations are short.
+  Many are very short.}
+        \label{fig:graph_duration}
     \end{minipage}\hfill
-    \begin{minipage}{0.45\textwidth}
+    \begin{minipage}[t]{0.47\textwidth}
         \centering
-        \includegraphics[width=0.9\textwidth]{children_graph_bw}
-        \caption{second figure}
+        \includegraphics[width=1.0\textwidth]{Graphs/branching_bw}
+        \caption{Most continuations have one child.
+A few have many, many children.}
+        \label{fig:graph_branching}
     \end{minipage}
 \end{figure}
 
@@ -318,7 +308,7 @@ Our first observation is that most continuations are quite short.
 A large majority take less than one millisecond, and many are much shorter.
 (This figure combines the data for both microtask batches and normal tasks.)
 
-The shortness of most continuations is \emph{not} direct evidence for frequency of atomicity problems.
+The shortness of most continuations is \emph{not} direct evidence of atomicity problems.
 It is a necessary condition, though; if most continuations were long, we would expect it to be less common for a programmer to ``miss'' a gap between them.
 Also, it is interesting to see that JavaScript programmers seem to overwhelmingly abide by the norm that all function executions should complete quickly, in order to keep applications responsive.
 This observation will be important when we discuss library API design later.
@@ -341,7 +331,7 @@ Otherwise, why not combine these continuations into a single one?
 Though most continuations have few children, a few continuations have many.
 This can be seen in the long tail in Figure \ref{fig:graph_branching} (there are at least a few continuations with hundreds of children!).
 A consequence of this branching is that the continuation trees we studied exhibit quite a lot of concurrency in the following sense.
-For each continuation we measure its degree of concurrency by counting how many of the continuations that \emph{will} run \emph{after} it are already registered when it runs.
+For each continuation we define its degree of concurrency to be the number of continuations that are registered when it runs that \emph{will} run \emph{after} it.
 In other words, how many parent-child edges are ``live'' across each continuation?
 
 Figure \ref{fig:graph_concurrency} shows the results of our concurrency measurements.
@@ -350,11 +340,22 @@ Again, the high degree of concurrency is \emph{not} direct evidence of atomicity
 If most continuations had a low degree of concurrency there would be little opportunity for a conflicting task to create an atomicity violation.
 
 \begin{figure}
-\hspace*{-0.2cm}\includegraphics[width=0.5\textwidth]{gaps_graph_bw}
-\caption{Most gaps are of reasonable length, but a nontrivial percentage are quite short (under one millisecond, or even 100 microseconds).
+    \centering
+    \begin{minipage}[t]{0.47\textwidth}
+        \centering
+        \includegraphics[width=1.0\textwidth]{Graphs/concurrency_bw}
+        \caption{Most continuations are concurrent with several parent-child edges.
+        In this graph we only include non-recurring continuations.}
+        \label{fig:graph_concurrency}
+    \end{minipage}\hfill
+    \begin{minipage}[t]{0.47\textwidth}
+        \centering
+        \includegraphics[width=1.0\textwidth]{Graphs/gaps_bw}
+        \caption{Most gaps are of reasonable length, but a nontrivial percentage are quite short (under one millisecond, or even 100 microseconds).
   This graph is truncated at half a second, because we are not interested in long gaps.
   There is only a small number of longer gaps, anyway.}
-\label{fig:graph_gaps}
+        \label{fig:graph_gaps}
+    \end{minipage}
 \end{figure}
 
 \subsubsection{Gaps and Chains}
@@ -373,19 +374,29 @@ This data is not surprising based on the continuation duration and gap data and 
 We see that while many chains are of a fairly reasonable duration (say, dozens to hundreds of milliseconds), there is a non-trivial fraction under 10 milliseconds, and even some under 1 millisecond.
 
 Yet again, short gaps and short duration chains are \emph{not} direct evidence of atomicity problems.
-However, it is easy to imagine a rigorous testing regimen that never observed an execution where one of these short gaps was interrupted.
+However, it is easy to imagine a rigorous testing regime that never observed an execution where one of these short gaps was interrupted.
 
 \begin{figure}
-\hspace*{-0.2cm}\includegraphics[width=0.5\textwidth]{micros_graph_bw}
-\caption{Most microtask batches are short, but a nontrivial number are long enough to possibly exceed the time and/or microtask count limits of some reasonable implementations.}
-\label{fig:graph_microtasks}
+    \centering
+    \begin{minipage}[t]{0.47\textwidth}
+        \centering
+        \includegraphics[width=1.0\textwidth]{Graphs/chains_bw}
+        \caption{XXX chains.}
+        \label{fig:graph_chains}
+    \end{minipage}\hfill
+    \begin{minipage}[t]{0.47\textwidth}
+        \centering
+        \includegraphics[width=1.0\textwidth]{micros_graph_bw}
+        \caption{Most microtask batches are short, but a nontrivial number are long enough to possibly exceed the time and/or microtask count limits of some reasonable implementations.}
+        \label{fig:graph_microtasks}
+    \end{minipage}
 \end{figure}
 
 \subsubsection{Microtasks}
 
 In this subsection, we look at microtasks, which are tangential to the main plot of this paper, but still somewhat interesting.
 Microtasks are a special subset of events in JavaScript; the most common source of microtasks is Promise resolution.
-Unlike regular events, as soon as at least one microtask is registered, the application switches to running microtasks until the microtask queue is empty.
+Unlike regular events, as soon as at least one microtask is registered, the interpreter switches to running microtasks.
 During the execution of a microtask, more microtasks can be registered, and the interpreter will not run another continuation from the normal event queue until the microtask queue is empty.
 
 Figure \ref{fig:graph_microtasks} shows information about the durations and microtask counts of microtask batches.
@@ -460,7 +471,7 @@ It would be nice if there was a relatively simple tool (like an atomic block) th
 \section{An Atomic Block for JavaScript}
 
 \begin{figure}
-\includegraphics[width=0.3\textwidth,left]{async_atomic_js}
+\includegraphics[width=0.3\textwidth,left]{Code/async_atomic_js}
 \caption{A simple example of code that could lead to the risky gaps, and a version with an atomic block to eliminate the risk of an atomicity violation.}
 \label{fig:async_atomic_js}
 \end{figure}
@@ -471,20 +482,21 @@ Figure \ref{fig:async_atomic_js} shows a very simple example of how atomicity vi
 Previous research has shown that atomic blocks can be an effective concurrency control mechanism in the multithreading context (for example, \cite{Harris2005, Grossman2007, Pankratius2014}).
 Most importantly for this project, atomic blocks are simpler to use than some alternatives (e.g. explicit mutex locks), and therefore are useful to developers of a wider skill range\footnotemark{}.
 
-\footnotetext{Unfortunately, implementing atomic blocks efficiently for preemptive threads is extremely hard.
-Perhaps more importantly, there are semantic questions that are unclear how to resolve satisfactorily for mainstream programming languages (for example how do actions performed within an atomic block relate to actions performed outside of any atomic block?).}
+\footnotetext{Despite considerable attention from the research community, atomic blocks have not become a common feature in the context of multithreading.
+We believe this is primarily due to the substantial implementation challenges and tricky semantic issues with how code in an atomic block should interact with concurrent code that is not in an atomic block.
+These issues are not relevant in a cooperative context.}
 
 In this section we show that the combination of anonymous multitasking (e.g. with event loops or coroutines) and atomic blocks is problematic.
 We then explore adding a flavor of cooperative threads with atomic blocks to JavaScript.
 
 \subsection{Event Loops vs Atomic: Fight!}
 
-One way atomic could be implement in event queue systems is as follows:
+One way atomic could be defined in event queue systems is as follows:
 
 \begin{enumerate}
 \item When some code enters an atomic block, all pending events are removed from the queue and saved elsewhere.
 \item The code of the atomic block runs as usual, possibly registering new events.
-\item When the code reaches the end of the atomic block it pauses to allow events from the queue to run.
+\item When the code reaches the end of the atomic block it pauses to allow events from the queue to run (i.e. the events registered by the atomic block itself).
 \item Events are executed as usual (with continuations potentially registering new events).
 \item Once the event queue is empty, the code that was waiting at the end of the atomic block can continue; simultaneously the events that were saved in step 1 are restored to the queue.
 \end{enumerate}
@@ -544,6 +556,24 @@ We do not investigate these options further, because they seem too ad hoc.
 
 To show that JS programs exhibit...
 
+\begin{table}
+  \centering
+  \begin{tabular}{|r|r|r|r|r|r|r|}
+    \hline
+    Limit (ms) & Total Trees & Linear & Multi A & Multi B & Waiting A & Waiting B \\
+    \hline
+    1          &         837 &   66\% &    17\% &   0.7\% &      18\% &     0.2\% \\
+    \hline
+    10         &      17,885 &   80\% &   4.4\% &   2.1\% &      15\% &     1.3\% \\
+    \hline
+    100        &      46,515 &   87\% &   3.9\% &   2.3\% &     8.3\% &     1.5\% \\
+    \hline
+  \end{tabular}
+  \caption{XXX subtrees}
+  \label{table:subtrees}
+\end{table}
+
+
 \subsection{Adding Explicit Tasks to Event Queue Systems}
 
 In this section we discuss a library implementation of explicit tasks in JavaScript, built on top of async functions.
@@ -552,7 +582,7 @@ It is also possible to define async functions as a library, built on top of Java
 In fact, there are many examples of such libraries added to JavaScript frameworks for convenience.
 
 \begin{figure}
-\includegraphics[scale=0.65]{trivial_js}
+\includegraphics[scale=0.65]{Code/trivial_js}
 \caption{A sketch of how the JavaScript library implementation of activities is used.
 The syntactic clutter is fairly high because we are using JavaScript function generators (\texttt{function*}) to simulate regular functions in an activities framework.}
 \label{fig:trivial_js}
@@ -642,7 +672,7 @@ The body of the activate statement runs concurrently (but \emph{not} in parallel
 Only one activity can be running at a time and the system can only context switch between activities on a yield.
 
 \begin{figure}
-\includegraphics{multi_getaddrinfo_seq}
+\includegraphics{Code/multi_getaddrinfo_seq}
 \caption{This is a plain C version of the DNS fetcher running example.
   This version is entirely \emph{sequential}.}
 \label{fig:charcoal_multidns_seq}
@@ -678,7 +708,7 @@ The second is long-running loops with no calls (or explicit yields) in their bod
 Both of these should be considered concurrency bugs to be managed with the usual software reliability tools (testing, code review, verification, etc).
 
 \begin{figure}
-\includegraphics{multi_getaddrinfo_sem}
+\includegraphics{Code/multi_getaddrinfo_sem}
 \caption{This version of the DNS fetcher limits the number of concurrent requests to \texttt{max\_conc}.}
 \label{fig:charcoal_multidns_sem}
 \end{figure}
@@ -942,7 +972,7 @@ Surely a more tuned implementation would close the gap to some extent.
 Second, this is a microbenchmark; no application spends all of its time just calling and returning, so these numbers are a fairly high upper bound on the real application performance impact of calling overhead.
 
 \begin{figure}
-\includegraphics{just_calling_benchmark}
+\includegraphics{Code/just_calling_benchmark}
 \caption{The microbenchmark for measuring call frame allocation overhead.}
 \label{fig:micro_calling}
 \end{figure}
@@ -986,7 +1016,7 @@ gcc's split stack implementation outperforms hot stacking by a small margin on t
 However, as noted previously split stacks have bad performance in the pathological case where calls are made at high frequency right at the edge of a segment.
 
 \begin{figure}
-\includegraphics{just_calling_n_benchmark}
+\includegraphics{Code/just_calling_n_benchmark}
 \caption{The call/return microbenchmark modified to make some calls in atomic mode.}
 \label{fig:micro_calling_n}
 \end{figure}
@@ -1005,9 +1035,9 @@ Third, the continued execution of the loop depends on the data read in each iter
 The best-performing implementation we have found so far appears in Figure \ref{fig:strcmp}.
 
 \begin{figure}[htp]
-\includegraphics[left]{plain_strcmp}%
+\includegraphics[left]{Code/plain_strcmp}%
   \\
-\includegraphics[left]{strcmp_benchmark}%
+\includegraphics[left]{Code/strcmp_benchmark}%
 \caption{Two implementations of \texttt{strcmp}.
   Top is a plain C version.
   Bottom is a \charcoal{} implementation aimed at minimizing yield overhead.}
