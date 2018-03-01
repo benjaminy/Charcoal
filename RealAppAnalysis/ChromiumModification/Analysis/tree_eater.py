@@ -305,12 +305,12 @@ def analyzeSubtrees( cont, stats ):
             if node is None:
                 return 0
             escapersHere = 1 if any( c is None for c in node.children ) else 0
-            return reduce( lambda x, y: x + y, map( escapeCount, node.children ), escapersHere )
+            return reduce( lambda x, y: x + y, map( escapeCountStrict, node.children ), escapersHere )
 
         def escapeCountLoose( node ):
             if node is None:
                 return 1
-            return reduce( lambda x, y: x + y, map( escapeCount, node.children ), 0 )
+            return reduce( lambda x, y: x + y, map( escapeCountLoose, node.children ), 0 )
 
         def anyBranching( node ):
             if node is None:
@@ -333,7 +333,7 @@ def analyzeSubtrees( cont, stats ):
                     printSubtree( tree, 4 )
         if anyBranching( tree ):
             stats.trees[ limit ][ "anyBranching" ] += 1
-        if escapeCount( tree ) > 1:
+        if escapeCountStrict( tree ) > 1:
             stats.trees[ limit ][ "multipleEscapes" ] += 1
         # print( "%s" % stats.trees[ limit ] )
 
@@ -445,15 +445,16 @@ def fancyPlot( name, data ):
 
     if name is "gapsZ":
         x1, x2, y1, y2 = plt.axis()
-        plt.axis( ( x1, 400000, 0, 15000 ) )
+        plt.axis( ( x1, 400000, 0, 50000 ) )
 
     if name is "chains":
         x1, x2, y1, y2 = plt.axis()
         plt.axis( ( x1, 1000000, y1, y2 ) )
 
-    if name is "chainsZ":
+    if name is "gaps_1_5":
         x1, x2, y1, y2 = plt.axis()
-        plt.axis( ( 300, 60000, 0, 20000 ) )
+        plt.axis( ( 8, 24000, -100, 6000 ) )
+
 
     if False:
         plt.show()
@@ -517,33 +518,23 @@ def showStats( s ):
     #     except:
     #         shorties100u[ sched_name ] = 1
 
-    # aggregate_gaps = []
-    # for sched_name, value in s.gaps.items():
-    #     s.gaps[ sched_name ].sort()
-    #     for gap in value:
-    #         if gap > 1000:
-    #             break
-    #         incrShorty1m( sched_name )
-    #         if gap > 100:
-    #             continue
-    #         incrShorty100u( sched_name )
+    sgaps = []
+    for name, gaps in s.gaps.items():
+        gaps.sort()
+        short_gaps = 1
+        for gap in gaps:
+            if gap < 1000:
+                short_gaps += 1
+            else:
+                break
+        sgaps.append( ( 1.0 / short_gaps, name, gaps ) )
+    sgaps.sort()
 
-    #     # print( "GAPS \"%s\" %d" % ( sched_name, len( value ) ) )
-    #     # if sched_name not in [ "interrupted", "uninterrupted", "RECURRING - RECURRING", "RECURRING - SendRequest" ]:
-    #     #     aggregate_gaps.extend( value )
-    #     #     shorts = 0
-    #     #     for x in value:
-    #     #         if x < 100:
-    #     #             shorts += 1
-    #     #     print( "BLROPS: %s %s" % ( sched_name, shorts ) )
-    # aggregate_gaps.sort()
-
-    # not_recur_gaps = []
-    # for sched_name, value in s.gaps.items():
-    #     if sched_name == "interrupted" or sched_name == "uninterrupted" or sched_name.startswith( "RECURRING" ):
-    #         continue
-    #     not_recur_gaps.extend( value )
-    # not_recur_gaps.sort()
+    i = 0
+    for l, name, gaps in sgaps:
+        i += 1
+        fancyPlot( "gaps_%d_%s_%d" % ( i, name, len( gaps ) ), [ [ gaps ] ] )
+    fancyPlot( "gaps_1_5", [ [ sgaps[ 0 ][ 2 ] ], [ sgaps[ 1 ][ 2 ] ], [ sgaps[ 2 ][ 2 ] ], [ sgaps[ 3 ][ 2 ] ], [ sgaps[ 4 ][ 2 ] ] ] )
 
     # printIles( "AL", s.macro_lengths, [ 0.1,  0.5,   0.9, 0.95, 0.99 ] )
     # printIles( "IL", s.micro_lengths, [ 0.1,  0.5,   0.9, 0.95, 0.99 ] )

@@ -221,7 +221,7 @@ We implement a dialect of C to investigate this question, and discover a new cal
 \caption{The features of JavaScript event execution that our modified Chromium browser measures.
   The gray boxes are continuations.
   The continuations are arranged in rows to suggest that they belong to the same task/thread.
-  However, JavaScript does not have this concept, so this is purely a human interpretation.
+  However, event loop systems do not have this concept, so this is purely an intuitive interpretation.
   For example, a2 and b1 are both children of a1, and there is no way for the system to know what logical task either belongs to.}
 \label{fig:continuation_tree}
 \end{figure*}
@@ -353,7 +353,7 @@ If most continuations had a low degree of concurrency there would be little oppo
         \includegraphics[width=1.0\textwidth]{Graphs/gaps_bw}
         \caption{Most gaps are of reasonable length, but a nontrivial percentage are quite short (under one millisecond, or even 100 microseconds).
   This graph is truncated at half a second, because we are not interested in long gaps.
-  There is only a small number of longer gaps, anyway.}
+  There is only a small number of longer gaps.}
         \label{fig:graph_gaps}
     \end{minipage}
 \end{figure}
@@ -560,13 +560,13 @@ To show that JS programs exhibit...
   \centering
   \begin{tabular}{|r|r|r|r|r|r|r|}
     \hline
-    Limit (ms) & Total Trees & Linear & Multi A & Multi B & Waiting A & Waiting B \\
+    Limit (ms) & Total Trees & Linear & Multi A & Multi B & Wait A & Wait B \\
     \hline
-    1          &         837 &   66\% &    17\% &   0.7\% &      18\% &     0.2\% \\
+    1          &         837 &   66\% &    17\% &   0.7\% &   18\% &  0.2\% \\
     \hline
-    10         &      17,885 &   80\% &   4.4\% &   2.1\% &      15\% &     1.3\% \\
+    10         &      17,885 &   80\% &   4.4\% &   2.1\% &   15\% &  1.3\% \\
     \hline
-    100        &      46,515 &   87\% &   3.9\% &   2.3\% &     8.3\% &     1.5\% \\
+    100        &      46,515 &   87\% &   3.9\% &   2.3\% &  8.3\% &  1.5\% \\
     \hline
   \end{tabular}
   \caption{XXX subtrees}
