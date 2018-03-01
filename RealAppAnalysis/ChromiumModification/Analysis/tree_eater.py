@@ -319,6 +319,23 @@ def analyzeSubtrees( cont, stats ):
                 return True
             return any( anyBranching( c ) for c in node.children )
 
+        def interrupted( node ):
+            poses = []
+            def collect( n ):
+                if n is None:
+                    return
+                poses.append( n.orig.pos )
+                for c in n.children:
+                    collect( c )
+            collect( node )
+            poses.sort()
+            for i in range( len( poses ) - 1 ):
+                if ( poses[ i ] + 1 ) != poses[ i + 1 ]:
+                    if limit == 1000:
+                        print( "BLAH %s" % poses )
+                    return True
+            return False
+
         if isLinear( tree ):
             stats.trees[ limit ][ "linear" ] += 1
         else:
@@ -335,6 +352,8 @@ def analyzeSubtrees( cont, stats ):
             stats.trees[ limit ][ "anyBranching" ] += 1
         if escapeCountStrict( tree ) > 1:
             stats.trees[ limit ][ "multipleEscapes" ] += 1
+        if interrupted( tree ):
+            stats.trees[ limit ][ "interrupted" ] += 1
         # print( "%s" % stats.trees[ limit ] )
 
 # def anayzeMicros( tree ):
@@ -815,7 +834,7 @@ def main():
     stats.chains = [ [], [], [], [], [], [] ]
     stats.trees = {}
     for limit in subtree_limits:
-        stats.trees[ limit ] = { "linear":0, "nonlinear":0, "internalBranching":0, "maybeWaiting":0, "anyBranching":0, "multipleEscapes":0 }
+        stats.trees[ limit ] = { "linear":0, "nonlinear":0, "internalBranching":0, "maybeWaiting":0, "anyBranching":0, "multipleEscapes":0, "interrupted":0 }
 
     # stats.children_per_cont = []
     # stats.pchildren_per_edge = []

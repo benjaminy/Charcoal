@@ -407,10 +407,10 @@ When batches of microtasks get too long, programmers may make ad hoc decisions a
 
 \subsection{Is This Actually a Problem?}
 
-In this paper we do not present any direct evidence of specific atomicity violations, only that risky patterns are common.
+In this paper we do not present any specific atomicity violations, only evidence that risky patterns are common.
 This leads us to a couple interesting questions:
 How confident can we be that the patterns we study are associated with real atomicity defects, and are thus worth doing something about?
-Are there good reasons why these patterns should become common practice, if they are associated with risk of atomicity defects?
+If these patterns are a valid concern (of any magnitude), why do programmers of the most widely used web applications create and tolerate them?
 We will address the second question first.
 
 \subsubsection{An Explanation for the Rise of Short Chains}
@@ -468,7 +468,7 @@ For example, programmers could use an adversarial scheduler during testing to fl
 While the authors of this paper have no quibbles with either of these strategies, we observe that quite a few applications are written with a modest level of software engineering care.
 It would be nice if there was a relatively simple tool (like an atomic block) that could help avoid at least some subset of concurrency issues.
 
-\section{An Atomic Block for JavaScript}
+\section{The Problem of Anonymous Multitasking and Atomic}
 
 \begin{figure}
 \includegraphics[width=0.3\textwidth,left]{Code/async_atomic_js}
@@ -477,7 +477,7 @@ It would be nice if there was a relatively simple tool (like an atomic block) th
 \end{figure}
 
 As discussed in the previous section, there are multiple viable strategies for mitigating the risk of atomicity violations created by short-duration chains of continuations.
-In this section we explore one of those strategies: adding an atomic block to JavaScript.
+In this section we explore one of those strategies: adding an atomic block to languages like JavaScript that use event loops, coroutines or similar anonymous multitasking frameworks.
 Figure \ref{fig:async_atomic_js} shows a very simple example of how atomicity violations can arise, and our proposed solution.
 Previous research has shown that atomic blocks can be an effective concurrency control mechanism in the multithreading context (for example, \cite{Harris2005, Grossman2007, Pankratius2014}).
 Most importantly for this project, atomic blocks are simpler to use than some alternatives (e.g. explicit mutex locks), and therefore are useful to developers of a wider skill range\footnotemark{}.
@@ -489,7 +489,7 @@ These issues are not relevant in a cooperative context.}
 In this section we show that the combination of anonymous multitasking (e.g. with event loops or coroutines) and atomic blocks is problematic.
 We then explore adding a flavor of cooperative threads with atomic blocks to JavaScript.
 
-\subsection{Event Loops vs Atomic: Fight!}
+\subsection{A Possible Definition of Atomic with Event Loops}
 
 One way atomic could be defined in event queue systems is as follows:
 
@@ -501,38 +501,37 @@ One way atomic could be defined in event queue systems is as follows:
 \item Once the event queue is empty, the code that was waiting at the end of the atomic block can continue; simultaneously the events that were saved in step 1 are restored to the queue.
 \end{enumerate}
 
-In many cases this definition of \texttt{atomic} would allow a sequence of continuations to run without the possibility of interference from concurrent tasks.
+In simple cases this definition would work fine, allowing a few continuations to execute quickly, without the possibilty of interruption.
 Unfortunately, there are some problematic cases related to the fact that tasks are anonymous in event loop systems.
 That is, when a continuation is registered it is not possible to distinguish between logically continuing the current task versus logically spawning a concurrent task.
-This becomes important in cases when a logical spawning of a concurrent task happens inside an atomic block.
+The definition above implicitly assumes that all registered continuations belong to the same task.
 
 \subsection{Background on Nested Atomics and Spawns}
 
 In this subsection we give a brief review of research on atomic blocks in the context of multithreading and transactional memory.
-We will relate this back to JavaScript and event queue concurrency below.
+We will relate this back to event loop systems below.
 The tricky semantic issue is how to define thread spawns nested within atomic blocks (and potential further nesting of both).
 One good treatment of the formal semantics of this issue is \cite{Moore2008}.
-It seems there is no simple definition that works well in all cases.
 Some of the possibilities that have been explored are:
 \begin{itemize}
 \item Spawning a thread within an atomic block is a dynamic error.
+\item Spawning a thread within an atomic block is a static error.
 \item Threads spawned within an atomic block are delayed until just after the block has completed. (\emph{delay-spawn})
 \item Threads spawned within an atomic block are allowed to run concurrently, and the block is not complete until such threads are finished. (\emph{spawn-contained})
 \item Threads spawned within an atomic block are allowed to run concurrently, and are completely disconnected from the block.
 \end{itemize}
 
-Making thread spawning an error is tempting, since it feels incompatible with the the normal use of atomic blocks (enforcing atomicity on small, simple bits of code).
-Unfortunately, this is not a good general policy since it can create errors in programs that are actually fine.
+Unfortunately, it seems there is no simple definition that works well in all cases.
 
-The \emph{delay-spawn} strategy causes deadlock for code that spawns a thread then waits for it.
+Disallowing spawning inside of atomic blocks (either statically or dynamically) is tempting, since it somehow feels like spawning new tasks is not in the spirit of ``atomic''.
+However, such rules are hard to defend on principle, because there are perfectly reasonable programs that have spawns inside atomic blocks.
+Furthermore, as we will see in the empirical analysis below, programs that seem to have this shape are fairly common.
 
-The \emph{spawn-contained} strategy causes starvation for code that spawns long-running tasks.
+The \emph{delay-spawn} strategy causes deadlock for code that spawns a thread then waits for it, while still in the atomic block.
 
+The \emph{spawn-contained} strategy causes starvation for code that spawns long-running tasks, because according to this strategy the atomic block is not finished until all tasks are finished.
 
-
-In the research on this subject there are good examples where each of these options is appropriate, and suggestions of more complex hybrid options.
-
-\subsection{Atomic and Event Queues}
+\subsection{Do Programs Actually Do this Werd Stuff?}
 
 An issue with event queue concurrency is that there is no explicit notion of a task or thread that defines the identity of specific chains of continuations.
 In other words, when a continuation is registered, the system cannot be sure whether it is logically continuing the execution of its parent or spawning a concurrent task.
@@ -552,10 +551,6 @@ We briefly note that there are other options for defining an atomic block in an 
 For example, the system could assume that the last child registered by a continuation is part of its parent's task and any other children are concurrent tasks.
 We do not investigate these options further, because they seem too ad hoc.
 
-\subsection{Small Trees in Existing Code}
-
-To show that JS programs exhibit...
-
 \begin{table}
   \centering
   \begin{tabular}{|r|r|r|r|r|r|r|}
@@ -573,8 +568,17 @@ To show that JS programs exhibit...
   \label{table:subtrees}
 \end{table}
 
+We analyzed the continuation trees we collected for evidence of spawning within atomic blocks in the following sense.
+Obviously JavaScript lacks both atomic and explicit spawning...
 
-\subsection{Adding Explicit Tasks to Event Queue Systems}
+We subtrees in the continuation trees that satisfy the following conditions:
+
+\begin{itemize}
+\item \emph{Connected}. Not forests.
+\item \emph{Time limited}. The duration from the beginning of the first continuation to the end of the last must That is, not forests. XXX
+\end{itemize}
+
+\section{Cooperative Threads and Atomic Blocks for JavaScript}
 
 In this section we discuss a library implementation of explicit tasks in JavaScript, built on top of async functions.
 Async functions were standardized in ECMAScript 2017.
