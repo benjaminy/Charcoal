@@ -27,7 +27,7 @@ def o( f, g ):
 class Object:
     pass
 
-subtree_limits = [ 100, 1000, 10000, 100000 ]
+subtree_limits = [ 100, 1000, 5000, 10000, 50000, 100000 ]
 stupid0 = 0
 stupid1 = 0
 stupid2 = 0

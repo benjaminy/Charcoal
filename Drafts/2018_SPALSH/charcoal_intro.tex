@@ -555,13 +555,13 @@ We do not investigate these options further, because they seem too ad hoc.
   \centering
   \begin{tabular}{|r|r|r|r|r|r|r|}
     \hline
-    Limit (ms) & Total Trees & Linear & Multi A & Multi B & Wait A & Wait B \\
+    Limit (ms) &  Total & Linear & Multi L & Multi S & Contain L & Contain S \\
     \hline
-    1          &         837 &   66\% &    17\% &   0.7\% &   18\% &  0.2\% \\
+    1          &    837 &   66\% &    17\% &   0.7\% &      18\% &     0.2\% \\
     \hline
-    10         &      17,885 &   80\% &   4.4\% &   2.1\% &   15\% &  1.3\% \\
+    10         & 17,885 &   80\% &   4.4\% &   2.1\% &      15\% &     1.3\% \\
     \hline
-    100        &      46,515 &   87\% &   3.9\% &   2.3\% &  8.3\% &  1.5\% \\
+    100        & 46,515 &   87\% &   3.9\% &   2.3\% &     8.3\% &     1.5\% \\
     \hline
   \end{tabular}
   \caption{XXX subtrees}
@@ -571,11 +571,25 @@ We do not investigate these options further, because they seem too ad hoc.
 We analyzed the continuation trees we collected for evidence of spawning within atomic blocks in the following sense.
 Obviously JavaScript lacks both atomic and explicit spawning...
 
-We subtrees in the continuation trees that satisfy the following conditions:
+We define potentially atomic subtrees in the continuation trees to be those that satisfy the following conditions:
 
 \begin{itemize}
+\item \emph{Nontrivial}. At least two continuations.
 \item \emph{Connected}. Not forests.
-\item \emph{Time limited}. The duration from the beginning of the first continuation to the end of the last must That is, not forests. XXX
+\item \emph{Time limited}. The duration from the beginning of the first continuation to the end of the last can be at most some specified limit.
+\item \emph{Maximal}. Proper subtrees of trees that satisfy these conditions do not count.
+\item \emph{No Recurring}. Recurring edges are ignored, except for a special case described below.
+\end{itemize}
+
+We examined the shape of the potentially atomic subtrees.
+
+\begin{itemize}
+\item \emph{Linear}. All continuations have at most one child.
+  For this one we considered recurring edges as well -- ``truly linear''
+\item \emph{Multiple long-lived branches}. Looser version: At least two children outside the subtree (can have the same parent).
+Stricter version: At least two children outside the subtree with different parents.
+\item \emph{Contained branch}. Looser version: At least one continuation with no children, and at least one continuation with at least one child outside the subtree.
+  Stricter version: Same as the loose version, with the additional constraint that there be at least one continuation in the subtree after the one with no children.
 \end{itemize}
 
 \section{Cooperative Threads and Atomic Blocks for JavaScript}
