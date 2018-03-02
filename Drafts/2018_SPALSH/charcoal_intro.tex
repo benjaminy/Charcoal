@@ -188,7 +188,6 @@ This investigation shows that this language design can be implemented in a flexi
 
 \section{Introduction}
 
-
 Many modern applications are highly multitasked.
 They have lots of balls in the air at the same time: network communication, queries to databases, multiple I/O modalities to monitor and manage.
 Applications use a wide range of features in languages and core libraries to implement this multitasking: threads, event loops, coroutines, async functions, functional reactive programming, etc.
@@ -200,27 +199,39 @@ There has been much research in the last decade on cataloging, exposing, diagnos
 
 \footnotetext{This is similar to how garbage collection reduces, but does not eliminate, exposure to memory bugs\cite{Grossman2007}.}
 
-This paper starts with measurements from widely used web applications\footnotemark{}.
+One of the most important ideas related to avoiding concurrency bugs is atomicity.
+This idea is nearly universal in the database world, where atomic transactions are used to collect together multiple reads and writes.
+Herlihy and Moss \cite{Herlihy93} kicked off decades of research on bringing this idea to general purpose multithreaded programming languages in the form of a block that can make an arbitrary sequence of statements appear atomic.
+
+The idea of a general purpose atomic block in multithreaded languages so far has seen little use outside of research labs, because of challenges with efficient implementation and elegantly handling semantic corner cases.
+At the broadest scope, the question addressed in this paper is: Would it be a good idea to combine atomic blocks with cooperative concurrency models, like event loops or cooperative threads?
+This breaks into three primary sub-questions:
+\begin{itemize}
+\item Would it be beneficial from a software engineering perspective to have atomic blocks in cooperative concurrency languages?
+\item Are there any semantic or language design problems with this combination of features?
+\item Are there interesting implementation efficiency issues raised by this combination of features?
+\end{itemize}
+
+We gather evidence for the first question by measuring widely used web applications\footnotemark{}.
 We observe that patterns that seem risky from an atomicity perspective are common on the web.
 In particular, there are many short-duration chains of continuations.
 We believe it would be easy for a developer to test such code and effectively assume atomicity for the chain, even though it is possible for conflicting tasks to execute in a gap between continuations.
 
 \footnotetext{We focus on web applications for the simple reason that a large amount of deployed production code is easily available for the studying.}
 
-To reduce the risk of atomicity violations related to these chains, we investigate importing \emph{atomic blocks} (widely studied in the context of multithreading) into the cooperative concurrency context.
-We observe a conflict with this combination:
+In investigating the second question, we noticed the following conflict with combining atomic blocks and anonymous cooperative concurrency:
 \begin{enumerate}
-\item There are multiple reasonable semantics for nested atomic blocks and thread spawns; no interpretation works well in all contexts.
-\item Most cooperative concurrency frameworks lack an explicit notion of task identity, making it impossible to easily distinguish between the various cases of nested atomic and spawn.
+\item There are multiple reasonable semantics for nested atomic blocks and task spawns; no interpretation works well in all contexts.
+\item Many cooperative concurrency frameworks are anonymous in the sense that they lack an explicit notion of task identity.
+  This makes it hard to know whether an asynchronous continuation represents a logical continuation of its parent task, or a new concurrent task.
+  This further compounds the problem with nested atomics and spawns, because we cannot even unambiguously identify the spawns.
 \end{enumerate}
 To the best of our knowledge, this is a novel observation.
 This implies that \emph{if} a cooperative multitasking framework is to include atomic blocks, it should have explicit thread/task identities (i.e. some flavor of cooperative threading).
 
-To investigate this language design space, we implement a cooperative threading library with atomic blocks on top of JavaScript's async functions.
-We observe that such a library can be used with modest complexity overhead in application code relative to existing JavaScript patterns, and that it mostly integrates well with legacy code.
-
-Finally, we consider the efficiency issues raised by implementing this style of cooperative threading with atomic blocks in a ``native'' language.
-We implement a dialect of C to investigate this question, and discover a new call frame allocation strategy -- enabled by atomic blocks -- that combines the speed benefits of contiguous frame allocation with the memory benefits of individual linked frame allocation.
+To investigate the third question, we implemented cooperative threading with atomic blocks in two contexts: as a library built on top of JavaScript's async functions and as a dialect of C.
+We observe that such a library can be used with modest complexity overhead in application code relative to popular JavaScript patterns, and that it mostly integrates well with legacy code.
+In the C dialect implementation we discover a new call frame allocation strategy -- enabled by atomic blocks -- that combines the speed benefits of contiguous frame allocation with the memory benefits of individual linked frame allocation.
 
 \begin{figure*}
 \includegraphics[width=0.9\textwidth]{Figures/continuation_tree}
@@ -251,7 +262,7 @@ These challenges have long been understood; more than two decades ago Ousterhout
 
 Early versions of JavaScript supported only event loop based concurrency.
 The simple picture of the implementation of JavaScript is that there is a single event queue that stores a collection of functions waiting for some enabling condition.
-These functions can be registered by builtin callback APIs, like \texttt{setTimeout}.
+These functions can be registered by primitive callback APIs, like \texttt{setTimeout}.
 In all cases we refer to the registered functions as \emph{continuations}.
 We refer to a continuation plus its enabling condition as an \emph{event}.
 When an event becomes ready, the queue may execute its continuation whenever it chooses (generally as soon as possible).
@@ -425,7 +436,7 @@ There is always a dilemma in cooperative concurrency models associated with the 
 The longer the chunks are, the more risk an application runs of becoming unresponsive or at least appearing jittery and potentially missing I/O deadlines.
 The shorter the chunks are, the more risk an application runs of splitting some logic that should be atomic into multiple chunks.
 
-This dilemma is particularly accute for library authors, because they bear the responsibility to make their code work well in multiple, potentially unknown, specific contexts.
+This dilemma is particularly accute for library authors, because they bear the responsibility to make their code work well in multiple specific contexts; quite often many of the contexts are unknown to the library authors.
 To be more concrete, when library authors design APIs, they face the choice between making a call atomic or async in some way (callback, Promise, whatever).
 In some cases this choice is easy.
 If the function will always complete in a small amount of time, then it should be atomic.
@@ -810,7 +821,7 @@ However, even the most efficient implementations that we are aware of are still 
 
 Some languages have experimented with a hybrid strategy called \emph{split}, \emph{segmented}, or \emph{linked} stacks.
 The idea is that stack space is allocated in small segments or chunks.
-In the common case, frames are allocated continuously within the top segment.
+In the common case, frames are allocated contiguously within the top segment.
 When a thread reaches the end of its segment it allocates a new one and links them together with pointers.
 This idea has been appealing to several language implementers; as fairly recent examples, early implementations of Rust and Go both used it.
 Unfortunately it has unpleasant \emph{uncommon} case behavior called \emph{stack thrashing} or the \emph{hot split} problem.
@@ -913,14 +924,14 @@ Therefore, in the common case the cost of a yield is only an atomic read and a (
 \subsection{System Calls}
 
 An important part of making activities work properly is asynchronous system calls.
-The current \charcoal{} implementation uses libuv for this.
-At startup, the runtime system spawns a thread that runs a libuv event loop.
-When an activity wants to make a system call, it sends an asynchronous message to the event loop thread, which makes the appropriate libuv API call.
+The current \charcoal{} implementation uses \texttt{libuv} for this.
+At startup, the runtime system spawns a thread that runs a \texttt{libuv} event loop.
+When an activity wants to make a system call, it sends an asynchronous message to the event loop thread, which makes the appropriate \texttt{libuv} API call.
 When the event completes, the activity is notified and the system puts it back in the runnable queue.
 
 This architecture works, but it adds a non-trivial amount of overhead, especially for fast system calls.
 We speculate that integrating the event processing with application code in the same thread could remove some performance overhead.
-The libuv maintainers have discussed this as a ``pull'', versus the current ``push'' architecture, which they may implement in a future version.
+The \texttt{libuv} maintainers have discussed this as a ``pull'', versus the current ``push'' architecture, which they may implement in a future version.
 % XXX yield checks for event loop changes
 
 \subsection{Translation}
