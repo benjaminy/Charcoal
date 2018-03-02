@@ -96,7 +96,12 @@
 
 \begin{abstract}
 
-The sophistication of multitasking in mainstream software has increased in recent years, thanks to the increasing richness of network communication, physical world interaction and multi-process software architectures.
+This paper is about combining cooperative concurrency with atomic blocks.
+In particular, we address two primary questions:
+Why might this combination be useful?
+What is tricky about making a clean semantics and implementation for languages that combine these concepts?
+
+  The sophistication of multitasking in mainstream software has increased in recent years, thanks to the increasing richness of network communication, physical world interaction and multi-process software architectures.
 These trends have pushed programming languages to offer better ways of writing such code.
 As just one example of this trend, in recent years some flavor of coroutine has been standardized (or is heading towards standardization) in JavaScript, Swift, and C++.
 
@@ -183,6 +188,7 @@ This investigation shows that this language design can be implemented in a flexi
 
 \section{Introduction}
 
+
 Many modern applications are highly multitasked.
 They have lots of balls in the air at the same time: network communication, queries to databases, multiple I/O modalities to monitor and manage.
 Applications use a wide range of features in languages and core libraries to implement this multitasking: threads, event loops, coroutines, async functions, functional reactive programming, etc.
@@ -236,7 +242,7 @@ In summary, the contributions of this paper are:
 
 All code and data described in this paper is available publicly on GitHub [URL removed for blind review].
 
-\section{Multitasking on the Web Today}
+\section{Multitasking in Web JavaScript}
 
 We begin with some brief remarks on the history of JavaScript.
 In the beginning, the designers of JavaScript decided that preemptive threads caused an unacceptably high risk of concurrency bugs.
@@ -468,7 +474,11 @@ For example, programmers could use an adversarial scheduler during testing to fl
 While the authors of this paper have no quibbles with either of these strategies, we observe that quite a few applications are written with a modest level of software engineering care.
 It would be nice if there was a relatively simple tool (like an atomic block) that could help avoid at least some subset of concurrency issues.
 
-\section{The Problem of Anonymous Multitasking and Atomic}
+\subsection{Instrumentation and Measurement Details}
+
+TODO
+
+\section{The Tension Between Anonymous Multitasking and Atomic}
 
 \begin{figure}
 \includegraphics[width=0.3\textwidth,left]{Code/async_atomic_js}
@@ -593,6 +603,9 @@ Stricter version: At least two children outside the subtree with different paren
 \end{itemize}
 
 \section{Cooperative Threads and Atomic Blocks for JavaScript}
+
+\cite{Ringenburg2005}
+\cite{Vilk2014} % Doppio
 
 In this section we discuss a library implementation of explicit tasks in JavaScript, built on top of async functions.
 Async functions were standardized in ECMAScript 2017.
