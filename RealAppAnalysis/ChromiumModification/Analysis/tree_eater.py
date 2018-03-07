@@ -55,7 +55,9 @@ def lineToContinuation( j ):
     cont.end          = dictToEv( j[ 1 ] )
     cont.sched_ev     = dictToEv( j[ 2 ] )
     cont.parent_ts    = j[ 3 ]
-    cont.children_tss = j[ 4 ]
+    cont.first_call   = j[ 4 ]
+    cont.parent_call  = j[ 5 ]
+    cont.children_tss = j[ 6 ]
     if ( not hasattr( cont, "begin" ) ) or cont.begin is None:
         print( "MISSING BEGIN" )
     if ( not hasattr( cont, "end" ) ) or cont.end is None:
@@ -103,7 +105,7 @@ def analyzeDir( dir, stats ):
 def isRecur( c ):
     return ( c.sched_ev is not None ) and hasattr( c.sched_ev, "recurring" ) and c.sched_ev.recurring
 
-def analyzeDurations( cont, stats ):
+def analyzeDuration( cont, stats ):
     if cont.begin is None or cont.end is None:
         return
 
@@ -119,7 +121,12 @@ def analyzeDurations( cont, stats ):
         else:
             sys.exit()
 
-def analyzeGaps( cont, stats ):
+def analyzeContext( cont, stats ):
+    if cont.first_call is None or cont.parent_call is None:
+        return
+    print( "CTX %s %s" % ( cont.parent_call, cont.first_call ) )
+
+def analyzeGap( cont, stats ):
     if ( cont.begin is None ) or ( cont.parent is None ) or ( cont.parent.end is None ):
         return
 
@@ -393,8 +400,9 @@ def analyzeSubtrees( cont, stats ):
 def analyzeTree( tree, stats ):
     analyzeConcurrency( tree, stats )
     for cont in tree:
-        analyzeDurations( cont, stats )
-        analyzeGaps( cont, stats )
+        analyzeDuration( cont, stats )
+        analyzeContext( cont, stats )
+        analyzeGap( cont, stats )
         analyzeChains( cont, stats )
         analyzeBranching( cont, stats )
         analyzeSubtrees( cont, stats )
