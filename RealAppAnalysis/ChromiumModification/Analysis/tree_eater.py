@@ -104,11 +104,8 @@ def isRecur( c ):
     return ( c.sched_ev is not None ) and hasattr( c.sched_ev, "recurring" ) and c.sched_ev.recurring
 
 def analyzeDurations( cont, stats ):
-    if ( not hasattr( cont, "begin" ) ) or cont.begin is None:
+    if cont.begin is None or cont.end is None:
         return
-    if ( not hasattr( cont, "end" ) ) or cont.end is None:
-        return
-
 
     duration = cont.end.ts - cont.begin.ts
     if isRecur( cont ):
