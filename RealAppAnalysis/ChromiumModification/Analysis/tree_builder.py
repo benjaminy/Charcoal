@@ -205,12 +205,14 @@ def stacker( trace ):
 
             elif ev.kind == "ctor":
                 next_cont = Object()
-                next_cont.begin    = ev
-                next_cont.end      = None
-                next_cont.parent   = None
-                next_cont.sched_ev = None
-                next_cont.events   = []
-                next_cont.children = []
+                next_cont.begin       = ev
+                next_cont.end         = None
+                next_cont.parent      = None
+                next_cont.sched_ev    = None
+                next_cont.parent_call = None
+                next_cont.first_call  = None
+                next_cont.events      = []
+                next_cont.children    = []
 
                 all_continuations.append( next_cont )
                 task_call_stack.append( next_cont )
@@ -224,6 +226,9 @@ def stacker( trace ):
                         parent_cont.children.append( next_cont )
                         next_cont.parent = parent_cont
                         next_cont.sched_ev = sched_ev
+                        if parent_call is not None:
+                            next_cont.parent_call = parent_call
+                            # print( "A %s" % vars( parent_call ) )
 
             elif ev.kind == "dtor":
                 task_call_stack.pop()
@@ -260,12 +265,14 @@ def stacker( trace ):
 
             elif ev.kind == "before_loop":
                 next_cont = Object()
-                next_cont.begin    = ev
-                next_cont.end      = None
-                next_cont.parent   = None
-                next_cont.sched_ev = None
-                next_cont.events   = []
-                next_cont.children = []
+                next_cont.begin       = ev
+                next_cont.end         = None
+                next_cont.parent      = None
+                next_cont.sched_ev    = None
+                next_cont.parent_call = None
+                next_cont.first_call  = None
+                next_cont.events      = []
+                next_cont.children    = []
 
                 all_continuations.append( next_cont )
                 task_call_stack.append( next_cont )
@@ -279,6 +286,9 @@ def stacker( trace ):
                         parent_cont.children.append( next_cont )
                         top_cont.parent = parent_cont
                         top_cont.sched_ev = sched_ev
+                        if parent_call is not None:
+                            top_cont.parent_call = parent_call
+                            # print( "I %s" % vars( parent_call ) )
 
             elif ev.kind.startswith( "start" ):
                 pass
@@ -304,13 +314,21 @@ def stacker( trace ):
                 print( "OH SHIT. OVERFLOW" )
                 sys.exit()
             elif ev.kind == "enter_jsfun":
+                # print( "JS %s" % ( vars( ev ) ) )
                 next_call = Object()
                 next_call.fkind = "J"
+                next_call.ctx = ev.ctx
+                next_call.name = ev.name
                 task_call_stack.append( next_call )
+                if ( top_cont != global_continuation ) and ( top_cont.first_call is None ):
+                    top_cont.first_call = next_call
             elif ev.kind == "enter_non_fun":
+                # print( "NJS %s" % ( vars( ev ) ) )
                 next_call = Object()
                 next_call.fkind = "N"
                 task_call_stack.append( next_call )
+                if ( top_cont != global_continuation ) and ( top_cont.first_call is None ):
+                    top_cont.first_call = next_call
             elif ev.kind == "exit":
                 if hasattr( task_call_stack[ -1 ], "fkind" ):
                     task_call_stack.pop()
@@ -413,15 +431,26 @@ def normalizeEv( ev ):
             misc[ attr_name ] = getattr( ev, attr_name )
     return [ ev.ts, ev.source, ev.kind, misc ]
 
+bothNone = 0
+notBNone = 0
+
 def dumpTree( f, tree ):
+    global bothNone
+    global notBNone
     for cont in tree:
         begin    = normalizeEv( cont.begin )
         end      = normalizeEv( cont.end )
         sched_ev = normalizeEv( cont.sched_ev )
         parent   = None if cont.parent == None else cont.parent.begin.ts
+        first_c  = None if cont.first_call == None else vars( cont.first_call )
+        parent_c = None if cont.parent_call == None else vars( cont.parent_call )
         children = list( map( lambda c: c.begin.ts, cont.children ) )
+        if first_c is None or parent_c is None:
+            bothNone += 1
+        else:
+            notBNone += 1
         # dropping "events"
-        f.write( "%s\n" % json.dumps( [ begin, end, sched_ev, parent, children ] ) )
+        f.write( "%s\n" % json.dumps( [ begin, end, sched_ev, parent, first_c, parent_c, children ] ) )
 
 
 def dumpTrees( tree_path, trees ):
@@ -442,6 +471,7 @@ def main():
         tree_path = os.path.join( trees_dir, fname )
         pathlib.Path( tree_path ).mkdir( parents=True, exist_ok=True )
         dumpTrees( tree_path, trees )
+    print( "NONES %d %d" % ( bothNone, notBNone ) )
 
 # execute only if run as a script
 if __name__ == "__main__":
