@@ -1,42 +1,4 @@
 
-Review #158B
-===========================================================================
-
-Overall merit
--------------
-C. I would not accept this paper but will not argue strongly against
-  accepting it.
-
-Reviewer expertise
-------------------
-Y. Knowledgeable
-
-Paper summary
--------------
-
-Comments for author
--------------------
-
-
-
-Since the problem of the paper is not directly evidenced, it is
-difficult to evaluate the design of the solution. It is not clear
-what one should take away from §3.6. The evaluation of the C
-version is also based on micro benchmarks.
-
-I fully agree with the remark that inserting yield statements
-around call-sites makes for more programmer-understandable and
-predictable execution. In the same section as this statement (§7)
-you discuss related work. Several actor/active object systems
-support yield and suspend statements (see e.g. ABS/Creol) that
-allow an otherwise single-threaded actor to execute several
-methods concurrently but not in parallel. Also in this model, an
-actor may make self-calls either asynchronously or synchronously,
-depending on the desired semantics. In the case of a synchronous
-call, if support for interleaving is desired further down on the
-call stack, yield statements can be used to suspend the current
-activity.
-
 
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 

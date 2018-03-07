@@ -13,9 +13,9 @@
 |        2 | run data race detector          |            |           |           |
 |        2 | Find real examples              |            |           |           |
 |        2 | Three parts not connected       |            |           |           |
-|        2 | atomic dangerous variability!   |          1 |         5 |           |
-|          |                                 |            |           |           |
-|          |                                 |            |           |           |
+|        2 | atomic -> responsiveness bug    |          1 |         5 |           |
+|        2 | takeaway from JS lib eval???    |            |           |           |
+|     2    | yielding -> see ABS/Creol       |            |           |           |
 |          |                                 |            |           |           |
 |          |                                 |            |           |           |
 
