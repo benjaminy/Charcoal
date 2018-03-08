@@ -610,8 +610,8 @@ This is effectively the strategy enforced by the candidate definition of atomic 
   \label{table:subtrees}
 \end{table}
 
-Before considering approaches to handing nested atomics and spawning, it is useful to consider whether these patterns seem to actually occur in applications.
-If it seems that spawning in atomic blocks is rare, then simple solutions (like making it an error) might be viable.
+Before considering approaches to handing nested atomics and spawning, it is useful to consider whether these patterns seem to actually occur with any frequency in practice.
+If it seems that spawning in atomic blocks is rare, then simple definitions (like making it an error) might be viable.
 
 We analyzed the continuation trees we collected for evidence of spawning within atomic blocks.
 Obviously JavaScript lacks both explicit spawning and atomic blocks, so out analysis is inevitably guessing to some extent.
