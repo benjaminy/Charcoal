@@ -28,21 +28,9 @@ The empirical study of JavaScript programs at the start is a contribution in its
 
 The whole motivation for the new language-design ideas is avoiding bugs, so it's a bit of a problem not to be on firmer footing about how troublesome these bugs are.  (The same ideas also happen to be useful for performance optimization, as the experiments [partly] show, but we could imagine applying related optimizations with no use of activities or other source-level modifications.)  Clearly programs get more complicated textually, and they might even become harder to think about, which is counterintuitive for a change billed as avoiding bugs.  In my own experiences with web programming, I'm not used to worrying about or being bitten by this kind of problem.  I don't think I've just been "getting lucky," as I believe the programs I write are naturally prepared for all interleavings -- it's just straightforward in the scenarios I'm used to.
 
-Cooperative concurrency is appealing for its source-level simplicity, and the ideas presented here lower that simplicity moderately.  Maybe a real worry is being addressed, but it is not clear.  Still, I did enjoy reading the paper, and I don't think it's a bad thing to promote this kind of experimentation.
 
-It may be worth pointing out explicitly that, since the study reported in Section 2 uses a browser (Chromium), you are only analyzing client-side JavaScript, not server-side, which could turn out to have quite different characteristics.
 
-More by line number:
 
-* 404: "depending" should have "on" after it.
-* 481: "mutlithreading context"
-* 711: "performs in Figure 9 performs"
-* 824: "a atomic" should use "an".
-* 864: "the implementation the" is missing "of".
-
-Questions for Authors
----------------------
-How do you argue that adding atomic blocks to existing concurrent programs won't introduce new bugs via deadlock, where the code in an atomic block could be blocked waiting for some event that only another "thread" can trigger?  And will programmers tend to trip over this danger in writing code from scratch?
 
 
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
