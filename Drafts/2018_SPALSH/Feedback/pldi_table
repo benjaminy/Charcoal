@@ -1,19 +1,19 @@
 | Reviewer | Point                             | Specificty | Agreement | Addressed |
 |----------+-----------------------------------+------------+-----------+-----------|
 |        1 | Reinvented locks (Doppio, 2014)   |          1 |         1 |           |
-|        1 | Starve the UI thread              |          1 |         2 |           |
-|        1 | AtomCaml unreferenced             |          2 |         1 |           |
+|        1 | Starve the UI thread              |          1 |         2 |         2 |
+|        1 | AtomCaml unreferenced             |          2 |         1 |      1    |
 |        1 | What JS code tested               |          5 |         5 |           |
 |        1 | Motivation weak                   |          1 |         2 |           |
 |        1 | No eval of JS library             |          2 |         2 |           |
 |        1 | Only micros for C impl            |          3 |         1 |           |
 |        2 | Lack of direct evidence           |          5 |         5 |           |
-|        2 | Cites of bug papers bad           |            |           |           |
+|        2 | Cites of bug papers bad           |            |           |     2     |
 |        2 | Too speculative                   |          1 |         2 |           |
 |        2 | run data race detector            |            |           |           |
 |        2 | Find real examples                |            |           |           |
 |        2 | Three parts not connected         |            |           |           |
-|     2, 3 | atomic -> deadlock,responsiveness |          1 |         5 |           |
+|     2, 3 | atomic -> deadlock,responsiveness |          1 |         5 |         2 |
 |        2 | takeaway from JS lib eval???      |            |           |           |
 |        2 | yielding -> see ABS/Creol         |            |           |           |
 |        3 | 404 "depending on"                |            |           |         1 |
