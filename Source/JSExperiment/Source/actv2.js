@@ -48,7 +48,7 @@ function atomicify( f )
     if( ATOMICIFY_TAG in f )
         return f;
 
-    async function wrapper( ...params )
+    async function stepper( ...params )
     {
         let [ actx, scheduler, atomic_stack ] = prelude();
         let call_stack = actx[ CALL_STACK_TAG ];
@@ -87,7 +87,7 @@ function atomicify( f )
                     let wait = new Promise( function( resolve, reject ) {
                         actx[ CONTINUE_TAG ] = resolve;
                         actx[ ABORT_TAG ]    = reject;
-                    } )
+                    } );
                     blocks.push( await wait );
                 }
 
@@ -118,7 +118,7 @@ function atomicify( f )
         }
     }
 
-    wrapper[ ATOMICIFY_TAG ] = undefined;
+    stepper[ ATOMICIFY_TAG ] = undefined;
     return wrapper;
 }
 
