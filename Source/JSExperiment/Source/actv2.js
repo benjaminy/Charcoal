@@ -5,7 +5,7 @@ const P = Promise;
 
 function yieldP()
 {
-    return new Promise( function( res ) { setImmediate( res ); } );
+    return new Promise( ( res ) => setImmediate( res ) );
 }
 
 let ATOMICIFY_TAG = Symbol( "atomicable" );
