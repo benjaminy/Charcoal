@@ -8,7 +8,8 @@ function yieldP()
     return new Promise( ( res ) => setImmediate( res ) );
 }
 
-let ATOMICIFY_TAG = Symbol( "atomicable" );
+let ATOMICIFY_TAG = Symbol( "atomicify" );
+let SCHEDULER_TAG = Symbol( "scheduler" );
 
 let scheduler =
     {
@@ -32,7 +33,7 @@ function prelude()
     let actx = current_context;
     assert( isContext( actx ) );
     let scheduler = actx[ SCHEDULER_TAG ];
-    assert( sched.active_actxs.has( parent[ ID_TAG ] ) );
+    assert( sched.active_actxs.has( actx[ ID_TAG ] ) );
     let atomic_stack = scheduler.atomic_stack;
     return [ actx, scheduler, atomic_stack ];
 }
@@ -50,21 +51,25 @@ function atomicify( f )
 
     async function stepper( ...params )
     {
-        let [ actx, scheduler, atomic_stack ] = prelude();
-        let call_stack = actx[ CALL_STACK_TAG ];
-        let generator = f( ...params );
-        if( !( generator
-               && ( typeof generator[Symbol.iterator] === "function" ) ) )
-        {
-            throw new Error( "atomicify passed (" + typeof( f )
-                             + "). Needs generator function." );
+        const [ actx, scheduler, atomic_stack ] = prelude();
+        const call_stack = actx[ CALL_STACK_TAG ];
+        var gen_temp;
+        try {
+            gen_temp = f( ...params );
+            if( !( gen_temp
+                   && ( typeof gen_temp[Symbol.iterator] === "function" ) ) )
+                throw {};
         }
+        catch( err ) {
+            throw new Error( "atomicify expects generator function.  Given: " + typeof( f ) );
+        }
+        const generator = gen_temp;
         call_stack.push( [ f, generator ] );
 
         function blockedByAtomic()
         {
-            let not_blocked = ( atomic_stack.length < 1 )
-                || ( scheduler.active_actxs.has( actx[ ID_TAG ] ) );
+            const not_blocked = ( atomic_stack.length < 1 )
+                  || ( scheduler.active_actxs.has( actx[ ID_TAG ] ) );
             return !not_blocked;
         }
 
@@ -75,16 +80,16 @@ function atomicify( f )
             await yieldP();
             while( true ) /* return in loop, when generator is done */
             {
-                let blocks = []; /* TODO: stats about blocking */
+                const blocks = []; /* TODO: stats about blocking */
                 while( blockedByAtomic() )
                 {
                     /* assert( actx not in scheduler.waiting_activities ); */
-                    let top = atomic_stack[ atomic_stack.length - 1 ];
+                    const top = atomic_stack[ atomic_stack.length - 1 ];
                     actx[ STATE_TAG ] = WAITING;
                     actx[ WAITS_TAG ]++;
                     actx[ QUEUE_LEN_TAG ] = top.waiting.length;
                     top.waiting.add( actx );
-                    let wait = new Promise( function( resolve, reject ) {
+                    const wait = new Promise( function( resolve, reject ) {
                         actx[ CONTINUE_TAG ] = resolve;
                         actx[ ABORT_TAG ]    = reject;
                     } );
@@ -119,7 +124,7 @@ function atomicify( f )
     }
 
     stepper[ ATOMICIFY_TAG ] = undefined;
-    return wrapper;
+    return stepper;
 }
 
 function makeContext( child, parent )
