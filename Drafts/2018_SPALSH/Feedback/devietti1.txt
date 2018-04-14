@@ -1,0 +1,52 @@
+I think the biggest hurdle this paper will have to overcome is the
+motivation for atomic blocks. I can see you already know this, given
+the supporting evidence in 2.3 and especially 2.3.2. That stuff is
+fine, but I think some concrete evidence of JS code that has such a
+problem is necessary. Taking bugs from previous work would be fine
+(and probably less work). I don't think you need a lot of bugs, two
+would probably suffice.
+
+At the end of 3.3, I really wanted to read something like "and here's
+some code we found that matches these problematic patterns and is
+actually a real problem".
+
+Even given that these bugs exist, and that atomic blocks can be
+provided cheaply, there is still the issue of whether atomic blocks
+would have prevented such a bug. That is a hard claim to demonstrate,
+but if you have a strong motivation in place for atomic blocks,
+reviewers should be willing to believe you.
+
+I think Section 3.3 is supposed to demonstrate how atomic blocks and
+cooperative concurrency are hard to reconcile. The evidence would be
+stronger if there was something along the lines of "if you used
+spawn-contained these tasks would run for 500ms, which leads to
+responsiveness issues". Since I don't know which of the PASs need to
+be atomic, perhaps the ones that need to be atomic can use
+spawn-contained just fine.
+
+Smaller feedback (organized by line #):
+
+166: "in the Figure are meant" doesn't say which figure
+
+The large numbers in the y-axes of Figures 2-5 are hard to read. I'd
+suggest adding commas or switching to labels like "20K", "40K", etc.
+
+267: the distinction between the interrupted and uninterrupted gaps is
+very hard to see on the graph. Maybe you could switch to a log y-axis,
+or offer a zoomed-in view of this part of the plot?
+
+284: What is a "microtask batch"? I saw this referenced a few times
+but I don't know what it actually is.
+
+442: I think this definition would be clearer if you could relate it
+to the code in Figure 8.
+
+457: "spawn-free" makes me think of something that doesn't have
+spawns. "spawn-unrestricted" or "spawn-uncontained" would be more
+intuitive to me.
+
+465: "deadlock" => "deadlocks"
+
+498-507: These text descriptions were hard to follow. A little diagram
+of each or a code snippet would help me understand their distinctions
+better.

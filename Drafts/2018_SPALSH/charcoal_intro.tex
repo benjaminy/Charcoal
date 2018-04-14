@@ -212,9 +212,11 @@ Systems for enforcing atomicity are widely used.
 Atomic transactions are nearly universal in databases, where they ensure that multiple reads and writes are performed without interruption.
 Herlihy and Moss \cite{Herlihy1993} kicked off decades of research on bringing this idea to general purpose multithreading languages in the form of a block that can make an arbitrary sequence of statements appear atomic.
 
+% Transactions are a classic concept in databases and distributed systems. Transactional support in hardware [30], programminging languages [21], and libraries [45] had early advocates, with recent interest beginning with Harris and Fraser’s work for Java [24]. Approaches to implementing TM in compilers [2, 25, 26, 27, 32, 36, 44, 46], libraries [29, 37, 28], hardware [23, 9, 38, 42, 4, 40, 41], and software/hardware hybrids [12, 34] have been published, and transactions are part of several next-generation languages [3, 10, 11].
+
 % XXX , because of challenges with implementation efficiency and semantic trickines with concurrent access to resources from atomic blocks and non-atomic code
 
-The idea of \emph{preemptive} multithreading languages with atomic blocks is compelling, but has seen relatively little use outside of research labs because of technical challenges.
+The idea of \emph{preemptive} multithreading languages with atomic blocks is compelling (just a small sample: \cite{Harris2003, Harris2005, Ringenburg2005, Herlihy2006, Ni2008}), but has seen relatively little use outside of research labs because of technical challenges.
 The main question this paper addresses is: Is it a good idea to combine atomic blocks with \emph{cooperative} concurrency models, like event loops or cooperative threads?
 We primarily focus on three sub-questions:
 \begin{enumerate}
@@ -224,9 +226,9 @@ We primarily focus on three sub-questions:
 \end{enumerate}
 
 We gather evidence for an affirmative answer to the first question by measuring widely used web applications\footnotemark{}.
-We observe that patterns that seem risky from an atomicity perspective are common.
+We observe that risky patterns are common.
 In particular, there are many short-duration chains of continuations.
-We believe it would be easy for a developer to test such code and effectively assume atomicity for the chain, even though it is possible for conflicting tasks to execute in gaps between continuations.
+It would be easy for a developer to test such code and effectively assume atomicity for the chain, even though it is possible for conflicting tasks to execute in gaps between continuations.
 One way to increase the safety of such chains is with a language-level atomic block.
 
 \footnotetext{We study web applications for the simple reason that a large amount of presumably highly vetted code is easily available for the studying.}
@@ -692,6 +694,7 @@ While further study of more application families is called for, we suggest the f
 \begin{itemize}
 \item The system should have explicit task identities.
 \item \emph{Delay-spawn} is a good default strategy, because it works fine with long-lived tasks spawned inside atomic blocks and it seems that truly contained spawns that can cause deadlock are fairly rare.
+  Furthermore, unlike systmes like NePaLTM \cite{Volos2009}, the potential parallelism advantage of running multiple tasks ``inside'' an atomic block is not relevant.
 \item There should be some mechanism for programmers to override the default for specific atomic blocks and/or specific task spawns.
 \end{itemize}
 
@@ -766,13 +769,14 @@ In a version of JavaScript with native atomic blocks, it would be possible to fu
 
 % XXX Doppio ??? \cite{Vilk2014}
 
-\section{An Atomic Block for C (Design)}
+\section{Native Activities}
 
-In the previous section, we looked at what we called \emph{activities} (cooperative threads, with implicit yields around calls and an atomic block) in the context of a JavaScript library.
+In the previous section, we looked at what we named \emph{activities} (cooperative threads, with implicit yields around calls and an atomic block) in the context of a JavaScript library.
 In this section and the next we look at making a dialect of C (called \charcoal{}) with this feature.
-There are two questions this lets us investigate:
-What, if any, language design issues does this feature create in a more ``native'' context?
-Can this feature be implemented efficiently in a context where basic overheads for things like function calls are very low?
+This is interesting for a couple of reasons.
+The JavaScript implementation is in some sense wildly inefficient; it involves additional data structures and considerable logic around \asyncs{} function call/return.
+In the next section we address questions of whether activities can be implemented efficiently.
+In this section we look at the language design improvements that a native implemenation allows.
 
 Like the JavaScript version, the primary additions are spawn (which we call \texttt{activate}) and \texttt{atomic} primitives.
 We also needed to add a \texttt{yield} primitive, since this does not exist in standard C.
@@ -863,40 +867,39 @@ If the programmer wanted to suppress some of these yields, they could use \atomi
 For example, it would be reasonable to wrap the \texttt{printf} call in \atomic{}, since it will complete quickly (relative to \texttt{getaddrinfo}), and there is little to be gained by switching to another task at that point.
 Wrapping the \texttt{getaddrinfo} call in atomic would be a performance bug, because that would force the DNS lookups to be executed sequentially.
 
-\section{An Atomic Block for C (Implementation)}
+\section{Hot Stacking (and Activity Implementation Miscellany)}
 
-There are a few interesting features of our implementation of activities in the context of \charcoal{}: the allocation of call frames, the implementation of the yield primitive, and compiling a version of each procedure for interruptible and atomic mode.
+We explore a few interesting implementation issues related to native activities: allocation of call frames, implementation of yield, and code duplication for interruptible and atomic mode.
 
 \subsection{Call Frame Allocation}
 
 Procedure call frame allocation strategies are important for any thread-like abstraction.
-The first few subsections below review widely used strategies.
-Then we describe a new approach that we call \emph{hot stacking}.
+We briefly review existing strategies before describing a new approach that we call \emph{hot stacking}.
 
 \subsubsection{Contiguous Allocation}
 
-A common and simple strategy is to pre-allocate a moderately large block of memory for each thread.
+A common and simple strategy is to pre-allocate a large block of memory for each thread.
 Individual frames are allocated contiguously within this area.
-This strategy leads to fast procedure call and return.
+This strategy has two strengths: it is simple and procedure call/return is fast.
 However, it has two memory inefficiencies: (1) many frameworks and applications conservatively allocate more memory than is necessary; (2) in many implementations the minimum block size is fairly large (often a memory page).
 Also, if a mistake of some sort leads to under-allocation for a thread's block, a variety of nasty failures can happen.
 
 \subsubsection{Individual Allocation}
 
-At the other extreme of the time/memory efficiency spectrum, systems can individually allocate each frame, linking them together with pointers.
+At the other extreme of the time/memory efficiency spectrum, systems can individually allocate each frame, linking them with pointers.
 This avoids the memory concerns associated with contiguous allocation.
-However, individual allocation comes at a time cost for calls and returns (and possibly a small per-call memory overhead for the pointers).
+However, this comes at the cost of slow call/return (and possibly a small per-call memory overhead for the pointers).
 
 Simple implementations of individual allocation are dramatically slower than contiguous allocation.
-More sophisticated implementations are substantially more efficient \cite{Shao2000}.
+More sophisticated implementations are substantially more efficient; \cite{Shao2000} reports less than a $2\times$ overhead.
 However, even the most efficient implementations are still measurably slower than contiguous allocation.
 
 \subsubsection{Split/Segmented Stacks}
 
 Some language implementers have experimented with a hybrid strategy called \emph{split}, \emph{segmented}, or \emph{linked} stacks.
-The idea is that space is allocated in small segments or chunks.
+The idea is that memory is allocated in small segments or chunks.
 In the common case, frames are allocated contiguously within the top segment.
-When a thread reaches the end of its segment it allocates a new one and links it to the previous one with pointers.
+When a thread reaches the end of its current segment it allocates a new one and links the segments with pointers.
 This idea has a strong appeal: as recent examples, early implementations of Rust and Go both used it.
 Unfortunately it has an unpleasant \emph{uncommon} case behavior called \emph{stack thrashing} or the \emph{hot split} problem.
 When there are frequent calls/returns right at the boundary between segments, the overhead can be quite high.
@@ -983,8 +986,8 @@ The interruptible mode implementation includes inserted yields and assumes its o
 The atomic mode implementation does not include yields, which effectively means that yields in atomic mode are zero-overhead.
 
 This implementation strategy could lead to a substantial increase in code size (more than 2$\times$).
-We believe this problem can be managed, based on the assumption that in practice most procedures are called only in either interruptible or atomic mode, not both.
-This means that an implementation could either use link-time dead code elimination, or use runtime code generation to generate the appropriate versions on-demand.
+We believe this problem can be mitigated, based on the assumption that in practice \emph{most} procedures are not called in both interruptible and atomic mode.
+If this assumption is correct, an implementation could keep code bloat low with either link-time dead code elimination, or runtime code generation to generate the appropriate versions on-demand.
 
 \subsubsection{Actual Yields}
 
@@ -1002,40 +1005,45 @@ Therefore, in the common case, the cost of a yield is an atomic read and a (high
 
 \subsubsection{Function Pointers}
 
-One challenge with a dual implementation strategy is how to handle indirect calls.
-When the address of a function is taken it is not possible, \emph{in general}, to know which mode the function will eventually be called in.
-The current implementation generates a small piece of code for every function that can be called in either interruptible or atomic mode.
+One challenge with this code duplication strategy is indirect calls.
+In general it is not possible to know which mode a function will be indirectly called in, at the point where its address is taken.
+The current implementation generates a shim for every function that can be called in either interruptible or atomic mode.
 It accepts an additional implicit parameter, which controls which actual version gets called.
 This makes indirect calls somewhat more expensive than in plain C.
 However, indirect calls are already expensive enough that there is an extensive body of research on how to convert them to direct calls (e.g. \cite{Dean1995}), so adding a modest amount of overhead to indirect calls should not have a large performance impact on most applications.
 
 \subsection{System Calls}
 
-One of the benefits commonly associated with light-weight multitasking primitives is cheap and responsive system interaction via non-blocking I/O interfaces, like epoll, kqueue and I/O Completion Ports.
+One of the benefits of light-weight multitasking primitives is efficient system interaction via non-blocking I/O interfaces, like epoll, kqueue and I/O Completion Ports.
 The current \charcoal{} implementation uses \texttt{libuv} for system interaction.
 At startup, the runtime system spawns a thread that runs a \texttt{libuv} event loop.
 The \charcoal{} implementation includes implementations of standard C functions that translate blocking calls into sending a message to the I/O thread and suspending the current activity.
 When the event completes, the system makes the relevant activity runnable again.
 
-This architecture works, but it adds overhead for fast system calls that would be better implemented without any inter-thread communication.
-We speculate that integrating the event processing with application code in the same thread could remove some performance overhead.
-The \texttt{libuv} maintainers have discussed this as a ``pull'', versus the current ``push'' architecture, which they may implement in a future version \cite{libuv2014}.
+This architecture works, but is inefficient for for fast system calls.
+Atomic blocks provide a nice workaround for such calls, because when they are made in atomic mode, it is okay to use direct blocking calls.
+
+Even for non-blocking calls, we speculate that performance could be improved by integrating system call completion checking with the yield implementation.
+This would require \texttt{libuv} to implement a ``pull'' architecture (in contrast to the current ``push'' implementation \cite{libuv2014}).
 % XXX yield checks for event loop changes
 
 \subsection{Translation}
 
 We use a modified version of Cil \cite{Necula2002} to translate \charcoal{} to plain C with calls to our runtime system, which is written in C.
 
-\section{Microbenchmarking Activities in C}
+\section{Microbenchmarking Native Activities}
 
 To investigate the performance of activities, we wrote microbenchmarks with the \charcoal{} implementation.
 All tests were run on a machine with the specs listed in Table \ref{table:specs}.
 Depending on the benchmark, we compare the \charcoal{} implementation against plain C, C compiled with gcc's split stack implementation, Go or C plus the default Linux threads implementation.
 All speed-related tests were compiled at optimization level \texttt{-O2}.
 For speed-related tests we ran the benchmark 5 times and report the fastest result.
+The big-picture story these tests tell is that activities can be just as efficient (in terms of time and memory) as lightweight multitasking primitives like coroutines and async functions.
 
-\begin{table}
-  \centering
+
+\begin{figure}
+    \centering
+    \begin{minipage}[t]{0.47\textwidth}
   \begin{tabular}{|l|l|}
     \hline
     OS & Ubuntu Linux 14.04 \\
@@ -1051,38 +1059,12 @@ For speed-related tests we ran the benchmark 5 times and report the fastest resu
     Go & 1.5.3 \\
     \hline
   \end{tabular}
-  \caption{Specs of the test system}
-  \label{table:specs}
-\end{table}
+        \caption{Specs of the test system}
+        \label{table:specs}
+    \end{minipage}\hfill
+    \begin{minipage}[t]{0.47\textwidth}
 
-\subsection{Memory Overhead}
-
-Like coroutines (e.g. in their modern C++ incarnation), activities have very low memory overhead; approximately whatever is needed to store a dozen pointers.
-It is interesting to compare this with goroutines.
-The Go implementation uses a growable stack (\textsection\ref{sec:go_stacks}) to keep memory overhead low.
-Nevertheless, the minimum size is more than a factor of 6 greater than activities in \charcoal{}.
-
-\subsection{Task Spawn and Switching Speed}
-
-Unsurprisingly, activities are dramatically faster than system threads when it comes to spawning and switching between tasks.
-The speed difference is over an order of magnitude, as measured by microbenchmarks.
-The primary difference here is that threads must make system calls to do these things, whereas with activities they can be done entirely in user mode.
-
-In these benchmarks, Go was slightly faster than \charcoal{}.
-We expect this is because the Go team has put a lot of engineering effort into optimizing these concurrency primitives.
-We see no reason that the \charcoal{} implementation could not be optimized just as well.
-
-The speed of these primitives have a big impact on the practical minimum granularity of tasks.
-In both \charcoal{} and Go that overhead is closer to that of a method call than the equivalent thread operations.
-That means that multitasking can be used in interesting ways in those languages that they cannot with threads.
-
-\subsection{Just Calling}
-
-Our next microbenchmark measures the overhead of hot stacking.
-This test is a simple recursive function that calls itself twice and performs a very small computation at the ``leaves''; the code is in Figure \ref{fig:micro_calling}.
-
-\vspace{1em}
-\begin{tabular}{|l|r|r|r|}
+      \begin{tabular}{|l|r|r|r|}
   \hline
    & user & sys & wall \\
   \hline
@@ -1092,14 +1074,48 @@ This test is a simple recursive function that calls itself twice and performs a 
   Individual Allocation & 42.4 & 0.04 & 42.6 \\
   \hline
 \end{tabular}
-\vspace{1em}
 
-These numbers are in nanoseconds per call/return.
-This difference is nearly two orders of magnitude, which is painful for \charcoal{}.
+      \caption{Results from the call/return microbenchmark.
+      These numbers are in nanoseconds per call/return.}
+        \label{fig:call_return_results}
+    \end{minipage}
+\end{figure}
+
+
+
+
+
+
+\subsection{Memory Overhead, Task Spawn and Switching Speed}
+
+Activities have low memory overhead; approximately a dozen pointers.
+It is interesting to compare this with goroutines.
+The Go implementation uses a growable stack (\textsection\ref{sec:go_stacks}) to keep overhead low.
+Nevertheless, the minimum size is more than a factor of 6 greater than activities in \charcoal{}.
+
+Unsurprisingly, activities are dramatically faster than system threads when it comes to spawning and switching between tasks.
+The speed difference is over an order of magnitude, as measured by microbenchmarks.
+The primary difference here is that threads must make system calls to do these things, whereas with activities they can be done entirely in user mode.
+
+In these benchmarks, Go was slightly faster than \charcoal{}.
+We expect this is because the Go team has put a lot of engineering effort into optimizing these core primitives.
+We see no reason that the \charcoal{} implementation could not be optimized just as well.
+
+The speed of these primitives have a big impact on the practical minimum granularity of tasks.
+In both \charcoal{} and Go that overhead is closer to that of a method call than the equivalent thread operations.
+That means that multitasking can be used in interesting ways in those languages that they cannot with threads.
+
+\subsection{Just Calling}
+
+We next neasure the overhead of hot stacking.
+This test is a simple recursive function that calls itself twice and performs a very small computation at the ``leaves''; the code is in Figure \ref{fig:micro_calling}.
+
+Figure \ref{fig:call_return_results} shows the results of this microbenchmark.
+\charcoal{} is nearly two orders of magnitude slower than plain C.
 However, there are three caveats to keep in mind.
-First, the \charcoal{} implementation is not highly optimized; the allocator used in this test was the default system \texttt{malloc}.
+(1) The \charcoal{} implementation is not highly optimized; the allocator is the default system \texttt{malloc}.
 Surely a more tuned implementation would close the gap to some extent.
-Second, this is a microbenchmark; no application spends all of its time just calling and returning, so these numbers are a fairly high upper bound on the real application performance impact of calling overhead.
+(2) This is a microbenchmark; no application spends all of its time calling and returning, so these numbers are a high upper bound on the real application performance impact of calling overhead.
 
 \begin{figure}
     \centering
@@ -1117,13 +1133,16 @@ Second, this is a microbenchmark; no application spends all of its time just cal
     \end{minipage}
 \end{figure}
 
-Most importantly, all the calls in the first version of this test were performed in interruptible mode.
+(3) Most importantly, all the calls in the first version of this test were performed in interruptible mode.
 In atomic mode, calls and returns in \charcoal{} are just as efficient as plain C.
-In well-tuned \charcoal{} code, most of the leaf and near-leaf calls should be performed in atomic mode.
+In well-tuned \charcoal{} code, most of the short-lived calls should be performed in atomic mode.
 To simulate this effect, we modified the benchmark to the version in Figure \ref{fig:micro_calling_n}.
 The parameter \texttt{N} controls how deep in the call tree the benchmark uses interruptible mode, before switching to atomic.
 
-\vspace{1em}
+
+\begin{figure}
+    \centering
+    \begin{minipage}[t]{0.47\textwidth}
 \begin{tabular}{|l|r|r|r|}
   \hline
    & user & sys & wall \\
@@ -1140,13 +1159,35 @@ The parameter \texttt{N} controls how deep in the call tree the benchmark uses i
   Hot Stacking, \texttt{N} = 8 & 1.54 & 0.00 & 1.55 \\
   \hline
 \end{tabular}
-\vspace{1em}
+
+        \caption{Results from the modified call/return microbenchmark.
+      These numbers are in nanoseconds per call/return.}
+        \label{fig:hot_stacking}
+    \end{minipage}\hfill
+    \begin{minipage}[t]{0.47\textwidth}
+
+\begin{tabular}{|l|r|}
+  \hline
+  Plain C & 430 \\
+  \hline
+  \charcoal, \texttt{YIELD\_FREQ = 4} & 1070 \\
+  \hline
+  \charcoal, \texttt{YIELD\_FREQ = 8} & 519 \\
+  \hline
+  \charcoal, \texttt{YIELD\_FREQ = 12} & 446 \\
+  \hline
+\end{tabular}
+
+        \caption{Microseconds per \texttt{strcmp} of two identical strings of 1MB length.}
+        \label{fig:strcmp_data}
+    \end{minipage}
+\end{figure}
 
 \footnotetext{This benchmark does not create stacks deep enough to exceed the default size of a single segment of gcc's split stack.
 So we modified the benchmark for the split stack case to make a linear chain of calls instead of a binary tree.}
 
-This shows that with a modest fraction of the (static) calls performed in atomic mode, the calling overhead gets down to less than a factor of 2.
-Combined with the observations above about tuning the language implementation, we believe this overhead would be barely noticeable for most applications.
+Figure\ref{fig:hot_stacking} shows that with a modest fraction of the (static) calls performed in atomic mode, the calling overhead gets down to less than a factor of 2.
+Combined with the observations above about implementation tuning, this overhead would be barely noticeable for most applications.
 Also it is worth noting that this is the price to be paid for the extremely low memory overhead of activities.
 
 Hot stacking with \texttt{N} = 8 outperforms Go on this benchmark by a modest margin.
@@ -1157,9 +1198,8 @@ However, as noted previously split stacks have bad performance in the pathologic
 
 \subsection{Yielding}
 
-As described in \textsection\ref{sec:yield_imp}, yield frequency can be managed fairly easily and the yield primitive is designed to have a fast common path.
-Nevertheless, it is important to minimize yielding in loops.
-
+As described in \textsection\ref{sec:yield_imp}, yield frequency in well-tuned activity code should be somewhere in the rough ballpark of once per microsecond.
+This means that yield overhead is somewhat important.
 To quantify yielding overhead, we benchmarked a simple but problematic function from the C standard library: \texttt{strcmp}.
 \texttt{strcmp} is tricky for a few reasons:
 First, the input strings can be arbitrarily long, so never yielding could cause unresponsiveness.
@@ -1199,25 +1239,9 @@ The best-performing implementation we have found so far appears in Figure \ref{f
 %%     \label{fig:strcmp}
 %% \end{figure}
 
-In the code \texttt{YIELD\_FREQ} controls how frequently the loop yields.
+In the code, \texttt{YIELD\_FREQ} controls how frequently the loop yields.
 The effect is that once every $2^{\mathtt{YIELD\_FREQ}}$ iterations there is a yield.
-
-\vspace{1em}
-\begin{tabular}{|l|r|}
-  \hline
-  Plain C & 430 \\
-  \hline
-  \charcoal, \texttt{YIELD\_FREQ = 4} & 1070 \\
-  \hline
-  \charcoal, \texttt{YIELD\_FREQ = 8} & 519 \\
-  \hline
-  \charcoal, \texttt{YIELD\_FREQ = 12} & 446 \\
-  \hline
-\end{tabular}
-\vspace{1em}
-
-These numbers are in microseconds per \texttt{strcmp} of two identical strings of 1MB length.
-These data show that yielding is not free, but with a little careful tuning the yield overhead can be brought quite low.
+Figure \ref{fig:strcmp_data} shows that yielding is not zero-overhead, but with a little careful tuning the yield overhead can be brought quite low.
 
 When the inputs to \texttt{strcmp} are known to be short, the caller can wrap the call in atomic.
 The atomic version should perform identically to the plain C implementation.
@@ -1280,7 +1304,7 @@ In this paper we presented evidence that popular web applications exhibit multit
 We explored whether a language-level atomic block could help improve the safety of such code.
 This exploration involved resolving an interesting conflict between anonymous multitasking and nesting task spawns inside atomic blocks.
 We showed that a flavor of cooperative threads with an atomic block can be implemented as a JavaScript library that is relatively easy to integrate with existing code.
-We also showed that cooperative threads with frequent implicit yields can be implemented with approximately the same (low) time and memory overheads associated with coroutines.
+We also showed that cooperative threads with frequent implicit yields can be implemented with approximately the same (low) time and memory overheads associated with coroutines and sync functions.
 
 
 %% Acknowledgments
