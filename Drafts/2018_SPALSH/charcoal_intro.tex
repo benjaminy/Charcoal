@@ -98,8 +98,14 @@
 \begin{abstract}
 
 This paper is about atomicity in cooperative concurrency frameworks.
-Coopertive concurrency frameworks like event loops, coroutines, async functions and cooperative threads are widely used for programming interactive systems like user interfaces and network clients.
+Cooperative concurrency frameworks like event loops, coroutines, async functions and cooperative threads are widely used for programming interactive systems like user interfaces and network clients.
 Cooperative systems are much less prone to some kinds of concurrency bugs than preemptive threads, but not completely impervious.
+
+Previous research has identified atomicity violations as one of the important kinds of concurrency defects that is possible in cooperative concurrency systems.
+In this work we look at these atomicity violations from a couple different angles.
+First we measure several popular web applications and find that conditions that are risky for atomicity violations are common.
+Second we consider adding an atomic block to cooperatively concurrent languages.
+We find a tricky, but resolvable semantic issue and measure implementation efficiencies enabled by atomic blocks.
 
 %% This paper is about combining cooperative concurrency with atomic blocks.
 %% In particular, we address two primary questions:
@@ -404,9 +410,10 @@ If most continuations had a low degree of concurrency, there would be little opp
     \begin{minipage}[t]{0.47\textwidth}
         \centering
         \includegraphics[width=1.0\textwidth]{Graphs/gaps_bw}
-        \caption{Most gaps are of reasonable length, but a nontrivial percentage are quite short (under one millisecond, or even 100 microseconds).
-  This graph is truncated at half a second, because we are not interested in long gaps.
-  There is only a small number of longer gaps.}
+        \caption{
+          Most gaps are of reasonable length, but a nontrivial percentage are quite short.
+          This graph is truncated at half a second because we are not interested in long gaps.
+          This graph is also truncated at 50,000 because we are less interested in the gaps before recurring events.}
         \label{fig:graph_gaps}
     \end{minipage}
 \end{figure}
@@ -434,7 +441,8 @@ We see that while many chains are of a fairly reasonable duration (say, dozens t
     \begin{minipage}[t]{0.47\textwidth}
         \centering
         \includegraphics[width=1.0\textwidth]{Graphs/chains_bw}
-        \caption{XXX chains.}
+        \caption{Most chains of continuations are reasonably long.
+        However, some are quite short; a nontrivial minority are under 10ms.}
         \label{fig:graph_chains}
     \end{minipage}\hfill
     \begin{minipage}[t]{0.47\textwidth}
@@ -720,7 +728,7 @@ While further study of more application families is called for, we suggest the f
 \begin{itemize}
 \item The system should have explicit task identities.
 \item \emph{Delay-spawn} is a good default strategy, because it works fine with long-lived tasks spawned inside atomic blocks and it seems that truly contained spawns that can cause deadlock are fairly rare.
-  Furthermore, unlike systmes like NePaLTM \cite{Volos2009}, the potential parallelism advantage of running multiple tasks ``inside'' an atomic block is not relevant.
+  Furthermore, unlike systems like NePaLTM \cite{Volos2009}, the potential parallelism advantage of running multiple tasks ``inside'' an atomic block is not relevant.
 \item There should be some mechanism for programmers to override the default for specific atomic blocks and/or specific task spawns.
 \end{itemize}
 
@@ -1077,7 +1085,7 @@ That means that multitasking can be used in interesting ways in those languages 
 
 \subsection{Just Calling}
 
-We next neasure the overhead of hot stacking.
+We next measure the overhead of hot stacking.
 This test is a simple recursive function that calls itself twice and performs a very small computation at the ``leaves''; the code is in Figure \ref{fig:micro_calling}.
 
 Figure \ref{fig:call_return_results} shows the results of this microbenchmark.

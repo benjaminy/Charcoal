@@ -27,7 +27,7 @@ def o( f, g ):
 class Object:
     pass
 
-subtree_limits = [ 100, 1000, 5000, 10000, 50000, 100000 ]
+subtree_limits = [ 100, 500, 1000, 2000, 4000, 10000, 20000, 40000, 100000 ]
 stupid0 = 0
 stupid1 = 0
 stupid2 = 0
@@ -124,7 +124,7 @@ def analyzeDuration( cont, stats ):
 def analyzeContext( cont, stats ):
     if cont.first_call is None or cont.parent_call is None:
         return
-    print( "CTX %s %s" % ( cont.parent_call, cont.first_call ) )
+    # print( "CTX %s %s" % ( cont.parent_call, cont.first_call ) )
 
 def analyzeGap( cont, stats ):
     if ( cont.begin is None ) or ( cont.parent is None ) or ( cont.parent.end is None ):
