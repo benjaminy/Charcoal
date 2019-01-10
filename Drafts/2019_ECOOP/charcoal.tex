@@ -84,26 +84,159 @@ problems with coroutines:
 
 \section{Introduction}
 
-Intra-process multitasking is a feature which has been implemented using many programming language and system software primitives over the years (e.g. event loops/callbacks, coroutines, multithreading).
-Uses of multitasking include reacting to user input (keyboard, mouse, touch, etc.), communicating with other machines over a network, managing slow physical-world devices, and interacting with external processes.
+A generation ago (give or take) there was a wide-ranging debate about the relative merits of multithreading and event loops for intra-process multitasking (a.k.a. asynchronous programming).
+It is interesting to note that a couple of the best-known contributions to the discussion (\cite{Ousterhout1996} and \cite{Behren2003a}) are both framed negatively.
+That is, they both focus on what is wrong with the \emph{other} solution.
+
+And there is plenty to criticize about both multithreading and event loops.
+To mention just a couple of the most important software engineering problems, multithreading makes avoiding concurrency bugs far too hard \cite{Lu2008} and event loops force programmers to write far too much boilerplate code for non-trivial multitasking patterns \cite{Adya2002} (colloquially called \emph{callback hell}).
+
+Nevertheless, multitasking is an unavoidable facet of programming.
+In many mainstream application domains, where the parallelism offered by multithreading was not important, event loops became the most common solution.
 In recent years the richness of multitasking in many application domains has increased along with a few trends: increasing use of network services (e.g. Web APIs), increasingly rich physical world interaction (especially on mobile devices), and the increasing use of multi-process software architectures (e.g. microservices).
 This has put renewed pressure on programming languages to provide good ways to write robust, maintainable and efficient multitasking code.
-We briefly note that pressure to make parallel programs (i.e. those that run on multiple processors) has also increased, but that is \emph{not} the subject of this paper or the project it describes.
 
-In many programming communities preemptive multithreading is considered too error prone to be used for basic multitasking needs.
-These communities use some flavor of cooperative concurrency.
-In recent years there has been a substantial increase in the popularity of a flavor of coroutines, often called \emph{async functions{\slash}methods{\slash}procedures}.
-This family of abstractions allows programmers to write code that looks and behaves mostly like conventional procedural code.
-However, in the context cooperative concurrency frameworks, ``normal'' procedures are \emph{atomic}, whereas async procedures are \emph{interruptible}.
-This distinction is essential when a procedure call might take a long time to complete, or even pause indefinitely.
-Using an atomic procedure call in such cases can easily lead to starvation{\slash}unresponsiveness, whereas using an interruptible procedure call makes it possible for concurrent tasks to do something.
+Many popular languages have recently introduced or expanded support for coroutines, as an alternative to event loops.
+Coroutines are certainly an improvement in some important ways.
+However, coroutines still have problems.
+In particular, in this paper we focus on the fact that there are many common library procedures that should be atomic in some calling contexts and interruptible (i.e. asynchronous) in others.
+Coroutines force library authors to make this choice between atomic and interruptible and do not provide an easy way to override the choice in either direction.
 
-While async procedures are certainly a major improvement over event loop/callback code from a usability perspective, they still suffer from an important software engineering challenge.
-For some procedures, essentially all calls are either sure to be fast, in which case it is better for those calls to be atomic; for some procedures 
+We believe that cooperative multithreading is a better option for many applications.
+Of course, cooperative multithreading has been widely understood for decades, and was surely an alternative that at least some language designers considered when they chose to implement coroutines.
+Traditional implementations of cooperative multithreading have had some important disadvantages relative to coroutines.
+Two that we aim to mitigate in this paper are:
+\begin{itemize}
+\item Call frame allocation efficiency
+\item Visibility and control of atomicity
+\end{itemize}
 
-The cooperative family of concurrency abstractions is defined in contrast to preemptive abstractions and abstractions that emphasize isolation and/or immutability.
-The primary strength of cooperative abstractions relative to their preemptive cousins (e.g. threads) is less susceptibility to concurrency defects.
-The primary strength of cooperative abstractions relative to their isolated/immutable cousins (e.g. processes or functional reactive programming) is better alignment with mainstream programming practices.
+We introduce a new call frame allocation strategy called \emph{hot stacking} that is both space and time efficient, at the expense of some added code management complexity.
+We adapt work on atomic blocks from the parallel{\slash}preemptive multiothreading domain to give programmers control over atomicity.
+With these improvements, we believe that cooperative multithreading is a strict improvement over coroutines in many contexts.
+
+\subsection{Multitasking, Not Parallelism}
+
+Multitasking is, of course, a close cousin of parallelism.
+In this paper we focus entirely on the former, not the latter.
+Our work on call frame allocation shares at least some similarities with efforts to make preemptive multithreading more lightweight (e.g. the Java Loom project).
+We believe that it is better design to offer different language features for multitasking and parallelism; C\# is a good example of this design philosophy, with async/await for multitasking and easy integration with worker thread pools for parallelism.
+
+\section{Background: Coroutines and Cooperative Multithreading}
+
+Coroutines have been used in various forms for a long time.
+One of the earliest known published references is from a 1963 compiler paper \cite{Conway1963}.
+Modula-2 had coroutines as a standard language feature in the 1980s.
+Felleisen and Hieb \cite{HXXX} gave a good theoretical treatment of continuations, which are a natural way to formalize coroutines.
+
+Coroutines have played a relatively small role in mainstream programming practice until the last ten years or so.
+Popular ``scripting'' langauges were some of the first to introduce coroutines to a wide audience.
+For example, some flavor of coroutines were added to Lua in version 5.0, Python in version 2.5 and Ruby in version 1.9.
+de Moura and Ierusalimschy \cite{MouraXXX} gave a nice account of the many subtle variations on coroutines and advocated for their more general use.
+C\#{\slash}.Net got on the bandwagon in 2012.
+JavaScript now has native syntax for both major flavors of coroutines (generator and async function).
+Even the staid C++ community is considering adding support for coroutines to the langauge standard (though the relevant proposals have been delayed several times).
+
+\subsection{The Coroutine Menagerie}
+
+Coroutine-like abstractions come in a number of different flavors, which makes them easy to miscommunicate about.
+The essential feature of coroutines is that they can invoke a \emph{yield{\slash}await} primitive to suspend their own execution and resume the execution of some other suspended coroutine.
+In language designs with coroutines, typically routines{\slash}procedures{\slash}functions{\slash}methods are defined to be either regular routines or coroutines.
+An extremely important distinction between flavors of coroutines is whether it is legal to invoke yield from a regular subroutine called by a coroutine.
+This distinction is sometimes referred to as ``stackful'' versus ``stackless'' coroutines.
+Some sources use ``coroutine'' to refer to the stackful variant and ``semi-coroutine'' for the stackless one.
+Most modern implementations are stackless, so we will use ``coroutine'' to refer to this variant.
+Stackful coroutines are essentially equivalent to cooperative multithreading, which is discussed below.
+
+``Calling'' a coroutine is quite different from a regular routine call.
+Calling a coroutine spawns a new dynamic instance of that coroutine and returns a handle for that instance\footnotemark{}.
+The two major patterns for coroutine use are defined by what can be done with this handle.
+Generator-style coroutines allow sequences of values to be passed in to the coroutine and back out.
+These sequences of values manifest as inputs to and outputs from yield.
+Async-style coroutines only allow the caller to wait for the final return value from the coroutine instance.
+Unlike a regular subroutine call, during the execution of the coroutine, control may transfer to some other concurrent coroutine.
+
+\footnotetext{In some older designs, there could only be one dynamic instance of a particular coroutine, and subsequent calls would advance the state to the next yield.
+This inflexible design is not used by any modern implementations we are aware of.}
+
+Some languages have distinct primitives for these two styles.
+For example, JavaScript has both \texttt{function*} (generators) and \texttt{async function}.
+The difference between the two is superficial.
+A langauge with generator-style coroutines can support async-style with a simple adapter fucntion that loops internally until the generator call is finished.
+A language with async-style coroutines can support generator-style with a simple adapter function that creates a one-deep bidirectional asynchronous queue that can be used to pass sequences of values in and out.
+
+In practice async-style is the more commonly used pattern.
+[evidence]
+Because it is the dominant pattern, the remainder of this paper is going to focus on interruptible subroutines.
+
+\subsection{Immediate Waiting is More Common}
+
+When an interruptible subroutine is called, the caller can either immediately wait for the result, or it can store the handle and do some other work before waiting on the handle.
+The latter case creates concurrency between the callee and the caller, and possibly other interruptible subroutiens that either goes on to call.
+In practice it is most common for the caller to immediately wait for the result of the callee.
+[evidence]
+This means that basic interface going on is that of a regular subroutine call, with the essential difference that the call might be interrupted before returning.
+
+This observation raises the central problem for coroutines.
+If most coroutine uses are effectively treating them as subroutines, why not just write it as a regular subroutine?
+The answer, of course, is that using a regular subroutine would prevent any concurrent tasks from making progress, potentially making the application unresponsive.
+For many routines the choice between defining it as an atomic subroutine and an interruptible coroutine seems obvious.
+If a routine does a fixed amount of computational work and does not interact with the outside system, it should almost certainly be an atomic subroutine.
+If a routine might take a long time to compute, or interacts with the outside system in a nontrivial way, it should be an interruptible coroutine.
+
+Unfortinately, many routines fall in the awkward middle ground where in some calling contexts they should be atomic and in others they should be interruptible.
+One easy case of this middle ground is any routine that takes an arbitarry amount of data as a parameter and does work proportional to the size of the data.
+When the amount of data is small, the routine completes quickly and its best for the whole call to be atomic.
+When the amount of data is very large, the routine might take a long time and should be interruptible to avoid unresponsiveness.
+
+
+\subsection{Cooperative Multithreading}
+
+Like coroutines, cooperative multithreading is an old idea that has been interpreted in a variety of subtly different ways.
+Because we are interested in comparing coroutines to cooperative multithreading, we are going to informally define the latter by translation to the former.
+Given a target language with async-style coroutines, cooperative multithreading can be defined in a source language by translating \emph{all} routines to coroutines in the target.
+All normal routine calls in the source language have an implicit await inserted in the translation.
+Spawning new cooperative threads is translated to a regular call without an inserted await.
+Yield can be invoked anywhere, as is usual in cooperative multithreading, because all code is effectively in an async routine.
+
+This translation sketch highlights the two problems with cooperative multithreading that we aim to mitigate in this paper.
+First, all calls, even to very short-lived routines, are ``async calls''.
+This has important efficiency implications that we discuss in more detail later.
+Second, there is no indication at call sites whether the called routine will yield or not.
+This is in contrast to coroutines, where calls to potentially interruptible routines are clearly marked with await or yield.
+This has an impact on programmer reasoning about atomicity properties and related potential concurrency bugs.
+
+\section{Problems with Coroutines}
+
+
+
+
+
+\subsection{Coroutine Problem 1: Routine Author Chooses Atomic vs Interruptible}
+
+\subsection{Coroutine Problem 2:}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 Though cooperative abstractions have been used successfully in a large number of applications, they \emph{do} still have some exposure to concurrency bugs.
 In this paper we analyze an under-appreciated tension in cooperative concurrency frameworks between procedure-like abstractions (functions, coroutines, async methods, etc.) and atomicity defects; we call this the \emph{abstraction problem in cooperative concurrency}.
@@ -147,9 +280,6 @@ Both implementations and all the code used in the experiments in this paper are 
 
 
 
-%% It is hard to write complex multitasking software that is reliable, composable, and efficient.
-%% It is even harder to maintain such software.
-%% The programming world has not yet come to consensus on the best abstraction for multitasking, because there are strong competing constraints and no obvious way to satisfy them all simultaneously.
 
 %% This paper focuses on the interraction between cooperative concurrency mechanisms and procedural abstractions (i.e. functions, methods, subroutines, etc.).
 %% Procedural abstraction is foundational in software engineering.
@@ -181,29 +311,6 @@ Both implementations and all the code used in the experiments in this paper are 
 %% Embedded systems are rapidly becoming more complex (see new buzz phrases like Internet of things and cyber-physical systems).
 %% These more complex systems make using inflexible multitasking abstractions more painful.
 
-%% Modern mainstream software is substantially more concurrent than its forebears, in the sense that frequent network communications, rich physical world interactivity, and factoring applications into communicating processes (microservices) have become common.
-%% Note that in this paper we are mostly not concerned with concurrency in the sense of running software on multiple processors simultaneously (i.e. parallelism).
-%% We use \emph{multitasking} to refer to the subset of concurrency that is not parallelism.
-
-%% \subsection{Activities}
-
-%% This paper introduces a new multitasking abstraction called \emph{activities} that has software engineering benefits compared to existing alternatives.
-%% From a programmer's perspective, activities are most similar to user-level preemptive threads.
-%% The primary difference is that user-level threads can be preempted at any time, but activities have a coarser granularity of scheduling that is defined in terms of the source language, not the implementation.
-%% This paper also introduces a new call frame allocation strategy called hot stacking that has close to zero per-thread memory overhead, yet still performs well for the most frequent calls/returns.
-
-%% The brief version of how activities are implemented is that they are cooperative threads, but the compiler/interpreter automatically inserts yields, to make them appear closer to preemptive.
-%% There is a dynamically scoped \emph{atomic} primitive that allows programmers to enforce atomicity for arbitrary blocks by overriding/suppressing yields.
-%% From a programmer's perspective the atomic primitive is similar to \emph{atomic} in transactional memory abstractions.
-
-%% Differences between multitasking abstractions can be quite subtle, even if the software engineering implications of those differences are profound.
-%% In the next section we briefly describe several established multitasking abstractions in preparation for a detailed discussion later of what distinguishes activities from its cousins.
-
-%% To validate the ideas presented in this paper, we implemented activities in a dialect of C called \charcoal{}.
-%% In particular, we focus on two efficiency issues: memory scalability and yield performance.
-%% We describe the important parts of our implementation and present results from a collection of microbenchmarks to show that activities pay very little performance overhead for their software engineering benefits.
-
-% We also tweaked two real-world multithreaded C programs to use activities instead of threads to explore the software engineering implications.
 
 \subsection{Contributions}
 
@@ -239,73 +346,6 @@ This paper has four primary contributions:
 
 
 
-
-\section{The Coroutine Menagerie}
-
-Coroutine-like abstractions come in a number of different flavors, which makes them easy to miscommunicate about.
-de Moura and Ierusalimschy\cite{MouraXXX} give a nice survey of some of the interpretations.
-Felleisen and Hieb \cite{HXXX} give a formal semantics in terms of continuations.
-Some languages (e.g. C#) further muddy the waters by hybridizing coroutines and multithreading.
-The essential feature of coroutine-like abstractions (herafter, just \emph{coroutines}) is that they can use a \emph{yield} primitive to suspend their own execution and resume the execution of some other suspended coroutine.
-
-There are two families of use patterns for coroutines: generators and interruptible subroutines.
-``Calling'' a coroutine is quite different from a regular subroutine call.
-Calling a coroutine spawns a concurrent task and returns a handle for that task.
-The generator pattern involves passing a sequence of input values to the coroutine via its handle, and receiving a sequence of output values back.
-The interruptible subroutine pattern involves passing some parameters to a coroutine and then waiting for it to finish.
-Unlike a regular subroutine call, during the execution of the coroutine, control may transfer to some other concurrent coroutine (thus ``interruptible'').
-
-Some languages have distinct primitives for these two patterns.
-For example, JavaScript has both \texttt{function*} (generators) and \texttt{async function} (interruptible subroutines).
-The difference between the two is superficial.
-The standard for async functions gives a definition by translation to generators\cite{XXX}.
-Defining generators in terms of async functions is also straightforward: the caller passes an extra parameter that is used as the handle to pass values back and forth, generator-style.
-
-It seems that in practice interruptible subroutine is a more commonly used pattern than generator.
-[evidence]
-Because it is the dominant pattern, the remainder of this paper is going to focus on interruptible subroutines.
-
-\subsection{Immediate Waiting is More Common}
-
-When an interruptible subroutine is called, the caller can either immediately wait for the result, or it can store the handle and do some other work before waiting on the handle.
-The latter case creates concurrency between the callee and the caller, and possibly other interruptible subroutiens that either goes on to call.
-In practice it is most common for the caller to immediately wait for the result of the callee.
-[evidence]
-This means that basic interface going on is that of a regular subroutine call, with the essential difference that the call might be interrupted before returning.
-
-This observation raises the central problem for coroutines.
-If most coroutine uses are effectively treating them as subroutines, why not just write it as a regular subroutine?
-The answer, of course, is that using a regular subroutine would prevent any concurrent tasks from making progress, potentially making the application unresponsive.
-For many routines the choice between defining it as an atomic subroutine and an interruptible coroutine seems obvious.
-If a routine does a fixed amount of computational work and does not interact with the outside system, it should almost certainly be an atomic subroutine.
-If a routine might take a long time to compute, or interacts with the outside system in a nontrivial way, it should be an interruptible coroutine.
-
-Unfortinately, many routines fall in the awkward middle ground where in some calling contexts they should be atomic and in others they should be interruptible.
-One easy case of this middle ground is any routine that takes an arbitarry amount of data as a parameter and does work proportional to the size of the data.
-When the amount of data is small, the routine completes quickly and its best for the whole call to be atomic.
-When the amount of data is very large, the routine might take a long time and should be interruptible to avoid unresponsiveness.
-
-
-
-
-
-\section{Interruptable Procedure Call is the Most Common Pattern}
-
-We begin not with the most serious problem with coroutines, but one that sets up later discussion well.
-Coroutines can be used in a few different patterns.
-Some of the common ones include interruptable procedure calls, producer-consumer pipeline, concurrent tasks.
-In practice it seems that interruptible procedure calls are by far the most common use.
-In XXX code base the yield/await keyword is
-
-\section{}
-
-
-
-
-
-\section{Coroutine Problem 1: Routine Author Chooses Atomic vs Interruptible}
-
-\section{Coroutine Problem 2:}
 
 
 
@@ -405,17 +445,6 @@ We speculate that this fact has resulted in many subtle atomicity bugs in callba
 
 \subsection{Cooperative Threads}
 
-%% \textbf{Cooperative Threads}.
-%% Cooperative threads can be seen as a relaxation of coroutines.
-%% Task switching can still only occur at explicit yield invocations.
-%% However, there is no coroutine/procedure distinction and yield can be invoked in arbitrarily deeply nested procedure calls.
-
-%% Cooperative threads are not as widely used as events, threads and coroutines.
-%% We are not aware of any thorough analyses of why this is the case, but we suspect the central issue is with the problem of determining which procedure calls are atomic.
-
-%% A quick note on jargon: \emph{(stackful) coroutine} is sometimes used for what we call \emph{cooperative thread}, and \emph{stackless coroutine} where we use \emph{coroutine}.
-%% For example, the Boost community uses these terms.
-%% % Naturally, we prefer the terms as defined in this paper.
 
 Cooperative threading frameworks provide a spawn primitive that creates a new task.
 Only one cooperative thread can be running at a time and the active thread cannot be involuntarily interrupted by the system.
@@ -437,9 +466,6 @@ We speculate that this problem of callers not being sure which procedures are at
 
 The increasingly sophisticated multitasking in mainstream software and the well-known problems with events and threads have forced language designers to explore alternatives in recent years.
 The most widely used alternative is \emph{coroutines} or \emph{async procedures}\footnotemark{}.
-Examples include async/await, which was added to C\#/.Net in 2012; function generators (\texttt{function*}), which were added to JavaScript with ECMAScript 6 (standard published in 2015); even the C++ community is considering adding support for coroutines (N4286, proposed for C++17).
-Coroutine implementations are not \emph{new} in a strict sense; for example, Modula-2 had coroutines in the 1980s.
-However, relatively few of the most widely used languages natively supported coroutines until recently.
 
 \footnotetext{There are many different terms used and subtle semantic differences in the coroutine/async procedure space.
 We will mostly ignore these subtle differences and use \emph{coroutine} generically.}
@@ -458,7 +484,6 @@ Just like with events, once a library abstraction is defined as a coroutine or a
 
 Preemptive threads are unacceptably concurrency-bug-prone for many applications.
 One good entry into the vast literature on diagnosing and fixing multithreading defects is \cite{Lu2008}.
-These challenges have been understood for a long time; two decades ago Ousterhout wrote an analysis and critique of the problems with threads \cite{Ousterhout1996}.
 
 One promising technology for making threads less bug-prone is atomic blocks.
 There is some evidence (for example, \cite{Harris2005, Grossman2007, Pankratius2014}) that atomic blocks make multithreading substantially less prone to concurrency defects.
@@ -713,6 +738,7 @@ Without such support, modern event-based ecosystems have been forced to move tow
 This makes the logical flow of the program harder to reason about, both for programmers and analysis tools.
 It can also make management of resources whose lifetime spans multiple callbacks quite tricky.
 This leads to a style of programming referred to as \emph{stack ripping} \cite{Adya2002}, or more colloquially \emph{callback hell}.
+
 These and more subtle problems are well analyzed and criticized by von Behren et al. in \cite{Behren2003a}.
 
 In some ecosystems (like Node.js) promises have been used to make this style of programming more doable.
