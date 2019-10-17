@@ -11,7 +11,8 @@ In this essay I am going to expand Dan's analogy to broader memory/concurrency p
 Such expansion is risky in the sense that this is just an analogy after all, and it's possible to stretch it beyond its breaking point; I hope I haven't done that.
 I do have an agenda, which is roughly:
 
-- I think multithreading (i.e. parallel programming with shared memory by default) is too hard to be adopted widely in the foreseeable future (progress on TM notwithstanding).
+- I think multithreading (i.e. parallel programming with shared memory by default) is too hard to be really mainstream in the foreseeable future (progress on TM notwithstanding).
+(By "mainstream" I mean something like commonly used as a matter of course by Jane and Joe programmers working on some business app.)
 - In an effort to malign multithreading I argue that when you look at it through the concurrency-memory analogy what you find are object-relational mapping (ORMs) and memory-mapped files, technologies that have their uses but also significant limitations.
 - This view of multithreading comes from a broader attempt to cleanly separate parallelism from multitasking/asynchrony, which I claim is analogous to the separation between in-memory data structures and external file/database storage.
 
