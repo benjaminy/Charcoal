@@ -1,17 +1,19 @@
-def add1( x ):
+def addA( x ):
     return x + 4
 
-def add2( y ):
+def addB( y ):
     z = y + 2
     return z + 2
 
-def add3( w ):
+def addC( w ):
     u = w + 2
     return w + 2
 
 def areFunctionsEqual( functionA, functionB ):
     ???
 
-areFunctionsEqual( add1, add2 )
+areFunctionsEqual( addA, addB )
+# should be true
 
-areFunctionsEqual( add1, add3 )
+areFunctionsEqual( addA, addC )
+# should be false
