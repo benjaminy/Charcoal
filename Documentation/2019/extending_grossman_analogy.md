@@ -1,17 +1,24 @@
 Back in 2007, Dan Grossman published a cool essay called "The Transactional Memory / Garbage Collection Analogy".
-He noted uncanny similarities between garbage collection (GC) and transactional memory (TM), and (to a limited extent) memory management and concurrency more generally, which at first blush seem like just "two different problems in software development".
+He noted several striking similarities between garbage collection (GC) and transactional memory (TM).
+The essay is mostly focused on TM and GC in particular, but there are some comments on a broader analogy between parallelism and memory management, which at first blush seem like just "two different problems in software development".
 (If you prefer audio, Dan discussed these ideas on episode 68 of the Software Engineering Radio podcast.)
-Especially intruiging is that time and "space" (i.e. memory or parallel processors) play dual roles in many of the particular points of the analogy.
+Especially intriguing is that time and "space" (i.e. memory or parallel processors) play dual roles in many of the particular points of the analogy.
 
 Though it wasn't exactly a piece of advocacy, Dan was clearly interested in TM as a technology and drew from this analogy some hope that TM can help make parallel programming easier in the way the GC made programming in general easier.
+(He carefully does not make the claim that TM makes parallel programming as easy as plain old sequential programming with GC.)
 
 In this essay I am going to expand Dan's analogy to broader memory/concurrency points of similarity.
 Such expansion is risky in the sense that this is just an analogy after all, and it's possible to stretch it beyond its breaking point; I hope I haven't done that.
-My primary agenda is to emphasize that concurrency has two very different faces (parallelism and multitasking) and to argue that programming languages are better off having completely separate features to support them.
+I do have an agenda, which is roughly:
+
+- I think multithreading (i.e. parallel programming with shared memory by default) is too hard to be really mainstream in the foreseeable future (progress on TM notwithstanding).
+(By "mainstream" I mean something like commonly used as a matter of course by Jane and Joe programmers working on some business app.)
+- In an effort to malign multithreading I argue that when you look at it through the concurrency-memory analogy what you find are object-relational mapping (ORMs) and memory-mapped files, technologies that have their uses but also significant limitations.
+- This view of multithreading comes from a broader attempt to cleanly separate parallelism from multitasking/asynchrony, which I claim is analogous to the separation between in-memory data structures and external file/database storage.
 
 ## Warm-up: A Reason Bet Against Transactional Memory Achieving GC-Like Ubiquity
 
-The memory/concurrency analogy does not say that things on either side of the analogy are identical (of course).
+The concurrency/memory analogy does not imply that things on either side of the analogy are identical (of course).
 In particular, there are many ways in which time and space play dual roles, and time and space are pretty different beasts.
 For example, consider the following (analogous) trivial strategies for memory management and parallelism:
 
@@ -26,7 +33,7 @@ For example, consider the following (analogous) trivial strategies for memory ma
 > However, one could reinterpret this strategy as the programmer having written a sequential program to begin with and never worried about parallel execution.
 
 I think that we see an important issue with the analogy here.
-All programs that run for a nontrivial amount of time and have some nontrivial memory churn (an awful lot of programs) need some kind of memory reuse strategy.
+All programs that run for a nontrivial amount of time and have some memory churn (an awful lot of programs) need some kind of memory reuse strategy.
 On the other hand, the one and only point of parallelism is to speed up programs that have a lot of computational work to do.
 An awful lot of programs in the world are not limited by the amount of computational work they have to do, so just shouldn't bother with parallelism at all.
 
@@ -70,7 +77,7 @@ Attempting to serialize a cyclic data structure in a piecemeal way, interleaved 
 I claim that the concurrency idea analogous to serialization of data structures is the serialization of chunks of concurrent tasks.
 (OMG, apparently unrelated uses of the word "serialization" in different contexts are actually the same thing through the concurrency/memory analogy mirror 🤯.)
 
-Event loops/callbacks and coroutines (a.k.a. async functions) are already very widely used technologies for multitasking.
+Event loops/callbacks and coroutines (a.k.a. async functions) are already very widely used technologies for multitasking...
 
 
 ## The Punchline: Multithreading is a Terrible Hybrid
@@ -81,7 +88,7 @@ One way to gain some intuition about this is to look through the analogy mirror.
 I believe that what we find there for multithreading is memory/storage technologies that try to blur the line between in-memory data structures and external storage; things like object-relational mappers (ORMs) and memory-mapped files (interesting coincidence of the word "map").
 While these technologies have some legitimate uses, I think they're vulnerable to internal/external confusions the same way multithreading is.
 For example, using an ORM it would be easy to accidentally store a data structure into a database that contained pointers to local memory that would be totally meaningless in any other memory space.
-In most applications most of the time it's better to completely avoid memory/storage mapping and multithreading.
+In most applications most of the time it's better to completely avoid _magical_ memory/storage mapping and multithreading.
 
 ## Bonus Feature: Better Parallelism through Isolation
 
@@ -93,7 +100,7 @@ It's really a technology for fairly late-stage performance optimization.
 With that caveat out of the way ...
 
 Before I get to the meat of the analogy, a quick endorsement for Cilk-style worker pool/task dispatcher style parallelism.
-This pattern has already become quite popular (Java Fork/Join, Microsoft TPL, Apple GCD, etc).
+Versions of this pattern have already become quite popular: Java Fork/Join, Microsoft TPL, Apple GCD, etc.
 Application code should not be creating workers (i.e. threads/processes).
 Rather, each application should have a single global task dispatcher that is the intermediary between tasks submitted by application code and the underlying workers.
 (This is maybe analogous to malloc/free or new/delete being a single global dispatcher for memory; application code should think in terms of data structures, not raw byte arrays.)
@@ -107,3 +114,4 @@ C++ is (naturally) more laid-back about this, but <code>unique_ptr</code> is now
 The concurrency analogy to ownership/unique object references is isolated workers.
 By default workers should be isolated processes, not shared-memory threads.
 Memory sharing need not be completely outlawed, but application code should be forced to explicitly ask for it, and only use it for performance-critical data structures.
+Most sharing between workers should be accomplished through external databases that are designed to work with multiple processes and have fancy caching logic built in.
