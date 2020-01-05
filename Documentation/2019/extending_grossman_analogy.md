@@ -199,7 +199,7 @@ As Dan points out in his essay, choosing how "big" atomic sections should be is 
 If they're too big, responsiveness can be a problem.
 If they're too small, atomicity violations become more likely.
 
-One bit of evidence that this atomicity is "duplicate" functions in the node.js and .NET standard libraries.
+One bit of evidence that this atomicity issue is interesting is "duplicate" functions in the node.js and .NET standard libraries.
 These are two of the most widely used programming frameworks in the world, and arguably the two most important that make significant use of async functions.
 Interestingly one can find quite a few function pairs that have the same functionalty, but one is async and one is a regular atomic function.
 (A couple random examples: `readFile` / `readFileSync`, `AcceptTcpClient` / `AcceptTcpClientAsync`.)
@@ -211,6 +211,15 @@ I suspect that the atomic versions are actually useful in some (perhaps niche) s
 
 It might be better to have an atomic block for async functions to let the programmer enforce atomicity wherever they see fit.
 My own wild-n-crazy crack at doing this in JavaScript is [here](https://github.com/benjaminy/atomicable).
+
+A bit of analogy-related speculation: In his essay, Dan claims that "Delimiting critical sections is a fundamentally difficult application-specific challenge with — by definition — no analogue in sequential programming."
+I'm not so sure, though.
+I think critical section size might be analogous to functional-style versus imperative-style state updates.
+In imperative-style updates the value at some location is changed.
+This doesn't cause system-level memory bugs like use-after-free, but it can certainly cause logic bugs if some other code was assuming that the value at that location wouldn't change.
+On the other hand functional-style updates allocate a new location for the new value.
+This has the potential to create a different kind of logic bug if code was written with the assumption that state updates would show up as value changes in some particular location.
+My speculation here is that imperative-style is analogous to smaller critical sections and functional-style is analogous to bigger critical sections.
 
 My other beef with async functions is that I think they get the default wrong regarding spawning asynchronous flows versus regular blocking function calls.
 What I mean by this is that most (by a pretty hefty margin) calls to async functions in the most popular JavaScript and C# repos on github are immediately `await`ed.
