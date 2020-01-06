@@ -223,7 +223,7 @@ My speculation here is that imperative-style is analogous to smaller critical se
 
 My other beef with async functions is that I think they get the default wrong regarding spawning asynchronous flows versus regular blocking function calls.
 What I mean by this is that most (by a pretty hefty margin) calls to async functions in the most popular JavaScript and C# repos on github are immediately `await`ed.
-This suggests to me that it would be better to start with something more like cooperative threads where regular function calls are like `await`ed calls to async functions, and asynchronous flows have to be explicitly created with some syntax.
+This suggests to me that it would be better to start with something more like cooperative threads where regular function calls are like `await`ed calls to async functions, and actually concurrent flows have to be explicitly created with some syntax.
 
 
 ## Better Parallelism
